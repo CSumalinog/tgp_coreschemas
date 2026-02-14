@@ -59,7 +59,7 @@ function Login() {
         <Paper
           sx={{
             padding: 4,
-            width: { xs: "90%", sm: 350 },
+            width: { xs: "90%", sm: 450 },
             backgroundColor: "#ffffff",
             borderRadius: 2,
             boxShadow: 3,

@@ -48,7 +48,7 @@ function Signup() {
       <Paper
         sx={{
           padding: 4,
-          width: { xs: "90%", sm: 400 },
+          width: { xs: "90%", sm: 450 },
           maxWidth: "100%",
           backgroundColor: "#ffffff",
           borderRadius: 2,
