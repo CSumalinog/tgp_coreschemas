@@ -51,7 +51,7 @@ function Signup() {
           width: { xs: "90%", sm: 450 },
           maxWidth: "100%",
           backgroundColor: "#ffffff",
-          borderRadius: 2,
+          borderRadius: 4,
           boxShadow: 3,
         }}
       >

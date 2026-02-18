@@ -61,7 +61,7 @@ function Login() {
             padding: 4,
             width: { xs: "90%", sm: 450 },
             backgroundColor: "#ffffff",
-            borderRadius: 2,
+            borderRadius: 4,
             boxShadow: 3,
           }}
         >
@@ -79,29 +79,29 @@ function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               sx={{ mb: 2 }}
-              
             />
             <TextField
               label="Password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               variant="outlined"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               sx={{ mb: 2 }}
-               InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    edge="end"
-                    sx={{ outline: "none", "&:focus": { outline: "none" } }}
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                      sx={{ outline: "none", "&:focus": { outline: "none" } }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
+
             <Button
               variant="contained"
               type="submit"

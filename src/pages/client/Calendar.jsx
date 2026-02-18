@@ -72,7 +72,7 @@ function calculateEaster(Y) {
 }
 
 // --------------------- Main Component ---------------------
-function MyCalendar() {
+function Calendar() {
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
@@ -264,13 +264,14 @@ function MyCalendar() {
                   <Typography
                     sx={{
                       fontSize: ".9rem",
-                      backgroundColor: "#4caf50",
+                      backgroundColor: "#2e7d32",
+                      color: "white",
                       textAlign: "center",
                       position: "absolute",
                       top: "50%",
                       left: "50%",
                       transform: "translate(-50%, -50%)",
-                      borderRadius: 1,
+                      borderRadius: 2,
                       overflow: "hidden",
                       whiteSpace: "nowrap",
                       textOverflow: "ellipsis",
@@ -299,4 +300,4 @@ function MyCalendar() {
   );
 }
 
-export default MyCalendar;
+export default Calendar;

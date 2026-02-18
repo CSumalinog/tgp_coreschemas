@@ -17,8 +17,12 @@ import CalendarManagement from "../pages/admin/CalendarManagement";
 import StaffersManagement from "../pages/admin/StaffersManagement";
 
 // Client Pages
-import MyCalendar from "../pages/client/MyCalendar";
-import MyRequest from "../pages/client/MyRequest";
+import Calendar from "../pages/client/Calendar";
+import Request from "../pages/client/Request";
+import Draft from "../pages/client/Draft";
+import ApprovedRequest from "../pages/client/ApprovedRequests";
+import DeclinedRequest from "../pages/client/DeclinedRequests";
+import History from "../pages/client/History"
 
 // Section Head Pages
 import MyTeam from "../pages/section_head/MyTeam";
@@ -27,6 +31,7 @@ import SecHeadAssignment from "../pages/section_head/SecHeadAssignment";
 
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
+import ApprovedRequests from "../pages/client/ApprovedRequests";
 
 function AppRoutes() {
   return (
@@ -47,8 +52,13 @@ function AppRoutes() {
 
 
        <Route path="/client" element={<ClientLayout />}>
-        <Route path="my-calendar" element={<MyCalendar />} />
-        <Route path="my-request" element={<MyRequest />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="request" element={<Request />} />
+        <Route path="draft" element={<Draft />} />
+        <Route path="approved-requests" element={<ApprovedRequest />} />
+         <Route path="declined-requests" element={<DeclinedRequest />} />
+        <Route path="history" element={<History />} />
+        
       </Route>
 
        <Route path="/section_head" element={<SectionHeadLayout />}>
