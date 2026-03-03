@@ -12,13 +12,15 @@ import Signup from "../pages/auth/Signup";
 // Admin Pages
 import Dashboard from "../pages/admin/Dashboard";
 import RequestManagement from "../pages/admin/RequestManagement";
-import AssignmentManagement from "../pages/admin/AssignmentManagement";
+import ApprovedRequests from "../pages/admin/AdminApprovedRequests";
+import DeclinedRequests from "../pages/admin/AdminDeclinedRequests";
+import ForApproval from "../pages/admin/ForApproval";
 import CalendarManagement from "../pages/admin/CalendarManagement";
 import StaffersManagement from "../pages/admin/StaffersManagement";
 
 // Client Pages
 import Calendar from "../pages/client/Calendar";
-import Request from "../pages/client/Request";
+import PendingRequest from "../pages/client/PendingRequest";
 import Draft from "../pages/client/Draft";
 import ApprovedRequest from "../pages/client/ApprovedRequests";
 import DeclinedRequest from "../pages/client/DeclinedRequests";
@@ -31,7 +33,7 @@ import SecHeadAssignment from "../pages/section_head/SecHeadAssignment";
 
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
-import ApprovedRequests from "../pages/client/ApprovedRequests";
+
 
 function AppRoutes() {
   return (
@@ -45,16 +47,19 @@ function AppRoutes() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="request-management" element={<RequestManagement />} />
-        <Route path="assignment-management" element={<AssignmentManagement />} />
+        <Route path="approved-requests" element={<ApprovedRequests />} />
+        <Route path="declined-requests" element={<DeclinedRequests />} />
+        <Route path="for-approval" element={<ForApproval />} />
         <Route path="calendar-management" element={<CalendarManagement />} />
         <Route path="staffers-management" element={<StaffersManagement />} />
+        
       </Route>
 
 
        <Route path="/client" element={<ClientLayout />}>
         <Route path="calendar" element={<Calendar />} />
-        <Route path="request" element={<Request />} />
         <Route path="draft" element={<Draft />} />
+        <Route path="pending-requests" element={<PendingRequest />} />
         <Route path="approved-requests" element={<ApprovedRequest />} />
          <Route path="declined-requests" element={<DeclinedRequest />} />
         <Route path="history" element={<History />} />

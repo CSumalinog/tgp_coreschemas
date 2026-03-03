@@ -77,6 +77,14 @@ export default function ApprovedRequest() {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const contentRef = useRef(); // ref for PDF
 
+  // ✅ ADDED: hides icons while exporting
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // ✅ ADDED: Paper wrapper so we can attach ref to the whole Dialog
+  const PaperWithRef = React.forwardRef(function PaperWithRef(props, ref) {
+    return <Box ref={ref} {...props} />;
+  });
+
   const approvedRequests = mockRequests.filter(
     (req) => req.status === "Approved",
   );
@@ -87,14 +95,24 @@ export default function ApprovedRequest() {
   const handleDownload = () => {
     if (!contentRef.current) return;
 
-    html2canvas(contentRef.current, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "pt", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${selectedReceipt.eventTitle}_receipt.pdf`);
-    });
+    setIsDownloading(true);
+
+    // wait for React to re-render (icons hidden)
+    setTimeout(() => {
+      html2canvas(contentRef.current, {
+        scale: 2,
+        backgroundColor: "#fff",
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "pt", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${selectedReceipt.eventTitle}_receipt.pdf`);
+
+        setIsDownloading(false);
+      });
+    }, 100);
   };
 
   const columns = [
@@ -180,43 +198,50 @@ export default function ApprovedRequest() {
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
+        PaperComponent={PaperWithRef}
         PaperProps={{
+          ref: contentRef,
           sx: {
             fontFamily: "'Helvetica Neue', sans-serif",
             position: "relative",
             borderRadius: 4,
             width: 500, // fixed width in px
-            height: 400, // fixed height in px
+            height: 350, // fixed height in px
+            backgroundColor: "#fff", // ✅ FIX: prevent dark translucent capture
           },
         }}
       >
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: "#757575",
-            zIndex: 10,
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
+        {/* ✅ HIDE close icon in PDF */}
+        {!isDownloading && (
+          <IconButton
+            aria-label="close"
+            onClick={handleClose}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: "#757575",
+              zIndex: 10,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        )}
 
         <DialogTitle
           sx={{
             textAlign: "center",
             fontWeight: "bold",
-            fontSize: "1.5rem",
-            pb: 2,
+            fontSize: "1.22rem",
+            pb: 0.5,
+            pt: 2,
           }}
         >
           COVERAGE REQUEST RECEIPT
           <Typography
             sx={{
               fontWeight: 400,
-              fontSize: "0.8rem",
+              fontSize: "0.7rem",
               mt: 0.5,
               color: "#616161",
             }}
@@ -228,7 +253,6 @@ export default function ApprovedRequest() {
         <DialogContent
           sx={{
             position: "relative",
-            py: 0,
             display: "flex",
             flexDirection: "column",
             gap: 1,
@@ -238,7 +262,6 @@ export default function ApprovedRequest() {
         >
           {selectedReceipt && (
             <Box
-              ref={contentRef}
               sx={{
                 position: "relative",
                 display: "flex",
@@ -268,11 +291,12 @@ export default function ApprovedRequest() {
               {/* 2-column layout */}
               <Box
                 sx={{
+                  marginLeft: 3,
                   display: "grid",
                   gridTemplateColumns: "1.2fr 2.8fr",
-                  columnGap: 2,
-                  rowGap: 0.5,
-                  alignItems: "start",
+                  columnGap: .5,
+                  rowGap: 0.2,
+                  alignItems: "center",
                 }}
               >
                 <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
@@ -336,13 +360,13 @@ export default function ApprovedRequest() {
               <Divider sx={{ my: 1 }} />
               <Box
                 sx={{
+                  marginLeft: 3,
                   display: "grid",
-                  gridTemplateColumns: "1fr 2.5fr .5fr",
-                  columnGap: 1,
-                  rowGap: 0.5,
+                  gridTemplateColumns: ".5fr 3fr .5fr",
+                  columnGap: 0.5,
+                  rowGap: 0,
                   alignItems: "start",
                   width: "100%",
-                  mt: 0,
                 }}
               >
                 <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>
@@ -359,15 +383,19 @@ export default function ApprovedRequest() {
                     Keep this receipt for reference.
                   </Typography>
                 </Box>
-                <Tooltip title="Download Receipt" arrow>
-                  <IconButton
-                    onClick={handleDownload}
-                    sx={{ color: "#2e7d32" }}
-                    size="small"
-                  >
-                    <DownloadIcon />
-                  </IconButton>
-                </Tooltip>
+
+                {/* ✅ HIDE download icon in PDF */}
+                {!isDownloading && (
+                  <Tooltip title="Download Receipt" arrow>
+                    <IconButton
+                      onClick={handleDownload}
+                      sx={{ color: "#2e7d32" }}
+                      size="small"
+                    >
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
             </Box>
           )}

@@ -1,13 +1,16 @@
-// src/pages/MyCalendar.jsx
-import React, { useState } from "react";
+// src/pages/client/MyCalendar.jsx
+import React, { useState, useEffect } from "react";
 import { Box, Typography, IconButton, Tooltip } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import RequestForm from "../../components/client/RequestForm"; // import your dialog
+import CoverageRequestDialog from "../../components/client/RequestForm";
+import { supabase } from "../../lib/supabaseClient";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MAX_EVENTS_PER_DAY = 2;
 
-// --------------------- Holiday functions ---------------------
+// ─── Philippine Holidays ───────────────────────────────────────────────────
+
 function getPhilippineHolidays(year) {
   const holidays = {};
 
@@ -20,9 +23,6 @@ function getPhilippineHolidays(year) {
     "12-25": "Christmas Day",
     "12-30": "Rizal Day",
   };
-  Object.entries(fixedHolidays).forEach(([d, title]) => {
-    holidays[`${year}-${d}`] = title;
-  });
 
   const specialDays = {
     "02-25": "EDSA People Power Anniversary",
@@ -32,6 +32,10 @@ function getPhilippineHolidays(year) {
     "12-24": "Christmas Eve",
     "12-31": "New Year's Eve",
   };
+
+  Object.entries(fixedHolidays).forEach(([d, title]) => {
+    holidays[`${year}-${d}`] = title;
+  });
   Object.entries(specialDays).forEach(([d, title]) => {
     holidays[`${year}-${d}`] = title;
   });
@@ -54,16 +58,12 @@ function getPhilippineHolidays(year) {
 }
 
 function calculateEaster(Y) {
-  const a = Y % 19;
-  const b = Math.floor(Y / 100);
-  const c = Y % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
+  const a = Y % 19, b = Math.floor(Y / 100), c = Y % 100;
+  const d = Math.floor(b / 4), e = b % 4;
   const f = Math.floor((b + 8) / 25);
   const g = Math.floor((b - f + 1) / 3);
   const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
+  const i = Math.floor(c / 4), k = c % 4;
   const L = (32 + 2 * e + 2 * i - h - k) % 7;
   const m = Math.floor((a + 11 * h + 22 * L) / 451);
   const month = Math.floor((h + L - 7 * m + 114) / 31);
@@ -71,43 +71,105 @@ function calculateEaster(Y) {
   return new Date(Y, month - 1, day);
 }
 
-// --------------------- Main Component ---------------------
+// ─── Component ────────────────────────────────────────────────────────────
+
 function Calendar() {
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const [currentDate, setCurrentDate] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
   );
-
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+
+  // ── Supabase data ──
+  // eventMap: { "YYYY-MM-DD": count of approved requests }
+  const [eventMap, setEventMap] = useState({});
+  // blockedDates: Set of "YYYY-MM-DD" strings blocked by Admin
+  const [blockedDates, setBlockedDates] = useState(new Set());
+
+  const PH_HOLIDAYS = getPhilippineHolidays(currentDate.getFullYear());
+
+  // ── Fetch slot data for current month ──────────────────────────────────
+  useEffect(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
+    const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
+
+    fetchMonthData(firstDay, lastDay);
+  }, [currentDate]);
+
+  const fetchMonthData = async (firstDay, lastDay) => {
+    try {
+      // 1. Fetch approved request counts per day
+      const { data: requests, error: reqError } = await supabase
+        .from("coverage_requests")
+        .select("event_date")
+        .in("status", ["Pending", "Approved", "Forwarded", "Assigned"])
+        .gte("event_date", firstDay)
+        .lte("event_date", lastDay);
+
+      if (!reqError && requests) {
+        const map = {};
+        requests.forEach(({ event_date }) => {
+          map[event_date] = (map[event_date] || 0) + 1;
+        });
+        setEventMap(map);
+      }
+
+      // 2. Fetch admin-blocked dates
+      const { data: blocked, error: blockedError } = await supabase
+        .from("blocked_dates")
+        .select("start_date, end_date")
+        .lte("start_date", lastDay)
+        .gte("end_date", firstDay);
+
+      if (!blockedError && blocked) {
+        const blockedSet = new Set();
+        blocked.forEach(({ start_date, end_date }) => {
+          let d = new Date(start_date);
+          const end = new Date(end_date);
+          while (d <= end) {
+            blockedSet.add(d.toISOString().split("T")[0]);
+            d.setDate(d.getDate() + 1);
+          }
+        });
+        setBlockedDates(blockedSet);
+      }
+    } catch (err) {
+      console.error("Calendar fetch error:", err);
+    }
+  };
+
+  const getEventCount = (isoDate) => eventMap[isoDate] || 0;
+  const getRemainingSlots = (isoDate) =>
+    Math.max(0, MAX_EVENTS_PER_DAY - getEventCount(isoDate));
+  const isBlocked = (isoDate) => blockedDates.has(isoDate);
 
   const prevMonth = () =>
     setCurrentDate(
       new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
     );
-
   const nextMonth = () =>
     setCurrentDate(
       new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
     );
 
-  const PH_HOLIDAYS = getPhilippineHolidays(currentDate.getFullYear());
-
   const generateCalendarGrid = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-
     const firstDayOfMonth = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const prevMonthDays = new Date(year, month, 0).getDate();
-    const totalCells = 35;
-
+    const totalCellsNeeded = firstDayOfMonth + daysInMonth;
+    const rows = Math.ceil(totalCellsNeeded / 7);
+    const totalCells = rows * 7;
     const calendar = [];
 
     for (let i = 0; i < totalCells; i++) {
-      let dayNumber = "";
-      let isCurrentMonth = true;
-      let cellDate;
+      let dayNumber = "", isCurrentMonth = true, cellDate;
 
       if (i < firstDayOfMonth) {
         dayNumber = prevMonthDays - firstDayOfMonth + 1 + i;
@@ -135,24 +197,28 @@ function Calendar() {
   const calendarDays = generateCalendarGrid();
 
   const handleDateClick = (date) => {
-    const isPast = date.cellDate < new Date(today.setHours(0, 0, 0, 0));
-    const isHoliday = PH_HOLIDAYS[date.iso];
+    const isPast = date.cellDate < today;
+    const remaining = getRemainingSlots(date.iso);
+    const blocked = isBlocked(date.iso);
 
-    if (isPast || isHoliday) return; // blocked
-    setSelectedDate(date.cellDate); // preselect the clicked date
-    setOpenDialog(true); // open dialog
+    if (isPast || remaining <= 0 || blocked || !date.isCurrentMonth) return;
+
+    setSelectedDate(date.cellDate);
+    setOpenDialog(true);
   };
 
-  const handleCloseDialog = () => setOpenDialog(false);
-
-  const handleSubmitRequest = (data) => {
-    console.log("Coverage request submitted:", data);
-    handleCloseDialog();
+  // Called after successful form submission — refetch slot data
+  const handleSuccess = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
+    const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
+    fetchMonthData(firstDay, lastDay);
   };
 
   return (
     <Box sx={{ width: "100%", height: "100%", p: 3, pt: 2 }}>
-      {/* Month header */}
+      {/* Month Header */}
       <Box
         sx={{
           display: "flex",
@@ -166,16 +232,17 @@ function Calendar() {
         </IconButton>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="h6" fontWeight="semibold">
+          <Typography fontSize="1rem" fontWeight="semibold">
             {currentDate.toLocaleString("default", {
               month: "long",
               year: "numeric",
             })}
           </Typography>
-
           <IconButton
             onClick={() =>
-              setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1))
+              setCurrentDate(
+                new Date(today.getFullYear(), today.getMonth(), 1)
+              )
             }
             sx={{
               border: "1px solid #e0e0e0",
@@ -185,7 +252,7 @@ function Calendar() {
               "&:hover": { backgroundColor: "#f5f5f5" },
             }}
           >
-            <Typography sx={{ fontSize: "0.75rem" }}>Today</Typography>
+            <Typography sx={{ fontSize: "0.8rem" }}>Today</Typography>
           </IconButton>
         </Box>
 
@@ -194,7 +261,8 @@ function Calendar() {
         </IconButton>
       </Box>
 
-      {/* Weekday header */}
+
+      {/* Weekday Header */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 0.5 }}>
         {DAYS.map((day) => (
           <Typography
@@ -202,20 +270,20 @@ function Calendar() {
             align="center"
             fontWeight="semibold"
             color="text.secondary"
-            sx={{ fontSize: "0.9rem" }}
+            sx={{ fontSize: "0.8rem" }}
           >
             {day}
           </Typography>
         ))}
       </Box>
 
-      {/* Calendar grid */}
+      {/* Calendar Grid */}
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
           border: "1px solid #e0e0e0",
-          borderRadius: 4,
+          borderRadius: 3,
           overflow: "hidden",
         }}
       >
@@ -223,10 +291,12 @@ function Calendar() {
           const d = date.cellDate;
           const isWeekend = d.getDay() === 0 || d.getDay() === 6;
           const holidayTitle = PH_HOLIDAYS[date.iso];
-          const isToday = d.toDateString() === today.toDateString() && date.isCurrentMonth;
-
-          const isPast = d < new Date(today.setHours(0, 0, 0, 0));
-          const isDisabled = isPast || holidayTitle;
+          const isToday =
+            d.toDateString() === today.toDateString() && date.isCurrentMonth;
+          const isPast = d < today;
+          const remainingSlots = getRemainingSlots(date.iso);
+          const blocked = isBlocked(date.iso);
+          const isDisabled = isPast || remainingSlots <= 0 || blocked;
 
           return (
             <Box
@@ -241,60 +311,80 @@ function Calendar() {
                 borderBottom: ".5px solid #e0e0e0",
                 "&:nth-of-type(7n)": { borderRight: "none" },
                 "&:nth-last-child(-n+7)": { borderBottom: "none" },
-                "&:hover": { backgroundColor: isDisabled ? undefined : "#fafafa" },
+                "&:hover": {
+                  backgroundColor: isDisabled ? undefined : "#fafafa",
+                },
                 position: "relative",
-                border: isToday ? "2px solid #1976d2" : ".01px solid #e0e0e",
-                borderRadius: isToday ? "70%" : "0",
                 cursor: isDisabled ? "not-allowed" : "pointer",
-                opacity: isPast ? 0.5 : 1, // only past dates faded, holidays not
+                opacity: isPast ? 0.5 : 1,
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: "0.9rem",
-                  fontWeight: "semibold",
-                  textAlign: "center",
-                }}
-              >
-                {date.dayNumber}
-              </Typography>
-
-              {holidayTitle && (
-                <Tooltip title={holidayTitle} arrow>
-                  <Typography
+              {/* Day Number */}
+              <Box sx={{ display: "flex", justifyContent: "center" }}>
+                <Tooltip title={holidayTitle || (blocked ? "Blocked by Admin" : "")} arrow>
+                  <Box
                     sx={{
-                      fontSize: ".9rem",
-                      backgroundColor: "#2e7d32",
-                      color: "white",
-                      textAlign: "center",
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
+                      minWidth: "100%",
+                      height: 22,
+                      px: 0.8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       borderRadius: 2,
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
-                      textOverflow: "ellipsis",
-                      px: 0.5,
-                      maxWidth: "90%",
-                      pointerEvents: "auto",
+                      fontFamily: "'Helvetica', sans-serif",
+                      fontSize: "0.8rem",
+                      ...(isToday && {
+                        backgroundColor: "#1976d2",
+                        color: "white",
+                      }),
+                      ...(holidayTitle && !isToday && {
+                        backgroundColor: "#4caf50",
+                        color: "white",
+                      }),
+                      ...(blocked && !isToday && {
+                        backgroundColor: "#d32f2f",
+                        color: "white",
+                      }),
                     }}
                   >
-                    {holidayTitle}
-                  </Typography>
+                    {date.dayNumber}
+                  </Box>
                 </Tooltip>
+              </Box>
+
+              {/* Slot Indicator */}
+              {date.isCurrentMonth && !isPast && (
+                <Typography
+                  sx={{
+                    fontSize: ".65rem",
+                    textAlign: "center",
+                    mt: 0.5,
+                    color:
+                      blocked
+                        ? "#d32f2f"
+                        : remainingSlots === 0
+                        ? "#d32f2f"
+                        : "#b0b0b0",
+                  }}
+                >
+                  {blocked
+                    ? "Unavailable"
+                    : remainingSlots === 0
+                    ? "Fully Booked"
+                    : `Available Slots: ${remainingSlots}`}
+                </Typography>
               )}
             </Box>
           );
         })}
       </Box>
 
-      {/* ---------- COVERAGE REQUEST DIALOG ---------- */}
-      <RequestForm
+      {/* ✅ FIXED: uses onSuccess instead of handleSubmit */}
+      <CoverageRequestDialog
         open={openDialog}
-        handleClose={handleCloseDialog}
-        handleSubmit={handleSubmitRequest}
-        defaultDate={selectedDate} // preselected clicked date
+        handleClose={() => setOpenDialog(false)}
+        onSuccess={handleSuccess}
+        defaultDate={selectedDate}
       />
     </Box>
   );

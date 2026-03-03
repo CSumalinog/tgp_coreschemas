@@ -13,12 +13,11 @@ const theme = createTheme({
         },
         cell: {
           fontFamily: "'Helvetica Neue', sans-serif",
-          fontSize: '0.9rem', // optional: match your page font size
+         
         },
         columnHeaders: {
           fontFamily: "'Helvetica Neue', sans-serif",
-          fontSize: '0.9rem',
-          fontWeight: 400,
+          
         },
       },
     },
