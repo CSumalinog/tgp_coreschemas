@@ -13,6 +13,7 @@ import Signup from "../pages/auth/Signup";
 import Dashboard from "../pages/admin/Dashboard";
 import RequestManagement from "../pages/admin/RequestManagement";
 import ApprovedRequests from "../pages/admin/AdminApprovedRequests";
+import ForwardedRequest from "../pages/admin/ForwardedRequest";
 import DeclinedRequests from "../pages/admin/AdminDeclinedRequests";
 import ForApproval from "../pages/admin/ForApproval";
 import CalendarManagement from "../pages/admin/CalendarManagement";
@@ -27,9 +28,10 @@ import DeclinedRequest from "../pages/client/DeclinedRequests";
 import History from "../pages/client/History"
 
 // Section Head Pages
-import MyTeam from "../pages/section_head/MyTeam";
+import SecHeadDashboard from "../pages/section_head/SecHeadDashboard";
 import SecHeadAssignment from "../pages/section_head/SecHeadAssignment";
-
+import SecHeadAssigned from "../pages/section_head/Assigned";
+import SecHeadHistory from "../pages/section_head/SecHeadHistory";
 
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
@@ -48,6 +50,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="request-management" element={<RequestManagement />} />
         <Route path="approved-requests" element={<ApprovedRequests />} />
+        <Route path="forwarded-requests" element={<ForwardedRequest />} />
         <Route path="declined-requests" element={<DeclinedRequests />} />
         <Route path="for-approval" element={<ForApproval />} />
         <Route path="calendar-management" element={<CalendarManagement />} />
@@ -66,9 +69,12 @@ function AppRoutes() {
         
       </Route>
 
-       <Route path="/section_head" element={<SectionHeadLayout />}>
-        <Route path="my-team" element={<MyTeam />} />
-        <Route path="assignment" element={<SecHeadAssignment />} />
+       <Route path="/sec_head" element={<SectionHeadLayout />}>
+        <Route path="dashboard" element={<SecHeadDashboard />} />
+        <Route path="for-assignment" element={<SecHeadAssignment />} />
+        <Route path="assigned" element={<SecHeadAssigned />} />
+        <Route path="history" element={<SecHeadHistory />} />
+        
       </Route>
         
         <Route path="/regular_staff" element={<RegularStaffLayout />}>

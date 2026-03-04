@@ -13,22 +13,12 @@ import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined
 import LogoutIcon from "@mui/icons-material/Logout";
 import { supabase } from "../../lib/supabaseClient";
 
-/**
- * Reusable UserAvatar component
- * Works across all layouts: Client, Admin, Sec Head, Staff
- *
- * Props:
- * - profileRoute (string): where "Profile" navigates to. 
- *     e.g. "profile" for client, "/admin/profile" for admin
- *     Defaults to "profile"
- */
 export default function UserAvatar({ profileRoute = "profile" }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const menuOpen = Boolean(anchorEl);
 
-  // Fetch logged-in user profile on mount
   useEffect(() => {
     async function loadUser() {
       const {
@@ -39,7 +29,7 @@ export default function UserAvatar({ profileRoute = "profile" }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, role")
+        .select("full_name, role, section, division")
         .eq("id", authUser.id)
         .single();
 
@@ -47,6 +37,8 @@ export default function UserAvatar({ profileRoute = "profile" }) {
         email: authUser.email,
         full_name: profile?.full_name || "",
         role: profile?.role || "",
+        section: profile?.section || "",
+        division: profile?.division || "",
       });
     }
 
@@ -64,15 +56,25 @@ export default function UserAvatar({ profileRoute = "profile" }) {
       .slice(0, 2);
   };
 
-  // Role display label
-  const getRoleLabel = (role) => {
+  /**
+   * Label priority:
+   * 1. section (Creative Director, News, Photojournalism, etc.)
+   * 2. role fallback (Staff, Client, etc.)
+   */
+  const getPositionLabel = (user) => {
+    if (!user) return "";
+
+    // If they have a specific section, show that
+    if (user.section) return user.section;
+
+    // Fallback to role label
     const labels = {
       client: "Client",
       admin: "Administrator",
       sec_head: "Section Head",
       staff: "Staff",
     };
-    return labels[role] || role;
+    return labels[user.role] || user.role;
   };
 
   const handleAvatarClick = (e) => setAnchorEl(e.currentTarget);
@@ -88,6 +90,8 @@ export default function UserAvatar({ profileRoute = "profile" }) {
     handleMenuClose();
     navigate(profileRoute);
   };
+
+  const positionLabel = getPositionLabel(user);
 
   return (
     <>
@@ -134,19 +138,23 @@ export default function UserAvatar({ profileRoute = "profile" }) {
           <Typography sx={{ fontSize: "0.75rem", color: "#9e9e9e" }}>
             {user?.email || ""}
           </Typography>
-          {user?.role && (
-            <Typography
-              sx={{
-                fontSize: "0.7rem",
-                color: "#f5c52b",
-                fontWeight: 600,
-                mt: 0.3,
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {getRoleLabel(user.role)}
-            </Typography>
+
+          {/* Position label — section takes priority over role */}
+          {positionLabel && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+              <Typography
+                sx={{
+                  fontSize: "0.7rem",
+                  color: "#f5c52b",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {positionLabel}
+              </Typography>
+              
+            </Box>
           )}
         </Box>
 

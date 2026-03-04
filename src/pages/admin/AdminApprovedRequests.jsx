@@ -1,63 +1,24 @@
 // src/pages/admin/ApprovedRequests.jsx
 import React, { useState } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, CircularProgress } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-
-// ✅ Component
+import { useAdminRequests } from "../../hooks/useAdminRequest";
 import RequestDetails from "../../components/admin/RequestDetails";
 
-// ------------------ MOCK DATA (Approved only) ------------------
-const mockApprovedRequests = [
-  {
-    id: 1,
-    requestTitle: "Student Council Presscon Coverage",
-    client: "USC - Executive Council",
-    dateReceived: "2026-02-16",
-    status: "Approved",
-    details: {
-      description:
-        "Requesting coverage for the student council press conference. Focus on key announcements and photo documentation.",
-      venue: "Main Auditorium",
-      requestedDate: "2026-02-17",
-      timeRange: "9:00 AM - 11:00 AM",
-      coverageComponents: [
-        { name: "News", pax: 2 },
-        { name: "Photo", pax: 3 },
-        { name: "Video", pax: 2 },
-      ],
-      contactPerson: "Jane Doe",
-      contactInfo: "jane.doe@example.com / 0917-123-4567",
-      file: "Presscon_Flow.pdf",
-    },
-  },
-  {
-    id: 2,
-    requestTitle: "Campus Sports Fest Opening",
-    client: "CSU Athletics Office",
-    dateReceived: "2026-02-16",
-    status: "Approved",
-    details: {
-      description:
-        "Coverage for the opening ceremony of Sports Fest. Need photo + video highlights.",
-      venue: "University Gym",
-      requestedDate: "2026-02-18",
-      timeRange: "1:00 PM - 3:00 PM",
-      coverageComponents: [
-        { name: "Photo", pax: 2 },
-        { name: "Video", pax: 2 },
-      ],
-      contactPerson: "John Smith",
-      contactInfo: "john.smith@example.com / 0917-987-6543",
-      file: "SportsFest_Flow.pdf",
-    },
-  },
-];
-
 export default function ApprovedRequests() {
+  const { approved, loading, refetch } = useAdminRequests();
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  const handleView = (row) => setSelectedRequest(row);
-  const handleClose = () => setSelectedRequest(null);
+  const rows = approved.map((req) => ({
+    id: req.id,
+    requestTitle: req.title,
+    client: req.entity?.name || "—",
+    dateReceived: req.submitted_at
+      ? new Date(req.submitted_at).toLocaleDateString()
+      : "—",
+    status: req.status,
+    ...req,
+  }));
 
   const columns = [
     { field: "requestTitle", headerName: "Request Title", flex: 1.4 },
@@ -67,34 +28,13 @@ export default function ApprovedRequests() {
       field: "status",
       headerName: "Status",
       flex: 1,
-      renderCell: (params) => {
-        const value = params.value;
-        let color = "#757575";
-        if (value === "Approved") color = "#43a047"; // green for approved
-
-        return (
-          <Box
-            sx={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-start",
-            }}
-          >
-            <Typography
-              sx={{
-                fontWeight: 400,
-                color,
-                textTransform: "uppercase",
-                fontSize: "0.9rem",
-              }}
-            >
-              {value}
-            </Typography>
-          </Box>
-        );
-      },
+      renderCell: (params) => (
+        <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}>
+          <Typography sx={{ fontWeight: 400, color: "#43a047", textTransform: "uppercase", fontSize: "0.9rem" }}>
+            {params.value}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: "actions",
@@ -105,7 +45,7 @@ export default function ApprovedRequests() {
         <Button
           variant="outlined"
           size="small"
-          onClick={() => handleView(params.row)}
+          onClick={() => setSelectedRequest(params.row)}
           sx={{ textTransform: "none" }}
         >
           View
@@ -115,66 +55,44 @@ export default function ApprovedRequests() {
   ];
 
   return (
-    <Box
-      sx={{
-        p: 3,
-        height: "100%",
-        boxSizing: "border-box",
-        backgroundColor: "#f9f9f9",
-      }}
-    >
-      {/* --------- PAGE TITLE + INSTRUCTIONS --------- */}
+    <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "#f9f9f9" }}>
       <Box sx={{ mb: 2 }}>
-        <Typography
-          sx={{
-            mt: 0.1,
-            fontSize: "0.8rem",
-            color: "#757575",
-            maxWidth: 900,
-            lineHeight: 1.5,
-          }}
-        >
+        <Typography sx={{ fontSize: "0.8rem", color: "#757575", lineHeight: 1.5 }}>
           Review approved coverage requests.
         </Typography>
       </Box>
 
-      {/* --------- TABLE CARD --------- */}
-      <Box
-        sx={{
-          height: 500,
-          width: "100%",
-          bgcolor: "white",
-          borderRadius: 2,
-          boxShadow: 1,
-        }}
-      >
-        <DataGrid
-          rows={mockApprovedRequests}
-          columns={columns}
-          pageSize={7}
-          rowsPerPageOptions={[7]}
-          disableSelectionOnClick
-          sx={{
-            border: "none",
-            fontFamily: "'Helvetica Neue', sans-serif",
-            fontSize: "0.9rem",
-            "& .MuiDataGrid-cell": {
+      <Box sx={{ height: 500, width: "100%", bgcolor: "white", borderRadius: 2, boxShadow: 1 }}>
+        {loading ? (
+          <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
+          </Box>
+        ) : (
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={7}
+            rowsPerPageOptions={[7]}
+            disableSelectionOnClick
+            sx={{
+              border: "none",
               fontFamily: "'Helvetica Neue', sans-serif",
               fontSize: "0.9rem",
-            },
-            "& .MuiDataGrid-columnHeaders": {
-              fontFamily: "'Helvetica Neue', sans-serif",
-              fontSize: "0.9rem",
-            },
-          }}
-        />
+              "& .MuiDataGrid-cell": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none" },
+              "& .MuiDataGrid-columnHeaders": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem" },
+            }}
+          />
+        )}
       </Box>
 
-      {/* ✅ REQUEST DETAILS COMPONENT */}
       <RequestDetails
         open={!!selectedRequest}
-        onClose={handleClose}
+        onClose={() => setSelectedRequest(null)}
         request={selectedRequest}
+        onActionSuccess={() => {
+          setSelectedRequest(null);
+          refetch();
+        }}
       />
     </Box>
   );

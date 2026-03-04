@@ -1,399 +1,867 @@
 // src/components/admin/RequestDetails.jsx
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Box,
   Dialog,
   DialogTitle,
   DialogContent,
-  Typography,
-  Stack,
   DialogActions,
+  Box,
+  Typography,
+  IconButton,
   Button,
+  Chip,
+  Stack,
+  Divider,
+  TextField,
+  FormGroup,
   FormControlLabel,
   Checkbox,
-  TextField,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import { supabase } from "../../lib/supabaseClient";
+import {
+  forwardRequest,
+  declineRequest,
+  approveRequest,
+} from "../../services/adminRequestService";
+import { useRequestAssistant } from "../../hooks/RequestAssistant";
+
+const ALL_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
+
+const SERVICE_SECTION_MAP = {
+  "News Article": "News",
+  "Photo Documentation": "Photojournalism",
+  "Video Documentation": "Videojournalism",
+  "Camera Operator (for live streaming)": "Videojournalism",
+};
+
+const STATUS_COLORS = {
+  Pending: "#1976d2",
+  Forwarded: "#7b1fa2",
+  Assigned: "#f57c00",
+  Approved: "#43a047",
+  Declined: "#d32f2f",
+};
+
+// Newsworthiness score colors
+const SCORE_COLORS = {
+  Low: { bg: "#fdecea", color: "#d32f2f" },
+  Moderate: { bg: "#fff8e1", color: "#f57c00" },
+  High: { bg: "#e8f5e9", color: "#388e3c" },
+  "Very High": { bg: "#e3f2fd", color: "#1565c0" },
+};
+
+const SCORE_STARS = (score) => "⭐".repeat(score || 0);
+
+const getFileName = (filePath) => {
+  if (!filePath) return null;
+  return filePath.split("/").pop().replace(/^\d+_/, "");
+};
+
+const openFile = (filePath) => {
+  if (!filePath) return;
+  const { data } = supabase.storage
+    .from("coverage-files")
+    .getPublicUrl(filePath);
+  if (data?.publicUrl) window.open(data.publicUrl, "_blank");
+};
 
 export default function RequestDetails({
-  open = false,
-  onClose = () => {},
-  request = null,
-  onForward = () => {},
-  onReturn = () => {},
-  onDecline = () => {},
+  open,
+  onClose,
+  request,
+  onActionSuccess,
 }) {
-  // ----------------------------
-  // STATES
-  // ----------------------------
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  const [forwardOpen, setForwardOpen] = useState(false);
+  const [selectedSections, setSelectedSections] = useState([]);
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [approveOpen, setApproveOpen] = useState(false);
   const [adminNotes, setAdminNotes] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const [beneficial, setBeneficial] = useState(false);
-  const [enoughPrepTime, setEnoughPrepTime] = useState(false);
-  const [scopeRealistic, setScopeRealistic] = useState(false);
-
-  const [declineMode, setDeclineMode] = useState(false);
-
-  const details = request?.details || {};
-  const components = details?.coverageComponents || [];
+  // ✅ System assistant checks
+  const checks = useRequestAssistant(open ? request : null);
 
   useEffect(() => {
-    setBeneficial(false);
-    setEnoughPrepTime(false);
-    setScopeRealistic(false);
-    setAdminNotes("");
-    setDeclineMode(false);
+    if (request?.services) {
+      const suggested = Object.entries(request.services)
+        .filter(([_, pax]) => pax > 0)
+        .map(([svc]) => SERVICE_SECTION_MAP[svc])
+        .filter(Boolean);
+      setSelectedSections([...new Set(suggested)]);
+    }
   }, [request]);
 
-  const criteriaMet = beneficial && enoughPrepTime && scopeRealistic;
+  const resetState = () => {
+    setError("");
+    setForwardOpen(false);
+    setDeclineOpen(false);
+    setApproveOpen(false);
+    setDeclineReason("");
+    setAdminNotes("");
+    setSelectedSections([]);
+  };
 
-  // ----------------------------
-  // HANDLERS
-  // ----------------------------
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
 
   const handleForward = async () => {
-    if (!criteriaMet) return;
-
-    setLoading(true);
-
-    await onForward?.(request, {
-      adminNotes,
-      checklist: {
-        beneficial,
-        enoughPrepTime,
-        scopeRealistic,
-      },
-    });
-
-    setLoading(false);
-    onClose();
+    if (selectedSections.length === 0) {
+      setError("Please select at least one section to forward to.");
+      return;
+    }
+    setActionLoading(true);
+    setError("");
+    try {
+      await forwardRequest(request.id, selectedSections);
+      setForwardOpen(false);
+      handleClose();
+      if (onActionSuccess) onActionSuccess();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleDecline = async () => {
-    setLoading(true);
-
-    await onDecline?.(request, {
-      adminNotes,
-      checklist: {
-        beneficial,
-        enoughPrepTime,
-        scopeRealistic,
-      },
-    });
-
-    setLoading(false);
-    onClose();
+    if (!declineReason.trim()) {
+      setError("Please provide a reason for declining.");
+      return;
+    }
+    setActionLoading(true);
+    setError("");
+    try {
+      await declineRequest(request.id, declineReason);
+      setDeclineOpen(false);
+      handleClose();
+      if (onActionSuccess) onActionSuccess();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  // ----------------------------
-  // RENDER
-  // ----------------------------
+  const handleApprove = async () => {
+    setActionLoading(true);
+    setError("");
+    try {
+      await approveRequest(request.id, adminNotes);
+      setApproveOpen(false);
+      handleClose();
+      if (onActionSuccess) onActionSuccess();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (!request) return null;
+
+  const coverageComponents = request.services
+    ? Object.entries(request.services)
+        .filter(([_, pax]) => pax > 0)
+        .map(([name, pax]) => ({ name, pax }))
+    : [];
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      PaperProps={{
-        sx: {
-          fontFamily: "'Helvetica Neue', sans-serif",
-          borderRadius: 3,
-          width: 600,
-          maxHeight: "90vh",
-        },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          fontWeight: 700,
-          textAlign: "center",
-          fontSize: "1rem",
-          letterSpacing: 0.5,
+    <>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            fontFamily: "'Helvetica Neue', sans-serif",
+            height: "90vh",
+          },
         }}
       >
-        Request Review
-      </DialogTitle>
-
-      <DialogContent dividers sx={{ px: 4, py: 3 }}>
-        {!request ? (
-          <Typography variant="body2">
-            No request selected.
-          </Typography>
-        ) : (
-          <>
-            {/* REQUEST INFORMATION CARD */}
-            <Box
+        {/* Header */}
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            pb: 1,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
+              Request Details
+            </Typography>
+            <Chip
+              label={request.status}
+              size="small"
               sx={{
-                backgroundColor: "#fafafa",
-                borderRadius: 3,
-                p: 3,
-                mb: 4,
-                border: "1px solid #eee",
+                backgroundColor: STATUS_COLORS[request.status] + "20",
+                color: STATUS_COLORS[request.status],
+                fontWeight: 600,
+                fontSize: "0.72rem",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
               }}
-            >
-              <Typography fontWeight={550} mb={2}>
-                Request Information
-              </Typography>
+            />
+          </Box>
+          <IconButton onClick={handleClose} size="small">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
 
+        <Divider />
+
+        <DialogContent sx={{ py: 0, px: 0 }}>
+          <Box sx={{ display: "flex", height: "100%" }}>
+            {/* ── Left: Request Info ── */}
+            <Box sx={{ flex: 1, px: 4, py: 3, overflowY: "auto" }}>
               <Box
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "150px 1fr",
-                  rowGap: 1,
-                  columnGap: 2,
+                  gridTemplateColumns: "160px 1fr",
+                  rowGap: 0.5,
+                  columnGap: 1,
+                  alignItems: "start",
                 }}
               >
-                {/* TITLE */}
-                <Typography variant="caption" color="text.secondary">
-                  Request Title
-                </Typography>
-                <Typography variant="body2">
-                  {request.requestTitle || "—"}
-                </Typography>
+                <RowLabel>Event Title</RowLabel>
+                <RowValue>{request.title}</RowValue>
 
-                {/* DESCRIPTION */}
-                <Typography variant="caption" color="text.secondary">
-                  Description
-                </Typography>
-                <Typography variant="body2">
-                  {details.description || "—"}
-                </Typography>
+                <RowLabel>Description</RowLabel>
+                <RowValue>{request.description}</RowValue>
 
-                {/* DATE */}
-                <Typography variant="caption" color="text.secondary">
-                  Requested Date
-                </Typography>
-                <Typography variant="body2">
-                  {details.requestedDate || "—"}
-                </Typography>
+                <RowLabel>Event Date</RowLabel>
+                <RowValue>{request.event_date || "—"}</RowValue>
 
-                {/* TIME */}
-                <Typography variant="caption" color="text.secondary">
-                  Requested Time
-                </Typography>
-                <Typography variant="body2">
-                  {details.timeRange || "—"}
-                </Typography>
+                <RowLabel>Time</RowLabel>
+                <RowValue>
+                  {request.from_time && request.to_time
+                    ? `${request.from_time} - ${request.to_time}`
+                    : "—"}
+                </RowValue>
 
-                {/* SERVICES */}
-                <Typography variant="caption" color="text.secondary">
-                  Services Needed
-                </Typography>
+                <RowLabel>Venue</RowLabel>
+                <RowValue>{request.venue}</RowValue>
 
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {components.length === 0 ? (
-                    <Typography variant="caption" color="text.secondary">
-                      No services specified.
-                    </Typography>
+                <RowLabel>Services Needed</RowLabel>
+                <Box>
+                  {coverageComponents.length > 0 ? (
+                    <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                      {coverageComponents.map((c, idx) => (
+                        <Chip
+                          key={idx}
+                          label={`${c.name} (${c.pax})`}
+                          size="small"
+                          sx={{ borderRadius: 2, fontSize: "0.8rem" }}
+                        />
+                      ))}
+                    </Stack>
                   ) : (
-                    components.map((c, idx) => (
-                      <Typography key={idx} variant="body2">
-                        {c?.name || "Service"} ({c?.pax || 0})
-                      </Typography>
-                    ))
+                    <Typography sx={{ fontSize: "0.88rem", color: "#9e9e9e" }}>
+                      —
+                    </Typography>
                   )}
-                </Stack>
+                </Box>
 
-                {/* VENUE */}
-                <Typography variant="caption" color="text.secondary">
-                  Venue
-                </Typography>
-                <Typography variant="body2">
-                  {details.venue || "—"}
-                </Typography>
+                <RowLabel>Client</RowLabel>
+                <RowValue>{request.entity?.name || "—"}</RowValue>
 
-                {/* CLIENT */}
-                <Typography variant="caption" color="text.secondary">
-                  Client
-                </Typography>
-                <Typography variant="body2">
-                  {request.client || "—"}
-                </Typography>
+                <RowLabel>Client Type</RowLabel>
+                <RowValue>{request.client_type?.name || "—"}</RowValue>
 
-                {/* CONTACT PERSON */}
-                <Typography variant="caption" color="text.secondary">
-                  Contact Person
-                </Typography>
-                <Typography variant="body2">
-                  {details.contactPerson || "—"}
-                </Typography>
+                <RowLabel>Submitted By</RowLabel>
+                <RowValue>{request.requester?.full_name || "—"}</RowValue>
 
-                {/* CONTACT INFO */}
-                <Typography variant="caption" color="text.secondary">
-                  Contact Info
-                </Typography>
-                <Typography variant="body2">
-                  {details.contactInfo || "—"}
-                </Typography>
+                <RowLabel>Contact Person</RowLabel>
+                <RowValue>{request.contact_person}</RowValue>
 
-                {/* FILE */}
-                <Typography variant="caption" color="text.secondary">
-                  File Attachment
-                </Typography>
-                <Typography variant="body2">
-                  {details.file || "No attachment"}
-                </Typography>
-              </Box>
-            </Box>
+                <RowLabel>Contact Info</RowLabel>
+                <RowValue>{request.contact_info}</RowValue>
 
-            {/* STRATEGIC VALIDATION */}
-            <Box
-              sx={{
-                backgroundColor: "#fffdf5",
-                borderRadius: 3,
-                p: 3,
-                mb: 3,
-                border: "1px solid #f5e6a0",
-              }}
-            >
-              <Typography fontWeight={550} mb={1}>
-                Request Approval Criteria
-              </Typography>
+                <RowLabel>Date Submitted</RowLabel>
+                <RowValue>
+                  {request.submitted_at
+                    ? new Date(request.submitted_at).toLocaleDateString()
+                    : "—"}
+                </RowValue>
 
-              <Typography variant="caption" color="text.secondary" mb={2}>
-                All conditions must be satisfied before forwarding.
-              </Typography>
-
-              <Stack>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={beneficial}
-                      onChange={(e) => setBeneficial(e.target.checked)}
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">
-                      Event provides measurable value to the student body
+                <RowLabel>File Attachment</RowLabel>
+                <Box>
+                  {request.file_url ? (
+                    <Box
+                      onClick={() => openFile(request.file_url)}
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        cursor: "pointer",
+                        color: "#1976d2",
+                        "&:hover": { textDecoration: "underline" },
+                      }}
+                    >
+                      <InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />
+                      <Typography sx={{ fontSize: "0.88rem" }}>
+                        {getFileName(request.file_url)}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Typography sx={{ fontSize: "0.88rem", color: "#9e9e9e" }}>
+                      No file attached
                     </Typography>
-                  }
-                />
+                  )}
+                </Box>
 
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={enoughPrepTime}
-                      onChange={(e) =>
-                        setEnoughPrepTime(e.target.checked)
-                      }
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">
-                      Submitted at least 2-3 days before the event date
-                    </Typography>
-                  }
-                />
-
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={scopeRealistic}
-                      onChange={(e) =>
-                        setScopeRealistic(e.target.checked)
-                      }
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">
-                      No schedule conflict within requested date and time
-                    </Typography>
-                  }
-                />
-              </Stack>
-
-              <Box mt={2}>
-                <Typography
-                  variant="caption"
-                  color={criteriaMet ? "success.main" : "error.main"}
-                >
-                  {criteriaMet
-                    ? "✓ All validation criteria satisfied."
-                    : "⚠ Forwarding disabled until all conditions are met."}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* DECLINE DANGER ZONE */}
-            {!criteriaMet && (
-              <Box
-                sx={{
-                  borderRadius: 3,
-                  p: 3,
-                  mb: 3,
-                  border: "1px solid #f3bcbc",
-                }}
-              >
-                {!declineMode ? (
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    fullWidth
-                    onClick={() => setDeclineMode(true)}
-                  >
-                    Criteria are not met — Decline Request
-                  </Button>
-                ) : (
-                  <>
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={4}
-                      label="Decline Justification"
-                      value={adminNotes}
-                      onChange={(e) =>
-                        setAdminNotes(e.target.value)
-                      }
-                    />
-
-                    <Box mt={2}>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        fullWidth
-                        onClick={handleDecline}
-                        disabled={
-                          adminNotes.trim().length === 0 || loading
-                        }
+                {request.status === "Forwarded" &&
+                  request.forwarded_sections?.length > 0 && (
+                    <>
+                      <RowLabel>Forwarded To</RowLabel>
+                      <Stack
+                        direction="row"
+                        sx={{ flexWrap: "wrap", gap: 0.5 }}
                       >
-                        Confirm Decline Request
-                      </Button>
+                        {request.forwarded_sections.map((s, idx) => (
+                          <Chip
+                            key={idx}
+                            label={s}
+                            size="small"
+                            sx={{
+                              borderRadius: 2,
+                              fontSize: "0.8rem",
+                              backgroundColor: "#f3e5f5",
+                              color: "#7b1fa2",
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </>
+                  )}
+
+                {request.status === "Declined" && request.declined_reason && (
+                  <>
+                    <RowLabel>Decline Reason</RowLabel>
+                    <Box sx={{ p: 1.5, bgcolor: "#fdecea", borderRadius: 2 }}>
+                      <Typography
+                        sx={{ fontSize: "0.88rem", color: "#d32f2f" }}
+                      >
+                        {request.declined_reason}
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+
+                {request.status === "Approved" && request.admin_notes && (
+                  <>
+                    <RowLabel>Admin Notes</RowLabel>
+                    <Box sx={{ p: 1.5, bgcolor: "#e8f5e9", borderRadius: 2 }}>
+                      <Typography
+                        sx={{ fontSize: "0.88rem", color: "#388e3c" }}
+                      >
+                        {request.admin_notes}
+                      </Typography>
                     </Box>
                   </>
                 )}
               </Box>
-            )}
-          </>
-        )}
-      </DialogContent>
+            </Box>
 
-      {/* ACTIONS */}
-      <DialogActions
-        sx={{
-          px: 4,
-          py: 2,
-          justifyContent: "space-between",
-        }}
+            {/* ── Vertical Divider ── */}
+            <Divider orientation="vertical" flexItem />
+
+            {/* ── Right: System Assistant Panel ── */}
+            <Box
+              sx={{
+                width: 350,
+                px: 2.5,
+                py: 3,
+                backgroundColor: "#fafafa",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                overflowY: "auto",
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                <AutoAwesomeOutlinedIcon
+                  sx={{ fontSize: 16, color: "#f5c52b" }}
+                />
+                <Typography
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    color: "#212121",
+                  }}
+                >
+                  Request Assessment
+                </Typography>
+              </Box>
+
+              {!checks || checks.loading ? (
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}
+                >
+                  <CircularProgress size={14} sx={{ color: "#f5c52b" }} />
+                  <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e" }}>
+                    Analyzing request...
+                  </Typography>
+                </Box>
+              ) : (
+                <>
+                  {/* ── Late Submission ── */}
+                  <CheckCard
+                    title="Submission Timing"
+                    type={checks.lateSubmission?.type}
+                    message={checks.lateSubmission?.message}
+                  />
+
+                  {/* ── Incomplete ── */}
+                  <CheckCard
+                    title="Request Completeness"
+                    type={checks.incomplete?.type}
+                    message={checks.incomplete?.message}
+                    issues={checks.incomplete?.issues}
+                  />
+
+                  {/* ── Conflict ── */}
+                  <CheckCard
+                    title="Scheduling Conflict"
+                    type={checks.conflict?.type}
+                    message={checks.conflict?.message}
+                    conflicts={checks.conflict?.conflicts}
+                  />
+
+                  {/* ── AI Newsworthiness ── */}
+                  {checks.newsworthiness && (
+                    <Box
+                      sx={{
+                        borderRadius: 2,
+                        border: "1px solid #e0e0e0",
+                        p: 1.5,
+                        backgroundColor: "white",
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          color: "#212121",
+                          mb: 1,
+                        }}
+                      >
+                        Newsworthiness
+                      </Typography>
+
+                      {checks.newsworthiness.score ? (
+                        <>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              mb: 1,
+                            }}
+                          >
+                            <Typography sx={{ fontSize: "0.85rem" }}>
+                              {SCORE_STARS(checks.newsworthiness.score)}
+                            </Typography>
+                            <Chip
+                              label={checks.newsworthiness.label}
+                              size="small"
+                              sx={{
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                backgroundColor:
+                                  SCORE_COLORS[checks.newsworthiness.label]
+                                    ?.bg || "#f5f5f5",
+                                color:
+                                  SCORE_COLORS[checks.newsworthiness.label]
+                                    ?.color || "#757575",
+                              }}
+                            />
+                          </Box>
+                          <Typography
+                            sx={{
+                              fontSize: "0.78rem",
+                              color: "#616161",
+                              lineHeight: 1.5,
+                              mb: 1,
+                            }}
+                          >
+                            {checks.newsworthiness.reasoning}
+                          </Typography>
+                          {checks.newsworthiness.recommendation && (
+                            <Typography
+                              sx={{
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                color: "#1976d2",
+                              }}
+                            >
+                              → {checks.newsworthiness.recommendation}
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        <Typography
+                          sx={{ fontSize: "0.78rem", color: "#9e9e9e" }}
+                        >
+                          {checks.newsworthiness.reasoning}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <Divider />
+
+        {/* ── Action Buttons ── */}
+        <DialogActions sx={{ px: 4, py: 2, gap: 1 }}>
+          {request.status === "Pending" && (
+            <>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => {
+                  setError("");
+                  setDeclineOpen(true);
+                }}
+                sx={{ textTransform: "none" }}
+              >
+                Decline
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setError("");
+                  setForwardOpen(true);
+                }}
+                sx={{
+                  textTransform: "none",
+                  backgroundColor: "#f5c52b",
+                  color: "#212121",
+                  "&:hover": { backgroundColor: "#e6b920" },
+                }}
+              >
+                Forward
+              </Button>
+            </>
+          )}
+          {request.status === "Assigned" && (
+            <Button
+              variant="contained"
+              onClick={() => {
+                setError("");
+                setApproveOpen(true);
+              }}
+              sx={{
+                textTransform: "none",
+                backgroundColor: "#43a047",
+                color: "white",
+                "&:hover": { backgroundColor: "#388e3c" },
+              }}
+            >
+              Approve
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Forward Dialog ── */}
+      <Dialog
+        open={forwardOpen}
+        onClose={() => !actionLoading && setForwardOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <Button
-          variant="contained"
-          onClick={handleForward}
-          disabled={!criteriaMet || loading}
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "0.95rem" }}>
+          Forward to Section/s
+        </DialogTitle>
+        <DialogContent sx={{ "& *": { fontSize: "0.9rem" } }}>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Select which sections should handle this request. Sections are
+            pre-selected based on requested services.
+          </Typography>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <FormGroup>
+            {ALL_SECTIONS.map((section) => (
+              <FormControlLabel
+                key={section}
+                control={
+                  <Checkbox
+                    checked={selectedSections.includes(section)}
+                    onChange={(e) =>
+                      setSelectedSections((prev) =>
+                        e.target.checked
+                          ? [...prev, section]
+                          : prev.filter((s) => s !== section),
+                      )
+                    }
+                    disabled={actionLoading}
+                    sx={{
+                      color: "#f5c52b",
+                      "&.Mui-checked": { color: "#f5c52b" },
+                    }}
+                  />
+                }
+                label={section}
+              />
+            ))}
+          </FormGroup>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setForwardOpen(false)}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleForward}
+            disabled={actionLoading}
+            sx={{
+              backgroundColor: "#f5c52b",
+              color: "#212121",
+              "&:hover": { backgroundColor: "#e6b920" },
+            }}
+          >
+            {actionLoading ? <CircularProgress size={18} /> : "Confirm Forward"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Decline Dialog ── */}
+      <Dialog
+        open={declineOpen}
+        onClose={() => !actionLoading && setDeclineOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "0.95rem", borderBottom: "1px solid #e0e0e0", mb: 1 }}>
+          Decline Request
+        </DialogTitle>
+        <DialogContent sx={{ "& *": { fontSize: "0.8rem" } }}>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Provide a reason for declining. The client will be notified.
+          </Typography>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <TextField
+            label="Reason for Declining"
+            multiline
+            rows={4}
+            fullWidth
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+            disabled={actionLoading}
+            placeholder="e.g. Insufficient time preparation..."
+            inputProps={{ style: { fontSize: "0.875rem" } }}
+            InputLabelProps={{ style: { fontSize: "0.875rem" } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeclineOpen(false)}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDecline}
+            disabled={actionLoading}
+          >
+            {actionLoading ? <CircularProgress size={18} /> : "Confirm Decline"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Approve Dialog ── */}
+      <Dialog
+        open={approveOpen}
+        onClose={() => !actionLoading && setApproveOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "0.95rem" }}>
+          Approve Request
+        </DialogTitle>
+        <DialogContent sx={{ "& *": { fontSize: "0.9rem" } }}>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Approving this request will notify the client. You may add optional
+            notes.
+          </Typography>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <TextField
+            label="Admin Notes (optional)"
+            multiline
+            rows={3}
+            fullWidth
+            value={adminNotes}
+            onChange={(e) => setAdminNotes(e.target.value)}
+            disabled={actionLoading}
+            placeholder="e.g. Please coordinate with the assigned staff..."
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setApproveOpen(false)}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleApprove}
+            disabled={actionLoading}
+            sx={{
+              backgroundColor: "#43a047",
+              color: "white",
+              "&:hover": { backgroundColor: "#388e3c" },
+            }}
+          >
+            {actionLoading ? <CircularProgress size={18} /> : "Confirm Approve"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
+
+// ── Check Card ──
+function CheckCard({ title, type, message, issues, conflicts }) {
+  const iconMap = {
+    success: <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#43a047" }} />,
+    warning: (
+      <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: "#f57c00" }} />
+    ),
+    error: <ErrorOutlineIcon sx={{ fontSize: 14, color: "#d32f2f" }} />,
+  };
+
+  const bgMap = {
+    success: "#f1f8e9",
+    warning: "#fff8e1",
+    error: "#fdecea",
+  };
+
+  const colorMap = {
+    success: "#388e3c",
+    warning: "#e65100",
+    error: "#c62828",
+  };
+
+  return (
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: "1px solid #e0e0e0",
+        p: 1.5,
+        backgroundColor: type ? bgMap[type] : "white",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+        {type && iconMap[type]}
+        <Typography
+          sx={{ fontSize: "0.78rem", fontWeight: 600, color: "#212121" }}
+        >
+          {title}
+        </Typography>
+      </Box>
+
+      {message && (
+        <Typography
           sx={{
-            px: 4,
-            fontWeight: 500,
-            backgroundColor: "#f5c52b",
-            color: "#212121",
-            width: "100%",
+            fontSize: "0.76rem",
+            color: type ? colorMap[type] : "#757575",
+            lineHeight: 1.5,
           }}
         >
-          Forward for Assignment
-        </Button>
-      </DialogActions>
-    </Dialog>
+          {message}
+        </Typography>
+      )}
+
+      {/* Incomplete issues list */}
+      {issues?.map((issue, idx) => (
+        <Typography
+          key={idx}
+          sx={{ fontSize: "0.75rem", color: colorMap[type], lineHeight: 1.6 }}
+        >
+          • {issue}
+        </Typography>
+      ))}
+
+      {/* Conflict list */}
+      {conflicts?.map((c, idx) => (
+        <Typography
+          key={idx}
+          sx={{
+            fontSize: "0.75rem",
+            color: colorMap["warning"],
+            lineHeight: 1.6,
+          }}
+        >
+          • {c.title} ({c.time})
+        </Typography>
+      ))}
+
+      {/* Loading state */}
+      {!type && !message && (
+        <Typography sx={{ fontSize: "0.76rem", color: "#9e9e9e" }}>
+          Checking...
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+// ── 2-column helpers ──
+function RowLabel({ children }) {
+  return (
+    <Typography
+      sx={{ fontSize: "0.82rem", color: "#9e9e9e", fontWeight: 500, pt: 0.3 }}
+    >
+      {children}
+    </Typography>
+  );
+}
+
+function RowValue({ children }) {
+  return (
+    <Typography sx={{ fontSize: "0.88rem", color: "#212121" }}>
+      {children || "—"}
+    </Typography>
   );
 }

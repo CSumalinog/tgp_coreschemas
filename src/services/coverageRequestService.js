@@ -19,7 +19,6 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   let fileUrl = null;
 
   if (file) {
-    // Unique filename to avoid collisions
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/\s+/g, "_");
     const filePath = `program_flows/${user.id}/${timestamp}_${sanitizedName}`;
@@ -38,7 +37,7 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
     fileUrl = uploadData.path;
   }
 
-  // 3. Build clean insert payload (no raw File object)
+  // 3. Build clean insert payload
   const payload = {
     title: requestData.title,
     description: requestData.description,
@@ -52,9 +51,9 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
       ? requestData.to_time.toTimeString().slice(0, 5)
       : requestData.to_time,
     venue: requestData.venue,
-    services: requestData.services,           // jsonb
-    client_type_id: requestData.client_type,  // UUID of client_type
-    entity_id: requestData.entity,            // UUID of client_entity
+    services: requestData.services,
+    client_type_id: requestData.client_type,
+    entity_id: requestData.entity,
     contact_person: requestData.contact_person,
     contact_info: requestData.contact_info,
     file_url: fileUrl,
@@ -101,9 +100,12 @@ export async function fetchMyRequests() {
       contact_info,
       file_url,
       admin_notes,
+      declined_reason,
+      forwarded_sections,
       submitted_at,
       approved_at,
       declined_at,
+      forwarded_at,
       created_at,
       client_type:client_type_id ( id, name ),
       entity:entity_id ( id, name )
@@ -128,9 +130,8 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
 
   if (userError || !user) throw new Error("Not authenticated.");
 
-  let fileUrl = requestData.file_url || null; // keep existing if no new file
+  let fileUrl = requestData.file_url || null;
 
-  // Upload new file if provided
   if (file) {
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/\s+/g, "_");
@@ -177,7 +178,7 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
     .from("coverage_requests")
     .update(payload)
     .eq("id", requestId)
-    .eq("requester_id", user.id) // security: only owner can edit
+    .eq("requester_id", user.id)
     .select()
     .single();
 
@@ -199,8 +200,8 @@ export async function deleteDraftRequest(requestId) {
     .from("coverage_requests")
     .delete()
     .eq("id", requestId)
-    .eq("requester_id", user.id) // security: only owner can delete
-    .eq("status", "Draft");      // only drafts can be deleted
+    .eq("requester_id", user.id)
+    .eq("status", "Draft");
 
   if (error) throw new Error(`Failed to delete draft: ${error.message}`);
 

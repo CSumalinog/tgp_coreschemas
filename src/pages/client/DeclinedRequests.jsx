@@ -10,93 +10,69 @@ import {
   Chip,
   Stack,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import CloseIcon from "@mui/icons-material/Close";
+import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import { useClientRequests } from "../../hooks/useClientRequests";
+import { supabase } from "../../lib/supabaseClient";
 
-// Sample data (replace with real API data)
-const mockRequests = [
-  {
-    id: 1,
-    eventTitle: "Campus Orientation",
-    submissionDate: "2026-02-12",
-    status: "Declined",
-    client: "Student Org A",
-    details: {
-      description: "Setup cameras and microphones",
-      requestedDate: "2026-02-15",
-      timeRange: "09:00 - 12:00",
-      venue: "Main Hall",
-      coverageComponents: [
-        { name: "News Writer", pax: 2 },
-        { name: "Photjourn", pax: 1 },
-      ],
-      contactPerson: "John Doe",
-      contactInfo: "09123456789",
-      file: "orientation_plan.pdf",
-      reason: "Insufficient staff available for the requested time",
-    },
-  },
-  {
-    id: 2,
-    eventTitle: "Club Fair",
-    submissionDate: "2026-02-10",
-    status: "Declined",
-    client: "Club B",
-    details: {
-      description: "Booth setup and coverage team",
-      requestedDate: "2026-02-16",
-      timeRange: "10:00 - 15:00",
-      venue: "Quadrangle",
-      coverageComponents: [
-        { name: "Photjourn", pax: 2 },
-        { name: "Videojourn", pax: 1 },
-      ],
-      contactPerson: "Alice Cruz",
-      contactInfo: "09223334444",
-      file: "clubfair_request.pdf",
-      reason: "Conflicts with other approved events",
-    },
-  },
-];
+const getFileName = (filePath) => {
+  if (!filePath) return null;
+  return filePath.split("/").pop().replace(/^\d+_/, "");
+};
+
+const openFile = (filePath) => {
+  if (!filePath) return;
+  const { data } = supabase.storage
+    .from("coverage-files")
+    .getPublicUrl(filePath);
+  if (data?.publicUrl) window.open(data.publicUrl, "_blank");
+};
 
 export default function DeclinedRequest() {
+  const { requests, loading } = useClientRequests();
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  // Only keep declined requests
-  const declinedRequests = mockRequests.filter(
-    (req) => req.status === "Declined",
-  );
+  // Filter declined only
+  const declined = requests.filter((r) => r.status === "Declined");
 
-  const handleView = (row) => setSelectedRequest(row);
-  const handleClose = () => setSelectedRequest(null);
+  const rows = declined.map((req) => ({
+    id: req.id,
+    eventTitle: req.title,
+    submissionDate: req.submitted_at
+      ? new Date(req.submitted_at).toLocaleDateString()
+      : "—",
+    status: req.status,
+    ...req,
+  }));
 
   const columns = [
-    { field: "eventTitle", headerName: "Event Title", flex: 1 },
+    { field: "eventTitle", headerName: "Event Title", flex: 1.4 },
     { field: "submissionDate", headerName: "Submission Date", flex: 1 },
     {
       field: "status",
       headerName: "Status",
       flex: 1,
-      renderCell: (params) => (
+      renderCell: () => (
         <Box
           sx={{
             width: "100%",
             height: "100%",
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-start",
           }}
         >
           <Typography
             sx={{
-              fontWeight: 500,
-              color: "red",
+              fontWeight: 400,
+              color: "#d32f2f",
               textTransform: "uppercase",
               fontSize: "0.9rem",
             }}
           >
-            {params.value}
+            Declined
           </Typography>
         </Box>
       ),
@@ -110,13 +86,19 @@ export default function DeclinedRequest() {
         <Button
           variant="outlined"
           size="small"
-          onClick={() => handleView(params.row)}
+          onClick={() => setSelectedRequest(params.row)}
         >
-          View Reason
+          VIEW REASON
         </Button>
       ),
     },
   ];
+
+  const coverageComponents = selectedRequest?.services
+    ? Object.entries(selectedRequest.services)
+        .filter(([_, pax]) => pax > 0)
+        .map(([name, pax]) => ({ name, pax }))
+    : [];
 
   return (
     <Box
@@ -127,6 +109,15 @@ export default function DeclinedRequest() {
         backgroundColor: "#f9f9f9",
       }}
     >
+      <Box sx={{ mb: 2 }}>
+        <Typography
+          sx={{ fontSize: "0.8rem", color: "#757575", lineHeight: 1.5 }}
+        >
+          View your declined coverage requests and the reasons provided by the
+          admin.
+        </Typography>
+      </Box>
+
       <Box
         sx={{
           height: 500,
@@ -136,170 +127,169 @@ export default function DeclinedRequest() {
           boxShadow: 1,
         }}
       >
-        <DataGrid
-          rows={declinedRequests}
-          columns={columns}
-          pageSize={5}
-          rowsPerPageOptions={[5]}
-          disableSelectionOnClick
-          sx={{
-            "& .MuiDataGrid-cell": { outline: "none" },
-            "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f5f5f5" },
-          }}
-        />
+        {loading ? (
+          <Box
+            sx={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
+          </Box>
+        ) : (
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={7}
+            rowsPerPageOptions={[7]}
+            disableSelectionOnClick
+            sx={{
+              border: "none",
+              fontFamily: "'Helvetica Neue', sans-serif",
+              fontSize: "0.9rem",
+              "& .MuiDataGrid-cell": {
+                fontFamily: "'Helvetica Neue', sans-serif",
+                fontSize: "0.9rem",
+                outline: "none",
+              },
+              "& .MuiDataGrid-columnHeaders": {
+                fontFamily: "'Helvetica Neue', sans-serif",
+                fontSize: "0.9rem",
+              },
+            }}
+          />
+        )}
       </Box>
 
-      {/* ---------- VIEW REASON DIALOG ---------- */}
+      {/* ── View Reason Dialog ── */}
       <Dialog
         open={!!selectedRequest}
-        onClose={handleClose}
-        maxWidth="sm"
+        onClose={() => setSelectedRequest(null)}
         fullWidth
-         PaperProps={{
-    sx: {
-      fontFamily: "'Helvetica Neue', sans-serif",
-      position: "relative",
-      borderRadius: 4,
-      width: 500,   // fixed width in px
-      height: 600,  // fixed height in px
-    },
-  }}
+        PaperProps={{
+          sx: {
+            fontFamily: "'Helvetica Neue', sans-serif",
+            borderRadius: 3,
+            width: 600,
+            height: "70vh",
+          },
+        }}
       >
         <DialogTitle
           sx={{
-            fontWeight: "bold",
+            fontWeight: 650,
+            fontSize: "0.95rem",
             textAlign: "center",
-            fontSize: "0.9rem",
             position: "relative",
           }}
         >
           Request Details
           <IconButton
-            onClick={handleClose}
-            sx={{ position: "absolute", right: 8, top: 8 }}
+            onClick={() => setSelectedRequest(null)}
             size="small"
+            sx={{ position: "absolute", right: 8, top: 8 }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
 
         <DialogContent
           dividers
-          sx={{
-            "& *": {
-              fontSize: "0.9rem",
-              fontFamily: "'Helvetica Neue', sans-serif",
-            },
-          }}
+          sx={{ "& *": { fontFamily: "'Helvetica Neue', sans-serif" } }}
         >
           {selectedRequest && (
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: "1.2fr 2.8fr",
-                gap: 0.1,
-                alignItems: "center",
+                gridTemplateColumns: "150px 1fr",
+                rowGap: 0.5,
+                columnGap: 2,
+                alignItems: "start",
               }}
             >
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Event Title:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.eventTitle}
-              </Typography>
+              <RowLabel>Event Title</RowLabel>
+              <RowValue>{selectedRequest.title}</RowValue>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Description:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.details.description}
-              </Typography>
+              <RowLabel>Description</RowLabel>
+              <RowValue>{selectedRequest.description}</RowValue>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Requested Date:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.details.requestedDate}
-              </Typography>
+              <RowLabel>Event Date</RowLabel>
+              <RowValue>{selectedRequest.event_date || "—"}</RowValue>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Requested Time:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.details.timeRange}
-              </Typography>
+              <RowLabel>Time</RowLabel>
+              <RowValue>
+                {selectedRequest.from_time && selectedRequest.to_time
+                  ? `${selectedRequest.from_time} - ${selectedRequest.to_time}`
+                  : "—"}
+              </RowValue>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Client:
-              </Typography>
-              <Typography variant="body2">{selectedRequest.client}</Typography>
+              <RowLabel>Venue</RowLabel>
+              <RowValue>{selectedRequest.venue}</RowValue>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Location:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.details.venue}
-              </Typography>
+              <RowLabel>Services Needed</RowLabel>
+              <Box>
+                {coverageComponents.length > 0 ? (
+                  <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                    {coverageComponents.map((c, idx) => (
+                      <Chip
+                        key={idx}
+                        label={`${c.name} (${c.pax})`}
+                        size="small"
+                        sx={{ borderRadius: 2, fontSize: "0.8rem" }}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  <RowValue>—</RowValue>
+                )}
+              </Box>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Services Needed:
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                {selectedRequest.details.coverageComponents.map((c, idx) => (
-                  <Chip
-                    key={idx}
-                    label={`${c.name} (${c.pax})`}
-                    size="small"
+              <RowLabel>Contact Person</RowLabel>
+              <RowValue>{selectedRequest.contact_person}</RowValue>
+
+              <RowLabel>Contact Info</RowLabel>
+              <RowValue>{selectedRequest.contact_info}</RowValue>
+
+              <RowLabel>File Attachment</RowLabel>
+              <Box>
+                {selectedRequest.file_url ? (
+                  <Box
+                    onClick={() => openFile(selectedRequest.file_url)}
                     sx={{
-                      borderRadius: 2,
-                      fontFamily: "'Helvetica Neue', sans-serif",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      cursor: "pointer",
+                      color: "#1976d2",
+                      "&:hover": { textDecoration: "underline" },
                     }}
-                  />
-                ))}
-              </Stack>
+                  >
+                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />
+                    <Typography sx={{ fontSize: "0.88rem" }}>
+                      {getFileName(selectedRequest.file_url)}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <RowValue>No file attached</RowValue>
+                )}
+              </Box>
 
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Contact Person:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.details.contactPerson}
-              </Typography>
-
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                Contact Info:
-              </Typography>
-              <Typography variant="body2">
-                {selectedRequest.details.contactInfo}
-              </Typography>
-
-              <Typography variant="subtitle2" sx={{ color: "#9e9e9e" }}>
-                File Attachment:
-              </Typography>
+              {/* ── Decline Reason ── */}
               <Typography
-                variant="body2"
-                sx={{ borderBottom: "1px solid #e0e0e0", pb: 1}}
-              >
-                {selectedRequest.details.file}
-              </Typography>
-
-              {/* Highlighted Reason */}
-              <Typography variant="subtitle2" sx={{ color: "red", mt: 1 }}>
-                Reason:
-              </Typography>
-              <Box
                 sx={{
-                  border: "1px solid #d32f2f", // red border for highlight
-                  borderRadius: 1,
-                  p: 1,
-                  backgroundColor: "#ffebee", // light red background
-                  mt: 0.5,
+                  fontSize: "0.82rem",
+                  color: "#d32f2f",
+                  fontWeight: 600,
+                  pt: 0.3,
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: "sembibold", color: "#d32f2f" }}
-                >
-                  {selectedRequest.details.reason}
+                Decline Reason
+              </Typography>
+              <Box sx={{ p: 1.5, bgcolor: "#fdecea", borderRadius: 2 }}>
+                <Typography sx={{ fontSize: "0.88rem", color: "#d32f2f" }}>
+                  {selectedRequest.declined_reason || "No reason provided."}
                 </Typography>
               </Box>
             </Box>
@@ -307,5 +297,24 @@ export default function DeclinedRequest() {
         </DialogContent>
       </Dialog>
     </Box>
+  );
+}
+
+// ── Helpers ──
+function RowLabel({ children }) {
+  return (
+    <Typography
+      sx={{ fontSize: "0.82rem", color: "#9e9e9e", fontWeight: 500, pt: 0.3 }}
+    >
+      {children}
+    </Typography>
+  );
+}
+
+function RowValue({ children }) {
+  return (
+    <Typography sx={{ fontSize: "0.88rem", color: "#212121" }}>
+      {children || "—"}
+    </Typography>
   );
 }

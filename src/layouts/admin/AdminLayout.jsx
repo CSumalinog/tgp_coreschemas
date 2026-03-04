@@ -9,18 +9,17 @@ import {
   Box,
   Typography,
   IconButton,
-  Avatar,
   TextField,
   InputAdornment,
   Drawer,
   useMediaQuery,
   Collapse,
+  Badge,
 } from "@mui/material";
 
 // Icons
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
@@ -31,51 +30,47 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
+
+// ✅ Reusable UserAvatar component
+import UserAvatar from "../../components/common/UserAvatar";
 
 function AdminLayout() {
-  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
   const isMobile = useMediaQuery("(max-width:900px)");
 
- const menuItemSx = {
-   borderRadius: "10px",
+  // 🔔 Placeholder unread count — wire to real notifications later
+  const unreadCount = 0;
+
+  const menuItemSx = {
+    borderRadius: "10px",
     px: 1.5,
     py: 1,
     transition: "0.2s ease",
 
-    "&:hover": { backgroundColor: " #757575)" },
-
-    "&:hover .MuiListItemText-primary": {
-      color: "#212121",
-    },
-    "&:hover .MuiListItemIcon-root": {
-      color: "#212121",
-    },
-
-    "&.active": { backgroundColor: " #757575)" },
+    "&:hover": { backgroundColor: "#f5f5f5" },
+    "&:hover .MuiListItemText-primary": { color: "#212121" },
+    "&:hover .MuiListItemIcon-root": { color: "#212121" },
+    "&.active": { backgroundColor: "#f5f5f5" },
 
     "& .MuiListItemText-primary": {
       color: "#9e9e9e",
       fontWeight: 400,
       fontSize: "0.9rem",
     },
-
     "&.active .MuiListItemText-primary": {
       color: "#212121",
       fontWeight: 400,
     },
-
     "& .MuiListItemIcon-root": {
       color: "#9e9e9e",
       minWidth: "35px",
     },
-
     "&.active .MuiListItemIcon-root": {
       color: "#212121",
     },
   };
-
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -97,14 +92,13 @@ function AdminLayout() {
               <MenuIcon />
             </IconButton>
           )}
-
           <Typography
             sx={{
               fontSize: "1.8rem",
               fontWeight: "800",
               display: { xs: "none", md: "block" },
               marginLeft: 2,
-              background: "linear-gradient(90deg, #F5C52B, #212121, #757575)", // yellow → black → gray
+              background: "linear-gradient(90deg, #F5C52B, #212121, #757575)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -138,10 +132,27 @@ function AdminLayout() {
               ),
             }}
           />
+
+          {/* 🔔 Notification bell — badge shows unread count when > 0 */}
           <IconButton>
-            <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
+            <Badge
+              badgeContent={unreadCount}
+              color="error"
+              invisible={unreadCount === 0}
+              sx={{
+                "& .MuiBadge-badge": {
+                  fontSize: "0.65rem",
+                  height: 16,
+                  minWidth: 16,
+                },
+              }}
+            >
+              <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
+            </Badge>
           </IconButton>
-          <Avatar sx={{ width: 30, height: 30, mr: 2 }} />
+
+          {/* ✅ Reusable UserAvatar */}
+          <UserAvatar profileRoute="/admin/profile" />
         </Box>
       </Box>
 
@@ -156,7 +167,6 @@ function AdminLayout() {
             ModalProps={{ keepMounted: true }}
             sx={{ "& .MuiDrawer-paper": { width: 270, boxSizing: "border-box" } }}
           >
-            {/* Mobile drawer header */}
             <Box
               sx={{
                 display: "flex",
@@ -167,9 +177,16 @@ function AdminLayout() {
                 height: 70,
               }}
             >
-              <Typography sx={{ fontWeight: "800", fontSize: "1.6rem", marginLeft: 1, background: "linear-gradient(90deg, #F5C52B, #212121, #757575)", // yellow → black → gray
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent", }}>
+              <Typography
+                sx={{
+                  fontWeight: "800",
+                  fontSize: "1.6rem",
+                  marginLeft: 1,
+                  background: "linear-gradient(90deg, #F5C52B, #212121, #757575)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
                 core schemas
               </Typography>
               <IconButton onClick={handleDrawerToggle}>
@@ -247,13 +264,24 @@ function SidebarContent({ menuItemSx }) {
                 <ListItemText primary="Pending Requests" />
               </ListItemButton>
 
-               <ListItemButton
+              <ListItemButton
+                component={NavLink}
+                to="forwarded-requests"
+                sx={menuItemSx}
+              >
+                <ListItemIcon>
+                  <ForwardToInboxOutlinedIcon sx={{ fontSize: 20 }} />
+                </ListItemIcon>
+                <ListItemText primary="Forwarded Requests" />
+              </ListItemButton>
+
+              <ListItemButton
                 component={NavLink}
                 to="for-approval"
                 sx={menuItemSx}
               >
                 <ListItemIcon>
-                  <CancelOutlinedIcon sx={{ fontSize: 20 }} />
+                  <DescriptionOutlinedIcon sx={{ fontSize: 20 }} />
                 </ListItemIcon>
                 <ListItemText primary="For Approval" />
               </ListItemButton>
@@ -279,20 +307,25 @@ function SidebarContent({ menuItemSx }) {
                 </ListItemIcon>
                 <ListItemText primary="Declined Requests" />
               </ListItemButton>
-
-              
             </List>
           </Collapse>
 
-        
-          <ListItemButton component={NavLink} to="calendar-management" sx={menuItemSx}>
+          <ListItemButton
+            component={NavLink}
+            to="calendar-management"
+            sx={menuItemSx}
+          >
             <ListItemIcon>
               <EventOutlinedIcon sx={{ fontSize: 20 }} />
             </ListItemIcon>
             <ListItemText primary="Calendar Management" />
           </ListItemButton>
 
-          <ListItemButton component={NavLink} to="staffers-management" sx={menuItemSx}>
+          <ListItemButton
+            component={NavLink}
+            to="staffers-management"
+            sx={menuItemSx}
+          >
             <ListItemIcon>
               <GroupOutlinedIcon sx={{ fontSize: 20 }} />
             </ListItemIcon>
