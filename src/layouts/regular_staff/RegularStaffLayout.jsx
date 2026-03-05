@@ -1,106 +1,219 @@
 // src/layouts/regular_staff/RegularStaffLayout.jsx
-import React from "react";
+import React, { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import logo from "../../assets/img/tgp.png";
+import {
+  List, ListItemButton, ListItemIcon, ListItemText,
+  Box, Typography, IconButton, TextField, InputAdornment,
+  Drawer, useMediaQuery, Badge,
+} from "@mui/material";
 
-// ✅ MUI Components
-import { List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
-
-// ✅ MUI Icon
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import MenuIcon from "@mui/icons-material/Menu";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import AssignmentIndOutlinedIcon from "@mui/icons-material/AssignmentIndOutlined";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+
+import UserAvatar from "../../components/common/UserAvatar";
 
 function RegularStaffLayout() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
+  const isMobile = useMediaQuery("(max-width:900px)");
+
+  const unreadCount = 0;
+
   const menuItemSx = {
     borderRadius: "10px",
     px: 1.5,
     py: 1,
     transition: "0.2s ease",
-
-    "&:hover": {
-      backgroundColor: "#f5f5f5",
-    },
-
-    "&.active": {
-      backgroundColor: "#f5f5f5",
-    },
-
-    // Text default
+    "&:hover": { backgroundColor: "#f5f5f5" },
+    "&:hover .MuiListItemText-primary": { color: "#212121" },
+    "&:hover .MuiListItemIcon-root": { color: "#212121" },
+    "&.active": { backgroundColor: "#f5f5f5" },
     "& .MuiListItemText-primary": {
       color: "#9e9e9e",
       fontWeight: 400,
-      fontSize: "0.95rem",
+      fontSize: "0.9rem",
     },
-
-    // Text active
     "&.active .MuiListItemText-primary": {
       color: "#212121",
-      fontWeight: 600,
+      fontWeight: 400,
     },
-
-    // Icon default
     "& .MuiListItemIcon-root": {
       color: "#9e9e9e",
       minWidth: "35px",
     },
-
-    // Icon active
     "&.active .MuiListItemIcon-root": {
       color: "#212121",
     },
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      {/* Sidebar */}
-      <nav style={{ width: "270px", background: "white", padding: "10px" }}>
-        {/* Logo + Name */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginBottom: "30px",
-            whiteSpace: "nowrap",
-            gap: "0px",
-          }}
-        >
-          <img
-            src={logo}
-            alt="Logo"
-            style={{
-              width: "55px",
-              height: "40px",
-              flexShrink: 0,
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* HEADER */}
+      <Box
+        sx={{
+          p: 1,
+          backgroundColor: "white",
+          display: "flex",
+          alignItems: "center",
+          borderBottom: "1px solid #e0e0e0",
+          height: 70,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {isMobile && (
+            <IconButton onClick={handleDrawerToggle}>
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Typography
+            sx={{
+              fontSize: "1.8rem",
+              fontWeight: "800",
+              display: { xs: "none", md: "block" },
+              marginLeft: 2,
+              background: "linear-gradient(90deg, #F5C52B, #212121, #757575)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            core schemas
+          </Typography>
+        </Box>
+
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <TextField
+            size="small"
+            placeholder="Search..."
+            sx={{
+              width: { xs: 120, sm: 160, md: 200 },
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 20,
+                height: 34,
+                paddingTop: 0,
+                paddingBottom: 0,
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchOutlinedIcon />
+                </InputAdornment>
+              ),
             }}
           />
-          <span
-            style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#212121" }}
-          >
-            THE GOLD PANICLES
-          </span>
-        </div>
 
-        <p style={{ color: "#9e9e9e", fontWeight: "semibold" }}>Menu</p>
+          <IconButton>
+            <Badge
+              badgeContent={unreadCount}
+              color="error"
+              invisible={unreadCount === 0}
+              sx={{ "& .MuiBadge-badge": { fontSize: "0.65rem", height: 16, minWidth: 16 } }}
+            >
+              <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
+            </Badge>
+          </IconButton>
 
-        {/* Menu */}
-        <List sx={{ display: "flex", flexDirection: "column",  }}>
-          <ListItemButton
-            component={NavLink}
-            to="my-assignment"
-            sx={menuItemSx}
+          <UserAvatar profileRoute="/staff/profile" />
+        </Box>
+      </Box>
+
+      {/* BODY */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {isMobile ? (
+          <Drawer
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            variant="temporary"
+            ModalProps={{ keepMounted: true }}
+            sx={{ "& .MuiDrawer-paper": { width: 270, boxSizing: "border-box" } }}
           >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                p: 1,
+                borderBottom: "1px solid #e0e0e0",
+                height: 70,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontWeight: "800",
+                  fontSize: "1.6rem",
+                  marginLeft: 1,
+                  background: "linear-gradient(90deg, #F5C52B, #212121, #757575)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                core schemas
+              </Typography>
+              <IconButton onClick={handleDrawerToggle}>
+                <ChevronLeftIcon />
+              </IconButton>
+            </Box>
+            <SidebarContent menuItemSx={menuItemSx} />
+          </Drawer>
+        ) : (
+          <nav
+            style={{
+              width: "270px",
+              background: "white",
+              padding: "10px",
+              display: "flex",
+              flexDirection: "column",
+              borderRight: "1px solid #e0e0e0",
+            }}
+          >
+            <SidebarContent menuItemSx={menuItemSx} />
+          </nav>
+        )}
+
+        <Box sx={{ flex: 1, overflowY: "auto", backgroundColor: "#f9f9f9" }}>
+          <Outlet />
+        </Box>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Sidebar Content ----------------
+function SidebarContent({ menuItemSx }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box sx={{ flex: 1, overflowY: "auto" }}>
+        <List>
+          <ListItemButton component={NavLink} to="dashboard" sx={menuItemSx}>
             <ListItemIcon>
-              <AssignmentIndOutlinedIcon sx={{ fontSize: 22 }} />
+              <DashboardOutlinedIcon sx={{ fontSize: 20 }} />
+            </ListItemIcon>
+            <ListItemText primary="Dashboard" />
+          </ListItemButton>
+
+          <ListItemButton component={NavLink} to="my-assignment" sx={menuItemSx}>
+            <ListItemIcon>
+              <AssignmentIndOutlinedIcon sx={{ fontSize: 20 }} />
             </ListItemIcon>
             <ListItemText primary="My Assignment" />
           </ListItemButton>
-        </List>
-      </nav>
 
-      {/* Main content */}
-      <div style={{ flex: 1, padding: "20px" }}>
-        <Outlet />
-      </div>
-    </div>
+          <ListItemButton component={NavLink} to="my-schedule" sx={menuItemSx}>
+            <ListItemIcon>
+              <CalendarTodayOutlinedIcon sx={{ fontSize: 20 }} />
+            </ListItemIcon>
+            <ListItemText primary="My Schedule" />
+          </ListItemButton>
+        </List>
+      </Box>
+    </Box>
   );
 }
 

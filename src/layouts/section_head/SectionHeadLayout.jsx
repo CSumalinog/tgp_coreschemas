@@ -1,4 +1,4 @@
-// src/layouts/SecHeadLayout.jsx
+// src/layouts/section_head/SectionHeadLayout.jsx
 import React, { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import {
@@ -30,15 +30,13 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 
-// ✅ Reusable UserAvatar
 import UserAvatar from "../../components/common/UserAvatar";
 
-function SecHeadLayout() {
+function SectionHeadLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
   const isMobile = useMediaQuery("(max-width:900px)");
 
-  // 🔔 Placeholder — wire to real notifications later
   const unreadCount = 0;
 
   const menuItemSx = {
@@ -128,7 +126,6 @@ function SecHeadLayout() {
             }}
           />
 
-          {/* 🔔 Notification bell */}
           <IconButton>
             <Badge
               badgeContent={unreadCount}
@@ -140,8 +137,7 @@ function SecHeadLayout() {
             </Badge>
           </IconButton>
 
-          {/* ✅ UserAvatar */}
-          <UserAvatar profileRoute="/sechead/profile" />
+          <UserAvatar profileRoute="/sec_head/profile" />
         </Box>
       </Box>
 
@@ -240,36 +236,21 @@ function SidebarContent({ menuItemSx }) {
 
           <Collapse in={openAssignments} timeout="auto" unmountOnExit>
             <List component="div" disablePadding sx={{ pl: 3 }}>
-              {/* Forwarded to this section — needs staffer assignment */}
-              <ListItemButton
-                component={NavLink}
-                to="for-assignment"
-                sx={menuItemSx}
-              >
+              <ListItemButton component={NavLink} to="for-assignment" sx={menuItemSx}>
                 <ListItemIcon>
                   <AccessTimeOutlinedIcon sx={{ fontSize: 20 }} />
                 </ListItemIcon>
                 <ListItemText primary="For Assignment" />
               </ListItemButton>
 
-              {/* Already assigned — ongoing or upcoming */}
-              <ListItemButton
-                component={NavLink}
-                to="assigned"
-                sx={menuItemSx}
-              >
+              <ListItemButton component={NavLink} to="assigned" sx={menuItemSx}>
                 <ListItemIcon>
                   <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 20 }} />
                 </ListItemIcon>
                 <ListItemText primary="Assigned" />
               </ListItemButton>
 
-              {/* Completed coverages */}
-              <ListItemButton
-                component={NavLink}
-                to="history"
-                sx={menuItemSx}
-              >
+              <ListItemButton component={NavLink} to="history" sx={menuItemSx}>
                 <ListItemIcon>
                   <HistoryOutlinedIcon sx={{ fontSize: 20 }} />
                 </ListItemIcon>
@@ -278,7 +259,6 @@ function SidebarContent({ menuItemSx }) {
             </List>
           </Collapse>
 
-          {/* My Staffers */}
           <ListItemButton component={NavLink} to="my-staffers" sx={menuItemSx}>
             <ListItemIcon>
               <GroupOutlinedIcon sx={{ fontSize: 20 }} />
@@ -291,4 +271,4 @@ function SidebarContent({ menuItemSx }) {
   );
 }
 
-export default SecHeadLayout;
+export default SectionHeadLayout;

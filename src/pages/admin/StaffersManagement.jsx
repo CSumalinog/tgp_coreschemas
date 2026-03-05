@@ -85,7 +85,6 @@ const EMPTY_FORM = {
   section: "",
 };
 
-
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function StaffersManagement() {
   const [staffers, setStaffers] = useState([]);
@@ -176,6 +175,7 @@ export default function StaffersManagement() {
   };
 
   const handleFormSubmit = async () => {
+    console.log("handleFormSubmit called", formMode); // add this
     setFormError("");
 
     // Validation
@@ -193,6 +193,7 @@ export default function StaffersManagement() {
     setFormLoading(true);
     try {
       if (formMode === "create") {
+        console.log("calling createStafferAccount with:", formData); // add this
         await createStafferAccount({
           full_name: formData.full_name.trim(),
           email: formData.email.trim(),

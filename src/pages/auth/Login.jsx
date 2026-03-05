@@ -19,7 +19,7 @@ import { supabase } from "../../lib/supabaseClient";
 const ROLE_ROUTES = {
   client: "/client/calendar",
   admin: "/admin/dashboard",
-  sec_head: "/sechead/dashboard",
+  sec_head: "/sec_head/dashboard",
   staff: "/staff/dashboard",
 };
 

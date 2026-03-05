@@ -31,8 +31,10 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 
-// ✅ Reusable UserAvatar component
 import UserAvatar from "../../components/common/UserAvatar";
 
 function AdminLayout() {
@@ -40,7 +42,6 @@ function AdminLayout() {
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
   const isMobile = useMediaQuery("(max-width:900px)");
 
-  // 🔔 Placeholder unread count — wire to real notifications later
   const unreadCount = 0;
 
   const menuItemSx = {
@@ -48,12 +49,10 @@ function AdminLayout() {
     px: 1.5,
     py: 1,
     transition: "0.2s ease",
-
     "&:hover": { backgroundColor: "#f5f5f5" },
     "&:hover .MuiListItemText-primary": { color: "#212121" },
     "&:hover .MuiListItemIcon-root": { color: "#212121" },
     "&.active": { backgroundColor: "#f5f5f5" },
-
     "& .MuiListItemText-primary": {
       color: "#9e9e9e",
       fontWeight: 400,
@@ -74,7 +73,7 @@ function AdminLayout() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      {/* ---------------- HEADER ---------------- */}
+      {/* HEADER */}
       <Box
         sx={{
           p: 1,
@@ -85,7 +84,6 @@ function AdminLayout() {
           height: 70,
         }}
       >
-        {/* Left: Menu icon (mobile) + Logo */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {isMobile && (
             <IconButton onClick={handleDrawerToggle}>
@@ -107,10 +105,8 @@ function AdminLayout() {
           </Typography>
         </Box>
 
-        {/* Spacer */}
         <Box sx={{ flexGrow: 1 }} />
 
-        {/* Right: Search + Notifications + Avatar */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <TextField
             size="small"
@@ -133,32 +129,23 @@ function AdminLayout() {
             }}
           />
 
-          {/* 🔔 Notification bell — badge shows unread count when > 0 */}
           <IconButton>
             <Badge
               badgeContent={unreadCount}
               color="error"
               invisible={unreadCount === 0}
-              sx={{
-                "& .MuiBadge-badge": {
-                  fontSize: "0.65rem",
-                  height: 16,
-                  minWidth: 16,
-                },
-              }}
+              sx={{ "& .MuiBadge-badge": { fontSize: "0.65rem", height: 16, minWidth: 16 } }}
             >
               <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
             </Badge>
           </IconButton>
 
-          {/* ✅ Reusable UserAvatar */}
           <UserAvatar profileRoute="/admin/profile" />
         </Box>
       </Box>
 
-      {/* ---------------- BODY ---------------- */}
+      {/* BODY */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Sidebar */}
         {isMobile ? (
           <Drawer
             open={mobileOpen}
@@ -210,7 +197,6 @@ function AdminLayout() {
           </nav>
         )}
 
-        {/* Main content */}
         <Box sx={{ flex: 1, overflowY: "auto" }}>
           <Outlet />
         </Box>
@@ -222,6 +208,7 @@ function AdminLayout() {
 // ---------------- Sidebar Content ----------------
 function SidebarContent({ menuItemSx }) {
   const [openRequests, setOpenRequests] = useState(false);
+  const [openScheduling, setOpenScheduling] = useState(false);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -253,82 +240,66 @@ function SidebarContent({ menuItemSx }) {
 
           <Collapse in={openRequests} timeout="auto" unmountOnExit>
             <List component="div" disablePadding sx={{ pl: 3 }}>
-              <ListItemButton
-                component={NavLink}
-                to="request-management"
-                sx={menuItemSx}
-              >
-                <ListItemIcon>
-                  <AccessTimeOutlinedIcon sx={{ fontSize: 20 }} />
-                </ListItemIcon>
+              <ListItemButton component={NavLink} to="request-management" sx={menuItemSx}>
+                <ListItemIcon><AccessTimeOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
                 <ListItemText primary="Pending Requests" />
               </ListItemButton>
-
-              <ListItemButton
-                component={NavLink}
-                to="forwarded-requests"
-                sx={menuItemSx}
-              >
-                <ListItemIcon>
-                  <ForwardToInboxOutlinedIcon sx={{ fontSize: 20 }} />
-                </ListItemIcon>
+              <ListItemButton component={NavLink} to="forwarded-requests" sx={menuItemSx}>
+                <ListItemIcon><ForwardToInboxOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
                 <ListItemText primary="Forwarded Requests" />
               </ListItemButton>
-
-              <ListItemButton
-                component={NavLink}
-                to="for-approval"
-                sx={menuItemSx}
-              >
-                <ListItemIcon>
-                  <DescriptionOutlinedIcon sx={{ fontSize: 20 }} />
-                </ListItemIcon>
+              <ListItemButton component={NavLink} to="for-approval" sx={menuItemSx}>
+                <ListItemIcon><DescriptionOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
                 <ListItemText primary="For Approval" />
               </ListItemButton>
-
-              <ListItemButton
-                component={NavLink}
-                to="approved-requests"
-                sx={menuItemSx}
-              >
-                <ListItemIcon>
-                  <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 20 }} />
-                </ListItemIcon>
+              <ListItemButton component={NavLink} to="approved-requests" sx={menuItemSx}>
+                <ListItemIcon><CheckCircleOutlineOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
                 <ListItemText primary="Approved Requests" />
               </ListItemButton>
-
-              <ListItemButton
-                component={NavLink}
-                to="declined-requests"
-                sx={menuItemSx}
-              >
-                <ListItemIcon>
-                  <CancelOutlinedIcon sx={{ fontSize: 20 }} />
-                </ListItemIcon>
+              <ListItemButton component={NavLink} to="declined-requests" sx={menuItemSx}>
+                <ListItemIcon><CancelOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
                 <ListItemText primary="Declined Requests" />
               </ListItemButton>
             </List>
           </Collapse>
 
+          {/* Collapsible Scheduling */}
           <ListItemButton
-            component={NavLink}
-            to="calendar-management"
-            sx={menuItemSx}
+            onClick={() => setOpenScheduling((prev) => !prev)}
+            sx={{ ...menuItemSx, justifyContent: "space-between" }}
           >
             <ListItemIcon>
-              <EventOutlinedIcon sx={{ fontSize: 20 }} />
+              <SchoolOutlinedIcon sx={{ fontSize: 20 }} />
             </ListItemIcon>
+            <ListItemText primary="Scheduling" />
+            <KeyboardArrowDownIcon
+              sx={{
+                transition: "0.3s",
+                transform: openScheduling ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
+          </ListItemButton>
+
+          <Collapse in={openScheduling} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding sx={{ pl: 3 }}>
+              <ListItemButton component={NavLink} to="semester-management" sx={menuItemSx}>
+                <ListItemIcon><CalendarMonthOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
+                <ListItemText primary="Semester Management" />
+              </ListItemButton>
+              <ListItemButton component={NavLink} to="duty-schedule-view" sx={menuItemSx}>
+                <ListItemIcon><TableChartOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
+                <ListItemText primary="Duty Schedule View" />
+              </ListItemButton>
+            </List>
+          </Collapse>
+
+          <ListItemButton component={NavLink} to="calendar-management" sx={menuItemSx}>
+            <ListItemIcon><EventOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
             <ListItemText primary="Calendar Management" />
           </ListItemButton>
 
-          <ListItemButton
-            component={NavLink}
-            to="staffers-management"
-            sx={menuItemSx}
-          >
-            <ListItemIcon>
-              <GroupOutlinedIcon sx={{ fontSize: 20 }} />
-            </ListItemIcon>
+          <ListItemButton component={NavLink} to="staffers-management" sx={menuItemSx}>
+            <ListItemIcon><GroupOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
             <ListItemText primary="Staffers Management" />
           </ListItemButton>
         </List>
