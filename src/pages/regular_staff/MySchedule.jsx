@@ -1,7 +1,7 @@
 // src/pages/regular_staff/MySchedule.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Box, Typography, CircularProgress, Alert, Chip, Button, Divider,
+  Box, Typography, CircularProgress, Alert, Button, Divider,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -9,21 +9,20 @@ import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlin
 import { supabase } from "../../lib/supabaseClient";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const DAY_SHORT  = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const DAY_SHORT  = ["MON", "TUE", "WED", "THU", "FRI"];
 const MAX_SLOTS  = 10;
 
 export default function MySchedule() {
-  const [currentUser, setCurrentUser]       = useState(null);
-  const [activeSemester, setActiveSemester] = useState(null);
-  const [slotCounts, setSlotCounts]         = useState([0, 0, 0, 0, 0]);
-  const [existingSchedule, setExistingSchedule] = useState(null); // current pick
-  const [selectedDay, setSelectedDay]       = useState(null);     // UI selection
-  const [saving, setSaving]                 = useState(false);
-  const [saveError, setSaveError]           = useState("");
-  const [saveSuccess, setSaveSuccess]       = useState(false);
-  const [loading, setLoading]               = useState(true);
+  const [currentUser, setCurrentUser]           = useState(null);
+  const [activeSemester, setActiveSemester]     = useState(null);
+  const [slotCounts, setSlotCounts]             = useState([0, 0, 0, 0, 0]);
+  const [existingSchedule, setExistingSchedule] = useState(null);
+  const [selectedDay, setSelectedDay]           = useState(null);
+  const [saving, setSaving]                     = useState(false);
+  const [saveError, setSaveError]               = useState("");
+  const [saveSuccess, setSaveSuccess]           = useState(false);
+  const [loading, setLoading]                   = useState(true);
 
-  // ── Load current user ──
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -38,7 +37,6 @@ export default function MySchedule() {
     loadUser();
   }, []);
 
-  // ── Load active semester ──
   useEffect(() => {
     async function loadSemester() {
       const { data } = await supabase
@@ -51,25 +49,21 @@ export default function MySchedule() {
     loadSemester();
   }, []);
 
-  // ── Load slot counts + existing pick ──
   const loadScheduleData = useCallback(async () => {
     if (!activeSemester?.id || !currentUser?.id) return;
     setLoading(true);
 
-    // All picks for this semester (for slot counts)
     const { data: allSchedules } = await supabase
       .from("duty_schedules")
       .select("duty_day, staffer_id")
       .eq("semester_id", activeSemester.id);
 
-    // Count per day
     const counts = [0, 0, 0, 0, 0];
     (allSchedules || []).forEach((s) => {
       if (s.duty_day >= 0 && s.duty_day <= 4) counts[s.duty_day]++;
     });
     setSlotCounts(counts);
 
-    // This staffer's existing pick
     const myPick = (allSchedules || []).find((s) => s.staffer_id === currentUser.id);
     if (myPick) {
       setExistingSchedule(myPick);
@@ -84,7 +78,6 @@ export default function MySchedule() {
 
   useEffect(() => { loadScheduleData(); }, [loadScheduleData]);
 
-  // ── Save ──
   const handleSave = async () => {
     if (selectedDay === null) return;
     setSaving(true);
@@ -92,7 +85,6 @@ export default function MySchedule() {
     setSaveSuccess(false);
 
     try {
-      // Check slot cap (re-verify on save)
       const countForDay = slotCounts[selectedDay];
       const isChanging = existingSchedule && existingSchedule.duty_day !== selectedDay;
       const isNew = !existingSchedule;
@@ -104,7 +96,6 @@ export default function MySchedule() {
       }
 
       if (existingSchedule) {
-        // Delete old, insert new
         await supabase
           .from("duty_schedules")
           .delete()
@@ -132,7 +123,6 @@ export default function MySchedule() {
     }
   };
 
-  // ── States ──
   const schedulingClosed = activeSemester && !activeSemester.scheduling_open;
   const noSemester = !loading && !activeSemester;
   const hasChanged = selectedDay !== (existingSchedule?.duty_day ?? null);
@@ -146,19 +136,18 @@ export default function MySchedule() {
   }
 
   return (
-    <Box sx={{ maxWidth: 620, mx: "auto", pt: 4, px: 2 }}>
+    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
 
-      {/* Page title */}
+      {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.2rem", color: "#212121" }}>
+        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
           My Duty Schedule
         </Typography>
-        <Typography sx={{ fontSize: "0.82rem", color: "#9e9e9e", mt: 0.3 }}>
-          Pick one day per week — you'll be on duty every week of the semester on that day.
+        <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e", mt: 0.3 }}>
+          Pick one day — you'll be on duty every week of the semester on that day.
         </Typography>
       </Box>
 
-      {/* No semester */}
       {noSemester && (
         <Alert severity="info" sx={{ borderRadius: 2 }}>
           No active semester at the moment. Check back later.
@@ -167,158 +156,162 @@ export default function MySchedule() {
 
       {activeSemester && (
         <>
-          {/* Semester info card */}
+          {/* Semester info */}
           <Box
             sx={{
-              p: 2.5,
+              p: 2,
               mb: 3,
               borderRadius: 2,
               border: "1px solid #f5c52b",
               backgroundColor: "#fffde7",
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-              <EventAvailableOutlinedIcon sx={{ fontSize: 16, color: "#f57c00" }} />
-              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "#f57c00", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Active Semester
+            <EventAvailableOutlinedIcon sx={{ fontSize: 18, color: "#f57c00" }} />
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "#212121" }}>
+                {activeSemester.name}
+              </Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>
+                {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                {" — "}
+                {new Date(activeSemester.end_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "#212121" }}>
-              {activeSemester.name}
-            </Typography>
-            <Typography sx={{ fontSize: "0.82rem", color: "#757575", mt: 0.3 }}>
-              {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-              {" — "}
-              {new Date(activeSemester.end_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-            </Typography>
           </Box>
 
-          {/* Scheduling closed banner */}
           {schedulingClosed && (
-            <Alert
-              severity="warning"
-              icon={<LockOutlinedIcon fontSize="small" />}
-              sx={{ mb: 3, borderRadius: 2, fontSize: "0.85rem" }}
-            >
+            <Alert severity="warning" icon={<LockOutlinedIcon fontSize="small" />} sx={{ mb: 3, borderRadius: 2 }}>
               Scheduling is currently closed. You cannot change your duty day.
             </Alert>
           )}
-
-          {/* Already picked banner */}
           {existingSchedule && !schedulingClosed && (
-            <Alert
-              severity="success"
-              icon={<CheckCircleIcon fontSize="small" />}
-              sx={{ mb: 3, borderRadius: 2, fontSize: "0.85rem" }}
-            >
-              You're currently on <strong>{DAY_LABELS[existingSchedule.duty_day]}</strong>. You can change it below while scheduling is open.
+            <Alert severity="success" icon={<CheckCircleIcon fontSize="small" />} sx={{ mb: 3, borderRadius: 2 }}>
+              You're on <strong>{DAY_LABELS[existingSchedule.duty_day]}</strong> this semester. You can change it below.
             </Alert>
           )}
-
-          {saveError && (
-            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{saveError}</Alert>
-          )}
+          {saveError && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{saveError}</Alert>}
           {saveSuccess && !hasChanged && (
-            <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
-              Your duty day has been saved successfully!
-            </Alert>
+            <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>Duty day saved successfully!</Alert>
           )}
 
-          {/* Day picker */}
-          <Typography sx={{ fontSize: "0.82rem", fontWeight: 600, color: "#757575", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Choose Your Day
-          </Typography>
+          {/* ── Weekly calendar grid ── */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              border: "1px solid #e0e0e0",
+              borderRadius: 2,
+              overflow: "hidden",
+              backgroundColor: "white",
+              mb: 3,
+            }}
+          >
+            {/* Day headers */}
+            {DAY_SHORT.map((short, i) => (
+              <Box
+                key={short}
+                sx={{
+                  px: 1.5,
+                  py: 1.2,
+                  textAlign: "center",
+                  backgroundColor: "#fafafa",
+                  borderBottom: "1px solid #e0e0e0",
+                  borderRight: i < 4 ? "1px solid #e0e0e0" : "none",
+                }}
+              >
+                <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "#9e9e9e", letterSpacing: 1 }}>
+                  {short}
+                </Typography>
+              </Box>
+            ))}
 
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 3 }}>
+            {/* Day cells */}
             {DAY_LABELS.map((day, i) => {
-              const count = slotCounts[i];
-              const isFull = count >= MAX_SLOTS;
-              const isMyCurrentPick = existingSchedule?.duty_day === i;
+              const count     = slotCounts[i];
+              const isFull    = count >= MAX_SLOTS;
+              const isMyPick  = existingSchedule?.duty_day === i;
               const isSelected = selectedDay === i;
-              const isDisabled = schedulingClosed || (isFull && !isMyCurrentPick);
+              const isDisabled = schedulingClosed || (isFull && !isMyPick);
 
               return (
                 <Box
                   key={day}
                   onClick={() => !isDisabled && setSelectedDay(i)}
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    p: 2,
-                    borderRadius: 2,
-                    border: "1.5px solid",
-                    borderColor: isSelected
-                      ? "#f5c52b"
-                      : isMyCurrentPick
-                      ? "#a5d6a7"
-                      : "#e0e0e0",
+                    px: 1.5,
+                    py: 2.5,
+                    textAlign: "center",
+                    borderRight: i < 4 ? "1px solid #e0e0e0" : "none",
+                    cursor: isDisabled ? "not-allowed" : "pointer",
                     backgroundColor: isSelected
                       ? "#fffde7"
-                      : isMyCurrentPick && !isSelected
+                      : isMyPick
                       ? "#f1f8e9"
                       : "white",
-                    cursor: isDisabled ? "not-allowed" : "pointer",
-                    opacity: isDisabled && !isMyCurrentPick ? 0.5 : 1,
+                    borderTop: isSelected
+                      ? "3px solid #f5c52b"
+                      : isMyPick
+                      ? "3px solid #a5d6a7"
+                      : "3px solid transparent",
+                    opacity: isDisabled && !isMyPick ? 0.45 : 1,
                     transition: "all 0.15s ease",
-                    "&:hover": !isDisabled
-                      ? { borderColor: "#f5c52b", backgroundColor: "#fffde7" }
-                      : {},
+                    "&:hover": !isDisabled ? {
+                      backgroundColor: "#fffde7",
+                      borderTop: "3px solid #f5c52b",
+                    } : {},
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 1.5,
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    {/* Day indicator circle */}
-                    <Box
-                      sx={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: isSelected ? "#f5c52b" : "#f5f5f5",
-                        transition: "background-color 0.15s",
-                      }}
-                    >
-                      <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isSelected ? "#212121" : "#9e9e9e" }}>
-                        {DAY_SHORT[i]}
-                      </Typography>
-                    </Box>
-
-                    <Box>
-                      <Typography sx={{ fontWeight: isSelected ? 700 : 500, fontSize: "0.9rem", color: "#212121" }}>
-                        {day}
-                      </Typography>
-                      {isMyCurrentPick && (
-                        <Typography sx={{ fontSize: "0.72rem", color: "#2e7d32", fontWeight: 500 }}>
-                          Your current pick
-                        </Typography>
-                      )}
-                    </Box>
+                  {/* Selected checkmark or circle */}
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: isSelected ? "#f5c52b" : isMyPick ? "#a5d6a7" : "#f5f5f5",
+                      transition: "background-color 0.15s",
+                    }}
+                  >
+                    {isSelected || isMyPick ? (
+                      <CheckCircleIcon sx={{ fontSize: 16, color: "white" }} />
+                    ) : (
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#e0e0e0" }} />
+                    )}
                   </Box>
 
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {/* Slot bar */}
-                    <Box sx={{ textAlign: "right" }}>
-                      <Typography sx={{ fontSize: "0.75rem", color: isFull ? "#c62828" : "#9e9e9e", fontWeight: isFull ? 600 : 400 }}>
-                        {count}/{MAX_SLOTS} {isFull ? "— Full" : "slots"}
-                      </Typography>
-                      <Box sx={{ width: 80, height: 4, borderRadius: 2, backgroundColor: "#f0f0f0", mt: 0.5 }}>
-                        <Box
-                          sx={{
-                            height: "100%",
-                            width: `${(count / MAX_SLOTS) * 100}%`,
-                            borderRadius: 2,
-                            backgroundColor: isFull ? "#ef9a9a" : "#f5c52b",
-                            transition: "width 0.3s ease",
-                          }}
-                        />
-                      </Box>
-                    </Box>
-
-                    {isSelected && (
-                      <CheckCircleIcon sx={{ fontSize: 20, color: "#f5c52b" }} />
+                  {/* Slot count */}
+                  <Box>
+                    <Typography sx={{ fontSize: "0.72rem", color: isFull ? "#c62828" : "#9e9e9e", fontWeight: isFull ? 600 : 400 }}>
+                      {count}/{MAX_SLOTS}
+                    </Typography>
+                    {isFull && !isMyPick && (
+                      <Typography sx={{ fontSize: "0.65rem", color: "#c62828", fontWeight: 600 }}>Full</Typography>
                     )}
+                    {isMyPick && (
+                      <Typography sx={{ fontSize: "0.65rem", color: "#2e7d32", fontWeight: 600 }}>Your day</Typography>
+                    )}
+                  </Box>
+
+                  {/* Slot fill bar */}
+                  <Box sx={{ width: "80%", height: 3, borderRadius: 2, backgroundColor: "#f0f0f0" }}>
+                    <Box
+                      sx={{
+                        height: "100%",
+                        width: `${(count / MAX_SLOTS) * 100}%`,
+                        borderRadius: 2,
+                        backgroundColor: isFull ? "#ef9a9a" : "#f5c52b",
+                        transition: "width 0.3s ease",
+                      }}
+                    />
                   </Box>
                 </Box>
               );
@@ -327,7 +320,6 @@ export default function MySchedule() {
 
           <Divider sx={{ mb: 2.5 }} />
 
-          {/* Save button */}
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
             <Button
               variant="contained"
@@ -346,9 +338,7 @@ export default function MySchedule() {
             >
               {saving
                 ? <CircularProgress size={18} sx={{ color: "#212121" }} />
-                : existingSchedule
-                ? "Change My Day"
-                : "Confirm My Day"}
+                : existingSchedule ? "Change My Day" : "Confirm My Day"}
             </Button>
           </Box>
         </>
