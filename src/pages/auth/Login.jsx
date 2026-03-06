@@ -15,13 +15,9 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { supabase } from "../../lib/supabaseClient";
 
-// Role → route mapping
-const ROLE_ROUTES = {
-  client: "/client/calendar",
-  admin: "/admin/dashboard",
-  sec_head: "/sec_head/dashboard",
-  staff: "/staff/dashboard",
-};
+// Coverage sec heads → full sec_head experience
+// Non-coverage sec heads → staff experience (same as regular staff)
+const COVERAGE_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -53,10 +49,10 @@ function Login() {
         return;
       }
 
-      // 2. Fetch role from profiles table
+      // 2. Fetch role + section from profiles table
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("role, is_active")
+        .select("role, section, is_active")
         .eq("id", authData.user.id)
         .single();
 
@@ -75,8 +71,23 @@ function Login() {
         return;
       }
 
-      // 4. Redirect based on role
-      const route = ROLE_ROUTES[profile.role] || "/login";
+      // 4. Redirect based on role + section
+      let route = "/login";
+
+      if (profile.role === "admin") {
+        route = "/admin/dashboard";
+      } else if (profile.role === "sec_head") {
+        // Coverage sec heads get the full sec_head experience
+        // Non-coverage sec heads get the staff experience (they get assigned like staff)
+        route = COVERAGE_SECTIONS.includes(profile.section)
+          ? "/sec_head/dashboard"
+          : "/staff/dashboard";
+      } else if (profile.role === "staff") {
+        route = "/staff/dashboard";
+      } else if (profile.role === "client") {
+        route = "/client/calendar";
+      }
+
       navigate(route);
 
     } catch (err) {

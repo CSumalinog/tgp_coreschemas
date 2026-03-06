@@ -2,13 +2,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Button, Typography, CircularProgress, Dialog, DialogTitle,
-  DialogContent, DialogActions, Chip, Stack, Divider, Avatar,
+  DialogContent, DialogActions, Chip, Divider, Avatar,
   IconButton, Alert, Checkbox, FormGroup,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
+import WeekendOutlinedIcon from "@mui/icons-material/WeekendOutlined";
 import { supabase } from "../../lib/supabaseClient";
 
 const getInitials = (name) => {
@@ -33,6 +34,20 @@ const SECTION_SERVICE_MAP = {
   Videojournalism: "Video Documentation",
 };
 
+// JS getDay() → duty_day (0=Mon...4=Fri), returns null for weekend
+const jsDateToDutyDay = (dateStr) => {
+  if (!dateStr) return null;
+  const day = new Date(dateStr).getDay(); // 0=Sun, 1=Mon...6=Sat
+  if (day === 0 || day === 6) return null; // weekend
+  return day - 1; // Mon=0, Tue=1, Wed=2, Thu=3, Fri=4
+};
+
+const isWeekendDate = (dateStr) => {
+  if (!dateStr) return false;
+  const day = new Date(dateStr).getDay();
+  return day === 0 || day === 6;
+};
+
 export default function SectionHeadAssignment() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +61,7 @@ export default function SectionHeadAssignment() {
   const [selectedStaffers, setSelectedStaffers] = useState([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
+  const [isWeekend, setIsWeekend] = useState(false);
 
   // ── Get current sec head profile ──
   useEffect(() => {
@@ -62,7 +78,7 @@ export default function SectionHeadAssignment() {
     loadUser();
   }, []);
 
-  // ── Fetch forwarded requests for this sec head's section ──
+  // ── Fetch forwarded requests ──
   const loadRequests = useCallback(async () => {
     if (!currentUser?.section) return;
     setLoading(true);
@@ -94,20 +110,80 @@ export default function SectionHeadAssignment() {
   }, [currentUser, loadRequests]);
 
   // ── Fetch staffers when dialog opens ──
+  // Logic:
+  //   Weekday event → staffers whose duty_day matches the event's day
+  //   Weekend event → all staffers in section
+  //   Both cases   → sorted by assignment count ascending (fewest first)
   useEffect(() => {
-    if (!selectedRequest || !currentUser?.division) return;
+    if (!selectedRequest || !currentUser?.section) return;
+
     async function loadStaffers() {
       setStaffersLoading(true);
-      const { data } = await supabase
+      setStaffers([]);
+      setSelectedStaffers([]);
+
+      const eventDate = selectedRequest.event_date;
+      const weekend = isWeekendDate(eventDate);
+      setIsWeekend(weekend);
+      const dutyDay = jsDateToDutyDay(eventDate);
+
+      // 1. Get active semester
+      const { data: semester } = await supabase
+        .from("semesters")
+        .select("id")
+        .eq("is_active", true)
+        .single();
+
+      // 2. Get all profiles in this section
+      const { data: allProfiles } = await supabase
         .from("profiles")
         .select("id, full_name, section, role")
-        .eq("division", currentUser.division)
-        .eq("is_active", true)
-        .order("full_name");
-      setStaffers(data || []);
-      setSelectedStaffers([]);
+        .eq("section", currentUser.section)
+        .eq("is_active", true);
+
+      if (!allProfiles || allProfiles.length === 0) {
+        setStaffers([]);
+        setStaffersLoading(false);
+        return;
+      }
+
+      // 3. If weekday — filter by duty_day
+      let eligibleProfiles = allProfiles;
+      if (!weekend && dutyDay !== null && semester?.id) {
+        const { data: dutySchedules } = await supabase
+          .from("duty_schedules")
+          .select("staffer_id")
+          .eq("semester_id", semester.id)
+          .eq("duty_day", dutyDay);
+
+        const eligibleIds = new Set((dutySchedules || []).map((d) => d.staffer_id));
+        eligibleProfiles = allProfiles.filter((p) => eligibleIds.has(p.id));
+      }
+
+      // 4. Get assignment counts for eligible staffers this semester
+      let assignmentCounts = {};
+      if (semester?.id && eligibleProfiles.length > 0) {
+        const eligibleIds = eligibleProfiles.map((p) => p.id);
+
+        const { data: assignments } = await supabase
+          .from("coverage_assignments")
+          .select("assigned_to")
+          .in("assigned_to", eligibleIds);
+
+        (assignments || []).forEach((a) => {
+          assignmentCounts[a.assigned_to] = (assignmentCounts[a.assigned_to] || 0) + 1;
+        });
+      }
+
+      // 5. Sort by assignment count ascending (fewest first)
+      const sorted = eligibleProfiles
+        .map((p) => ({ ...p, assignmentCount: assignmentCounts[p.id] || 0 }))
+        .sort((a, b) => a.assignmentCount - b.assignmentCount);
+
+      setStaffers(sorted);
       setStaffersLoading(false);
     }
+
     loadStaffers();
   }, [selectedRequest, currentUser]);
 
@@ -120,7 +196,6 @@ export default function SectionHeadAssignment() {
     setAssignLoading(true);
     setAssignError("");
     try {
-      // 1. Insert coverage_assignments rows
       const assignments = selectedStaffers.map((stafferId) => ({
         request_id: selectedRequest.id,
         assigned_to: stafferId,
@@ -134,7 +209,6 @@ export default function SectionHeadAssignment() {
 
       if (assignErr) throw assignErr;
 
-      // 2. Check if all forwarded sections have been assigned
       const { data: existingAssignments } = await supabase
         .from("coverage_assignments")
         .select("section")
@@ -145,7 +219,6 @@ export default function SectionHeadAssignment() {
         assignedSections.includes(s)
       );
 
-      // 3. Update status if all sections assigned
       if (allAssigned) {
         await supabase
           .from("coverage_requests")
@@ -162,25 +235,19 @@ export default function SectionHeadAssignment() {
     }
   };
 
-  // ── Get pax needed for this sec head's section ──
   const getPaxForSection = (request) => {
     if (!currentUser?.section || !request?.services) return "—";
     const serviceName = SECTION_SERVICE_MAP[currentUser.section];
     return request.services[serviceName] || "—";
   };
 
-  // ── Table rows ──
   const rows = requests.map((req) => ({
     id: req.id,
     requestTitle: req.title,
     client: req.entity?.name || "—",
-    eventDate: req.event_date
-      ? new Date(req.event_date).toLocaleDateString()
-      : "—",
+    eventDate: req.event_date ? new Date(req.event_date).toLocaleDateString() : "—",
     paxNeeded: getPaxForSection(req),
-    dateForwarded: req.forwarded_at
-      ? new Date(req.forwarded_at).toLocaleDateString()
-      : "—",
+    dateForwarded: req.forwarded_at ? new Date(req.forwarded_at).toLocaleDateString() : "—",
     ...req,
   }));
 
@@ -301,6 +368,14 @@ export default function SectionHeadAssignment() {
               size="small"
               sx={{ backgroundColor: "#f3e5f5", color: "#7b1fa2", fontWeight: 600, fontSize: "0.72rem" }}
             />
+            {isWeekend && (
+              <Chip
+                icon={<WeekendOutlinedIcon sx={{ fontSize: "14px !important" }} />}
+                label="Weekend Event"
+                size="small"
+                sx={{ backgroundColor: "#fff3e0", color: "#e65100", fontWeight: 600, fontSize: "0.72rem" }}
+              />
+            )}
           </Box>
           <IconButton onClick={() => setSelectedRequest(null)} size="small" disabled={assignLoading}>
             <CloseIcon fontSize="small" />
@@ -322,7 +397,18 @@ export default function SectionHeadAssignment() {
                 <RowValue>{selectedRequest?.description}</RowValue>
 
                 <RowLabel>Event Date</RowLabel>
-                <RowValue>{selectedRequest?.event_date || "—"}</RowValue>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, pt: 0.3 }}>
+                  <Typography sx={{ fontSize: "0.88rem", color: "#212121" }}>
+                    {selectedRequest?.event_date || "—"}
+                  </Typography>
+                  {isWeekend && (
+                    <Chip
+                      label="Weekend"
+                      size="small"
+                      sx={{ fontSize: "0.7rem", backgroundColor: "#fff3e0", color: "#e65100", fontWeight: 600 }}
+                    />
+                  )}
+                </Box>
 
                 <RowLabel>Time</RowLabel>
                 <RowValue>
@@ -379,7 +465,10 @@ export default function SectionHeadAssignment() {
               </Box>
 
               <Typography sx={{ fontSize: "0.78rem", color: "#9e9e9e" }}>
-                Assign staffers from {currentUser.division} division for this coverage.
+                {isWeekend
+                  ? "Weekend event — showing all staffers sorted by least assignments."
+                  : `Showing staffers on duty for ${new Date(selectedRequest?.event_date).toLocaleDateString("en-US", { weekday: "long" })}, sorted by least assignments.`
+                }
               </Typography>
 
               {assignError && <Alert severity="error" sx={{ borderRadius: 2, fontSize: "0.8rem" }}>{assignError}</Alert>}
@@ -390,7 +479,7 @@ export default function SectionHeadAssignment() {
                 </Box>
               ) : staffers.length === 0 ? (
                 <Typography sx={{ fontSize: "0.82rem", color: "#9e9e9e", textAlign: "center", py: 2 }}>
-                  No staffers found in your division.
+                  No eligible staffers found for this event day.
                 </Typography>
               ) : (
                 <FormGroup sx={{ gap: 1 }}>
@@ -423,7 +512,11 @@ export default function SectionHeadAssignment() {
                         </Avatar>
                         <Box sx={{ flex: 1 }}>
                           <Typography sx={{ fontSize: "0.85rem", fontWeight: 500 }}>{staffer.full_name}</Typography>
-                          <Typography sx={{ fontSize: "0.72rem", color: "#9e9e9e" }}>{staffer.section || staffer.role}</Typography>
+                          <Typography sx={{ fontSize: "0.72rem", color: "#9e9e9e" }}>
+                            {staffer.assignmentCount === 0
+                              ? "No assignments yet"
+                              : `${staffer.assignmentCount} assignment${staffer.assignmentCount > 1 ? "s" : ""}`}
+                          </Typography>
                         </Box>
                         <Checkbox
                           checked={isSelected}

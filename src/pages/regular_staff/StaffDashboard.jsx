@@ -68,7 +68,7 @@ export default function StaffDashboard() {
     const { data: assignmentData } = await supabase
       .from("coverage_assignments")
       .select(`
-        id, status, section, created_at,
+        id, status, section, assigned_at,
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
           title, event_date, from_time, to_time, venue,
@@ -76,7 +76,7 @@ export default function StaffDashboard() {
         )
       `)
       .eq("assigned_to", currentUser.id)
-      .order("created_at", { ascending: false })
+      .order("assigned_at", { ascending: false })
       .limit(5);
 
     setAssignments(assignmentData || []);
