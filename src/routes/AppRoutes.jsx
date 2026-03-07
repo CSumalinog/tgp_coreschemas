@@ -23,12 +23,9 @@ import SemesterManagement from "../pages/admin/SemesterManagement";
 import DutyScheduleView   from "../pages/admin/DutyScheduleView";
 
 // Client Pages
-import Calendar        from "../pages/client/Calendar";
-import PendingRequest  from "../pages/client/PendingRequest";
-import Draft           from "../pages/client/Draft";
-import ApprovedRequest from "../pages/client/ApprovedRequests";
-import DeclinedRequest from "../pages/client/DeclinedRequests";
-import History         from "../pages/client/History";
+import Calendar       from "../pages/client/Calendar";
+import Draft          from "../pages/client/Draft";
+import RequestTracker from "../pages/client/RequestTracker";
 
 // Section Head Pages
 import SecHeadDashboard  from "../pages/section_head/SecHeadDashboard";
@@ -71,14 +68,17 @@ function AppRoutes() {
 
       {/* Client Routes */}
       <Route path="/client" element={<ClientLayout />}>
-        <Route index                    element={<Navigate to="calendar" />} />
-        <Route path="calendar"          element={<Calendar />} />
-        <Route path="draft"             element={<Draft />} />
-        <Route path="pending-requests"  element={<PendingRequest />} />
-        <Route path="approved-requests" element={<ApprovedRequest />} />
-        <Route path="declined-requests" element={<DeclinedRequest />} />
-        <Route path="history"           element={<History />} />
-        <Route path="profile"           element={<ProfilePage />} />
+        <Route index                  element={<Navigate to="calendar" />} />
+        <Route path="calendar"        element={<Calendar />} />
+        <Route path="draft"           element={<Draft />} />
+        <Route path="request-tracker" element={<RequestTracker />} />
+        <Route path="profile"         element={<ProfilePage />} />
+
+        {/* Legacy redirects — keep old nav links working */}
+        <Route path="pending-requests"  element={<Navigate to="/client/request-tracker" replace />} />
+        <Route path="approved-requests" element={<Navigate to="/client/request-tracker" replace />} />
+        <Route path="declined-requests" element={<Navigate to="/client/request-tracker" replace />} />
+        <Route path="history"           element={<Navigate to="/client/request-tracker" replace />} />
       </Route>
 
       {/* Section Head Routes */}
@@ -94,11 +94,11 @@ function AppRoutes() {
 
       {/* Regular Staff Routes */}
       <Route path="/staff" element={<RegularStaffLayout />}>
-        <Route index                  element={<Navigate to="dashboard" />} />
-        <Route path="dashboard"       element={<StaffDashboard />} />
-        <Route path="my-assignment"   element={<MyAssignment />} />
-        <Route path="my-schedule"     element={<MySchedule />} />
-        <Route path="profile"         element={<ProfilePage />} />
+        <Route index                element={<Navigate to="dashboard" />} />
+        <Route path="dashboard"     element={<StaffDashboard />} />
+        <Route path="my-assignment" element={<MyAssignment />} />
+        <Route path="my-schedule"   element={<MySchedule />} />
+        <Route path="profile"       element={<ProfilePage />} />
       </Route>
 
       {/* 404 fallback */}

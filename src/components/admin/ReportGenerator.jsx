@@ -528,7 +528,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: "0.88rem", color: "#212121" }}>
+              <Typography sx={{ fontWeight: 600, fontSize: "0.88rem", color: "#212121" }}>
                 {preview.period} — Coverage Report
               </Typography>
               <Typography sx={{ fontSize: "0.72rem", color: "#9e9e9e" }}>
@@ -546,7 +546,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
               disabled={generating}
               sx={{
                 textTransform: "none", fontSize: "0.78rem", borderRadius: 2, boxShadow: "none",
-                backgroundColor: "#f5c52b", color: "#212121", fontWeight: 600,
+                backgroundColor: "#f5c52b", color: "#212121", fontWeight: 500,
                 "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
               }}
             >

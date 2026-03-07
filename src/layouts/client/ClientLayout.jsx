@@ -1,25 +1,21 @@
-// src/layouts/ClientLayout.jsx
+// src/layouts/client/ClientLayout.jsx
 import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import {
   Collapse, Drawer, useMediaQuery, IconButton, useTheme,
   List, ListItemButton, ListItemIcon, ListItemText,
-  Box, Typography, Button, Badge,
+  Box, Typography, Button,
 } from "@mui/material";
 
-import CalendarTodayOutlinedIcon         from "@mui/icons-material/CalendarTodayOutlined";
-import KeyboardArrowDownIcon             from "@mui/icons-material/KeyboardArrowDown";
-import NotificationsNoneOutlinedIcon     from "@mui/icons-material/NotificationsNoneOutlined";
-import AddIcon                           from "@mui/icons-material/Add";
-import InfoOutlinedIcon                  from "@mui/icons-material/InfoOutlined";
-import DescriptionOutlinedIcon           from "@mui/icons-material/DescriptionOutlined";
-import HistoryOutlinedIcon               from "@mui/icons-material/HistoryOutlined";
-import TrackChangesOutlinedIcon          from "@mui/icons-material/TrackChangesOutlined";
-import AccessTimeOutlinedIcon            from "@mui/icons-material/AccessTimeOutlined";
-import CheckCircleOutlineOutlinedIcon    from "@mui/icons-material/CheckCircleOutlineOutlined";
-import CancelOutlinedIcon                from "@mui/icons-material/CancelOutlined";
-import MenuIcon                          from "@mui/icons-material/Menu";
-import ChevronLeftIcon                   from "@mui/icons-material/ChevronLeft";
+import CalendarTodayOutlinedIcon     from "@mui/icons-material/CalendarTodayOutlined";
+import KeyboardArrowDownIcon         from "@mui/icons-material/KeyboardArrowDown";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import AddIcon                       from "@mui/icons-material/Add";
+import InfoOutlinedIcon              from "@mui/icons-material/InfoOutlined";
+import DescriptionOutlinedIcon       from "@mui/icons-material/DescriptionOutlined";
+import TrackChangesOutlinedIcon      from "@mui/icons-material/TrackChangesOutlined";
+import MenuIcon                      from "@mui/icons-material/Menu";
+import ChevronLeftIcon               from "@mui/icons-material/ChevronLeft";
 
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import UserAvatar            from "../../components/common/UserAvatar";
@@ -153,22 +149,27 @@ function SidebarContent({ menuItemSx, isDark }) {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         <List sx={{ display: "flex", flexDirection: "column" }}>
+
           <ListItemButton component={NavLink} to="calendar" sx={menuItemSx}>
             <ListItemIcon><CalendarTodayOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
             <ListItemText primary="Calendar" />
           </ListItemButton>
+
           <ListItemButton component={NavLink} to="draft" sx={menuItemSx}>
             <ListItemIcon><DescriptionOutlinedIcon sx={{ fontSize: 22 }} /></ListItemIcon>
             <ListItemText primary="Draft" />
           </ListItemButton>
-          <RequestTracker menuItemSx={menuItemSx} />
-          <ListItemButton component={NavLink} to="history" sx={menuItemSx}>
-            <ListItemIcon><HistoryOutlinedIcon sx={{ fontSize: 22 }} /></ListItemIcon>
-            <ListItemText primary="History" />
+
+          {/* ── Single Request Tracker link ── */}
+          <ListItemButton component={NavLink} to="request-tracker" sx={menuItemSx}>
+            <ListItemIcon><TrackChangesOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
+            <ListItemText primary="Request Tracker" />
           </ListItemButton>
+
         </List>
       </Box>
 
+      {/* ── Calendar legend (only shown on /calendar) ── */}
       {showLegend && (
         <Box sx={{ mt: "auto", mb: 1, padding: 1 }}>
           <Box
@@ -205,35 +206,6 @@ function SidebarContent({ menuItemSx, isDark }) {
         </Box>
       )}
     </Box>
-  );
-}
-
-function RequestTracker({ menuItemSx }) {
-  const [openTracker, setOpenTracker] = useState(false);
-  return (
-    <>
-      <ListItemButton onClick={() => setOpenTracker(!openTracker)} sx={{ ...menuItemSx, justifyContent: "space-between" }}>
-        <ListItemIcon><TrackChangesOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-        <ListItemText primary="Request Tracker" />
-        <KeyboardArrowDownIcon sx={{ transition: "0.3s", transform: openTracker ? "rotate(180deg)" : "rotate(0deg)" }} />
-      </ListItemButton>
-      <Collapse in={openTracker} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding sx={{ pl: 2 }}>
-          <ListItemButton component={NavLink} to="pending-requests" sx={menuItemSx}>
-            <ListItemIcon><AccessTimeOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-            <ListItemText primary="Pending Request" />
-          </ListItemButton>
-          <ListItemButton component={NavLink} to="approved-requests" sx={menuItemSx}>
-            <ListItemIcon><CheckCircleOutlineOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-            <ListItemText primary="Approved Request" />
-          </ListItemButton>
-          <ListItemButton component={NavLink} to="declined-requests" sx={menuItemSx}>
-            <ListItemIcon><CancelOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-            <ListItemText primary="Declined Request" />
-          </ListItemButton>
-        </List>
-      </Collapse>
-    </>
   );
 }
 
