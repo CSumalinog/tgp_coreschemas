@@ -1,11 +1,14 @@
 // src/pages/admin/RequestManagement.jsx
 import React, { useState } from "react";
-import { Box, Button, Typography, CircularProgress } from "@mui/material";
+import { Box, Button, Typography, CircularProgress, useTheme } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import RequestDetails from "../../components/admin/RequestDetails";
 
 export default function RequestManagement() {
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   const { pending, loading, refetch } = useAdminRequests();
   const [selectedRequest, setSelectedRequest] = useState(null);
 
@@ -17,13 +20,27 @@ export default function RequestManagement() {
       ? new Date(req.submitted_at).toLocaleDateString()
       : "—",
     status: req.status,
-    // pass full raw request for the drawer
     ...req,
   }));
 
+  const dataGridSx = {
+    border: "none",
+    fontFamily: "'Helvetica Neue', sans-serif",
+    fontSize: "0.9rem",
+    backgroundColor: "background.paper",
+    color: "text.primary",
+    "& .MuiDataGrid-virtualScroller":  { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-overlay":          { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-cell":             { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-columnHeaders":    { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-footerContainer":  { backgroundColor: "background.paper", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-row:hover":        { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+    "& .MuiTablePagination-root":      { color: "text.secondary" },
+  };
+
   const columns = [
     { field: "requestTitle", headerName: "Request Title", flex: 1.4 },
-    { field: "client", headerName: "Client", flex: 1.2 },
+    { field: "client",       headerName: "Client",        flex: 1.2 },
     { field: "dateReceived", headerName: "Date Received", flex: 1 },
     {
       field: "status",
@@ -47,7 +64,6 @@ export default function RequestManagement() {
           variant="outlined"
           size="small"
           onClick={() => setSelectedRequest(params.row)}
-         
         >
           View Details
         </Button>
@@ -56,14 +72,14 @@ export default function RequestManagement() {
   ];
 
   return (
-    <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "#f9f9f9" }}>
+    <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default" }}>
       <Box sx={{ mb: 2 }}>
-        <Typography sx={{ fontSize: "0.8rem", color: "#757575", lineHeight: 1.5 }}>
+        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", lineHeight: 1.5 }}>
           Review newly submitted coverage requests. You may forward or decline each request.
         </Typography>
       </Box>
 
-      <Box sx={{ height: 500, width: "100%", bgcolor: "white", borderRadius: 2, boxShadow: 1 }}>
+      <Box sx={{ height: 500, width: "100%", bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
         {loading ? (
           <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
@@ -75,13 +91,7 @@ export default function RequestManagement() {
             pageSize={7}
             rowsPerPageOptions={[7]}
             disableSelectionOnClick
-            sx={{
-              border: "none",
-              fontFamily: "'Helvetica Neue', sans-serif",
-              fontSize: "0.9rem",
-              "& .MuiDataGrid-cell": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none" },
-              "& .MuiDataGrid-columnHeaders": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem" },
-            }}
+            sx={dataGridSx}
           />
         )}
       </Box>

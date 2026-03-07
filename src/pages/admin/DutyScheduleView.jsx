@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Typography, CircularProgress, Alert, Chip, Avatar,
-  ToggleButton, ToggleButtonGroup, Card, CardContent, Divider,
+  ToggleButton, ToggleButtonGroup, Card, CardContent, Divider, useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { supabase } from "../../lib/supabaseClient";
@@ -19,13 +19,15 @@ const getInitials = (name) => {
 };
 
 export default function DutyScheduleView() {
-  const [schedules, setSchedules] = useState([]);
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
+  const [schedules, setSchedules]         = useState([]);
   const [activeSemester, setActiveSemester] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState("");
   const [sectionFilter, setSectionFilter] = useState("All");
 
-  // ── Load active semester ──
   useEffect(() => {
     async function loadSemester() {
       const { data } = await supabase
@@ -38,7 +40,6 @@ export default function DutyScheduleView() {
     loadSemester();
   }, []);
 
-  // ── Load duty schedules ──
   const loadSchedules = useCallback(async () => {
     if (!activeSemester?.id) return;
     setLoading(true);
@@ -58,24 +59,35 @@ export default function DutyScheduleView() {
 
   useEffect(() => { loadSchedules(); }, [loadSchedules]);
 
-  // ── Filter ──
   const filtered = sectionFilter === "All"
     ? schedules
     : schedules.filter((s) => s.staffer?.section === sectionFilter);
 
-  // ── Day slot counts (across all sections, for the summary) ──
   const dayCounts = DAY_LABELS.map((_, i) =>
     schedules.filter((s) => s.duty_day === i).length
   );
 
-  // ── Table rows ──
   const rows = filtered.map((s) => ({
     id: s.id,
     full_name: s.staffer?.full_name || "—",
-    section: s.staffer?.section || "—",
-    division: s.staffer?.division || "—",
-    duty_day: s.duty_day,
+    section:   s.staffer?.section   || "—",
+    division:  s.staffer?.division  || "—",
+    duty_day:  s.duty_day,
   }));
+
+  const dataGridSx = {
+    border: "none",
+    fontFamily: "'Helvetica Neue', sans-serif",
+    backgroundColor: "background.paper",
+    color: "text.primary",
+    "& .MuiDataGrid-virtualScroller":  { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-overlay":          { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-cell":             { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-columnHeaders":    { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-footerContainer":  { backgroundColor: "background.paper", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-row:hover":        { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+    "& .MuiTablePagination-root":      { color: "text.secondary" },
+  };
 
   const columns = [
     {
@@ -85,7 +97,7 @@ export default function DutyScheduleView() {
           <Avatar sx={{ width: 30, height: 30, fontSize: "0.72rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#212121" }}>
             {getInitials(params.value)}
           </Avatar>
-          <Typography sx={{ fontSize: "0.88rem", fontWeight: 500 }}>{params.value}</Typography>
+          <Typography sx={{ fontSize: "0.88rem", fontWeight: 500, color: "text.primary" }}>{params.value}</Typography>
         </Box>
       ),
     },
@@ -93,11 +105,7 @@ export default function DutyScheduleView() {
       field: "section", headerName: "Section", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Chip
-            label={params.value}
-            size="small"
-            sx={{ fontSize: "0.78rem", backgroundColor: "#f3e5f5", color: "#7b1fa2", fontWeight: 500 }}
-          />
+          <Chip label={params.value} size="small" sx={{ fontSize: "0.78rem", backgroundColor: "#f3e5f5", color: "#7b1fa2", fontWeight: 500 }} />
         </Box>
       ),
     },
@@ -105,7 +113,7 @@ export default function DutyScheduleView() {
       field: "division", headerName: "Division", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.88rem", color: "#757575" }}>{params.value}</Typography>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.secondary" }}>{params.value}</Typography>
         </Box>
       ),
     },
@@ -118,12 +126,7 @@ export default function DutyScheduleView() {
             <Chip
               label={DAY_LABELS[day] || "—"}
               size="small"
-              sx={{
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                backgroundColor: DAY_COLORS[day] || "#f5f5f5",
-                color: DAY_TEXT[day] || "#757575",
-              }}
+              sx={{ fontSize: "0.78rem", fontWeight: 600, backgroundColor: DAY_COLORS[day] || "#f5f5f5", color: DAY_TEXT[day] || "#757575" }}
             />
           </Box>
         );
@@ -132,13 +135,13 @@ export default function DutyScheduleView() {
   ];
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
+        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>
           Duty Schedule View
         </Typography>
-        <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e", mt: 0.3 }}>
+        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 0.3 }}>
           {activeSemester
             ? `Showing duty schedules for ${activeSemester.name}`
             : "No active semester. Create and activate one in Semester Management."}
@@ -158,27 +161,19 @@ export default function DutyScheduleView() {
             <Card
               key={day}
               elevation={0}
-              sx={{ flex: "1 1 120px", border: "1px solid #e0e0e0", borderRadius: 2, minWidth: 110 }}
+              sx={{ flex: "1 1 120px", border: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", borderRadius: 2, minWidth: 110, backgroundColor: "background.paper" }}
             >
               <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "#9e9e9e", fontWeight: 500, mb: 0.3 }}>
+                <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", fontWeight: 500, mb: 0.3 }}>
                   {day}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
                   <Typography sx={{ fontSize: "1.4rem", fontWeight: 700, color: DAY_TEXT[i] }}>
                     {dayCounts[i]}
                   </Typography>
-                  <Typography sx={{ fontSize: "0.75rem", color: "#9e9e9e" }}>/10</Typography>
+                  <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>/10</Typography>
                 </Box>
-                <Box
-                  sx={{
-                    mt: 0.8,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: "#f0f0f0",
-                    overflow: "hidden",
-                  }}
-                >
+                <Box sx={{ mt: 0.8, height: 4, borderRadius: 2, backgroundColor: isDark ? "#333" : "#f0f0f0", overflow: "hidden" }}>
                   <Box
                     sx={{
                       height: "100%",
@@ -205,7 +200,14 @@ export default function DutyScheduleView() {
             exclusive
             onChange={(_, val) => val && setSectionFilter(val)}
             size="small"
-            sx={{ "& .MuiToggleButton-root": { textTransform: "none", fontSize: "0.82rem", px: 2, borderRadius: "8px !important", mx: 0.3, border: "1px solid #e0e0e0 !important" } }}
+            sx={{
+              "& .MuiToggleButton-root": {
+                textTransform: "none", fontSize: "0.82rem", px: 2,
+                borderRadius: 1, mx: 0.3,
+                border: isDark ? "1px solid #444 !important" : "1px solid #e0e0e0 !important",
+                color: "text.secondary",
+              },
+            }}
           >
             {["All", ...COVERAGE_SECTIONS].map((sec) => (
               <ToggleButton
@@ -225,7 +227,7 @@ export default function DutyScheduleView() {
                   <Chip
                     label={schedules.filter((s) => s.staffer?.section === sec).length}
                     size="small"
-                    sx={{ ml: 0.8, height: 18, fontSize: "0.7rem", backgroundColor: "rgba(0,0,0,0.08)" }}
+                    sx={{ ml: 0.8, height: 18, fontSize: "0.8rem", backgroundColor: "rgba(0,0,0,0.08)", color: "#212121" }}
                   />
                 )}
               </ToggleButton>
@@ -235,7 +237,7 @@ export default function DutyScheduleView() {
       )}
 
       {/* Table */}
-      <Box sx={{ bgcolor: "white", borderRadius: 2, boxShadow: 1 }}>
+      <Box sx={{ bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
         {loading ? (
           <Box sx={{ height: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
@@ -248,12 +250,7 @@ export default function DutyScheduleView() {
             rowsPerPageOptions={[10]}
             disableSelectionOnClick
             autoHeight
-            sx={{
-              border: "none",
-              fontFamily: "'Helvetica Neue', sans-serif",
-              "& .MuiDataGrid-cell": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none" },
-              "& .MuiDataGrid-columnHeaders": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem" },
-            }}
+            sx={dataGridSx}
           />
         )}
       </Box>

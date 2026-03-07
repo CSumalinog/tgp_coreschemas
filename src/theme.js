@@ -3,21 +3,19 @@ import { createTheme } from "@mui/material/styles";
 
 const theme = createTheme({
   typography: {
-    fontFamily: "'Helvetica Neue', sans-serif",
+    fontFamily: "'Inter', sans-serif",
   },
   components: {
     MuiDataGrid: {
       styleOverrides: {
         root: {
-          fontFamily: "'Helvetica Neue', sans-serif", // inherit theme font
+          fontFamily: "'Inter', sans-serif",
         },
         cell: {
-          fontFamily: "'Helvetica Neue', sans-serif",
-         
+          fontFamily: "'Inter', sans-serif",
         },
         columnHeaders: {
-          fontFamily: "'Helvetica Neue', sans-serif",
-          
+          fontFamily: "'Inter', sans-serif",
         },
       },
     },

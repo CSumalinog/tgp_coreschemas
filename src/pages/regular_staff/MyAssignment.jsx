@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Typography, CircularProgress, Chip, Button, Alert,
-  Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton, useTheme,
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
@@ -19,18 +19,19 @@ const STATUS_STYLES = {
 };
 
 export default function MyAssignment() {
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   const [currentUser, setCurrentUser]   = useState(null);
   const [assignments, setAssignments]   = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState("");
-  const [filter, setFilter]             = useState("All"); // All | Pending | Completed
+  const [filter, setFilter]             = useState("All");
 
-  // Confirm complete dialog
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [completing, setCompleting]       = useState(false);
   const [completeError, setCompleteError] = useState("");
 
-  // ── Load current user ──
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -45,7 +46,6 @@ export default function MyAssignment() {
     loadUser();
   }, []);
 
-  // ── Load assignments ──
   const loadAssignments = useCallback(async () => {
     if (!currentUser?.id) return;
     setLoading(true);
@@ -71,13 +71,11 @@ export default function MyAssignment() {
 
   useEffect(() => { loadAssignments(); }, [loadAssignments]);
 
-  // ── Mark as completed ──
   const handleComplete = async () => {
     if (!confirmTarget) return;
     setCompleting(true);
     setCompleteError("");
 
-    // 1. Mark this assignment as Completed
     const { error: updErr } = await supabase
       .from("coverage_assignments")
       .update({ status: "Completed" })
@@ -89,7 +87,6 @@ export default function MyAssignment() {
       return;
     }
 
-    // 2. Check if ALL assignments for this request are now Completed
     const { data: allAssignments } = await supabase
       .from("coverage_assignments")
       .select("status")
@@ -97,7 +94,6 @@ export default function MyAssignment() {
 
     const allDone = (allAssignments || []).every((a) => a.status === "Completed");
 
-    // 3. If all done → update request to "Coverage Complete"
     if (allDone) {
       await supabase
         .from("coverage_requests")
@@ -110,7 +106,6 @@ export default function MyAssignment() {
     loadAssignments();
   };
 
-  // ── Filter ──
   const filtered = filter === "All"
     ? assignments
     : assignments.filter((a) => a.status === filter);
@@ -127,14 +122,14 @@ export default function MyAssignment() {
   }
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
 
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
+        <Typography sx={{ fontWeight: 600, fontSize: "1.1rem", color: "text.primary" }}>
           My Assignments
         </Typography>
-        <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e", mt: 0.3 }}>
+        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 0.3 }}>
           All coverage assignments given to you this semester.
         </Typography>
       </Box>
@@ -156,16 +151,16 @@ export default function MyAssignment() {
             sx={{
               textTransform: "none",
               fontSize: "0.82rem",
-              borderRadius: 2,
+              borderRadius: 1,
               px: 2,
               boxShadow: "none",
-              borderColor: "#e0e0e0",
-              color: filter === tab.label ? "#212121" : "#757575",
-              backgroundColor: filter === tab.label ? "#f5c52b" : "white",
+              borderColor: isDark ? "#444" : "#e0e0e0",
+              color: filter === tab.label ? "#212121" : "text.secondary",
+              backgroundColor: filter === tab.label ? "#f5c52b" : "background.paper",
               "&:hover": {
-                backgroundColor: filter === tab.label ? "#e6b920" : "#f5f5f5",
+                backgroundColor: filter === tab.label ? "#e6b920" : isDark ? "#2a2a2a" : "#f5f5f5",
                 boxShadow: "none",
-                borderColor: "#e0e0e0",
+                borderColor: isDark ? "#444" : "#e0e0e0",
               },
             }}
           >
@@ -173,14 +168,10 @@ export default function MyAssignment() {
             <Box
               component="span"
               sx={{
-                ml: 0.8,
-                px: 0.8,
-                py: 0.1,
-                borderRadius: 10,
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                backgroundColor: filter === tab.label ? "rgba(0,0,0,0.1)" : "#f5f5f5",
-                color: filter === tab.label ? "#212121" : "#9e9e9e",
+                ml: 0.8, px: 0.8, py: 0.1, borderRadius: 10,
+                fontSize: "0.72rem", fontWeight: 700,
+                backgroundColor: filter === tab.label ? "rgba(0,0,0,0.1)" : isDark ? "#333" : "#f5f5f5",
+                color: filter === tab.label ? "#212121" : "text.secondary",
               }}
             >
               {tab.count}
@@ -190,11 +181,11 @@ export default function MyAssignment() {
       </Box>
 
       {/* Assignment list */}
-      <Box sx={{ bgcolor: "white", borderRadius: 2, border: "1px solid #e0e0e0", overflow: "hidden" }}>
+      <Box sx={{ bgcolor: "background.paper", borderRadius: 2, border: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", overflow: "hidden" }}>
         {filtered.length === 0 ? (
           <Box sx={{ p: 5, textAlign: "center" }}>
-            <AssignmentOutlinedIcon sx={{ fontSize: 40, color: "#e0e0e0", mb: 1 }} />
-            <Typography sx={{ fontSize: "0.88rem", color: "#bdbdbd" }}>
+            <AssignmentOutlinedIcon sx={{ fontSize: 40, color: isDark ? "#444" : "#e0e0e0", mb: 1 }} />
+            <Typography sx={{ fontSize: "0.88rem", color: "text.disabled" }}>
               {filter === "All" ? "No assignments yet." : `No ${filter.toLowerCase()} assignments.`}
             </Typography>
           </Box>
@@ -203,30 +194,17 @@ export default function MyAssignment() {
             <Box
               key={a.id}
               sx={{
-                px: 3,
-                py: 2.5,
-                borderBottom: idx < filtered.length - 1 ? "1px solid #f5f5f5" : "none",
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: 2,
+                px: 3, py: 2.5,
+                borderBottom: idx < filtered.length - 1 ? `1px solid ${isDark ? "#2e2e2e" : "#f5f5f5"}` : "none",
+                display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2,
               }}
             >
-              {/* Left: event info */}
               <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                  <Typography sx={{ fontWeight: 600, fontSize: "0.92rem", color: "#212121" }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: "0.92rem", color: "text.primary" }}>
                     {a.request?.title || "—"}
                   </Typography>
-                  <Chip
-                    label={a.status}
-                    size="small"
-                    sx={{
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      ...STATUS_STYLES[a.status],
-                    }}
-                  />
+                  <Chip label={a.status} size="small" sx={{ fontSize: "0.72rem", fontWeight: 600, ...STATUS_STYLES[a.status] }} />
                 </Box>
 
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 0.8 }}>
@@ -235,51 +213,45 @@ export default function MyAssignment() {
                     const weekend = d === 0 || d === 6;
                     return (
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
-                        <CalendarTodayOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                        <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>
+                        <CalendarTodayOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                        <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
                           {new Date(a.request.event_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                         </Typography>
                         {weekend && (
-                          <Chip
-                            label="Weekend"
-                            size="small"
-                            sx={{ fontSize: "0.68rem", fontWeight: 600, height: 18, backgroundColor: "#fff3e0", color: "#e65100" }}
-                          />
+                          <Chip label="Weekend" size="small" sx={{ fontSize: "0.68rem", fontWeight: 600, height: 18, backgroundColor: "#fff3e0", color: "#e65100" }} />
                         )}
                       </Box>
                     );
                   })()}
                   {a.request?.from_time && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <AccessTimeOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                      <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>
-                        {a.request.from_time}
-                        {a.request.to_time && ` — ${a.request.to_time}`}
+                      <AccessTimeOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
+                        {a.request.from_time}{a.request.to_time && ` — ${a.request.to_time}`}
                       </Typography>
                     </Box>
                   )}
                   {a.request?.venue && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <LocationOnOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                      <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>{a.request.venue}</Typography>
+                      <LocationOnOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>{a.request.venue}</Typography>
                     </Box>
                   )}
                   {a.request?.entity?.name && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                      <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>{a.request.entity.name}</Typography>
+                      <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>{a.request.entity.name}</Typography>
                     </Box>
                   )}
                 </Box>
 
                 {a.assigned_by_profile?.full_name && (
-                  <Typography sx={{ fontSize: "0.75rem", color: "#bdbdbd", mt: 0.8 }}>
+                  <Typography sx={{ fontSize: "0.75rem", color: "text.disabled", mt: 0.8 }}>
                     Assigned by {a.assigned_by_profile.full_name}
                   </Typography>
                 )}
               </Box>
 
-              {/* Right: action */}
               {a.status === "Pending" && (
                 <Button
                   size="small"
@@ -287,11 +259,8 @@ export default function MyAssignment() {
                   startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 15 }} />}
                   onClick={() => { setCompleteError(""); setConfirmTarget(a); }}
                   sx={{
-                    textTransform: "none",
-                    fontSize: "0.78rem",
-                    borderColor: "#a5d6a7",
-                    color: "#2e7d32",
-                    flexShrink: 0,
+                    textTransform: "none", fontSize: "0.78rem",
+                    borderColor: "#a5d6a7", color: "#2e7d32", flexShrink: 0,
                     "&:hover": { backgroundColor: "#e8f5e9", borderColor: "#2e7d32" },
                   }}
                 >
@@ -303,16 +272,16 @@ export default function MyAssignment() {
         )}
       </Box>
 
-      {/* ── Confirm Complete Dialog ── */}
+      {/* Confirm Complete Dialog */}
       <Dialog
         open={!!confirmTarget}
         onClose={() => !completing && setConfirmTarget(null)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ sx: { borderRadius: 3, backgroundColor: "background.paper" } }}
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>Mark as Completed</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "text.primary" }}>Mark as Completed</Typography>
           <IconButton size="small" onClick={() => setConfirmTarget(null)} disabled={completing}>
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -320,20 +289,16 @@ export default function MyAssignment() {
         <Divider />
         <DialogContent sx={{ pt: 2 }}>
           {completeError && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{completeError}</Alert>}
-          <Typography sx={{ fontSize: "0.88rem", color: "#212121" }}>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.primary" }}>
             Are you sure you want to mark <strong>{confirmTarget?.request?.title}</strong> as completed?
           </Typography>
-          <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e", mt: 1 }}>
+          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 1 }}>
             This confirms that you have finished covering this event. This action cannot be undone.
           </Typography>
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button
-            onClick={() => setConfirmTarget(null)}
-            disabled={completing}
-            sx={{ textTransform: "none", color: "#757575" }}
-          >
+          <Button onClick={() => setConfirmTarget(null)} disabled={completing} sx={{ textTransform: "none", color: "text.secondary" }}>
             Cancel
           </Button>
           <Button
@@ -341,11 +306,8 @@ export default function MyAssignment() {
             onClick={handleComplete}
             disabled={completing}
             sx={{
-              textTransform: "none",
-              fontWeight: 600,
-              backgroundColor: "#f5c52b",
-              color: "#212121",
-              boxShadow: "none",
+              textTransform: "none", fontWeight: 600,
+              backgroundColor: "#f5c52b", color: "#212121", boxShadow: "none",
               "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
             }}
           >

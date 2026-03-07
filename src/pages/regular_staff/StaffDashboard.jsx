@@ -1,7 +1,7 @@
 // src/pages/regular_staff/StaffDashboard.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Box, Typography, CircularProgress, Chip, Card, CardContent,
+  Box, Typography, CircularProgress, Chip, useTheme,
 } from "@mui/material";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -21,11 +21,14 @@ const getGreeting = () => {
 };
 
 export default function StaffDashboard() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
+  const [currentUser, setCurrentUser]     = useState(null);
   const [activeSemester, setActiveSemester] = useState(null);
-  const [dutySchedule, setDutySchedule] = useState(null);
-  const [assignments, setAssignments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [dutySchedule, setDutySchedule]   = useState(null);
+  const [assignments, setAssignments]     = useState([]);
+  const [loading, setLoading]             = useState(true);
 
   useEffect(() => {
     async function loadUser() {
@@ -98,15 +101,15 @@ export default function StaffDashboard() {
   }
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
 
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
+        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>
           {getGreeting()}, {currentUser.full_name?.split(" ")[0]} 👋
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
-          <Typography sx={{ fontSize: "0.8rem", color: "#757575" }}>
+          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
             {currentUser.section} · {currentUser.division}
           </Typography>
           {dutySchedule ? (
@@ -114,13 +117,13 @@ export default function StaffDashboard() {
               icon={<CalendarTodayOutlinedIcon sx={{ fontSize: "13px !important" }} />}
               label={`Duty day: ${DAY_LABELS[dutySchedule.duty_day]}s`}
               size="small"
-              sx={{ fontSize: "0.75rem", backgroundColor: "#fffde7", color: "#f57c00", fontWeight: 600, border: "1px solid #f5c52b" }}
+              sx={{ fontSize: "0.75rem", backgroundColor: isDark ? "#2a2200" : "#fffde7", color: "#f57c00", fontWeight: 600, border: "1px solid #f5c52b" }}
             />
           ) : (
             <Chip
               label="No duty day set"
               size="small"
-              sx={{ fontSize: "0.75rem", backgroundColor: "#fafafa", color: "#bdbdbd", border: "1px solid #e0e0e0" }}
+              sx={{ fontSize: "0.75rem", backgroundColor: isDark ? "#2a2a2a" : "#fafafa", color: "text.disabled", border: isDark ? "1px solid #333" : "1px solid #e0e0e0" }}
             />
           )}
         </Box>
@@ -129,27 +132,27 @@ export default function StaffDashboard() {
       {/* Stat cards */}
       <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
         {[
-          { label: "Total Assignments", value: total,     icon: <AssignmentOutlinedIcon />,   bg: "#e3f2fd", color: "#1565c0" },
-          { label: "Pending",           value: pending,   icon: <AccessTimeOutlinedIcon />,    bg: "#fff3e0", color: "#e65100" },
-          { label: "Completed",         value: completed, icon: <CheckCircleOutlineIcon />,    bg: "#e8f5e9", color: "#2e7d32" },
+          { label: "Total Assignments", value: total,     icon: <AssignmentOutlinedIcon />, bg: isDark ? "#0d2137" : "#e3f2fd", color: "#1565c0" },
+          { label: "Pending",           value: pending,   icon: <AccessTimeOutlinedIcon />, bg: isDark ? "#2a1a00" : "#fff3e0", color: "#e65100" },
+          { label: "Completed",         value: completed, icon: <CheckCircleOutlineIcon />, bg: isDark ? "#0a2210" : "#e8f5e9", color: "#2e7d32" },
         ].map((stat) => (
           <Box
             key={stat.label}
             sx={{
               flex: "1 1 160px",
-              bgcolor: "white",
+              bgcolor: "background.paper",
               borderRadius: 2,
-              border: "1px solid #e0e0e0",
+              border: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0",
               p: 2.5,
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-              <Typography sx={{ fontSize: "0.78rem", color: "#9e9e9e" }}>{stat.label}</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>{stat.label}</Typography>
               <Box sx={{ p: 0.8, borderRadius: 1.5, backgroundColor: stat.bg, color: stat.color, display: "flex" }}>
                 {React.cloneElement(stat.icon, { sx: { fontSize: 16 } })}
               </Box>
             </Box>
-            <Typography sx={{ fontSize: "1.8rem", fontWeight: 700, color: "#212121", lineHeight: 1 }}>
+            <Typography sx={{ fontSize: "1.8rem", fontWeight: 700, color: "text.primary", lineHeight: 1 }}>
               {stat.value}
             </Typography>
           </Box>
@@ -157,15 +160,15 @@ export default function StaffDashboard() {
       </Box>
 
       {/* Recent assignments */}
-      <Typography sx={{ fontSize: "0.8rem", color: "#757575", mb: 1.5 }}>
+      <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mb: 1.5 }}>
         Recent assignments — showing latest 5
       </Typography>
 
-      <Box sx={{ bgcolor: "white", borderRadius: 2, border: "1px solid #e0e0e0", overflow: "hidden" }}>
+      <Box sx={{ bgcolor: "background.paper", borderRadius: 2, border: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", overflow: "hidden" }}>
         {assignments.length === 0 ? (
           <Box sx={{ p: 4, textAlign: "center" }}>
-            <AssignmentOutlinedIcon sx={{ fontSize: 36, color: "#e0e0e0", mb: 1 }} />
-            <Typography sx={{ fontSize: "0.88rem", color: "#bdbdbd" }}>
+            <AssignmentOutlinedIcon sx={{ fontSize: 36, color: isDark ? "#444" : "#e0e0e0", mb: 1 }} />
+            <Typography sx={{ fontSize: "0.88rem", color: "text.disabled" }}>
               No assignments yet.
             </Typography>
           </Box>
@@ -174,24 +177,20 @@ export default function StaffDashboard() {
             <Box
               key={a.id}
               sx={{
-                px: 2.5,
-                py: 2,
-                borderBottom: idx < assignments.length - 1 ? "1px solid #f5f5f5" : "none",
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: 2,
+                px: 2.5, py: 2,
+                borderBottom: idx < assignments.length - 1 ? `1px solid ${isDark ? "#2e2e2e" : "#f5f5f5"}` : "none",
+                display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2,
               }}
             >
               <Box sx={{ flex: 1 }}>
-                <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", color: "#212121", mb: 0.5 }}>
+                <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", color: "text.primary", mb: 0.5 }}>
                   {a.request?.title || "—"}
                 </Typography>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
                   {a.request?.event_date && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <CalendarTodayOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                      <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>
+                      <CalendarTodayOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
                         {new Date(a.request.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         {a.request.from_time && ` · ${a.request.from_time}`}
                       </Typography>
@@ -199,19 +198,19 @@ export default function StaffDashboard() {
                   )}
                   {a.request?.venue && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <LocationOnOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                      <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>{a.request.venue}</Typography>
+                      <LocationOnOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>{a.request.venue}</Typography>
                     </Box>
                   )}
                   {a.request?.entity?.name && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "#9e9e9e" }} />
-                      <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>{a.request.entity.name}</Typography>
+                      <PersonOutlineOutlinedIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>{a.request.entity.name}</Typography>
                     </Box>
                   )}
                 </Box>
                 {a.assigned_by_profile?.full_name && (
-                  <Typography sx={{ fontSize: "0.75rem", color: "#bdbdbd", mt: 0.5 }}>
+                  <Typography sx={{ fontSize: "0.75rem", color: "text.disabled", mt: 0.5 }}>
                     Assigned by {a.assigned_by_profile.full_name}
                   </Typography>
                 )}
@@ -220,9 +219,7 @@ export default function StaffDashboard() {
                 label={a.status}
                 size="small"
                 sx={{
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  flexShrink: 0,
+                  fontSize: "0.75rem", fontWeight: 600, flexShrink: 0,
                   backgroundColor: a.status === "Completed" ? "#e8f5e9" : "#fff3e0",
                   color: a.status === "Completed" ? "#2e7d32" : "#e65100",
                 }}

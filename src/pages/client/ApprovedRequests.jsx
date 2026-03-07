@@ -10,6 +10,7 @@ import {
   Typography,
   Divider,
   Tooltip,
+  useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -74,13 +75,13 @@ const mockRequests = [
 ];
 
 export default function ApprovedRequest() {
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const contentRef = useRef(); // ref for PDF
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
-  // ✅ ADDED: hides icons while exporting
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const contentRef = useRef();
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // ✅ ADDED: Paper wrapper so we can attach ref to the whole Dialog
   const PaperWithRef = React.forwardRef(function PaperWithRef(props, ref) {
     return <Box ref={ref} {...props} />;
   });
@@ -94,10 +95,7 @@ export default function ApprovedRequest() {
 
   const handleDownload = () => {
     if (!contentRef.current) return;
-
     setIsDownloading(true);
-
-    // wait for React to re-render (icons hidden)
     setTimeout(() => {
       html2canvas(contentRef.current, {
         scale: 2,
@@ -109,7 +107,6 @@ export default function ApprovedRequest() {
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${selectedReceipt.eventTitle}_receipt.pdf`);
-
         setIsDownloading(false);
       });
     }, 100);
@@ -123,23 +120,8 @@ export default function ApprovedRequest() {
       headerName: "Status",
       flex: 1,
       renderCell: (params) => (
-        <Box
-          sx={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-          }}
-        >
-          <Typography
-            sx={{
-              fontWeight: 500,
-              color: "#388e3c",
-              textTransform: "uppercase",
-              fontSize: "0.9rem",
-            }}
-          >
+        <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+          <Typography sx={{ fontWeight: 500, color: "#388e3c", textTransform: "uppercase", fontSize: "0.9rem" }}>
             {params.value}
           </Typography>
         </Box>
@@ -151,11 +133,7 @@ export default function ApprovedRequest() {
       flex: 1,
       sortable: false,
       renderCell: (params) => (
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => handleView(params.row)}
-        >
+        <Button variant="outlined" size="small" onClick={() => handleView(params.row)}>
           View Receipt
         </Button>
       ),
@@ -163,23 +141,8 @@ export default function ApprovedRequest() {
   ];
 
   return (
-    <Box
-      sx={{
-        p: 3,
-        height: "100%",
-        boxSizing: "border-box",
-        backgroundColor: "#f9f9f9",
-      }}
-    >
-      <Box
-        sx={{
-          height: 500,
-          width: "100%",
-          bgcolor: "white",
-          borderRadius: 2,
-          boxShadow: 1,
-        }}
-      >
+    <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default" }}>
+      <Box sx={{ height: 500, width: "100%", bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
         <DataGrid
           rows={approvedRequests}
           columns={columns}
@@ -187,12 +150,19 @@ export default function ApprovedRequest() {
           rowsPerPageOptions={[5]}
           disableSelectionOnClick
           sx={{
-            "& .MuiDataGrid-cell": { outline: "none" },
-            "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f5f5f5" },
+            border: "none",
+            backgroundColor: "background.paper",
+            color: "text.primary",
+            "& .MuiDataGrid-cell": { outline: "none", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+            "& .MuiDataGrid-columnHeaders": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+            "& .MuiDataGrid-footerContainer": { backgroundColor: isDark ? "#1e1e1e" : "#fff", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+            "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+            "& .MuiTablePagination-root": { color: "text.secondary" },
           }}
         />
       </Box>
 
+      {/* ─── Dialog — backgroundColor kept white for PDF capture ─── */}
       <Dialog
         open={!!selectedReceipt}
         onClose={handleClose}
@@ -205,193 +175,85 @@ export default function ApprovedRequest() {
             fontFamily: "'Helvetica Neue', sans-serif",
             position: "relative",
             borderRadius: 4,
-            width: 500, // fixed width in px
-            height: 350, // fixed height in px
-            backgroundColor: "#fff", // ✅ FIX: prevent dark translucent capture
+            width: 500,
+            height: 350,
+            backgroundColor: "#fff", // ✅ kept as-is for PDF export
           },
         }}
       >
-        {/* ✅ HIDE close icon in PDF */}
         {!isDownloading && (
           <IconButton
             aria-label="close"
             onClick={handleClose}
-            sx={{
-              position: "absolute",
-              right: 8,
-              top: 8,
-              color: "#757575",
-              zIndex: 10,
-            }}
+            sx={{ position: "absolute", right: 8, top: 8, color: "#757575", zIndex: 10 }}
           >
             <CloseIcon />
           </IconButton>
         )}
 
-        <DialogTitle
-          sx={{
-            textAlign: "center",
-            fontWeight: "bold",
-            fontSize: "1.22rem",
-            pb: 0.5,
-            pt: 2,
-          }}
-        >
+        <DialogTitle sx={{ textAlign: "center", fontWeight: "bold", fontSize: "1.22rem", pb: 0.5, pt: 2 }}>
           COVERAGE REQUEST RECEIPT
-          <Typography
-            sx={{
-              fontWeight: 400,
-              fontSize: "0.7rem",
-              mt: 0.5,
-              color: "#616161",
-            }}
-          >
+          <Typography sx={{ fontWeight: 400, fontSize: "0.7rem", mt: 0.5, color: "#616161" }}>
             Date Issued: 2026-02-17 | Receipt ID: REC-2026-02-17-002
           </Typography>
         </DialogTitle>
 
-        <DialogContent
-          sx={{
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
-            justifyContent: "center", // vertical center
-            alignItems: "center", // horizontal center
-          }}
-        >
+        <DialogContent sx={{ position: "relative", display: "flex", flexDirection: "column", gap: 1, justifyContent: "center", alignItems: "center" }}>
           {selectedReceipt && (
-            <Box
-              sx={{
-                position: "relative",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
+            <Box sx={{ position: "relative", display: "flex", flexDirection: "column" }}>
               {/* APPROVED STAMP */}
               <Typography
                 sx={{
-                  position: "absolute",
-                  top: "40%",
-                  left: "50%",
+                  position: "absolute", top: "40%", left: "50%",
                   transform: "translate(-50%, -40%) rotate(-30deg)",
-                  fontSize: "3.5rem",
-                  fontWeight: 800,
-                  color: "#2e7d32",
-                  opacity: 0.2,
-                  letterSpacing: 1,
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  whiteSpace: "nowrap",
+                  fontSize: "3.5rem", fontWeight: 800, color: "#2e7d32",
+                  opacity: 0.2, letterSpacing: 1, pointerEvents: "none",
+                  userSelect: "none", whiteSpace: "nowrap",
                 }}
               >
                 APPROVED
               </Typography>
 
               {/* 2-column layout */}
-              <Box
-                sx={{
-                  marginLeft: 3,
-                  display: "grid",
-                  gridTemplateColumns: "1.2fr 2.8fr",
-                  columnGap: .5,
-                  rowGap: 0.2,
-                  alignItems: "center",
-                }}
-              >
-                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-                  Event Title:
-                </Typography>
-                <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                  {selectedReceipt.eventTitle}
-                </Typography>
+              <Box sx={{ marginLeft: 3, display: "grid", gridTemplateColumns: "1.2fr 2.8fr", columnGap: 0.5, rowGap: 0.2, alignItems: "center" }}>
+                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>Event Title:</Typography>
+                <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{selectedReceipt.eventTitle}</Typography>
 
-                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-                  Date & Time:
-                </Typography>
+                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>Date & Time:</Typography>
                 <Typography sx={{ fontSize: "0.85rem" }}>
-                  {selectedReceipt.details.requestedDate} •{" "}
-                  {selectedReceipt.details.timeRange}
+                  {selectedReceipt.details.requestedDate} • {selectedReceipt.details.timeRange}
                 </Typography>
 
-                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-                  Venue:
-                </Typography>
-                <Typography sx={{ fontSize: "0.85rem" }}>
-                  {selectedReceipt.details.location}
-                </Typography>
+                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>Venue:</Typography>
+                <Typography sx={{ fontSize: "0.85rem" }}>{selectedReceipt.details.location}</Typography>
 
-                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-                  Assigned Staff:
-                </Typography>
+                <Typography sx={{ fontSize: "0.85rem", color: "#9e9e9e" }}>Assigned Staff:</Typography>
 
-                {/* Assigned Staff 3-column */}
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 2fr",
-                    gap: 0,
-                    mt: 0.5,
-                  }}
-                >
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 0, mt: 0.5 }}>
                   {selectedReceipt.details.coverageComponents.map((c, idx) =>
                     Array.from({ length: c.pax }, (_, i) => (
                       <React.Fragment key={`${idx}-${i}`}>
-                        <Typography
-                          sx={{ fontSize: "0.85rem", fontWeight: 500 }}
-                        >
-                          {c.name}
-                        </Typography>
-                        <Typography sx={{ fontSize: "0.85rem" }}>
-                          John Doe{i + 1}
-                        </Typography>
-                        <Typography
-                          sx={{ fontSize: "0.85rem", color: "#616161" }}
-                        >
-                          fb.com/johndoe{i + 1}
-                        </Typography>
+                        <Typography sx={{ fontSize: "0.85rem", fontWeight: 500 }}>{c.name}</Typography>
+                        <Typography sx={{ fontSize: "0.85rem" }}>John Doe{i + 1}</Typography>
+                        <Typography sx={{ fontSize: "0.85rem", color: "#616161" }}>fb.com/johndoe{i + 1}</Typography>
                       </React.Fragment>
                     )),
                   )}
                 </Box>
               </Box>
 
-              {/* Notes + Download icon */}
               <Divider sx={{ my: 1 }} />
-              <Box
-                sx={{
-                  marginLeft: 3,
-                  display: "grid",
-                  gridTemplateColumns: ".5fr 3fr .5fr",
-                  columnGap: 0.5,
-                  rowGap: 0,
-                  alignItems: "start",
-                  width: "100%",
-                }}
-              >
-                <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>
-                  Notes:
-                </Typography>
+              <Box sx={{ marginLeft: 3, display: "grid", gridTemplateColumns: ".5fr 3fr .5fr", columnGap: 0.5, rowGap: 0, alignItems: "start", width: "100%" }}>
+                <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>Notes:</Typography>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                  <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>
-                    This request has been approved by the Admin.
-                  </Typography>
-                  <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>
-                    Any changes must be coordinated with the coverage team.
-                  </Typography>
-                  <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>
-                    Keep this receipt for reference.
-                  </Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>This request has been approved by the Admin.</Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>Any changes must be coordinated with the coverage team.</Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "#9e9e9e" }}>Keep this receipt for reference.</Typography>
                 </Box>
 
-                {/* ✅ HIDE download icon in PDF */}
                 {!isDownloading && (
                   <Tooltip title="Download Receipt" arrow>
-                    <IconButton
-                      onClick={handleDownload}
-                      sx={{ color: "#2e7d32" }}
-                      size="small"
-                    >
+                    <IconButton onClick={handleDownload} sx={{ color: "#2e7d32" }} size="small">
                       <DownloadIcon />
                     </IconButton>
                   </Tooltip>

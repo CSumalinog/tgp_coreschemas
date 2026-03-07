@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Button, Typography, CircularProgress, Dialog, DialogTitle,
   DialogContent, DialogActions, Chip, Alert, IconButton, Divider,
-  TextField, Switch, FormControlLabel, Card, CardContent,
+  TextField, Switch, FormControlLabel, Card, CardContent, useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
@@ -24,18 +24,19 @@ const EMPTY_FORM = {
 };
 
 export default function SemesterManagement() {
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   const [semesters, setSemesters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState("");
 
-  // Dialog
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(null); // null = create mode
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [editTarget, setEditTarget] = useState(null);
+  const [form, setForm]             = useState(EMPTY_FORM);
+  const [saving, setSaving]         = useState(false);
+  const [saveError, setSaveError]   = useState("");
 
-  // ── Load semesters ──
   const loadSemesters = useCallback(async () => {
     setLoading(true);
     const { data, error: fetchErr } = await supabase
@@ -49,7 +50,6 @@ export default function SemesterManagement() {
 
   useEffect(() => { loadSemesters(); }, [loadSemesters]);
 
-  // ── Open dialog ──
   const openCreate = () => {
     setEditTarget(null);
     setForm(EMPTY_FORM);
@@ -70,7 +70,6 @@ export default function SemesterManagement() {
     setDialogOpen(true);
   };
 
-  // ── Save ──
   const handleSave = async () => {
     if (!form.name.trim() || !form.start_date || !form.end_date) {
       setSaveError("Please fill in all fields.");
@@ -82,26 +81,17 @@ export default function SemesterManagement() {
     }
     setSaving(true);
     setSaveError("");
-
     try {
-      // If setting this semester as active, deactivate all others first
       if (form.is_active) {
         await supabase.from("semesters").update({ is_active: false }).neq("id", editTarget?.id ?? "");
       }
-
       if (editTarget) {
-        const { error: updErr } = await supabase
-          .from("semesters")
-          .update(form)
-          .eq("id", editTarget.id);
+        const { error: updErr } = await supabase.from("semesters").update(form).eq("id", editTarget.id);
         if (updErr) throw updErr;
       } else {
-        const { error: insErr } = await supabase
-          .from("semesters")
-          .insert(form);
+        const { error: insErr } = await supabase.from("semesters").insert(form);
         if (insErr) throw insErr;
       }
-
       setDialogOpen(false);
       loadSemesters();
     } catch (err) {
@@ -111,38 +101,41 @@ export default function SemesterManagement() {
     }
   };
 
-  // ── Quick toggle scheduling_open ──
   const toggleScheduling = async (row) => {
-    await supabase
-      .from("semesters")
-      .update({ scheduling_open: !row.scheduling_open })
-      .eq("id", row.id);
+    await supabase.from("semesters").update({ scheduling_open: !row.scheduling_open }).eq("id", row.id);
     loadSemesters();
   };
 
-  // ── Quick toggle is_active ──
   const toggleActive = async (row) => {
     if (!row.is_active) {
-      // Deactivate all, then activate this one
       await supabase.from("semesters").update({ is_active: false }).neq("id", row.id);
     }
-    await supabase
-      .from("semesters")
-      .update({ is_active: !row.is_active })
-      .eq("id", row.id);
+    await supabase.from("semesters").update({ is_active: !row.is_active }).eq("id", row.id);
     loadSemesters();
   };
 
-  // ── Summary cards ──
   const activeSemester = semesters.find((s) => s.is_active);
 
-  // ── Columns ──
+  const dataGridSx = {
+    border: "none",
+    fontFamily: "'Inter', sans-serif",
+    backgroundColor: "background.paper",
+    color: "text.primary",
+    "& .MuiDataGrid-virtualScroller":  { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-overlay":          { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-cell":             { fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", outline: "none", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-columnHeaders":    { fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-footerContainer":  { backgroundColor: "background.paper", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-row:hover":        { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+    "& .MuiTablePagination-root":      { color: "text.secondary" },
+  };
+
   const columns = [
     {
-      field: "name", headerName: "Semester", flex: 1.2,
+      field: "name", headerName: "Semester", flex: 1.2, minWidth: 160,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem", fontWeight: 500 }}>{params.value}</Typography>
+          <Typography sx={{ fontSize: "0.9rem", fontWeight: 500, color: "text.primary" }}>{params.value}</Typography>
           {params.row.is_active && (
             <Chip label="Active" size="small" sx={{ fontSize: "0.7rem", backgroundColor: "#e8f5e9", color: "#2e7d32", fontWeight: 600 }} />
           )}
@@ -150,27 +143,27 @@ export default function SemesterManagement() {
       ),
     },
     {
-      field: "start_date", headerName: "Start Date", flex: 0.8,
+      field: "start_date", headerName: "Start Date", flex: 0.8, minWidth: 120,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.88rem" }}>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.primary" }}>
             {params.value ? new Date(params.value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
           </Typography>
         </Box>
       ),
     },
     {
-      field: "end_date", headerName: "End Date", flex: 0.8,
+      field: "end_date", headerName: "End Date", flex: 0.8, minWidth: 120,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.88rem" }}>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.primary" }}>
             {params.value ? new Date(params.value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
           </Typography>
         </Box>
       ),
     },
     {
-      field: "scheduling_open", headerName: "Scheduling", flex: 0.8,
+      field: "scheduling_open", headerName: "Scheduling", flex: 0.8, minWidth: 110,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Chip
@@ -178,32 +171,30 @@ export default function SemesterManagement() {
             size="small"
             icon={params.value ? <LockOpenOutlinedIcon sx={{ fontSize: "14px !important" }} /> : <LockOutlinedIcon sx={{ fontSize: "14px !important" }} />}
             sx={{
-              fontSize: "0.78rem",
-              fontWeight: 600,
-              backgroundColor: params.value ? "#e3f2fd" : "#fafafa",
-              color: params.value ? "#1565c0" : "#9e9e9e",
+              fontSize: "0.78rem", fontWeight: 600,
+              backgroundColor: params.value ? "#e3f2fd" : isDark ? "#2a2a2a" : "#fafafa",
+              color: params.value ? "#1565c0" : "text.secondary",
               border: "1px solid",
-              borderColor: params.value ? "#90caf9" : "#e0e0e0",
+              borderColor: params.value ? "#90caf9" : isDark ? "#444" : "#e0e0e0",
             }}
           />
         </Box>
       ),
     },
     {
-      field: "actions", headerName: "Actions", flex: 1, sortable: false,
+      field: "actions", headerName: "Actions", flex: 2, minWidth: 300, sortable: false,
       renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, height: "100%" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, height: "100%", flexWrap: "nowrap" }}>
           <Button
             size="small"
             variant="outlined"
             onClick={() => toggleActive(params.row)}
             startIcon={params.row.is_active ? <CheckCircleOutlineIcon sx={{ fontSize: 14 }} /> : <RadioButtonUncheckedIcon sx={{ fontSize: 14 }} />}
             sx={{
-              textTransform: "none",
-              fontSize: "0.78rem",
-              borderColor: params.row.is_active ? "#a5d6a7" : "#e0e0e0",
-              color: params.row.is_active ? "#2e7d32" : "#9e9e9e",
-              "&:hover": { borderColor: "#2e7d32", color: "#2e7d32" },
+              textTransform: "none", fontSize: "0.78rem", whiteSpace: "nowrap",
+              borderColor: params.row.is_active ? "#a5d6a7" : isDark ? "#444" : "#e0e0e0",
+              color: params.row.is_active ? "#2e7d32" : "text.secondary",
+              "&:hover": { borderColor: "#2e7d32", color: "#2e7d32", backgroundColor: "#f1f8f1" },
             }}
           >
             {params.row.is_active ? "Active" : "Set Active"}
@@ -213,17 +204,16 @@ export default function SemesterManagement() {
             variant="outlined"
             onClick={() => toggleScheduling(params.row)}
             sx={{
-              textTransform: "none",
-              fontSize: "0.78rem",
-              borderColor: params.row.scheduling_open ? "#90caf9" : "#e0e0e0",
-              color: params.row.scheduling_open ? "#1565c0" : "#9e9e9e",
-              "&:hover": { borderColor: "#1565c0", color: "#1565c0" },
+              textTransform: "none", fontSize: "0.78rem", whiteSpace: "nowrap",
+              borderColor: params.row.scheduling_open ? "#90caf9" : isDark ? "#444" : "#e0e0e0",
+              color: params.row.scheduling_open ? "#1565c0" : "text.secondary",
+              "&:hover": { borderColor: "#1565c0", color: "#1565c0", backgroundColor: "#f0f6ff" },
             }}
           >
             {params.row.scheduling_open ? "Close" : "Open"} Scheduling
           </Button>
           <IconButton size="small" onClick={() => openEdit(params.row)}>
-            <EditOutlinedIcon sx={{ fontSize: 16, color: "#757575" }} />
+            <EditOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
           </IconButton>
         </Box>
       ),
@@ -233,14 +223,15 @@ export default function SemesterManagement() {
   const rows = semesters.map((s) => ({ ...s }));
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
+
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>
             Semester Management
           </Typography>
-          <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e", mt: 0.3 }}>
+          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 0.3 }}>
             Manage semesters and control when staffers can pick their duty days.
           </Typography>
         </Box>
@@ -249,11 +240,8 @@ export default function SemesterManagement() {
           startIcon={<AddIcon />}
           onClick={openCreate}
           sx={{
-            textTransform: "none",
-            backgroundColor: "#f5c52b",
-            color: "#212121",
-            fontWeight: 600,
-            boxShadow: "none",
+            textTransform: "none", backgroundColor: "#f5c52b", color: "#212121",
+            fontWeight: 500, boxShadow: "none", borderRadius: 3,
             "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
           }}
         >
@@ -265,7 +253,7 @@ export default function SemesterManagement() {
       {activeSemester && (
         <Card
           elevation={0}
-          sx={{ mb: 3, border: "1px solid #f5c52b", borderRadius: 2, backgroundColor: "#fffde7" }}
+          sx={{ mb: 3, border: "1px solid #f5c52b", borderRadius: 2, backgroundColor: isDark ? "#2a2200" : "#fffde7" }}
         >
           <CardContent sx={{ py: 1.5, px: 2.5, "&:last-child": { pb: 1.5 } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
@@ -273,30 +261,29 @@ export default function SemesterManagement() {
                 <Typography sx={{ fontSize: "0.72rem", color: "#f57c00", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Active Semester
                 </Typography>
-                <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "#212121" }}>
+                <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "text.primary" }}>
                   {activeSemester.name}
                 </Typography>
               </Box>
-              <Divider orientation="vertical" flexItem sx={{ borderColor: "#ffe082" }} />
+              <Divider orientation="vertical" flexItem sx={{ borderColor: isDark ? "#5a4a00" : "#ffe082" }} />
               <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "#9e9e9e" }}>Period</Typography>
-                <Typography sx={{ fontSize: "0.85rem", color: "#212121" }}>
+                <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>Period</Typography>
+                <Typography sx={{ fontSize: "0.85rem", color: "text.primary" }}>
                   {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   {" — "}
                   {new Date(activeSemester.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 </Typography>
               </Box>
-              <Divider orientation="vertical" flexItem sx={{ borderColor: "#ffe082" }} />
+              <Divider orientation="vertical" flexItem sx={{ borderColor: isDark ? "#5a4a00" : "#ffe082" }} />
               <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "#9e9e9e" }}>Scheduling</Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>Scheduling</Typography>
                 <Chip
                   label={activeSemester.scheduling_open ? "Open — Staffers can pick their day" : "Closed"}
                   size="small"
                   sx={{
-                    fontSize: "0.78rem",
-                    fontWeight: 600,
-                    backgroundColor: activeSemester.scheduling_open ? "#e3f2fd" : "#f5f5f5",
-                    color: activeSemester.scheduling_open ? "#1565c0" : "#9e9e9e",
+                    fontSize: "0.78rem", fontWeight: 600,
+                    backgroundColor: activeSemester.scheduling_open ? "#e3f2fd" : isDark ? "#2a2a2a" : "#f5f5f5",
+                    color: activeSemester.scheduling_open ? "#1565c0" : "text.secondary",
                   }}
                 />
               </Box>
@@ -308,7 +295,7 @@ export default function SemesterManagement() {
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
       {/* Table */}
-      <Box sx={{ bgcolor: "white", borderRadius: 2, boxShadow: 1 }}>
+      <Box sx={{ bgcolor: "background.paper", borderRadius: 2, boxShadow: 1, overflowX: "auto" }}>
         {loading ? (
           <Box sx={{ height: 400, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
@@ -319,14 +306,10 @@ export default function SemesterManagement() {
             columns={columns}
             pageSize={7}
             rowsPerPageOptions={[7]}
+            rowHeight={56}
             disableSelectionOnClick
             autoHeight
-            sx={{
-              border: "none",
-              fontFamily: "'Helvetica Neue', sans-serif",
-              "& .MuiDataGrid-cell": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none" },
-              "& .MuiDataGrid-columnHeaders": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem" },
-            }}
+            sx={dataGridSx}
           />
         )}
       </Box>
@@ -337,10 +320,10 @@ export default function SemesterManagement() {
         onClose={() => !saving && setDialogOpen(false)}
         fullWidth
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ sx: { borderRadius: 3, backgroundColor: "background.paper" } }}
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "1rem" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "text.primary" }}>
             {editTarget ? "Edit Semester" : "New Semester"}
           </Typography>
           <IconButton size="small" onClick={() => setDialogOpen(false)} disabled={saving}>
@@ -360,7 +343,7 @@ export default function SemesterManagement() {
             size="small"
             fullWidth
           />
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             <TextField
               label="Start Date"
               type="date"
@@ -369,6 +352,7 @@ export default function SemesterManagement() {
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
+              sx={{ flex: "1 1 140px" }}
             />
             <TextField
               label="End Date"
@@ -378,10 +362,11 @@ export default function SemesterManagement() {
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
+              sx={{ flex: "1 1 140px" }}
             />
           </Box>
 
-          <Box sx={{ display: "flex", gap: 3 }}>
+          <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
             <FormControlLabel
               control={
                 <Switch
@@ -390,7 +375,7 @@ export default function SemesterManagement() {
                   sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#f5c52b" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#f5c52b" } }}
                 />
               }
-              label={<Typography sx={{ fontSize: "0.88rem" }}>Set as Active Semester</Typography>}
+              label={<Typography sx={{ fontSize: "0.88rem", color: "text.primary" }}>Set as Active Semester</Typography>}
             />
             <FormControlLabel
               control={
@@ -400,7 +385,7 @@ export default function SemesterManagement() {
                   sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#1976d2" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#1976d2" } }}
                 />
               }
-              label={<Typography sx={{ fontSize: "0.88rem" }}>Open Scheduling</Typography>}
+              label={<Typography sx={{ fontSize: "0.88rem", color: "text.primary" }}>Open Scheduling</Typography>}
             />
           </Box>
 
@@ -413,7 +398,7 @@ export default function SemesterManagement() {
 
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving} sx={{ textTransform: "none", color: "#757575" }}>
+          <Button onClick={() => setDialogOpen(false)} disabled={saving} sx={{ textTransform: "none", color: "text.secondary" }}>
             Cancel
           </Button>
           <Button

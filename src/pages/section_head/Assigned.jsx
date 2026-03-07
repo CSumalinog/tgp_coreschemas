@@ -1,13 +1,13 @@
 // src/pages/sechead/Assigned.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Box, Typography, CircularProgress, Alert, Chip, Avatar,
+  Box, Typography, CircularProgress, Alert, Chip, Avatar, useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { supabase } from "../../lib/supabaseClient";
 
 const STATUS_STYLES = {
-  Assigned:           { backgroundColor: "#e3f2fd", color: "#1565c0" },
+  Assigned:            { backgroundColor: "#e3f2fd", color: "#1565c0" },
   "Coverage Complete": { backgroundColor: "#e8f5e9", color: "#2e7d32" },
 };
 
@@ -17,27 +17,25 @@ const getInitials = (name) => {
 };
 
 export default function SecHeadAssigned() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [requests, setRequests]       = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState("");
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
-  // ── Load current user ──
+  const [currentUser, setCurrentUser] = useState(null);
+  const [requests,    setRequests]    = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState("");
+
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, full_name, role, section, division")
-        .eq("id", user.id)
-        .single();
+        .from("profiles").select("id, full_name, role, section, division").eq("id", user.id).single();
       setCurrentUser(profile);
     }
     loadUser();
   }, []);
 
-  // ── Load assigned requests ──
   const loadRequests = useCallback(async () => {
     if (!currentUser?.section) return;
     setLoading(true);
@@ -63,7 +61,6 @@ export default function SecHeadAssigned() {
   useEffect(() => { if (currentUser) loadRequests(); }, [currentUser, loadRequests]);
 
   const rows = requests.map((req) => {
-    // Only assignments for this sec head's section
     const sectionAssignments = (req.coverage_assignments || []).filter(
       (a) => a.staffer?.section === currentUser?.section
     );
@@ -82,12 +79,25 @@ export default function SecHeadAssigned() {
     };
   });
 
+  const dataGridSx = {
+    border: "none",
+    fontFamily: "'Helvetica Neue', sans-serif",
+    fontSize: "0.9rem",
+    backgroundColor: "background.paper",
+    color: "text.primary",
+    "& .MuiDataGrid-cell":           { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-columnHeaders":  { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", backgroundColor: isDark ? "#2a2a2a" : "#fafafa", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-footerContainer":{ backgroundColor: isDark ? "#1e1e1e" : "#fff", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
+    "& .MuiDataGrid-row:hover":      { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+    "& .MuiTablePagination-root":    { color: "text.secondary" },
+  };
+
   const columns = [
     {
       field: "title", headerName: "Event Title", flex: 1.3,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem" }}>{params.value}</Typography>
+          <Typography sx={{ fontSize: "0.9rem", color: "text.primary" }}>{params.value}</Typography>
         </Box>
       ),
     },
@@ -95,7 +105,7 @@ export default function SecHeadAssigned() {
       field: "client", headerName: "Client", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem" }}>{params.value}</Typography>
+          <Typography sx={{ fontSize: "0.9rem", color: "text.primary" }}>{params.value}</Typography>
         </Box>
       ),
     },
@@ -103,28 +113,20 @@ export default function SecHeadAssigned() {
       field: "eventDate", headerName: "Event Date", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem" }}>{params.value}</Typography>
+          <Typography sx={{ fontSize: "0.9rem", color: "text.primary" }}>{params.value}</Typography>
         </Box>
       ),
     },
     {
-      field: "staffers", headerName: "Assigned Staffers", flex: 1.2,
-      sortable: false,
+      field: "staffers", headerName: "Assigned Staffers", flex: 1.2, sortable: false,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, height: "100%", flexWrap: "wrap" }}>
           {params.value.length === 0 ? (
-            <Typography sx={{ fontSize: "0.82rem", color: "#bdbdbd" }}>—</Typography>
+            <Typography sx={{ fontSize: "0.82rem", color: "text.secondary" }}>—</Typography>
           ) : (
             params.value.map((a) => (
-              <Avatar
-                key={a.id}
-                title={a.staffer?.full_name}
-                sx={{
-                  width: 28, height: 28, fontSize: "0.68rem", fontWeight: 700,
-                  backgroundColor: a.status === "Completed" ? "#a5d6a7" : "#f5c52b",
-                  color: "#212121",
-                }}
-              >
+              <Avatar key={a.id} title={a.staffer?.full_name}
+                sx={{ width: 28, height: 28, fontSize: "0.68rem", fontWeight: 700, backgroundColor: a.status === "Completed" ? "#a5d6a7" : "#f5c52b", color: "#212121" }}>
                 {getInitials(a.staffer?.full_name)}
               </Avatar>
             ))
@@ -136,7 +138,7 @@ export default function SecHeadAssigned() {
       field: "completedCount", headerName: "Progress", flex: 0.7,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.88rem", color: params.row.completedCount === params.row.totalCount ? "#2e7d32" : "#757575", fontWeight: 500 }}>
+          <Typography sx={{ fontSize: "0.88rem", color: params.row.completedCount === params.row.totalCount ? "#2e7d32" : "text.secondary", fontWeight: 500 }}>
             {params.row.completedCount}/{params.row.totalCount} done
           </Typography>
         </Box>
@@ -146,15 +148,8 @@ export default function SecHeadAssigned() {
       field: "status", headerName: "Status", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Chip
-            label={params.value}
-            size="small"
-            sx={{
-              fontSize: "0.78rem",
-              fontWeight: 600,
-              ...(STATUS_STYLES[params.value] || { backgroundColor: "#f5f5f5", color: "#757575" }),
-            }}
-          />
+          <Chip label={params.value} size="small"
+            sx={{ fontSize: "0.78rem", fontWeight: 600, ...(STATUS_STYLES[params.value] || { backgroundColor: "#f5f5f5", color: "#757575" }) }} />
         </Box>
       ),
     },
@@ -167,38 +162,23 @@ export default function SecHeadAssigned() {
   );
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
       <Box sx={{ mb: 2 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
-          Assigned
-        </Typography>
-        <Typography sx={{ fontSize: "0.8rem", color: "#757575", mt: 0.3 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>Assigned</Typography>
+        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 0.3 }}>
           Requests assigned to your section ({currentUser.section}) currently in progress or completed by your team.
         </Typography>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
-      <Box sx={{ height: 500, width: "100%", bgcolor: "white", borderRadius: 2, boxShadow: 1 }}>
+      <Box sx={{ height: 500, width: "100%", bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
         {loading ? (
           <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
           </Box>
         ) : (
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pageSize={7}
-            rowsPerPageOptions={[7]}
-            disableSelectionOnClick
-            sx={{
-              border: "none",
-              fontFamily: "'Helvetica Neue', sans-serif",
-              fontSize: "0.9rem",
-              "& .MuiDataGrid-cell": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none" },
-              "& .MuiDataGrid-columnHeaders": { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem" },
-            }}
-          />
+          <DataGrid rows={rows} columns={columns} pageSize={7} rowsPerPageOptions={[7]} disableSelectionOnClick sx={dataGridSx} />
         )}
       </Box>
     </Box>

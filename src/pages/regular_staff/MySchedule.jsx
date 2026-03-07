@@ -1,7 +1,7 @@
 // src/pages/regular_staff/MySchedule.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Box, Typography, CircularProgress, Alert, Button, Divider,
+  Box, Typography, CircularProgress, Alert, Button, Divider, useTheme,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -13,6 +13,9 @@ const DAY_SHORT  = ["MON", "TUE", "WED", "THU", "FRI"];
 const MAX_SLOTS  = 10;
 
 export default function MySchedule() {
+  const theme  = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   const [currentUser, setCurrentUser]           = useState(null);
   const [activeSemester, setActiveSemester]     = useState(null);
   const [slotCounts, setSlotCounts]             = useState([0, 0, 0, 0, 0]);
@@ -86,8 +89,8 @@ export default function MySchedule() {
 
     try {
       const countForDay = slotCounts[selectedDay];
-      const isChanging = existingSchedule && existingSchedule.duty_day !== selectedDay;
-      const isNew = !existingSchedule;
+      const isChanging  = existingSchedule && existingSchedule.duty_day !== selectedDay;
+      const isNew       = !existingSchedule;
 
       if ((isNew || isChanging) && countForDay >= MAX_SLOTS) {
         setSaveError(`${DAY_LABELS[selectedDay]} is already full (${MAX_SLOTS}/${MAX_SLOTS}). Please pick another day.`);
@@ -106,11 +109,7 @@ export default function MySchedule() {
       if (!existingSchedule || isChanging) {
         const { error: insErr } = await supabase
           .from("duty_schedules")
-          .insert({
-            staffer_id: currentUser.id,
-            semester_id: activeSemester.id,
-            duty_day: selectedDay,
-          });
+          .insert({ staffer_id: currentUser.id, semester_id: activeSemester.id, duty_day: selectedDay });
         if (insErr) throw insErr;
       }
 
@@ -124,8 +123,8 @@ export default function MySchedule() {
   };
 
   const schedulingClosed = activeSemester && !activeSemester.scheduling_open;
-  const noSemester = !loading && !activeSemester;
-  const hasChanged = selectedDay !== (existingSchedule?.duty_day ?? null);
+  const noSemester       = !loading && !activeSemester;
+  const hasChanged       = selectedDay !== (existingSchedule?.duty_day ?? null);
 
   if (!currentUser || loading) {
     return (
@@ -136,14 +135,14 @@ export default function MySchedule() {
   }
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f9f9f9", minHeight: "100%" }}>
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
 
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "#212121" }}>
+        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>
           My Duty Schedule
         </Typography>
-        <Typography sx={{ fontSize: "0.8rem", color: "#9e9e9e", mt: 0.3 }}>
+        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 0.3 }}>
           Pick one day — you'll be on duty every week of the semester on that day.
         </Typography>
       </Box>
@@ -159,22 +158,18 @@ export default function MySchedule() {
           {/* Semester info */}
           <Box
             sx={{
-              p: 2,
-              mb: 3,
-              borderRadius: 2,
+              p: 2, mb: 3, borderRadius: 2,
               border: "1px solid #f5c52b",
-              backgroundColor: "#fffde7",
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
+              backgroundColor: isDark ? "#2a2200" : "#fffde7",
+              display: "flex", alignItems: "center", gap: 1.5,
             }}
           >
             <EventAvailableOutlinedIcon sx={{ fontSize: 18, color: "#f57c00" }} />
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "#212121" }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>
                 {activeSemester.name}
               </Typography>
-              <Typography sx={{ fontSize: "0.78rem", color: "#757575" }}>
+              <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
                 {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                 {" — "}
                 {new Date(activeSemester.end_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -197,15 +192,15 @@ export default function MySchedule() {
             <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>Duty day saved successfully!</Alert>
           )}
 
-          {/* ── Weekly calendar grid ── */}
+          {/* Weekly calendar grid */}
           <Box
             sx={{
               display: "grid",
               gridTemplateColumns: "repeat(5, 1fr)",
-              border: "1px solid #e0e0e0",
+              border: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0",
               borderRadius: 2,
               overflow: "hidden",
-              backgroundColor: "white",
+              backgroundColor: "background.paper",
               mb: 3,
             }}
           >
@@ -214,15 +209,13 @@ export default function MySchedule() {
               <Box
                 key={short}
                 sx={{
-                  px: 1.5,
-                  py: 1.2,
-                  textAlign: "center",
-                  backgroundColor: "#fafafa",
-                  borderBottom: "1px solid #e0e0e0",
-                  borderRight: i < 4 ? "1px solid #e0e0e0" : "none",
+                  px: 1.5, py: 1.2, textAlign: "center",
+                  backgroundColor: isDark ? "#2a2a2a" : "#fafafa",
+                  borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0",
+                  borderRight: i < 4 ? (isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0") : "none",
                 }}
               >
-                <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "#9e9e9e", letterSpacing: 1 }}>
+                <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "text.secondary", letterSpacing: 1 }}>
                   {short}
                 </Typography>
               </Box>
@@ -230,9 +223,9 @@ export default function MySchedule() {
 
             {/* Day cells */}
             {DAY_LABELS.map((day, i) => {
-              const count     = slotCounts[i];
-              const isFull    = count >= MAX_SLOTS;
-              const isMyPick  = existingSchedule?.duty_day === i;
+              const count      = slotCounts[i];
+              const isFull     = count >= MAX_SLOTS;
+              const isMyPick   = existingSchedule?.duty_day === i;
               const isSelected = selectedDay === i;
               const isDisabled = schedulingClosed || (isFull && !isMyPick);
 
@@ -241,16 +234,14 @@ export default function MySchedule() {
                   key={day}
                   onClick={() => !isDisabled && setSelectedDay(i)}
                   sx={{
-                    px: 1.5,
-                    py: 2.5,
-                    textAlign: "center",
-                    borderRight: i < 4 ? "1px solid #e0e0e0" : "none",
+                    px: 1.5, py: 2.5, textAlign: "center",
+                    borderRight: i < 4 ? (isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0") : "none",
                     cursor: isDisabled ? "not-allowed" : "pointer",
                     backgroundColor: isSelected
-                      ? "#fffde7"
+                      ? isDark ? "#2a2200" : "#fffde7"
                       : isMyPick
-                      ? "#f1f8e9"
-                      : "white",
+                      ? isDark ? "#1a2e1a" : "#f1f8e9"
+                      : "background.paper",
                     borderTop: isSelected
                       ? "3px solid #f5c52b"
                       : isMyPick
@@ -259,38 +250,29 @@ export default function MySchedule() {
                     opacity: isDisabled && !isMyPick ? 0.45 : 1,
                     transition: "all 0.15s ease",
                     "&:hover": !isDisabled ? {
-                      backgroundColor: "#fffde7",
+                      backgroundColor: isDark ? "#2a2200" : "#fffde7",
                       borderTop: "3px solid #f5c52b",
                     } : {},
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 1.5,
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5,
                   }}
                 >
-                  {/* Selected checkmark or circle */}
                   <Box
                     sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isSelected ? "#f5c52b" : isMyPick ? "#a5d6a7" : "#f5f5f5",
+                      width: 32, height: 32, borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      backgroundColor: isSelected ? "#f5c52b" : isMyPick ? "#a5d6a7" : isDark ? "#333" : "#f5f5f5",
                       transition: "background-color 0.15s",
                     }}
                   >
                     {isSelected || isMyPick ? (
                       <CheckCircleIcon sx={{ fontSize: 16, color: "white" }} />
                     ) : (
-                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#e0e0e0" }} />
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: isDark ? "#555" : "#e0e0e0" }} />
                     )}
                   </Box>
 
-                  {/* Slot count */}
                   <Box>
-                    <Typography sx={{ fontSize: "0.72rem", color: isFull ? "#c62828" : "#9e9e9e", fontWeight: isFull ? 600 : 400 }}>
+                    <Typography sx={{ fontSize: "0.72rem", color: isFull ? "#c62828" : "text.secondary", fontWeight: isFull ? 600 : 400 }}>
                       {count}/{MAX_SLOTS}
                     </Typography>
                     {isFull && !isMyPick && (
@@ -301,8 +283,7 @@ export default function MySchedule() {
                     )}
                   </Box>
 
-                  {/* Slot fill bar */}
-                  <Box sx={{ width: "80%", height: 3, borderRadius: 2, backgroundColor: "#f0f0f0" }}>
+                  <Box sx={{ width: "80%", height: 3, borderRadius: 2, backgroundColor: isDark ? "#333" : "#f0f0f0" }}>
                     <Box
                       sx={{
                         height: "100%",
@@ -326,14 +307,11 @@ export default function MySchedule() {
               onClick={handleSave}
               disabled={saving || selectedDay === null || !hasChanged || schedulingClosed}
               sx={{
-                textTransform: "none",
-                fontWeight: 600,
-                backgroundColor: "#f5c52b",
-                color: "#212121",
-                boxShadow: "none",
-                px: 3,
+                textTransform: "none", fontWeight: 600,
+                backgroundColor: "#f5c52b", color: "#212121",
+                boxShadow: "none", px: 3,
                 "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
-                "&.Mui-disabled": { backgroundColor: "#f5f5f5", color: "#bdbdbd" },
+                "&.Mui-disabled": { backgroundColor: isDark ? "#333" : "#f5f5f5", color: isDark ? "#666" : "#bdbdbd" },
               }}
             >
               {saving
