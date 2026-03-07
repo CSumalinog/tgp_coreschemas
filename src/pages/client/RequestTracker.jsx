@@ -1,7 +1,7 @@
 // src/pages/client/RequestTracker.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Box, Typography, CircularProgress, Tab, Tabs, useTheme,
+  Box, Typography, CircularProgress, useTheme,
   Dialog, DialogContent, IconButton, Button, Stack, Chip, Divider,
 } from "@mui/material";
 import CloseIcon                   from "@mui/icons-material/Close";
@@ -26,23 +26,25 @@ const openFile = (filePath) => {
 
 // ── Pipeline config ───────────────────────────────────────────────────────────
 const PIPELINE_STAGES = [
-  { key: "Pending",   label: "Submitted",      sub: "Awaiting admin review" },
-  { key: "Forwarded", label: "Under Review",   sub: "Forwarded to section" },
-  { key: "Assigned",  label: "Staff Assigned", sub: "Staffers have been assigned" },
-  { key: "Approved",  label: "Approved",       sub: "Request completed" },
+  { key: "Pending",      label: "Submitted",       sub: "Awaiting admin review" },
+  { key: "Forwarded",    label: "Under Review",    sub: "Forwarded to section" },
+  { key: "Assigned",     label: "Staff Assigned",  sub: "Staffers have been assigned" },
+  { key: "For Approval", label: "For Approval",    sub: "Awaiting final admin sign-off" },
+  { key: "Approved",     label: "Approved",        sub: "Request completed" },
 ];
 
 const STATUS_CONFIG = {
-  Pending:   { bg: "#fef3c7", color: "#d97706" },
-  Forwarded: { bg: "#f3e8ff", color: "#7c3aed" },
-  Assigned:  { bg: "#fff7ed", color: "#c2410c" },
-  Approved:  { bg: "#dcfce7", color: "#15803d" },
-  Declined:  { bg: "#fee2e2", color: "#dc2626" },
-  Draft:     { bg: "#f3f4f6", color: "#6b7280" },
+  Pending:        { bg: "#fef3c7", color: "#d97706" },
+  Forwarded:      { bg: "#f3e8ff", color: "#7c3aed" },
+  Assigned:       { bg: "#fff7ed", color: "#c2410c" },
+  "For Approval": { bg: "#e0f2fe", color: "#0369a1" },
+  Approved:       { bg: "#dcfce7", color: "#15803d" },
+  Declined:       { bg: "#fee2e2", color: "#dc2626" },
+  Draft:          { bg: "#f3f4f6", color: "#6b7280" },
 };
 
 const getStageIndex = (status) => {
-  const map = { Pending: 0, Forwarded: 1, Assigned: 2, Approved: 3 };
+  const map = { Pending: 0, Forwarded: 1, Assigned: 2, "For Approval": 3, Approved: 4 };
   return map[status] ?? -1;
 };
 
@@ -62,26 +64,31 @@ export default function RequestTracker() {
       </Box>
 
       {/* Tabs */}
-      <Box sx={{ borderBottom: "1px solid", borderColor: "divider", mb: 3 }}>
-        <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          sx={{
-            minHeight: 40,
-            "& .MuiTab-root": {
-              textTransform: "none", fontSize: "0.82rem", fontWeight: 500,
-              minHeight: 40, px: 2, color: "text.secondary",
-            },
-            "& .Mui-selected": { color: "text.primary", fontWeight: 700 },
-            "& .MuiTabs-indicator": { backgroundColor: "#f5c52b", height: 2 },
-          }}
-        >
-          <Tab label="Pipeline" />
-          <Tab label="All Requests" />
-          <Tab label="Pending" />
-          <Tab label="Approved" />
-          <Tab label="Declined" />
-        </Tabs>
+      <Box sx={{ mb: 3, display: "flex", gap: 1, flexWrap: "wrap" }}>
+        {["Pipeline", "All Requests", "Pending", "Approved", "Declined"].map((label, idx) => (
+          <Box
+            key={label}
+            onClick={() => setTab(idx)}
+            sx={{
+              px: 2, py: 0.75, borderRadius: 1.5, cursor: "pointer",
+              fontSize: "0.82rem", fontWeight: tab === idx ? 700 : 500,
+              border: "1px solid",
+              borderColor: tab === idx ? "#f5c52b" : "divider",
+              backgroundColor: tab === idx
+                ? isDark ? "#2a2200" : "#fffbeb"
+                : "background.paper",
+              color: tab === idx ? "#d97706" : "text.secondary",
+              transition: "all 0.15s",
+              "&:hover": {
+                borderColor: "#f5c52b",
+                color: "#d97706",
+                backgroundColor: isDark ? "#2a2200" : "#fffbeb",
+              },
+            }}
+          >
+            {label}
+          </Box>
+        ))}
       </Box>
 
       {tab === 0 && <PipelineTab isDark={isDark} />}
@@ -100,7 +107,7 @@ function PipelineTab({ isDark }) {
 
   // Only show active (non-draft, non-declined) requests
   const active = requests.filter((r) =>
-    ["Pending", "Forwarded", "Assigned", "Approved"].includes(r.status)
+    ["Pending", "Forwarded", "Assigned", "For Approval", "Approved"].includes(r.status)
   );
 
   if (loading) return <Loader />;
@@ -174,8 +181,9 @@ function PipelineCard({ request, isDark, onClick }) {
             color: STATUS_CONFIG[request.status]?.color || "#6b7280",
             letterSpacing: "0.07em", textTransform: "uppercase",
           }}>
-            {request.status === "Forwarded" ? "Under Review" :
-             request.status === "Assigned"  ? "Staff Assigned" : request.status}
+            {request.status === "Forwarded"    ? "Under Review" :
+             request.status === "Assigned"     ? "Staff Assigned" :
+             request.status === "For Approval" ? "For Approval" : request.status}
           </Typography>
         </Box>
       </Box>
@@ -290,7 +298,7 @@ function AllRequestsTab({ isDark }) {
       },
     },
     {
-      field: "actions", headerName: "", flex: 0.6, sortable: false,
+      field: "actions", headerName: "Action", flex: 0.8, sortable: false,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Button variant="outlined" size="small" onClick={() => setSelected(p.row._raw)}
@@ -332,7 +340,7 @@ function PendingTab({ isDark }) {
     { field: "submissionDate", headerName: "Submitted",     flex: 1,   renderCell: (p) => <CellText>{p.value}</CellText> },
     { field: "eventDate",      headerName: "Event Date",    flex: 1,   renderCell: (p) => <CellText>{p.value}</CellText> },
     {
-      field: "actions", headerName: "", flex: 0.6, sortable: false,
+      field: "actions", headerName: "Action", flex: 0.8, sortable: false,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Button variant="outlined" size="small" onClick={() => setSelected(p.row._raw)}
@@ -373,7 +381,7 @@ function ApprovedTab({ isDark }) {
     { field: "submissionDate", headerName: "Submitted",   flex: 1,   renderCell: (p) => <CellText>{p.value}</CellText> },
     { field: "eventDate",      headerName: "Event Date",  flex: 1,   renderCell: (p) => <CellText>{p.value}</CellText> },
     {
-      field: "actions", headerName: "", flex: 0.6, sortable: false,
+      field: "actions", headerName: "Action", flex: 0.8, sortable: false,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Button variant="outlined" size="small" onClick={() => setSelected(p.row._raw)}
@@ -414,7 +422,7 @@ function DeclinedTab({ isDark }) {
     { field: "submissionDate", headerName: "Submitted",   flex: 1,   renderCell: (p) => <CellText>{p.value}</CellText> },
     { field: "eventDate",      headerName: "Event Date",  flex: 1,   renderCell: (p) => <CellText>{p.value}</CellText> },
     {
-      field: "actions", headerName: "", flex: 0.6, sortable: false,
+      field: "actions", headerName: "Action", flex: 0.8, sortable: false,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Button variant="outlined" size="small" onClick={() => setSelected(p.row._raw)}
@@ -477,7 +485,9 @@ function RequestDetailDialog({ open, onClose, request, isDark, showDeclineReason
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1, backgroundColor: statusCfg.bg, border: `1px solid ${statusCfg.color}30` }}>
             <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: statusCfg.color, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-              {request.status === "Forwarded" ? "Under Review" : request.status === "Assigned" ? "Staff Assigned" : request.status}
+              {request.status === "Forwarded"    ? "Under Review" :
+               request.status === "Assigned"     ? "Staff Assigned" :
+               request.status === "For Approval" ? "For Approval" : request.status}
             </Typography>
           </Box>
           <IconButton onClick={onClose} size="small" sx={{ color: "text.secondary" }}>

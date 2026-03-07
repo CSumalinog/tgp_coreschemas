@@ -1,8 +1,8 @@
 // src/pages/client/MyCalendar.jsx
 import React, { useState, useEffect } from "react";
-import { Box, Typography, IconButton, Tooltip, useTheme } from "@mui/material";
-import ArrowBackIosNewIcon  from "@mui/icons-material/ArrowBackIosNew";
-import ArrowForwardIosIcon  from "@mui/icons-material/ArrowForwardIos";
+import { Box, Typography, IconButton, Tooltip, Button, useTheme } from "@mui/material";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -12,19 +12,20 @@ const MAX_EVENTS_PER_DAY = 2;
 function getPhilippineHolidays(year) {
   const holidays = {};
   const fixedHolidays = {
-    "01-01": "New Year's Day", "05-01": "Labor Day", "06-12": "Independence Day",
-    "08-31": "National Heroes Day", "11-30": "Bonifacio Day",
-    "12-25": "Christmas Day", "12-30": "Rizal Day",
+    "01-01": "New Year's Day",         "05-01": "Labor Day",
+    "06-12": "Independence Day",       "08-31": "National Heroes Day",
+    "11-30": "Bonifacio Day",          "12-25": "Christmas Day",
+    "12-30": "Rizal Day",
   };
   const specialDays = {
     "02-25": "EDSA People Power Anniversary", "11-01": "All Saints' Day",
-    "11-02": "All Souls' Day", "12-08": "Feast of the Immaculate Conception",
-    "12-24": "Christmas Eve", "12-31": "New Year's Eve",
+    "11-02": "All Souls' Day",                "12-08": "Feast of the Immaculate Conception",
+    "12-24": "Christmas Eve",                 "12-31": "New Year's Eve",
   };
   Object.entries(fixedHolidays).forEach(([d, t]) => { holidays[`${year}-${d}`] = t; });
   Object.entries(specialDays).forEach(([d, t]) => { holidays[`${year}-${d}`] = t; });
 
-  const easter = calculateEaster(year);
+  const easter        = calculateEaster(year);
   const goodFriday    = new Date(easter); goodFriday.setDate(easter.getDate() - 2);
   const maundyThursday = new Date(easter); maundyThursday.setDate(easter.getDate() - 3);
   const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -51,6 +52,7 @@ function Calendar() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [eventMap,     setEventMap]     = useState({});
   const [blockedDates, setBlockedDates] = useState(new Set());
+  const [myRequestDates, setMyRequestDates] = useState(new Set());
 
   const PH_HOLIDAYS = getPhilippineHolidays(currentDate.getFullYear());
 
@@ -63,6 +65,7 @@ function Calendar() {
 
   const fetchMonthData = async (firstDay, lastDay) => {
     try {
+      // All requests (for slot counting)
       const { data: requests, error: reqError } = await supabase
         .from("coverage_requests").select("event_date")
         .in("status", ["Pending","Approved","Forwarded","Assigned"])
@@ -72,6 +75,21 @@ function Calendar() {
         requests.forEach(({ event_date }) => { map[event_date] = (map[event_date]||0)+1; });
         setEventMap(map);
       }
+
+      // Current user's own requests (for dot indicator)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: myReqs } = await supabase
+          .from("coverage_requests").select("event_date")
+          .eq("client_id", user.id)
+          .not("status", "eq", "Draft")
+          .gte("event_date", firstDay).lte("event_date", lastDay);
+        if (myReqs) {
+          setMyRequestDates(new Set(myReqs.map((r) => r.event_date)));
+        }
+      }
+
+      // Blocked dates
       const { data: blocked, error: blockedError } = await supabase
         .from("blocked_dates").select("start_date, end_date")
         .lte("start_date", lastDay).gte("end_date", firstDay);
@@ -89,9 +107,11 @@ function Calendar() {
   const getEventCount     = (iso) => eventMap[iso] || 0;
   const getRemainingSlots = (iso) => Math.max(0, MAX_EVENTS_PER_DAY - getEventCount(iso));
   const isBlocked         = (iso) => blockedDates.has(iso);
+  const hasMyRequest      = (iso) => myRequestDates.has(iso);
 
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1));
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1));
+  const goToToday = () => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
 
   const generateCalendarGrid = () => {
     const year=currentDate.getFullYear(), month=currentDate.getMonth();
@@ -113,7 +133,7 @@ function Calendar() {
   const calendarDays = generateCalendarGrid();
 
   const handleDateClick = (date) => {
-    if (date.cellDate < today || getRemainingSlots(date.iso) <= 0 || isBlocked(date.iso) || !date.isCurrentMonth) return;
+    if (!date.isCurrentMonth || date.cellDate < today || getRemainingSlots(date.iso) <= 0 || isBlocked(date.iso)) return;
     setSelectedDate(date.cellDate);
     setOpenDialog(true);
   };
@@ -124,92 +144,163 @@ function Calendar() {
   };
 
   return (
-    <Box sx={{ width: "100%", height: "100%", p: 3, pt: 2 }}>
+    <Box sx={{ width: "100%", height: "100%", p: { xs: 1.5, md: 3 }, pt: 2, boxSizing: "border-box" }}>
 
-      {/* Month Header */}
+      {/* ── Month Header ── */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <IconButton onClick={prevMonth}><ArrowBackIosNewIcon /></IconButton>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography fontSize="1rem" fontWeight="semibold" color="text.primary">
+        <IconButton onClick={prevMonth} size="small">
+          <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Typography sx={{ fontSize: { xs: "0.9rem", md: "1rem" }, fontWeight: 600, color: "text.primary" }}>
             {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
           </Typography>
-          <IconButton
-            onClick={() => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1))}
-            sx={{ border: "1px solid", borderColor: "divider", borderRadius: 6, minWidth: 80, padding: "6px 12px", "&:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" } }}
+          <Button
+            onClick={goToToday}
+            size="small"
+            variant="outlined"
+            sx={{
+              textTransform: "none", fontSize: "0.75rem", px: 1.5, py: 0.4,
+              borderColor: "divider", color: "text.secondary", borderRadius: 6,
+              "&:hover": { borderColor: "#f5c52b", color: "text.primary", backgroundColor: isDark ? "#2a2200" : "#fffbeb" },
+            }}
           >
-            <Typography sx={{ fontSize: "0.8rem", color: "text.primary" }}>Today</Typography>
-          </IconButton>
+            Today
+          </Button>
         </Box>
-        <IconButton onClick={nextMonth}><ArrowForwardIosIcon /></IconButton>
+
+        <IconButton onClick={nextMonth} size="small">
+          <ArrowForwardIosIcon sx={{ fontSize: 16 }} />
+        </IconButton>
       </Box>
 
-      {/* Weekday Header */}
+      {/* ── Weekday Header ── */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 0.5 }}>
         {DAYS.map((day) => (
-          <Typography key={day} align="center" fontWeight="semibold" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
+          <Typography key={day} align="center" sx={{
+            fontSize: { xs: "0.65rem", md: "0.8rem" },
+            fontWeight: 600, color: "text.secondary",
+          }}>
             {day}
           </Typography>
         ))}
       </Box>
 
-      {/* Calendar Grid */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
+      {/* ── Calendar Grid ── */}
+      <Box sx={{
+        display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
+        border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden",
+      }}>
         {calendarDays.map((date, idx) => {
-          const d = date.cellDate;
-          const isWeekend    = d.getDay() === 0 || d.getDay() === 6;
-          const holidayTitle = PH_HOLIDAYS[date.iso];
-          const isToday      = d.toDateString() === today.toDateString() && date.isCurrentMonth;
-          const isPast       = d < today;
+          const d              = date.cellDate;
+          const isWeekend      = d.getDay() === 0 || d.getDay() === 6;
+          const holidayTitle   = PH_HOLIDAYS[date.iso];
+          const isToday        = d.toDateString() === today.toDateString() && date.isCurrentMonth;
+          const isPast         = d < today;
           const remainingSlots = getRemainingSlots(date.iso);
-          const blocked      = isBlocked(date.iso);
-          const isDisabled   = isPast || remainingSlots <= 0 || blocked;
+          const blocked        = isBlocked(date.iso);
+          const hasRequest     = hasMyRequest(date.iso);
+          const isDisabled     = !date.isCurrentMonth || isPast || remainingSlots <= 0 || blocked;
+          const isClickable    = !isDisabled;
 
-          return (
-            <Box key={idx} onClick={() => handleDateClick(date)}
+          // Cell background
+          let cellBg = "background.paper";
+          if (isWeekend && date.isCurrentMonth)      cellBg = isDark ? "#1a1a1a" : "#f7f7f7";
+          if (!date.isCurrentMonth)                  cellBg = isDark ? "#141414" : "#fafafa";
+          if (blocked && date.isCurrentMonth)        cellBg = isDark ? "#1a0a0a" : "#fff5f5";
+
+          const tooltipTitle =
+            !date.isCurrentMonth   ? "" :
+            blocked                ? "Blocked by Admin" :
+            isPast                 ? "" :
+            remainingSlots === 0   ? "Fully booked" :
+            holidayTitle           ? holidayTitle :
+            "";
+
+          const cellContent = (
+            <Box
+              onClick={() => handleDateClick(date)}
               sx={{
-                minHeight: 95, p: 1,
-                color: date.isCurrentMonth ? "text.primary" : "text.secondary",
-                backgroundColor: isWeekend
-                  ? (isDark ? "#1a1a1a" : "#f5f5f5")
-                  : "background.paper",
+                minHeight: { xs: 60, sm: 75, md: 95 },
+                p: { xs: 0.5, md: 1 },
+                backgroundColor: cellBg,
                 borderRight: ".5px solid", borderBottom: ".5px solid", borderColor: "divider",
                 "&:nth-of-type(7n)":      { borderRight: "none" },
                 "&:nth-last-child(-n+7)": { borderBottom: "none" },
-                "&:hover": { backgroundColor: isDisabled ? undefined : (isDark ? "#2a2a2a" : "#fafafa") },
                 position: "relative",
-                cursor: isDisabled ? "not-allowed" : "pointer",
-                opacity: isPast ? 0.5 : 1,
+                cursor: isClickable ? "pointer" : "not-allowed",
+                opacity: !date.isCurrentMonth ? 0.4 : isPast ? 0.45 : 1,
+                transition: "background-color 0.15s",
+                ...(isClickable && {
+                  "&:hover": {
+                    backgroundColor: isDark ? "#2a2200" : "#fffbeb",
+                    "& .day-number-box": { backgroundColor: "#f5c52b", color: "#111827" },
+                  },
+                }),
               }}
             >
-              <Box sx={{ display: "flex", justifyContent: "center" }}>
-                <Tooltip title={holidayTitle || (blocked ? "Blocked by Admin" : "")} arrow>
-                  <Box sx={{
-                    minWidth: "100%", height: 22, px: 0.8,
+              {/* Day number */}
+              <Box sx={{ display: "flex", justifyContent: "center", mb: 0.3 }}>
+                <Box
+                  className="day-number-box"
+                  sx={{
+                    width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 },
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    borderRadius: 2,
-                    fontFamily: "'Helvetica', sans-serif", fontSize: "0.8rem",
+                    borderRadius: "50%", fontSize: { xs: "0.7rem", md: "0.8rem" },
+                    fontWeight: isToday ? 700 : 400,
+                    transition: "background-color 0.15s, color 0.15s",
                     color: "text.primary",
                     ...(isToday      && { backgroundColor: "#1976d2", color: "white" }),
                     ...(holidayTitle && !isToday && { backgroundColor: "#4caf50", color: "white" }),
-                    ...(blocked      && !isToday && { backgroundColor: "#d32f2f", color: "white" }),
-                  }}>
-                    {date.dayNumber}
-                  </Box>
-                </Tooltip>
+                    ...(blocked && date.isCurrentMonth && !isToday && { backgroundColor: "#d32f2f", color: "white" }),
+                  }}
+                >
+                  {date.dayNumber}
+                </Box>
               </Box>
 
+              {/* Status label — only current month, future dates */}
               {date.isCurrentMonth && !isPast && (
                 <Typography sx={{
-                  fontSize: ".65rem", textAlign: "center", mt: 0.5,
-                  color: blocked ? "#d32f2f" : remainingSlots === 0 ? "#d32f2f" : "text.secondary",
+                  fontSize: { xs: "0.55rem", md: "0.65rem" },
+                  textAlign: "center", lineHeight: 1.2,
+                  color:
+                    blocked              ? "#d32f2f" :
+                    remainingSlots === 0 ? "#d32f2f" :
+                    remainingSlots === 1 ? "#d97706" :
+                    "#15803d",
                 }}>
-                  {blocked ? "Unavailable" : remainingSlots === 0 ? "Fully Booked" : `Available Slots: ${remainingSlots}`}
+                  {blocked             ? "Unavailable"  :
+                   remainingSlots === 0 ? "Fully Booked" :
+                   remainingSlots === 1 ? "1 slot left"  :
+                   `${remainingSlots} slots open`}
                 </Typography>
+              )}
+
+              {/* My request dot indicator */}
+              {hasRequest && date.isCurrentMonth && (
+                <Box sx={{
+                  position: "absolute", bottom: 4, right: 5,
+                  width: 6, height: 6, borderRadius: "50%",
+                  backgroundColor: "#f5c52b",
+                  border: `1px solid ${isDark ? "#111" : "#fff"}`,
+                }} />
               )}
             </Box>
           );
+
+          return tooltipTitle ? (
+            <Tooltip key={idx} title={tooltipTitle} arrow placement="bottom" disableInteractive>
+              {cellContent}
+            </Tooltip>
+          ) : (
+            <React.Fragment key={idx}>{cellContent}</React.Fragment>
+          );
         })}
       </Box>
+
+
 
       <CoverageRequestDialog
         open={openDialog}

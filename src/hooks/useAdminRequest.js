@@ -7,12 +7,12 @@ import { fetchAllRequests } from "../services/adminRequestService";
  * Fetch once, filter locally.
  *
  * Usage:
- *   const { pending, forwarded, forApproval, approved, declined, loading, refetch } = useAdminRequests();
+ *   const { requests, pending, forwarded, forApproval, approved, declined, loading, refetch } = useAdminRequests();
  */
 export function useAdminRequests() {
   const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -28,13 +28,12 @@ export function useAdminRequests() {
     }
   }, []);
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
+  useEffect(() => { fetch(); }, [fetch]);
 
   const pending     = requests.filter((r) => r.status === "Pending");
   const forwarded   = requests.filter((r) => r.status === "Forwarded");
-  const forApproval = requests.filter((r) => r.status === "Assigned");
+  const assigned    = requests.filter((r) => r.status === "Assigned");
+  const forApproval = requests.filter((r) => r.status === "For Approval");
   const approved    = requests.filter((r) => r.status === "Approved");
   const declined    = requests.filter((r) => r.status === "Declined");
 
@@ -42,6 +41,7 @@ export function useAdminRequests() {
     requests,
     pending,
     forwarded,
+    assigned,
     forApproval,
     approved,
     declined,

@@ -4,19 +4,15 @@ import { Outlet, NavLink } from "react-router-dom";
 import {
   List, ListItemButton, ListItemIcon, ListItemText,
   Box, Typography, IconButton,
-  Drawer, useMediaQuery, Collapse, Badge, useTheme,
+  Drawer, useMediaQuery, Badge, useTheme,
 } from "@mui/material";
 
-import DashboardOutlinedIcon          from "@mui/icons-material/DashboardOutlined";
-import AssignmentOutlinedIcon         from "@mui/icons-material/AssignmentOutlined";
-import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
-import GroupOutlinedIcon              from "@mui/icons-material/GroupOutlined";
-import NotificationsNoneOutlinedIcon  from "@mui/icons-material/NotificationsNoneOutlined";
-import MenuIcon                       from "@mui/icons-material/Menu";
-import ChevronLeftIcon                from "@mui/icons-material/ChevronLeft";
-import KeyboardArrowDownIcon          from "@mui/icons-material/KeyboardArrowDown";
-import AccessTimeOutlinedIcon         from "@mui/icons-material/AccessTimeOutlined";
-import HistoryOutlinedIcon            from "@mui/icons-material/HistoryOutlined";
+import DashboardOutlinedIcon         from "@mui/icons-material/DashboardOutlined";
+import AssignmentOutlinedIcon        from "@mui/icons-material/AssignmentOutlined";
+import GroupOutlinedIcon             from "@mui/icons-material/GroupOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import MenuIcon                      from "@mui/icons-material/Menu";
+import ChevronLeftIcon               from "@mui/icons-material/ChevronLeft";
 
 import UserAvatar   from "../../components/common/UserAvatar";
 import GlobalSearch from "../../components/common/GlobalSearch";
@@ -57,11 +53,7 @@ function SectionHeadLayout() {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "background.default" }}>
 
       {/* ── HEADER ── */}
-      <Box sx={{
-        p: 1, backgroundColor: "background.paper",
-        display: "flex", alignItems: "center",
-        borderBottom: "1px solid", borderColor: "divider", height: 70,
-      }}>
+      <Box sx={{ p: 1, backgroundColor: "background.paper", display: "flex", alignItems: "center", borderBottom: "1px solid", borderColor: "divider", height: 70 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {isMobile && <IconButton onClick={handleDrawerToggle}><MenuIcon /></IconButton>}
           <Typography sx={{
@@ -91,17 +83,12 @@ function SectionHeadLayout() {
       {/* ── BODY ── */}
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {isMobile ? (
-          <Drawer
-            open={mobileOpen} onClose={handleDrawerToggle} variant="temporary"
+          <Drawer open={mobileOpen} onClose={handleDrawerToggle} variant="temporary"
             ModalProps={{ keepMounted: true }}
             sx={{ "& .MuiDrawer-paper": { width: 270, boxSizing: "border-box", backgroundColor: "background.paper", borderColor: "divider" } }}
           >
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 1, borderBottom: "1px solid", borderColor: "divider", height: 70 }}>
-              <Typography sx={{
-                fontWeight: "800", fontSize: "1.6rem", marginLeft: 1,
-                background: "linear-gradient(90deg, #F5C52B, #212121, #757575)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              }}>
+              <Typography sx={{ fontWeight: "800", fontSize: "1.6rem", marginLeft: 1, background: "linear-gradient(90deg, #F5C52B, #212121, #757575)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 core schemas
               </Typography>
               <IconButton onClick={handleDrawerToggle}><ChevronLeftIcon /></IconButton>
@@ -109,11 +96,7 @@ function SectionHeadLayout() {
             <SidebarContent menuItemSx={menuItemSx} />
           </Drawer>
         ) : (
-          <Box sx={{
-            width: "270px", backgroundColor: "background.paper", padding: "10px",
-            display: "flex", flexDirection: "column",
-            borderRight: "1px solid", borderColor: "divider",
-          }}>
+          <Box sx={{ width: "270px", backgroundColor: "background.paper", padding: "10px", display: "flex", flexDirection: "column", borderRight: "1px solid", borderColor: "divider" }}>
             <SidebarContent menuItemSx={menuItemSx} />
           </Box>
         )}
@@ -127,8 +110,6 @@ function SectionHeadLayout() {
 }
 
 function SidebarContent({ menuItemSx }) {
-  const [openAssignments, setOpenAssignments] = useState(false);
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box sx={{ flex: 1, overflowY: "auto" }}>
@@ -138,28 +119,11 @@ function SidebarContent({ menuItemSx }) {
             <ListItemText primary="Dashboard" />
           </ListItemButton>
 
-          <ListItemButton onClick={() => setOpenAssignments((prev) => !prev)} sx={{ ...menuItemSx, justifyContent: "space-between" }}>
+          {/* Single flat Assignment Management link */}
+          <ListItemButton component={NavLink} to="assignment-management" sx={menuItemSx}>
             <ListItemIcon><AssignmentOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-            <ListItemText primary="Assignments" />
-            <KeyboardArrowDownIcon sx={{ transition: "0.3s", transform: openAssignments ? "rotate(180deg)" : "rotate(0deg)" }} />
+            <ListItemText primary="Assignment Management" />
           </ListItemButton>
-
-          <Collapse in={openAssignments} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding sx={{ pl: 3 }}>
-              <ListItemButton component={NavLink} to="for-assignment" sx={menuItemSx}>
-                <ListItemIcon><AccessTimeOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-                <ListItemText primary="For Assignment" />
-              </ListItemButton>
-              <ListItemButton component={NavLink} to="assigned" sx={menuItemSx}>
-                <ListItemIcon><CheckCircleOutlineOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-                <ListItemText primary="Assigned" />
-              </ListItemButton>
-              <ListItemButton component={NavLink} to="history" sx={menuItemSx}>
-                <ListItemIcon><HistoryOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>
-                <ListItemText primary="History" />
-              </ListItemButton>
-            </List>
-          </Collapse>
 
           <ListItemButton component={NavLink} to="my-staffers" sx={menuItemSx}>
             <ListItemIcon><GroupOutlinedIcon sx={{ fontSize: 20 }} /></ListItemIcon>

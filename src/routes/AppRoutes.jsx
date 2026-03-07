@@ -11,16 +11,12 @@ import Login  from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 
 // Admin Pages
-import Dashboard          from "../pages/admin/Dashboard";
-import RequestManagement  from "../pages/admin/RequestManagement";
-import ApprovedRequests   from "../pages/admin/AdminApprovedRequests";
-import ForwardedRequest   from "../pages/admin/ForwardedRequest";
-import DeclinedRequests   from "../pages/admin/AdminDeclinedRequests";
-import ForApproval        from "../pages/admin/ForApproval";
-import CalendarManagement from "../pages/admin/CalendarManagement";
-import StaffersManagement from "../pages/admin/StaffersManagement";
-import SemesterManagement from "../pages/admin/SemesterManagement";
-import DutyScheduleView   from "../pages/admin/DutyScheduleView";
+import Dashboard              from "../pages/admin/Dashboard";
+import AdminRequestManagement from "../pages/admin/AdminRequestManagement";
+import CalendarManagement     from "../pages/admin/CalendarManagement";
+import StaffersManagement     from "../pages/admin/StaffersManagement";
+import SemesterManagement     from "../pages/admin/SemesterManagement";
+import DutyScheduleView       from "../pages/admin/DutyScheduleView";
 
 // Client Pages
 import Calendar       from "../pages/client/Calendar";
@@ -28,11 +24,9 @@ import Draft          from "../pages/client/Draft";
 import RequestTracker from "../pages/client/RequestTracker";
 
 // Section Head Pages
-import SecHeadDashboard  from "../pages/section_head/SecHeadDashboard";
-import SecHeadAssignment from "../pages/section_head/SecHeadAssignment";
-import SecHeadAssigned   from "../pages/section_head/Assigned";
-import SecHeadHistory    from "../pages/section_head/SecHeadHistory";
-import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
+import SecHeadDashboard            from "../pages/section_head/SecHeadDashboard";
+import SecHeadAssignmentManagement from "../pages/section_head/SecHeadAssignmentManagement";
+import SecHeadMyStaffers           from "../pages/section_head/MyStaffers";
 
 // Regular Staff Pages
 import StaffDashboard from "../pages/regular_staff/StaffDashboard";
@@ -53,17 +47,19 @@ function AppRoutes() {
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index                      element={<Navigate to="dashboard" />} />
-        <Route path="dashboard"           element={<Dashboard />} />
-        <Route path="request-management"  element={<RequestManagement />} />
-        <Route path="approved-requests"   element={<ApprovedRequests />} />
-        <Route path="forwarded-requests"  element={<ForwardedRequest />} />
-        <Route path="declined-requests"   element={<DeclinedRequests />} />
-        <Route path="for-approval"        element={<ForApproval />} />
-        <Route path="calendar-management" element={<CalendarManagement />} />
-        <Route path="staffers-management" element={<StaffersManagement />} />
-        <Route path="semester-management" element={<SemesterManagement />} />
-        <Route path="duty-schedule-view"  element={<DutyScheduleView />} />
-        <Route path="profile"             element={<ProfilePage />} />
+        <Route path="dashboard"            element={<Dashboard />} />
+        <Route path="request-management"   element={<AdminRequestManagement />} />
+        <Route path="calendar-management"  element={<CalendarManagement />} />
+        <Route path="staffers-management"  element={<StaffersManagement />} />
+        <Route path="semester-management"  element={<SemesterManagement />} />
+        <Route path="duty-schedule-view"   element={<DutyScheduleView />} />
+        <Route path="profile"              element={<ProfilePage />} />
+
+        {/* Legacy redirects */}
+        <Route path="approved-requests"  element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="forwarded-requests" element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="declined-requests"  element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="for-approval"       element={<Navigate to="/admin/request-management" replace />} />
       </Route>
 
       {/* Client Routes */}
@@ -83,13 +79,16 @@ function AppRoutes() {
 
       {/* Section Head Routes */}
       <Route path="/sec_head" element={<SectionHeadLayout />}>
-        <Route index                  element={<Navigate to="dashboard" />} />
-        <Route path="dashboard"       element={<SecHeadDashboard />} />
-        <Route path="for-assignment"  element={<SecHeadAssignment />} />
-        <Route path="assigned"        element={<SecHeadAssigned />} />
-        <Route path="history"         element={<SecHeadHistory />} />
-        <Route path="my-staffers"     element={<SecHeadMyStaffers />} />
-        <Route path="profile"         element={<ProfilePage />} />
+        <Route index                        element={<Navigate to="dashboard" />} />
+        <Route path="dashboard"             element={<SecHeadDashboard />} />
+        <Route path="assignment-management" element={<SecHeadAssignmentManagement />} />
+        <Route path="my-staffers"           element={<SecHeadMyStaffers />} />
+        <Route path="profile"               element={<ProfilePage />} />
+
+        {/* Legacy redirects */}
+        <Route path="for-assignment" element={<Navigate to="/sec_head/assignment-management" replace />} />
+        <Route path="assigned"       element={<Navigate to="/sec_head/assignment-management" replace />} />
+        <Route path="history"        element={<Navigate to="/sec_head/assignment-management" replace />} />
       </Route>
 
       {/* Regular Staff Routes */}
