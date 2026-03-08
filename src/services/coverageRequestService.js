@@ -3,85 +3,52 @@ import { supabase } from "../lib/supabaseClient";
 
 /**
  * Submit or save a coverage request as Draft or Pending
- * @param {Object} requestData - form data from CoverageRequestDialog
- * @param {File|null} file - the program flow PDF file
- * @param {boolean} isDraft - true = Draft, false = Pending
  */
 export async function submitCoverageRequest(requestData, file, isDraft = false) {
-  // 1. Get current authenticated user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("You must be logged in to submit a request.");
 
-  if (userError || !user) {
-    throw new Error("You must be logged in to submit a request.");
-  }
-
-  // 2. Upload PDF to Supabase Storage (if file provided)
   let fileUrl = null;
-
   if (file) {
-    const timestamp = Date.now();
+    const timestamp     = Date.now();
     const sanitizedName = file.name.replace(/\s+/g, "_");
-    const filePath = `program_flows/${user.id}/${timestamp}_${sanitizedName}`;
-
+    const filePath      = `program_flows/${user.id}/${timestamp}_${sanitizedName}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("coverage-files")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      throw new Error(`File upload failed: ${uploadError.message}`);
-    }
-
+      .from("coverage-files").upload(filePath, file, { cacheControl: "3600", upsert: false });
+    if (uploadError) throw new Error(`File upload failed: ${uploadError.message}`);
     fileUrl = uploadData.path;
   }
 
-  // 3. Build clean insert payload
   const payload = {
-    title: requestData.title,
-    description: requestData.description,
-    event_date: requestData.date instanceof Date
-      ? requestData.date.toISOString().split("T")[0]
-      : requestData.date,
-    from_time: requestData.from_time instanceof Date
-      ? requestData.from_time.toTimeString().slice(0, 5)
-      : requestData.from_time,
-    to_time: requestData.to_time instanceof Date
-      ? requestData.to_time.toTimeString().slice(0, 5)
-      : requestData.to_time,
-    venue: requestData.venue,
-    services: requestData.services,
+    title:          requestData.title,
+    description:    requestData.description,
+    event_date:     requestData.date instanceof Date ? requestData.date.toISOString().split("T")[0] : requestData.date,
+    from_time:      requestData.from_time instanceof Date ? requestData.from_time.toTimeString().slice(0, 5) : requestData.from_time,
+    to_time:        requestData.to_time instanceof Date ? requestData.to_time.toTimeString().slice(0, 5) : requestData.to_time,
+    venue:          requestData.venue,
+    services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id: requestData.entity,
+    entity_id:      requestData.entity,
     contact_person: requestData.contact_person,
-    contact_info: requestData.contact_info,
-    file_url: fileUrl,
-    requester_id: user.id,
-    status: isDraft ? "Draft" : "Pending",
-    submitted_at: isDraft ? null : new Date().toISOString(),
+    contact_info:   requestData.contact_info,
+    file_url:       fileUrl,
+    requester_id:   user.id,
+    status:         isDraft ? "Draft" : "Pending",
+    submitted_at:   isDraft ? null : new Date().toISOString(),
   };
 
-  // 4. Insert into coverage_requests
   const { data, error } = await supabase
-    .from("coverage_requests")
-    .insert([payload])
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to submit request: ${error.message}`);
-  }
-
+    .from("coverage_requests").insert([payload]).select().single();
+  if (error) throw new Error(`Failed to submit request: ${error.message}`);
   return data;
 }
 
 /**
- * Fetch all coverage requests for the currently logged-in client
+ * Fetch all coverage requests for the currently logged-in client.
+ * Includes assigned staffers (name, section, avatar) grouped via coverage_assignments.
  */
 export async function fetchMyRequests() {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
-
   if (userError || !user) throw new Error("Not authenticated.");
 
   const { data, error } = await supabase
@@ -108,116 +75,86 @@ export async function fetchMyRequests() {
       forwarded_at,
       created_at,
       client_type:client_type_id ( id, name ),
-      entity:entity_id ( id, name )
+      entity:entity_id ( id, name ),
+      coverage_assignments (
+        id,
+        section,
+        staffer:assigned_to (
+          id,
+          full_name,
+          section,
+          avatar_url
+        )
+      )
     `)
     .eq("requester_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to fetch requests: ${error.message}`);
-
   return data || [];
 }
 
 /**
  * Update a Draft request (edit before submitting)
- * @param {string} requestId - UUID of the request
- * @param {Object} requestData - updated form data
- * @param {File|null} file - new PDF file (optional)
- * @param {boolean} submitNow - true = change status to Pending
  */
 export async function updateDraftRequest(requestId, requestData, file, submitNow = false) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
-
   if (userError || !user) throw new Error("Not authenticated.");
 
   let fileUrl = requestData.file_url || null;
-
   if (file) {
-    const timestamp = Date.now();
+    const timestamp     = Date.now();
     const sanitizedName = file.name.replace(/\s+/g, "_");
-    const filePath = `program_flows/${user.id}/${timestamp}_${sanitizedName}`;
-
+    const filePath      = `program_flows/${user.id}/${timestamp}_${sanitizedName}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("coverage-files")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
+      .from("coverage-files").upload(filePath, file, { cacheControl: "3600", upsert: false });
     if (uploadError) throw new Error(`File upload failed: ${uploadError.message}`);
     fileUrl = uploadData.path;
   }
 
   const payload = {
-    title: requestData.title,
-    description: requestData.description,
-    event_date: requestData.date instanceof Date
-      ? requestData.date.toISOString().split("T")[0]
-      : requestData.date,
-    from_time: requestData.from_time instanceof Date
-      ? requestData.from_time.toTimeString().slice(0, 5)
-      : requestData.from_time,
-    to_time: requestData.to_time instanceof Date
-      ? requestData.to_time.toTimeString().slice(0, 5)
-      : requestData.to_time,
-    venue: requestData.venue,
-    services: requestData.services,
+    title:          requestData.title,
+    description:    requestData.description,
+    event_date:     requestData.date instanceof Date ? requestData.date.toISOString().split("T")[0] : requestData.date,
+    from_time:      requestData.from_time instanceof Date ? requestData.from_time.toTimeString().slice(0, 5) : requestData.from_time,
+    to_time:        requestData.to_time instanceof Date ? requestData.to_time.toTimeString().slice(0, 5) : requestData.to_time,
+    venue:          requestData.venue,
+    services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id: requestData.entity,
+    entity_id:      requestData.entity,
     contact_person: requestData.contact_person,
-    contact_info: requestData.contact_info,
-    file_url: fileUrl,
-    updated_at: new Date().toISOString(),
-    ...(submitNow && {
-      status: "Pending",
-      submitted_at: new Date().toISOString(),
-    }),
+    contact_info:   requestData.contact_info,
+    file_url:       fileUrl,
+    updated_at:     new Date().toISOString(),
+    ...(submitNow && { status: "Pending", submitted_at: new Date().toISOString() }),
   };
 
   const { data, error } = await supabase
-    .from("coverage_requests")
-    .update(payload)
-    .eq("id", requestId)
-    .eq("requester_id", user.id)
-    .select()
-    .single();
-
+    .from("coverage_requests").update(payload)
+    .eq("id", requestId).eq("requester_id", user.id).select().single();
   if (error) throw new Error(`Failed to update request: ${error.message}`);
-
   return data;
 }
 
 /**
  * Delete a Draft request
- * @param {string} requestId
  */
 export async function deleteDraftRequest(requestId) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
-
   if (userError || !user) throw new Error("Not authenticated.");
 
   const { error } = await supabase
-    .from("coverage_requests")
-    .delete()
-    .eq("id", requestId)
-    .eq("requester_id", user.id)
-    .eq("status", "Draft");
-
+    .from("coverage_requests").delete()
+    .eq("id", requestId).eq("requester_id", user.id).eq("status", "Draft");
   if (error) throw new Error(`Failed to delete draft: ${error.message}`);
-
   return true;
 }
 
 /**
  * Get public URL of an uploaded file
- * @param {string} filePath - path stored in file_url column
  */
 export function getFileUrl(filePath) {
   if (!filePath) return null;
-
-  const { data } = supabase.storage
-    .from("coverage-files")
-    .getPublicUrl(filePath);
-
+  const { data } = supabase.storage.from("coverage-files").getPublicUrl(filePath);
   return data?.publicUrl || null;
 }

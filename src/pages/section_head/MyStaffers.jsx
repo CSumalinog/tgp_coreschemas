@@ -4,7 +4,8 @@ import {
   Box, Typography, CircularProgress, Alert, Chip, Avatar, useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase }     from "../../lib/supabaseClient";
+import { getAvatarUrl } from "../../components/common/UserAvatar";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_COLORS = ["#e3f2fd", "#f3e5f5", "#e8f5e9", "#fff3e0", "#fce4ec"];
@@ -49,7 +50,7 @@ export default function MyStaffers() {
     setLoading(true);
 
     const { data: profiles, error: profErr } = await supabase
-      .from("profiles").select("id, full_name, section, role")
+      .from("profiles").select("id, full_name, section, role, avatar_url")
       .eq("division", currentUser.division).eq("is_active", true).neq("id", currentUser.id);
 
     if (profErr) { setError(profErr.message); setLoading(false); return; }
@@ -106,17 +107,20 @@ export default function MyStaffers() {
   const columns = [
     {
       field: "full_name", headerName: "Staffer", flex: 1.2,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, height: "100%" }}>
-          <Avatar sx={{ width: 30, height: 30, fontSize: "0.72rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#212121" }}>
-            {getInitials(params.value)}
-          </Avatar>
-          <Box>
-            <Typography sx={{ fontSize: "0.88rem", fontWeight: 500, color: "text.primary" }}>{params.value}</Typography>
-            <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>{params.row.role}</Typography>
+      renderCell: (params) => {
+        const url = getAvatarUrl(params.row.avatar_url);
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, height: "100%" }}>
+            <Avatar src={url} sx={{ width: 32, height: 32, fontSize: "0.72rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#212121" }}>
+              {!url && getInitials(params.value)}
+            </Avatar>
+            <Box>
+              <Typography sx={{ fontSize: "0.88rem", fontWeight: 500, color: "text.primary" }}>{params.value}</Typography>
+              <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>{params.row.role}</Typography>
+            </Box>
           </Box>
-        </Box>
-      ),
+        );
+      },
     },
     {
       field: "section", headerName: "Section", flex: 0.9,

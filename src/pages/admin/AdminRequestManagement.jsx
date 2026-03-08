@@ -5,12 +5,12 @@ import {
   Select, FormControl, InputLabel, useTheme, IconButton,
   Badge, Chip, Paper, Divider, ClickAwayListener,
 } from "@mui/material";
-import { DataGrid }         from "@mui/x-data-grid";
-import { useSearchParams }  from "react-router-dom";
-import { useAdminRequests } from "../../hooks/useAdminRequest";
-import RequestDetails       from "../../components/admin/RequestDetails";
-import { supabase }         from "../../lib/supabaseClient";
-import FilterListIcon       from "@mui/icons-material/FilterList";
+import { DataGrid }                        from "@mui/x-data-grid";
+import { useSearchParams, useLocation }    from "react-router-dom";
+import { useAdminRequests }                from "../../hooks/useAdminRequest";
+import RequestDetails                      from "../../components/admin/RequestDetails";
+import { supabase }                        from "../../lib/supabaseClient";
+import FilterListIcon                      from "@mui/icons-material/FilterList";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -33,12 +33,29 @@ const TABS = [
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function AdminRequestManagement() {
-  const theme  = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const theme    = useTheme();
+  const isDark   = theme.palette.mode === "dark";
+  const location = useLocation();
 
   const { requests, pending, forwarded, forApproval, approved, declined, loading, refetch } = useAdminRequests();
-  const [tab,             setTab]             = useState(0);
+
+  // ── Tab — initialised from navigation state if present ──────────────────
+  const [tab, setTab] = useState(() => {
+    const incoming = location.state?.tab;
+    if (!incoming) return 0;
+    const idx = TABS.findIndex((t) => t.key === incoming);
+    return idx >= 0 ? idx : 0;
+  });
+
   const [selectedRequest, setSelectedRequest] = useState(null);
+
+  // ── Auto-open a specific request if navigated here with openRequestId ──
+  useEffect(() => {
+    const openId = location.state?.openRequestId;
+    if (!openId || loading || requests.length === 0) return;
+    const found = requests.find((r) => r.id === openId);
+    if (found) setSelectedRequest(found);
+  }, [location.state?.openRequestId, loading, requests]);
 
   // ── Filters ──
   const [semesters,      setSemesters]      = useState([]);
@@ -50,6 +67,14 @@ export default function AdminRequestManagement() {
   // ── Highlight from search ──
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
+
+  // Re-apply tab if navigated here again with a new state while already mounted
+  useEffect(() => {
+    const incoming = location.state?.tab;
+    if (!incoming) return;
+    const idx = TABS.findIndex((t) => t.key === incoming);
+    if (idx >= 0) setTab(idx);
+  }, [location.state?.tab]);
 
   useEffect(() => {
     async function loadSemesters() {
@@ -182,8 +207,8 @@ export default function AdminRequestManagement() {
     return [...baseColumns, actionCol];
   };
 
-  const selectedSemName    = semesters.find((s) => s.id === selectedSem)?.name;
-  const borderColor        = isDark ? "#2e2e2e" : "#e0e0e0";
+  const selectedSemName = semesters.find((s) => s.id === selectedSem)?.name;
+  const borderColor     = isDark ? "#2e2e2e" : "#e0e0e0";
 
   return (
     <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default" }}>
@@ -284,7 +309,6 @@ export default function AdminRequestManagement() {
                   </Box>
 
                   <Box sx={{ px: 2, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-                    {/* Semester */}
                     <FormControl size="small" fullWidth>
                       <InputLabel sx={{ fontSize: "0.82rem" }}>Semester</InputLabel>
                       <Select
@@ -300,7 +324,6 @@ export default function AdminRequestManagement() {
                       </Select>
                     </FormControl>
 
-                    {/* Client */}
                     <FormControl size="small" fullWidth>
                       <InputLabel sx={{ fontSize: "0.82rem" }}>Client</InputLabel>
                       <Select

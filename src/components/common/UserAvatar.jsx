@@ -11,6 +11,16 @@ import DarkModeOutlinedIcon       from "@mui/icons-material/DarkModeOutlined";
 import { supabase }               from "../../lib/supabaseClient";
 import { useThemeMode }           from "../../context/ThemeContext";
 
+// ── Exported utility — import this anywhere you need to render an avatar ──────
+// Usage: import { getAvatarUrl } from "../../components/common/UserAvatar";
+export function getAvatarUrl(avatarPath) {
+  if (!avatarPath) return undefined;
+  const { data } = supabase.storage
+    .from("coverage-files")
+    .getPublicUrl(avatarPath);
+  return data?.publicUrl || undefined;
+}
+
 export default function UserAvatar({ profileRoute = "profile" }) {
   const navigate              = useNavigate();
   const { isDark, toggleDark } = useThemeMode();
@@ -21,7 +31,6 @@ export default function UserAvatar({ profileRoute = "profile" }) {
   const [anchorEl,  setAnchorEl]  = useState(null);
   const menuOpen = Boolean(anchorEl);
 
-  // ── Load user profile + avatar ──
   useEffect(() => {
     async function loadUser() {
       setLoading(true);
@@ -43,20 +52,14 @@ export default function UserAvatar({ profileRoute = "profile" }) {
         avatar_url: profile?.avatar_url || null,
       });
 
-      // Resolve public URL if avatar exists
-      if (profile?.avatar_url) {
-        const { data } = supabase.storage
-          .from("coverage-files")
-          .getPublicUrl(profile.avatar_url);
-        setAvatarUrl(data?.publicUrl || null);
-      }
+      // Use shared utility instead of inline getPublicUrl
+      setAvatarUrl(getAvatarUrl(profile?.avatar_url) || null);
 
       setLoading(false);
     }
 
     loadUser();
 
-    // Re-fetch on auth state change (e.g. after profile update)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       loadUser();
     });
@@ -93,7 +96,6 @@ export default function UserAvatar({ profileRoute = "profile" }) {
 
   return (
     <>
-      {/* ── Trigger Avatar ── */}
       <Avatar
         src={avatarUrl || undefined}
         onClick={handleAvatarClick}
@@ -108,7 +110,6 @@ export default function UserAvatar({ profileRoute = "profile" }) {
         {!avatarUrl && getInitials(user?.full_name)}
       </Avatar>
 
-      {/* ── Dropdown Menu ── */}
       <Menu
         anchorEl={anchorEl}
         open={menuOpen}
@@ -123,8 +124,6 @@ export default function UserAvatar({ profileRoute = "profile" }) {
           },
         }}
       >
-
-        {/* ── Google-style header: big avatar + name + email + role ── */}
         <Box sx={{
           px: 3, pt: 3, pb: 2.5,
           display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
@@ -167,20 +166,12 @@ export default function UserAvatar({ profileRoute = "profile" }) {
 
         <Divider />
 
-        {/* ── Profile & Settings ── */}
-        <MenuItem
-          onClick={handleProfile}
-          sx={{ gap: 1.5, py: 1.3, px: 2.5, fontSize: "0.88rem" }}
-        >
+        <MenuItem onClick={handleProfile} sx={{ gap: 1.5, py: 1.3, px: 2.5, fontSize: "0.88rem" }}>
           <AccountCircleOutlinedIcon fontSize="small" sx={{ color: "text.secondary" }} />
           <Typography sx={{ fontSize: "0.88rem", flex: 1 }}>Profile & Settings</Typography>
         </MenuItem>
 
-        {/* ── Dark Mode toggle ── */}
-        <MenuItem
-          onClick={toggleDark}
-          sx={{ gap: 1.5, py: 1.3, px: 2.5, fontSize: "0.88rem" }}
-        >
+        <MenuItem onClick={toggleDark} sx={{ gap: 1.5, py: 1.3, px: 2.5, fontSize: "0.88rem" }}>
           <DarkModeOutlinedIcon fontSize="small" sx={{ color: "text.secondary" }} />
           <Typography sx={{ fontSize: "0.88rem", flex: 1 }}>Dark Mode</Typography>
           <Switch
@@ -189,23 +180,18 @@ export default function UserAvatar({ profileRoute = "profile" }) {
             onClick={(e) => e.stopPropagation()}
             size="small"
             sx={{
-              "& .MuiSwitch-switchBase.Mui-checked":            { color: "#f5c52b" },
-              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#f5c52b" },
+              "& .MuiSwitch-switchBase.Mui-checked":                     { color: "#f5c52b" },
+              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":  { backgroundColor: "#f5c52b" },
             }}
           />
         </MenuItem>
 
         <Divider />
 
-        {/* ── Logout ── */}
-        <MenuItem
-          onClick={handleLogout}
-          sx={{ gap: 1.5, py: 1.3, px: 2.5, fontSize: "0.88rem", color: "#c62828" }}
-        >
+        <MenuItem onClick={handleLogout} sx={{ gap: 1.5, py: 1.3, px: 2.5, fontSize: "0.88rem", color: "#c62828" }}>
           <LogoutIcon fontSize="small" sx={{ color: "#c62828" }} />
           <Typography sx={{ fontSize: "0.88rem", color: "#c62828" }}>Logout</Typography>
         </MenuItem>
-
       </Menu>
     </>
   );

@@ -31,8 +31,8 @@ export function useAdminRequests() {
   useEffect(() => { fetch(); }, [fetch]);
 
   const pending     = requests.filter((r) => r.status === "Pending");
-  const forwarded   = requests.filter((r) => r.status === "Forwarded");
-  const assigned    = requests.filter((r) => r.status === "Assigned");
+  // "With Sections" tab shows both Forwarded and Assigned — admin can see progress but neither requires action
+  const forwarded   = requests.filter((r) => r.status === "Forwarded" || r.status === "Assigned");
   const forApproval = requests.filter((r) => r.status === "For Approval");
   const approved    = requests.filter((r) => r.status === "Approved");
   const declined    = requests.filter((r) => r.status === "Declined");
@@ -41,7 +41,6 @@ export function useAdminRequests() {
     requests,
     pending,
     forwarded,
-    assigned,
     forApproval,
     approved,
     declined,

@@ -10,6 +10,7 @@ import CloseIcon                   from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import AutoAwesomeOutlinedIcon     from "@mui/icons-material/AutoAwesomeOutlined";
 import { supabase }                from "../../lib/supabaseClient";
+import { getAvatarUrl }           from "../../components/common/UserAvatar";
 import { forwardRequest, declineRequest, approveRequest } from "../../services/adminRequestService";
 import { useRequestAssistant }     from "../../hooks/RequestAssistant";
 
@@ -23,11 +24,12 @@ const SERVICE_SECTION_MAP = {
 };
 
 const STATUS_CONFIG = {
-  Pending:   { bg: "#fef3c7", color: "#d97706" },
-  Forwarded: { bg: "#f3e8ff", color: "#7c3aed" },
-  Assigned:  { bg: "#fff7ed", color: "#c2410c" },
-  Approved:  { bg: "#dcfce7", color: "#15803d" },
-  Declined:  { bg: "#fee2e2", color: "#dc2626" },
+  Pending:        { bg: "#fef3c7", color: "#d97706" },
+  Forwarded:      { bg: "#f3e8ff", color: "#7c3aed" },
+  Assigned:       { bg: "#fff7ed", color: "#c2410c" },
+  "For Approval": { bg: "#e0f2fe", color: "#0369a1" },
+  Approved:       { bg: "#dcfce7", color: "#15803d" },
+  Declined:       { bg: "#fee2e2", color: "#dc2626" },
 };
 
 const SCORE_CONFIG = {
@@ -68,7 +70,23 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
   const [approveOpen,       setApproveOpen]       = useState(false);
   const [adminNotes,        setAdminNotes]        = useState("");
 
+  const [assignedStaffers, setAssignedStaffers] = useState([]);
+
   const checks = useRequestAssistant(open ? request : null);
+
+  // Load assigned staffers whenever dialog opens with a non-pending request
+  useEffect(() => {
+    if (!open || !request?.id) { setAssignedStaffers([]); return; }
+    if (!["Assigned", "For Approval", "Approved"].includes(request.status)) { setAssignedStaffers([]); return; }
+    async function loadAssignments() {
+      const { data } = await supabase
+        .from("coverage_assignments")
+        .select("id, section, assigned_to, staffer:assigned_to ( id, full_name, section, avatar_url )")
+        .eq("request_id", request.id);
+      setAssignedStaffers(data || []);
+    }
+    loadAssignments();
+  }, [open, request?.id, request?.status]);
 
   useEffect(() => {
     if (request?.services) {
@@ -282,6 +300,39 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Section>
             )}
 
+            {/* Assigned Staffers — shown for Assigned, For Approval, Approved */}
+            {["Assigned", "For Approval", "Approved"].includes(request.status) && assignedStaffers.length > 0 && (
+              <Section label="Assigned Staff">
+                {/* Group by section */}
+                {["News", "Photojournalism", "Videojournalism"].map((sec) => {
+                  const secStaffers = assignedStaffers.filter((a) => a.staffer?.section === sec);
+                  if (secStaffers.length === 0) return null;
+                  return (
+                    <Box key={sec} sx={{ mb: 1.5 }}>
+                      <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase", mb: 0.75 }}>
+                        {sec}
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                        {secStaffers.map((a) => (
+                          <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.6, borderRadius: 1.5, border: "1px solid", borderColor: "divider", backgroundColor: isDark ? "#1e1e1e" : "#f9fafb" }}>
+                            <Avatar
+                              src={getAvatarUrl(a.staffer?.avatar_url)}
+                              sx={{ width: 44, height: 44, fontSize: "0.65rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#212121" }}
+                            >
+                              {!getAvatarUrl(a.staffer?.avatar_url) && getInitials(a.staffer?.full_name)}
+                            </Avatar>
+                            <Typography sx={{ fontSize: "0.8rem", color: "text.primary", fontWeight: 500 }}>
+                              {a.staffer?.full_name || "—"}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Section>
+            )}
+
             {request.status === "Declined" && request.declined_reason && (
               <Section label="Decline Reason">
                 <Box sx={{ p: 1.5, bgcolor: isDark ? "#1a0a0a" : "#fef2f2", borderRadius: 1.5, borderLeft: "3px solid #dc2626" }}>
@@ -397,15 +448,25 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Button>
             </>
           )}
-          {request.status === "Assigned" && (
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => { setError(""); setApproveOpen(true); }}
-              sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#15803d", color: "white", boxShadow: "none", "&:hover": { backgroundColor: "#166534", boxShadow: "none" } }}
-            >
-              Approve Request
-            </Button>
+          {request.status === "For Approval" && (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => { setError(""); setDeclineOpen(true); }}
+                sx={{ textTransform: "none", fontSize: "0.82rem", borderColor: "divider", color: "text.secondary", "&:hover": { borderColor: "#dc2626", color: "#dc2626" } }}
+              >
+                Decline
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => { setError(""); setApproveOpen(true); }}
+                sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#15803d", color: "white", boxShadow: "none", "&:hover": { backgroundColor: "#166534", boxShadow: "none" } }}
+              >
+                Approve Request
+              </Button>
+            </>
           )}
         </Box>
       </Dialog>
@@ -457,7 +518,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
                     }}
                   >
                     <Avatar sx={{
-                      width: 36, height: 36, fontSize: "0.8rem", fontWeight: 700,
+                      width: 44, height: 44, fontSize: "0.8rem", fontWeight: 700,
                       backgroundColor: secHead ? "#f5c52b" : (isDark ? "#333" : "#e5e7eb"),
                       color: secHead ? "#111827" : "text.secondary",
                     }}>

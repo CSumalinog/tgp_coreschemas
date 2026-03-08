@@ -1,50 +1,56 @@
-// src/pages/admin/Dashboard.jsx  ── REDESIGN PREVIEW
-// Drop-in replacement. All data logic is identical to the original.
-// Only the render/layout has changed.
-
+// src/pages/admin/Dashboard.jsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box, Typography, CircularProgress, Chip, Alert, Divider, Avatar,
-  MenuItem, Select, FormControl, Button, useTheme,
+  MenuItem, Select, FormControl, Button, Tooltip, useTheme,
 } from "@mui/material";
-import PendingActionsOutlinedIcon       from "@mui/icons-material/PendingActionsOutlined";
-import ForwardToInboxOutlinedIcon       from "@mui/icons-material/ForwardToInboxOutlined";
-import AssignmentOutlinedIcon           from "@mui/icons-material/AssignmentOutlined";
-import TaskAltOutlinedIcon              from "@mui/icons-material/TaskAltOutlined";
-import CheckCircleOutlineOutlinedIcon   from "@mui/icons-material/CheckCircleOutlineOutlined";
-import CancelOutlinedIcon               from "@mui/icons-material/CancelOutlined";
-import CalendarTodayOutlinedIcon        from "@mui/icons-material/CalendarTodayOutlined";
-import LocationOnOutlinedIcon           from "@mui/icons-material/LocationOnOutlined";
-import GroupOutlinedIcon                from "@mui/icons-material/GroupOutlined";
-import TrendingUpOutlinedIcon           from "@mui/icons-material/TrendingUpOutlined";
-import AccessTimeOutlinedIcon           from "@mui/icons-material/AccessTimeOutlined";
-import WarningAmberOutlinedIcon         from "@mui/icons-material/WarningAmberOutlined";
-import ErrorOutlineOutlinedIcon         from "@mui/icons-material/ErrorOutlineOutlined";
-import AssessmentOutlinedIcon           from "@mui/icons-material/AssessmentOutlined";
-import { supabase }                     from "../../lib/supabaseClient";
-import ReportGenerator                  from "../../components/admin/ReportGenerator";
+import { useNavigate }                      from "react-router-dom";
+import PendingActionsOutlinedIcon           from "@mui/icons-material/PendingActionsOutlined";
+import ForwardToInboxOutlinedIcon           from "@mui/icons-material/ForwardToInboxOutlined";
+import AssignmentOutlinedIcon               from "@mui/icons-material/AssignmentOutlined";
+import HowToRegOutlinedIcon                 from "@mui/icons-material/HowToRegOutlined";
+import TaskAltOutlinedIcon                  from "@mui/icons-material/TaskAltOutlined";
+import CheckCircleOutlineOutlinedIcon       from "@mui/icons-material/CheckCircleOutlineOutlined";
+import CancelOutlinedIcon                   from "@mui/icons-material/CancelOutlined";
+import CalendarTodayOutlinedIcon            from "@mui/icons-material/CalendarTodayOutlined";
+import LocationOnOutlinedIcon               from "@mui/icons-material/LocationOnOutlined";
+import GroupOutlinedIcon                    from "@mui/icons-material/GroupOutlined";
+import TrendingUpOutlinedIcon               from "@mui/icons-material/TrendingUpOutlined";
+import AccessTimeOutlinedIcon               from "@mui/icons-material/AccessTimeOutlined";
+import WarningAmberOutlinedIcon             from "@mui/icons-material/WarningAmberOutlined";
+import AssessmentOutlinedIcon               from "@mui/icons-material/AssessmentOutlined";
+import OpenInNewOutlinedIcon                from "@mui/icons-material/OpenInNewOutlined";
+import { supabase }                         from "../../lib/supabaseClient";
+import ReportGenerator                      from "../../components/admin/ReportGenerator";
 
-// ─── constants (unchanged) ────────────────────────────────────────────────────
+// ─── constants ────────────────────────────────────────────────────────────────
 const SECTION_COLORS = {
   News:            { bg: "#e3f2fd", color: "#1565c0" },
   Photojournalism: { bg: "#f3e5f5", color: "#7b1fa2" },
   Videojournalism: { bg: "#e8f5e9", color: "#2e7d32" },
 };
+
 const STATUS_STYLES = {
   Pending:             { bg: "#fff3e0", color: "#e65100" },
   Forwarded:           { bg: "#f3e5f5", color: "#7b1fa2" },
   Assigned:            { bg: "#e3f2fd", color: "#1565c0" },
+  "For Approval":      { bg: "#e0f2fe", color: "#0369a1" },  // admin action required
   "Coverage Complete": { bg: "#e8f5e9", color: "#2e7d32" },
   Approved:            { bg: "#fffde7", color: "#f57c00" },
   Declined:            { bg: "#ffebee", color: "#c62828" },
 };
+
+// Pipeline: Assigned = sec heads working (read-only for admin)
+//           For Approval = sec head submitted, admin must act
 const PIPELINE_STAGES = [
-  { key: "Pending",           label: "Pending",   icon: PendingActionsOutlinedIcon },
-  { key: "Forwarded",         label: "Forwarded", icon: ForwardToInboxOutlinedIcon },
-  { key: "Assigned",          label: "Assigned",  icon: AssignmentOutlinedIcon },
-  { key: "Approved",          label: "Approved",  icon: CheckCircleOutlineOutlinedIcon },
-  { key: "Coverage Complete", label: "Covered",   icon: TaskAltOutlinedIcon },
+  { key: "Pending",           label: "Pending",      icon: PendingActionsOutlinedIcon,       navTab: "Pending"      },
+  { key: "Forwarded",         label: "Forwarded",    icon: ForwardToInboxOutlinedIcon,        navTab: "Forwarded"    },
+  { key: "Assigned",          label: "Assigned",     icon: AssignmentOutlinedIcon,            navTab: "Forwarded"    },
+  { key: "For Approval",      label: "For Approval", icon: HowToRegOutlinedIcon,              navTab: "For Approval" },
+  { key: "Approved",          label: "Approved",     icon: CheckCircleOutlineOutlinedIcon,    navTab: "Approved"     },
+  { key: "Coverage Complete", label: "Covered",      icon: TaskAltOutlinedIcon,               navTab: "Approved"     },
 ];
+
 const URGENCY_STYLES = {
   overdue:  { bg: "#ffebee", color: "#c62828", border: "#ef9a9a", label: "Overdue",  dot: "#c62828" },
   critical: { bg: "#fff3e0", color: "#e65100", border: "#ffcc80", label: "Critical", dot: "#e65100" },
@@ -64,18 +70,22 @@ function getUrgency(event_date) {
   return "upcoming";
 }
 
-// ─── small reusable pieces ────────────────────────────────────────────────────
-function SectionCard({ children, sx = {} }) {
+// ─── reusable card shell ──────────────────────────────────────────────────────
+function SectionCard({ children, sx = {}, onClick }) {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
   return (
-    <Box sx={{
-      bgcolor: "background.paper",
-      borderRadius: 2.5,
-      border: isDark ? "1px solid #2e2e2e" : "1px solid #ebebeb",
-      overflow: "hidden",
-      ...sx,
-    }}>
+    <Box
+      onClick={onClick}
+      sx={{
+        bgcolor: "background.paper",
+        borderRadius: 2.5,
+        border: isDark ? "1px solid #2e2e2e" : "1px solid #ebebeb",
+        overflow: "hidden",
+        ...(onClick ? { cursor: "pointer", "&:hover": { borderColor: "#f5c52b" }, transition: "border-color 0.15s" } : {}),
+        ...sx,
+      }}
+    >
       {children}
     </Box>
   );
@@ -92,27 +102,28 @@ function SectionHeader({ title, action }) {
   );
 }
 
-// ─── main component ───────────────────────────────────────────────────────────
+// ─── main ─────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const theme  = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const theme    = useTheme();
+  const isDark   = theme.palette.mode === "dark";
+  const navigate = useNavigate();
 
-  const [semesters, setSemesters]             = useState([]);
+  const [semesters, setSemesters]               = useState([]);
   const [selectedSemester, setSelectedSemester] = useState(null);
-  const [isAllTime, setIsAllTime]             = useState(false);
-  const [activeSemester, setActiveSemester]   = useState(null);
-  const [loading, setLoading]                 = useState(true);
-  const [error, setError]                     = useState("");
-  const [showReports, setShowReports]         = useState(false);
+  const [isAllTime, setIsAllTime]               = useState(false);
+  const [activeSemester, setActiveSemester]     = useState(null);
+  const [loading, setLoading]                   = useState(true);
+  const [error, setError]                       = useState("");
+  const [showReports, setShowReports]           = useState(false);
 
-  const [statusCounts, setStatusCounts]       = useState({});
-  const [perfStats, setPerfStats]             = useState({ total: 0, approved: 0, declined: 0, declineRate: 0, completionRate: 0, avgTurnaround: null });
-  const [sectionWorkload, setSectionWorkload] = useState([]);
-  const [recentRequests, setRecentRequests]   = useState([]);
-  const [scheduleStats, setScheduleStats]     = useState({ total: 0, set: 0 });
+  const [statusCounts, setStatusCounts]         = useState({});
+  const [perfStats, setPerfStats]               = useState({ total: 0, approved: 0, declined: 0, declineRate: 0, completionRate: 0, avgTurnaround: null });
+  const [sectionWorkload, setSectionWorkload]   = useState([]);
+  const [recentRequests, setRecentRequests]     = useState([]);
+  const [scheduleStats, setScheduleStats]       = useState({ total: 0, set: 0 });
 
-  const channelRef        = useRef(null);
-  const loadDashboardRef  = useRef(null);
+  const channelRef       = useRef(null);
+  const loadDashboardRef = useRef(null);
 
   useEffect(() => {
     async function loadSemesters() {
@@ -160,8 +171,9 @@ export default function Dashboard() {
         avgTurnaround:  td.length > 0 ? (td.reduce((a,b)=>a+b,0)/td.length).toFixed(1) : null,
       });
 
+      // Needs Attention: Pending + Forwarded + Assigned (visibility) + For Approval (action required)
       const attention = (requests || [])
-        .filter((r) => ["Pending","Forwarded","Assigned"].includes(r.status))
+        .filter((r) => ["Pending","Forwarded","Assigned","For Approval"].includes(r.status))
         .map((r) => ({ ...r, urgency: getUrgency(r.event_date) }))
         .sort((a, b) => {
           const o = { overdue:0, critical:1, soon:2, upcoming:3 };
@@ -211,14 +223,29 @@ export default function Dashboard() {
     return () => supabase.removeChannel(ch);
   }, []);
 
+  // ── nav helpers ──────────────────────────────────────────────────────────
+  const goToRequests = (tab) => navigate("/admin/request-management", { state: { tab } });
+  const goToRequest  = (id, status) => {
+    // Assigned → "With Sections" tab (Forwarded key), read-only for admin
+    // For Approval → actionable tab
+    const tabMap = {
+      "Pending":            "Pending",
+      "Forwarded":          "Forwarded",
+      "Assigned":           "Forwarded",       // read-only, grouped with Forwarded
+      "For Approval":       "For Approval",    // admin must act here
+      "Coverage Complete":  "Approved",
+      "Approved":           "Approved",
+      "Declined":           "Declined",
+    };
+    navigate("/admin/request-management", { state: { tab: tabMap[status] || "all", openRequestId: id } });
+  };
+
   // derived
   const overdueCount  = recentRequests.filter((r) => r.urgency === "overdue").length;
   const criticalCount = recentRequests.filter((r) => r.urgency === "critical").length;
   const schedPct      = scheduleStats.total > 0 ? (scheduleStats.set / scheduleStats.total) * 100 : 0;
   const border        = isDark ? "#2e2e2e" : "#ebebeb";
-  const subtleBg      = isDark ? "#1e1e1e" : "#fafafa";
 
-  // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", maxWidth: 1200 }}>
 
@@ -237,7 +264,6 @@ export default function Dashboard() {
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {/* Reports toggle */}
           <Button
             size="small"
             variant={showReports ? "contained" : "outlined"}
@@ -253,8 +279,6 @@ export default function Dashboard() {
           >
             Reports
           </Button>
-
-          {/* All time toggle */}
           <Button
             size="small"
             variant={isAllTime ? "contained" : "outlined"}
@@ -269,7 +293,6 @@ export default function Dashboard() {
           >
             All Time
           </Button>
-
           <FormControl size="small" disabled={isAllTime}>
             <Select
               value={selectedSemester?.id || ""}
@@ -294,7 +317,6 @@ export default function Dashboard() {
 
       {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
-      {/* ── REPORTS PANEL ── */}
       {showReports && (
         <Box sx={{ mb: 3 }}>
           <ReportGenerator selectedSemester={selectedSemester} isAllTime={isAllTime} />
@@ -311,44 +333,65 @@ export default function Dashboard() {
           {/* ── ROW 1: KPI strip ── */}
           <Box sx={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1.5 }}>
             {[
-              { label: "Total",          value: perfStats.total,          sub: "submitted",                        color: "text.primary",  accent: isDark ? "#2a2a2a" : "#f5f5f5",   icon: AssignmentOutlinedIcon,           iconColor: "#9e9e9e" },
-              { label: "Approved",       value: perfStats.approved,       sub: "events covered",                   color: "#2e7d32",        accent: isDark ? "#0a2210" : "#e8f5e9",   icon: CheckCircleOutlineOutlinedIcon,   iconColor: "#2e7d32" },
-              { label: "Declined",       value: perfStats.declined,       sub: `${perfStats.declineRate}% rate`,   color: "#c62828",        accent: isDark ? "#2a0a0a" : "#ffebee",   icon: CancelOutlinedIcon,               iconColor: "#c62828" },
-              { label: "Completion",     value: `${perfStats.completionRate}%`, sub: "assigned → covered",         color: "#1565c0",        accent: isDark ? "#0d2137" : "#e3f2fd",   icon: TrendingUpOutlinedIcon,           iconColor: "#1565c0" },
-              { label: "Avg Turnaround", value: perfStats.avgTurnaround != null ? `${perfStats.avgTurnaround}d` : "—", sub: "to approval", color: "#e65100",        accent: isDark ? "#2a1a00" : "#fff3e0",   icon: AccessTimeOutlinedIcon,           iconColor: "#e65100" },
+              { label: "Total",          value: perfStats.total,    sub: "submitted",                   navTab: "all",      icon: AssignmentOutlinedIcon,         iconColor: "#9e9e9e", accent: isDark ? "#2a2a2a" : "#f5f5f5", valueColor: "text.primary" },
+              { label: "Approved",       value: perfStats.approved, sub: "events covered",              navTab: "Approved", icon: CheckCircleOutlineOutlinedIcon, iconColor: "#2e7d32", accent: isDark ? "#0a2210" : "#e8f5e9", valueColor: "#2e7d32"      },
+              { label: "Declined",       value: perfStats.declined, sub: `${perfStats.declineRate}% rate`, navTab: "Declined", icon: CancelOutlinedIcon,          iconColor: "#c62828", accent: isDark ? "#2a0a0a" : "#ffebee", valueColor: "#c62828"      },
+              { label: "Completion",     value: `${perfStats.completionRate}%`, sub: "assigned → covered", navTab: null,    icon: TrendingUpOutlinedIcon,         iconColor: "#1565c0", accent: isDark ? "#0d2137" : "#e3f2fd", valueColor: "#1565c0"      },
+              { label: "Avg Turnaround", value: perfStats.avgTurnaround != null ? `${perfStats.avgTurnaround}d` : "—", sub: "to approval", navTab: null, icon: AccessTimeOutlinedIcon, iconColor: "#e65100", accent: isDark ? "#2a1a00" : "#fff3e0", valueColor: "#e65100" },
             ].map((k) => {
               const Icon = k.icon;
               return (
-                <SectionCard key={k.label}>
-                  <Box sx={{ p: 2 }}>
+                <Tooltip key={k.label} title={k.navTab ? `Go to ${k.label === "Total" ? "all requests" : k.label.toLowerCase()}` : ""} placement="top" arrow>
+                  <Box
+                    onClick={k.navTab ? () => goToRequests(k.navTab) : undefined}
+                    sx={{
+                      bgcolor: "background.paper", borderRadius: 2.5,
+                      border: isDark ? "1px solid #2e2e2e" : "1px solid #ebebeb",
+                      p: 2, overflow: "hidden",
+                      ...(k.navTab ? {
+                        cursor: "pointer",
+                        transition: "border-color 0.15s, box-shadow 0.15s",
+                        "&:hover": { borderColor: "#f5c52b", boxShadow: "0 2px 8px rgba(245,197,43,0.15)" },
+                      } : {}),
+                    }}
+                  >
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
                       <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", fontWeight: 500 }}>{k.label}</Typography>
                       <Box sx={{ width: 28, height: 28, borderRadius: 1.5, backgroundColor: k.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Icon sx={{ fontSize: 14, color: k.iconColor }} />
                       </Box>
                     </Box>
-                    <Typography sx={{ fontSize: "1.75rem", fontWeight: 750, color: k.color, lineHeight: 1, letterSpacing: "-0.02em" }}>{k.value}</Typography>
+                    <Typography sx={{ fontSize: "1.75rem", fontWeight: 750, color: k.valueColor, lineHeight: 1, letterSpacing: "-0.02em" }}>{k.value}</Typography>
                     <Typography sx={{ fontSize: "0.7rem", color: "text.disabled", mt: 0.5 }}>{k.sub}</Typography>
                   </Box>
-                </SectionCard>
+                </Tooltip>
               );
             })}
           </Box>
 
-          {/* ── ROW 2: Attention list (primary) + right column ── */}
+          {/* ── ROW 2: Attention list + right column ── */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 2 }}>
 
-            {/* LEFT: Needs attention — PRIMARY FOCUS */}
+            {/* LEFT: Needs attention */}
             <SectionCard>
               <SectionHeader
                 title="Needs Attention"
                 action={
-                  recentRequests.length > 0 && (
-                    <Box sx={{ display: "flex", gap: 0.8 }}>
-                      {overdueCount  > 0 && <Chip size="small" label={`${overdueCount} overdue`}  sx={{ fontSize: "0.68rem", height: 20, backgroundColor: isDark ? "#2a0a0a" : "#ffebee", color: "#c62828", fontWeight: 600 }} />}
-                      {criticalCount > 0 && <Chip size="small" label={`${criticalCount} critical`} sx={{ fontSize: "0.68rem", height: 20, backgroundColor: isDark ? "#2a1a00" : "#fff3e0", color: "#e65100", fontWeight: 600 }} />}
-                    </Box>
-                  )
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                    {overdueCount  > 0 && <Chip size="small" label={`${overdueCount} overdue`}  sx={{ fontSize: "0.68rem", height: 20, backgroundColor: isDark ? "#2a0a0a" : "#ffebee", color: "#c62828", fontWeight: 600 }} />}
+                    {criticalCount > 0 && <Chip size="small" label={`${criticalCount} critical`} sx={{ fontSize: "0.68rem", height: 20, backgroundColor: isDark ? "#2a1a00" : "#fff3e0", color: "#e65100", fontWeight: 600 }} />}
+                    {recentRequests.length > 0 && (
+                      <Tooltip title="View all in Request Management" arrow>
+                        <Box
+                          onClick={() => goToRequests("all")}
+                          sx={{ display: "flex", alignItems: "center", gap: 0.3, cursor: "pointer", color: "text.disabled", "&:hover": { color: "#f5c52b" }, transition: "color 0.15s" }}
+                        >
+                          <OpenInNewOutlinedIcon sx={{ fontSize: 14 }} />
+                          <Typography sx={{ fontSize: "0.7rem" }}>View all</Typography>
+                        </Box>
+                      </Tooltip>
+                    )}
+                  </Box>
                 }
               />
               <Divider sx={{ borderColor: border }} />
@@ -362,67 +405,61 @@ export default function Dashboard() {
                 recentRequests.map((r, idx) => {
                   const urg = URGENCY_STYLES[r.urgency];
                   return (
-                    <Box
-                      key={r.id}
-                      sx={{
-                        px: 2.5, py: 1.75,
-                        borderBottom: idx < recentRequests.length - 1 ? `1px solid ${border}` : "none",
-                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
-                        borderLeft: "3px solid", borderLeftColor: urg.border,
-                        backgroundColor: r.urgency === "overdue"
-                          ? isDark ? "rgba(198,40,40,0.06)" : "rgba(255,235,238,0.5)"
-                          : "transparent",
-                        transition: "background 0.15s",
-                        "&:hover": { backgroundColor: isDark ? "#1e1e1e" : "#fafafa" },
-                      }}
-                    >
-                      {/* Left: title + meta */}
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.3 }}>
-                          <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: urg.dot, flexShrink: 0 }} />
-                          <Typography sx={{ fontWeight: 600, fontSize: "0.88rem", color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {r.title}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2, pl: "14px" }}>
-                          {r.entity?.name && (
-                            <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.entity.name}</Typography>
-                          )}
-                          {r.event_date && (
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-                              <CalendarTodayOutlinedIcon sx={{ fontSize: 11, color: urg.dot }} />
-                              <Typography sx={{ fontSize: "0.72rem", color: urg.color, fontWeight: r.urgency !== "upcoming" ? 600 : 400 }}>
-                                {new Date(r.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                                {r.urgency === "overdue"  && " · Overdue"}
-                                {r.urgency === "critical" && " · ≤3 days"}
-                                {r.urgency === "soon"     && " · This week"}
-                              </Typography>
-                            </Box>
-                          )}
-                          {r.venue && (
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-                              <LocationOnOutlinedIcon sx={{ fontSize: 11, color: "text.disabled" }} />
-                              <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.venue}</Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* Right: status + urgency */}
-                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5, flexShrink: 0 }}>
-                        <Chip
-                          label={r.status}
-                          size="small"
-                          sx={{ fontSize: "0.68rem", fontWeight: 600, height: 20, backgroundColor: STATUS_STYLES[r.status]?.bg || "#f5f5f5", color: STATUS_STYLES[r.status]?.color || "#757575" }}
-                        />
-                        {r.urgency !== "upcoming" && (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-                            <WarningAmberOutlinedIcon sx={{ fontSize: 11, color: urg.color }} />
-                            <Typography sx={{ fontSize: "0.67rem", color: urg.color, fontWeight: 600 }}>{urg.label}</Typography>
+                    <Tooltip key={r.id} title="Click to view full details" placement="left" arrow>
+                      <Box
+                        onClick={() => goToRequest(r.id, r.status)}
+                        sx={{
+                          px: 2.5, py: 1.75,
+                          borderBottom: idx < recentRequests.length - 1 ? `1px solid ${border}` : "none",
+                          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
+                          borderLeft: "3px solid", borderLeftColor: urg.border,
+                          backgroundColor: r.urgency === "overdue"
+                            ? isDark ? "rgba(198,40,40,0.06)" : "rgba(255,235,238,0.5)"
+                            : "transparent",
+                          cursor: "pointer",
+                          transition: "background 0.15s",
+                          "&:hover": { backgroundColor: isDark ? "#1e1e1e" : "#fafafa" },
+                        }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.3 }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: urg.dot, flexShrink: 0 }} />
+                            <Typography sx={{ fontWeight: 600, fontSize: "0.88rem", color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {r.title}
+                            </Typography>
                           </Box>
-                        )}
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2, pl: "14px" }}>
+                            {r.entity?.name && <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.entity.name}</Typography>}
+                            {r.event_date && (
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
+                                <CalendarTodayOutlinedIcon sx={{ fontSize: 11, color: urg.dot }} />
+                                <Typography sx={{ fontSize: "0.72rem", color: urg.color, fontWeight: r.urgency !== "upcoming" ? 600 : 400 }}>
+                                  {new Date(r.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                  {r.urgency === "overdue"  && " · Overdue"}
+                                  {r.urgency === "critical" && " · ≤3 days"}
+                                  {r.urgency === "soon"     && " · This week"}
+                                </Typography>
+                              </Box>
+                            )}
+                            {r.venue && (
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
+                                <LocationOnOutlinedIcon sx={{ fontSize: 11, color: "text.disabled" }} />
+                                <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.venue}</Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5, flexShrink: 0 }}>
+                          <Chip label={r.status} size="small" sx={{ fontSize: "0.68rem", fontWeight: 600, height: 20, backgroundColor: STATUS_STYLES[r.status]?.bg || "#f5f5f5", color: STATUS_STYLES[r.status]?.color || "#757575" }} />
+                          {r.urgency !== "upcoming" && (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
+                              <WarningAmberOutlinedIcon sx={{ fontSize: 11, color: urg.color }} />
+                              <Typography sx={{ fontSize: "0.67rem", color: urg.color, fontWeight: 600 }}>{urg.label}</Typography>
+                            </Box>
+                          )}
+                        </Box>
                       </Box>
-                    </Box>
+                    </Tooltip>
                   );
                 })
               )}
@@ -431,109 +468,115 @@ export default function Dashboard() {
             {/* RIGHT COLUMN */}
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
-              {/* Pipeline — compact */}
+              {/* Pipeline */}
               <SectionCard>
                 <SectionHeader title="Pipeline" />
                 <Divider sx={{ borderColor: border }} />
                 <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 0 }}>
-                  {[...PIPELINE_STAGES, { key: "Declined", label: "Declined", icon: CancelOutlinedIcon, isDivider: true }].map((stage, idx) => {
-                    const count    = statusCounts[stage.key] || 0;
-                    const isActive = count > 0;
-                    const isDecline = stage.key === "Declined";
-                    const Icon = stage.icon;
-                    const pct  = perfStats.total > 0 ? (count / perfStats.total) * 100 : 0;
+                  {[...PIPELINE_STAGES, { key: "Declined", label: "Declined", icon: CancelOutlinedIcon, navTab: "Declined", isDivider: true }].map((stage) => {
+                    const count     = statusCounts[stage.key] || 0;
+                    const isActive  = count > 0;
+                    const isDecline = !!stage.isDivider;
+                    const Icon      = stage.icon;
+                    const pct       = perfStats.total > 0 ? (count / perfStats.total) * 100 : 0;
 
                     return (
                       <React.Fragment key={stage.key}>
                         {isDecline && <Divider sx={{ my: 1, borderColor: border }} />}
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 0.9 }}>
-                          <Box sx={{
-                            width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            backgroundColor: isActive
-                              ? isDecline ? (isDark ? "#2a0a0a" : "#ffebee") : (isDark ? "#2a2200" : "#fffde7")
-                              : isDark ? "#252525" : "#f5f5f5",
-                            color: isActive
-                              ? isDecline ? "#c62828" : "#f5c52b"
-                              : isDark ? "#555" : "#ccc",
-                          }}>
-                            <Icon sx={{ fontSize: 13 }} />
-                          </Box>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.3 }}>
-                              <Typography sx={{ fontSize: "0.75rem", color: isActive ? "text.primary" : "text.disabled", fontWeight: isActive ? 600 : 400 }}>
-                                {stage.label}
-                              </Typography>
-                              <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isDecline && isActive ? "#c62828" : isActive ? "text.primary" : "text.disabled" }}>
-                                {count}
-                              </Typography>
+                        <Tooltip title={isActive ? `Go to ${stage.label} requests` : ""} placement="left" arrow>
+                          <Box
+                            onClick={isActive ? () => goToRequests(stage.navTab) : undefined}
+                            sx={{
+                              display: "flex", alignItems: "center", gap: 1.5, py: 0.9,
+                              borderRadius: 1.5, px: 0.5,
+                              ...(isActive ? {
+                                cursor: "pointer",
+                                "&:hover": { backgroundColor: isDark ? "#1e1e1e" : "#fafafa" },
+                                transition: "background 0.15s",
+                              } : {}),
+                            }}
+                          >
+                            <Box sx={{
+                              width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              backgroundColor: isActive
+                                ? isDecline ? (isDark ? "#2a0a0a" : "#ffebee") : (isDark ? "#2a2200" : "#fffde7")
+                                : isDark ? "#252525" : "#f5f5f5",
+                              color: isActive ? (isDecline ? "#c62828" : "#f5c52b") : isDark ? "#555" : "#ccc",
+                            }}>
+                              <Icon sx={{ fontSize: 13 }} />
                             </Box>
-                            <Box sx={{ height: 3, borderRadius: 2, backgroundColor: isDark ? "#2a2a2a" : "#f0f0f0", overflow: "hidden" }}>
-                              <Box sx={{
-                                height: "100%", borderRadius: 2,
-                                backgroundColor: isDecline ? "#ef9a9a" : "#f5c52b",
-                                width: `${pct}%`,
-                                transition: "width 0.4s ease",
-                              }} />
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.3 }}>
+                                <Typography sx={{ fontSize: "0.75rem", color: isActive ? "text.primary" : "text.disabled", fontWeight: isActive ? 600 : 400 }}>
+                                  {stage.label}
+                                </Typography>
+                                <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isDecline && isActive ? "#c62828" : isActive ? "text.primary" : "text.disabled" }}>
+                                  {count}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ height: 3, borderRadius: 2, backgroundColor: isDark ? "#2a2a2a" : "#f0f0f0", overflow: "hidden" }}>
+                                <Box sx={{ height: "100%", borderRadius: 2, backgroundColor: isDecline ? "#ef9a9a" : "#f5c52b", width: `${pct}%`, transition: "width 0.4s ease" }} />
+                              </Box>
                             </Box>
                           </Box>
-                        </Box>
+                        </Tooltip>
                       </React.Fragment>
                     );
                   })}
                 </Box>
               </SectionCard>
 
-              {/* Scheduling status */}
-              <SectionCard>
-                <SectionHeader
-                  title="Scheduling"
-                  action={
-                    activeSemester && (
-                      <Chip
-                        label={activeSemester.scheduling_open ? "Open" : "Closed"}
-                        size="small"
-                        sx={{
-                          fontSize: "0.68rem", fontWeight: 600, height: 20,
-                          backgroundColor: activeSemester.scheduling_open ? "#e3f2fd" : isDark ? "#2a2a2a" : "#f5f5f5",
-                          color: activeSemester.scheduling_open ? "#1565c0" : "text.secondary",
-                        }}
-                      />
-                    )
-                  }
-                />
-                <Divider sx={{ borderColor: border }} />
-                <Box sx={{ p: 2 }}>
-                  {!activeSemester ? (
-                    <Typography sx={{ fontSize: "0.8rem", color: "text.disabled" }}>No active semester.</Typography>
-                  ) : (
-                    <>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.8 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                          <GroupOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
-                          <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>Duty days set</Typography>
-                        </Box>
-                        <Typography sx={{ fontSize: "1rem", fontWeight: 700, color: scheduleStats.set === scheduleStats.total && scheduleStats.total > 0 ? "#2e7d32" : "#e65100" }}>
-                          {scheduleStats.set}
-                          <Typography component="span" sx={{ fontSize: "0.75rem", fontWeight: 400, color: "text.secondary" }}>/{scheduleStats.total}</Typography>
-                        </Typography>
-                      </Box>
-                      <Box sx={{ height: 5, borderRadius: 3, backgroundColor: isDark ? "#333" : "#f0f0f0", mb: 1.5, overflow: "hidden" }}>
-                        <Box sx={{
-                          height: "100%", borderRadius: 3, transition: "width 0.4s ease",
-                          backgroundColor: scheduleStats.set === scheduleStats.total && scheduleStats.total > 0 ? "#a5d6a7" : "#f5c52b",
-                          width: `${schedPct}%`,
-                        }} />
-                      </Box>
-                      <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>
-                        {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        {" – "}
-                        {new Date(activeSemester.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </Typography>
-                    </>
-                  )}
+              {/* Scheduling */}
+              <Tooltip title="Go to Duty Schedule View" placement="top" arrow>
+                <Box>
+                  <SectionCard onClick={() => navigate("/admin/duty-schedule-view")}>
+                    <SectionHeader
+                      title="Scheduling"
+                      action={
+                        activeSemester && (
+                          <Chip
+                            label={activeSemester.scheduling_open ? "Open" : "Closed"}
+                            size="small"
+                            sx={{
+                              fontSize: "0.68rem", fontWeight: 600, height: 20,
+                              backgroundColor: activeSemester.scheduling_open ? "#e3f2fd" : isDark ? "#2a2a2a" : "#f5f5f5",
+                              color: activeSemester.scheduling_open ? "#1565c0" : "text.secondary",
+                            }}
+                          />
+                        )
+                      }
+                    />
+                    <Divider sx={{ borderColor: border }} />
+                    <Box sx={{ p: 2 }}>
+                      {!activeSemester ? (
+                        <Typography sx={{ fontSize: "0.8rem", color: "text.disabled" }}>No active semester.</Typography>
+                      ) : (
+                        <>
+                          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.8 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <GroupOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
+                              <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>Duty days set</Typography>
+                            </Box>
+                            <Typography sx={{ fontSize: "1rem", fontWeight: 700, color: scheduleStats.set === scheduleStats.total && scheduleStats.total > 0 ? "#2e7d32" : "#e65100" }}>
+                              {scheduleStats.set}
+                              <Typography component="span" sx={{ fontSize: "0.75rem", fontWeight: 400, color: "text.secondary" }}>/{scheduleStats.total}</Typography>
+                            </Typography>
+                          </Box>
+                          <Box sx={{ height: 5, borderRadius: 3, backgroundColor: isDark ? "#333" : "#f0f0f0", mb: 1.5, overflow: "hidden" }}>
+                            <Box sx={{ height: "100%", borderRadius: 3, transition: "width 0.4s ease", backgroundColor: scheduleStats.set === scheduleStats.total && scheduleStats.total > 0 ? "#a5d6a7" : "#f5c52b", width: `${schedPct}%` }} />
+                          </Box>
+                          <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>
+                            {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {" – "}
+                            {new Date(activeSemester.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
+                  </SectionCard>
                 </Box>
-              </SectionCard>
+              </Tooltip>
             </Box>
           </Box>
 
@@ -549,10 +592,7 @@ export default function Dashboard() {
                 return (
                   <Box
                     key={s.section}
-                    sx={{
-                      p: 2.5,
-                      borderRight: idx < sectionWorkload.length - 1 ? `1px solid ${border}` : "none",
-                    }}
+                    sx={{ p: 2.5, borderRight: idx < sectionWorkload.length - 1 ? `1px solid ${border}` : "none" }}
                   >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, mb: 1.5 }}>
                       <Avatar sx={{ width: 30, height: 30, fontSize: "0.7rem", fontWeight: 700, backgroundColor: colors.bg, color: colors.color }}>
@@ -560,7 +600,6 @@ export default function Dashboard() {
                       </Avatar>
                       <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "text.primary" }}>{s.section}</Typography>
                     </Box>
-
                     <Box sx={{ display: "flex", gap: 3, mb: 1.5 }}>
                       <Box>
                         <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: s.pending > 0 ? "#e65100" : "text.disabled", lineHeight: 1 }}>{s.pending}</Typography>
@@ -571,13 +610,8 @@ export default function Dashboard() {
                         <Typography sx={{ fontSize: "0.68rem", color: "text.disabled", mt: 0.2 }}>completed</Typography>
                       </Box>
                     </Box>
-
                     <Box sx={{ height: 4, borderRadius: 2, backgroundColor: isDark ? "#333" : "#f0f0f0", overflow: "hidden" }}>
-                      <Box sx={{
-                        height: "100%", borderRadius: 2, transition: "width 0.4s ease",
-                        backgroundColor: colors.color,
-                        width: `${pct}%`,
-                      }} />
+                      <Box sx={{ height: "100%", borderRadius: 2, transition: "width 0.4s ease", backgroundColor: colors.color, width: `${pct}%` }} />
                     </Box>
                     <Typography sx={{ fontSize: "0.68rem", color: "text.disabled", mt: 0.5 }}>
                       {total > 0 ? `${pct.toFixed(0)}% completion` : "No assignments"}
@@ -590,6 +624,7 @@ export default function Dashboard() {
 
         </Box>
       )}
+
     </Box>
   );
 }

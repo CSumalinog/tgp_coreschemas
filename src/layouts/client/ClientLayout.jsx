@@ -194,9 +194,9 @@ function SidebarContent({ menuItemSx, isDark }) {
           </Collapse>
 
           <CollapsibleLegend title="My Calendars" isDark={isDark} items={[
-            { color: "#b0b0b0", label: "Available" },
-            { color: "#f44336", label: "Fully Booked" },
-            { color: "#d32f2f", label: "Blocked by Admin", isBorder: true },
+            { color: "#15803d", label: "Available" },
+            { color: "#f5c52b", label: "Fully Booked" },
+            { color: "#d32f2f", label: "Office Unavailable", },
           ]} />
           <CollapsibleLegend title="Other Calendars" isDark={isDark} items={[
             { color: "#4caf50", label: "Holidays in the Philippines" },

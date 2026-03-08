@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box, Button, Typography, CircularProgress, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, MenuItem, Chip, IconButton, ToggleButton, ToggleButtonGroup,
+  DialogContent, DialogActions, TextField, MenuItem, Chip, IconButton,
   Tooltip, Alert, Tabs, Tab, useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
@@ -12,6 +12,7 @@ import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import { useSearchParams } from "react-router-dom";
 import {
   fetchAllStaffers, createStafferAccount, updateStafferProfile,
   toggleStafferStatus, deleteStafferAccount,
@@ -19,6 +20,8 @@ import {
 import InputAdornment from "@mui/material/InputAdornment";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import { Avatar } from "@mui/material";
+import { getAvatarUrl } from "../../components/common/UserAvatar";
 
 const ROLES = [
   { value: "admin",    label: "Admin" },
@@ -34,10 +37,34 @@ const DIVISIONS = [
 ];
 
 const SECTIONS_BY_DIVISION = {
-  Executives: ["EIC", "Technical Editor", "Managing Editor", "Creative Director"],
-  Scribes:    ["News", "Sports/Opinion", "Feature", "Literary"],
-  Creatives:  ["Newsletter", "Photojournalism", "Videojournalism", "Illustrations", "Graphics Design"],
-  Managerial: ["HR Manager", "Circulation Manager", "Online Accounts Manager"],
+  Executives:  ["EIC", "Managing Editor", "Assoc. Managing Editor", "Technical Editor", "Creative Director"],
+  Scribes:     ["News", "Feature", "Sports/Opinion", "Literary"],
+  Creatives:   ["Photojournalism", "Videojournalism", "Illustrations", "Graphics Design", "Newsletter"],
+  Managerial:  ["HR", "Circulation", "Online Accounts"],
+};
+
+const POSITIONS_BY_SECTION = {
+  // Executives — section IS the position
+  "EIC":                      ["EIC"],
+  "Managing Editor":          ["Managing Editor"],
+  "Assoc. Managing Editor":   ["Assoc. Managing Editor"],
+  "Technical Editor":         ["Technical Editor"],
+  "Creative Director":        ["Creative Director"],
+  // Scribes
+  "News":                     ["News Editor", "News Writer"],
+  "Feature":                  ["Feature Editor", "Feature Writer"],
+  "Sports/Opinion":           ["Sports/Opinion Editor", "Opinion Writer"],
+  "Literary":                 ["Literary Editor", "Literary Writer"],
+  // Creatives
+  "Photojournalism":          ["Photojournalism Director", "Photographer"],
+  "Videojournalism":          ["Videojournalism Director", "Videographer"],
+  "Illustrations":            ["Illustrator"],
+  "Graphics Design":          ["Graphic Design Director", "Layout Artist"],
+  "Newsletter":               ["Newsletter Editor", "Newsletter Writer"],
+  // Managerial
+  "HR":                       ["HR Manager"],
+  "Circulation":              ["Circulation Manager", "Assoc. Circulation Manager"],
+  "Online Accounts":          ["Online Accounts Manager"],
 };
 
 const ROLE_COLORS = {
@@ -50,18 +77,20 @@ const TABS = ["All", "Executives", "Scribes", "Creatives", "Managerial"];
 
 const EMPTY_FORM = {
   full_name: "", email: "", password: "",
-  role: "staff", division: "", section: "",
+  role: "staff", division: "", section: "", position: "",
 };
 
 export default function StaffersManagement() {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  const [staffers, setStaffers]     = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState("");
-  const [activeTab, setActiveTab]   = useState("All");
+  const [staffers, setStaffers]         = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState("");
+  const [activeTab, setActiveTab]       = useState("All");
   const [showPassword, setShowPassword] = useState(false);
+  const [searchParams]                  = useSearchParams();
+  const highlight = searchParams.get("highlight")?.toLowerCase() || "";
 
   const [formOpen, setFormOpen]       = useState(false);
   const [formMode, setFormMode]       = useState("create");
@@ -70,12 +99,12 @@ export default function StaffersManagement() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError]     = useState("");
 
-  const [toggleOpen, setToggleOpen]     = useState(false);
-  const [toggleTarget, setToggleTarget] = useState(null);
+  const [toggleOpen, setToggleOpen]       = useState(false);
+  const [toggleTarget, setToggleTarget]   = useState(null);
   const [toggleLoading, setToggleLoading] = useState(false);
 
-  const [deleteOpen, setDeleteOpen]     = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteOpen, setDeleteOpen]       = useState(false);
+  const [deleteTarget, setDeleteTarget]   = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const loadStaffers = useCallback(async () => {
@@ -114,11 +143,12 @@ export default function StaffersManagement() {
     setSelectedId(row.id);
     setFormData({
       full_name: row.full_name || "",
-      email: row.email || "",
-      password: "",
-      role: row.role || "staff",
-      division: row.division || "",
-      section: row.section || "",
+      email:     row.email     || "",
+      password:  "",
+      role:      row.role      || "staff",
+      division:  row.division  || "",
+      section:   row.section   || "",
+      position:  row.position  || "",
     });
     setFormError("");
     setFormOpen(true);
@@ -127,7 +157,8 @@ export default function StaffersManagement() {
   const handleFormChange = (field, value) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      if (field === "division") updated.section = "";
+      if (field === "division") { updated.section = ""; updated.position = ""; }
+      if (field === "section")  { updated.position = ""; }
       return updated;
     });
   };
@@ -136,8 +167,8 @@ export default function StaffersManagement() {
     setFormError("");
     if (!formData.full_name.trim()) return setFormError("Full name is required.");
     if (formMode === "create") {
-      if (!formData.email.trim())    return setFormError("Email is required.");
-      if (!formData.password.trim()) return setFormError("Password is required.");
+      if (!formData.email.trim())       return setFormError("Email is required.");
+      if (!formData.password.trim())    return setFormError("Password is required.");
       if (formData.password.length < 8) return setFormError("Password must be at least 8 characters.");
     }
     if (!formData.role) return setFormError("Role is required.");
@@ -147,18 +178,20 @@ export default function StaffersManagement() {
       if (formMode === "create") {
         await createStafferAccount({
           full_name: formData.full_name.trim(),
-          email: formData.email.trim(),
-          password: formData.password,
-          role: formData.role,
-          division: formData.division || null,
-          section: formData.section || null,
+          email:     formData.email.trim(),
+          password:  formData.password,
+          role:      formData.role,
+          division:  formData.division  || null,
+          section:   formData.section   || null,
+          position:  formData.position  || null,
         });
       } else {
         await updateStafferProfile(selectedId, {
           full_name: formData.full_name.trim(),
-          role: formData.role,
-          division: formData.division || null,
-          section: formData.section || null,
+          role:      formData.role,
+          division:  formData.division  || null,
+          section:   formData.section   || null,
+          position:  formData.position  || null,
         });
       }
       setFormOpen(false);
@@ -211,14 +244,26 @@ export default function StaffersManagement() {
     "& .MuiTablePagination-root":      { color: "text.secondary" },
   };
 
+  const availableSections  = formData.division ? SECTIONS_BY_DIVISION[formData.division] || [] : [];
+  const availablePositions = formData.section  ? POSITIONS_BY_SECTION[formData.section]  || [] : [];
+
   const columns = useMemo(() => [
     {
       field: "full_name", headerName: "Full Name", flex: 1.2,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem", fontWeight: 500, color: "text.primary" }}>{params.value || "—"}</Typography>
-        </Box>
-      ),
+      renderCell: (params) => {
+        const avatarUrl = getAvatarUrl(params.row.avatar_url);
+        const initials  = (params.value || "?").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, height: "100%" }}>
+            <Avatar src={avatarUrl} sx={{ width: 32, height: 32, backgroundColor: "#f5c52b", color: "#212121", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0 }}>
+              {!avatarUrl && initials}
+            </Avatar>
+            <Typography sx={{ fontSize: "0.88rem", fontWeight: 500, color: "text.primary" }}>
+              {params.value || "—"}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       field: "role", headerName: "Role", flex: 0.8,
@@ -227,24 +272,32 @@ export default function StaffersManagement() {
         const label  = ROLES.find((r) => r.value === params.value)?.label || params.value;
         return (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Chip label={label} size="small" sx={{ fontSize: "0.9rem", fontWeight: 500, backgroundColor: colors.bg, color: colors.color, borderRadius: 2 }} />
+            <Chip label={label} size="small" sx={{ fontSize: "0.78rem", fontWeight: 500, backgroundColor: colors.bg, color: colors.color, borderRadius: 2 }} />
           </Box>
         );
       },
     },
     {
-      field: "division", headerName: "Division", flex: 0.9, hide: activeTab !== "All",
+      field: "division", headerName: "Division", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem", color: "text.secondary" }}>{params.value || "—"}</Typography>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.secondary" }}>{params.value || "—"}</Typography>
         </Box>
       ),
     },
     {
-      field: "section", headerName: "Position", flex: 1,
+      field: "section", headerName: "Section", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.9rem", color: "text.secondary" }}>{params.value || "—"}</Typography>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.secondary" }}>{params.value || "—"}</Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "position", headerName: "Position", flex: 1,
+      renderCell: (params) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography sx={{ fontSize: "0.88rem", color: "text.secondary" }}>{params.value || "—"}</Typography>
         </Box>
       ),
     },
@@ -256,9 +309,9 @@ export default function StaffersManagement() {
             label={params.value ? "Active" : "Inactive"}
             size="small"
             sx={{
-              fontSize: "0.9rem", fontWeight: 500, borderRadius: 2,
+              fontSize: "0.78rem", fontWeight: 500, borderRadius: 2,
               backgroundColor: params.value ? "#e8f5e9" : "#fdecea",
-              color: params.value ? "#388e3c" : "#d32f2f",
+              color:           params.value ? "#388e3c" : "#d32f2f",
             }}
           />
         </Box>
@@ -290,8 +343,6 @@ export default function StaffersManagement() {
     },
   ], [activeTab]);
 
-  const availableSections = formData.division ? SECTIONS_BY_DIVISION[formData.division] || [] : [];
-
   return (
     <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default" }}>
 
@@ -301,15 +352,8 @@ export default function StaffersManagement() {
           Manage TGP member accounts — create, edit, deactivate, or remove members.
         </Typography>
         <Button
-          variant="contained"
-          startIcon={<AddOutlinedIcon />}
-          onClick={handleOpenCreate}
-          sx={{
-            textTransform: "none", backgroundColor: "#f5c52b", color: "#212121",
-            fontWeight: 500, fontSize: "0.8rem",
-            "&:hover": { backgroundColor: "#e6b920" },
-            borderRadius: 3, px: 2,
-          }}
+          variant="contained" startIcon={<AddOutlinedIcon />} onClick={handleOpenCreate}
+          sx={{ textTransform: "none", backgroundColor: "#f5c52b", color: "#212121", fontWeight: 500, fontSize: "0.8rem", "&:hover": { backgroundColor: "#e6b920" }, borderRadius: 3, px: 2 }}
         >
           Add Member
         </Button>
@@ -321,57 +365,30 @@ export default function StaffersManagement() {
         </Alert>
       )}
 
-     {/* Filter — ToggleButtonGroup style */}
-<Box sx={{ mb: 2 }}>
-  <ToggleButtonGroup
-    value={activeTab}
-    exclusive
-    onChange={(_, val) => val && setActiveTab(val)}
-    size="small"
-    sx={{
-      "& .MuiToggleButton-root": {
-        textTransform: "none",
-        fontSize: "0.82rem",
-        fontFamily: "'Inter', sans-serif",
-        px: 2,
-        borderRadius: 1,
-        mx: 0.3,
-        border: isDark ? "1px solid #444 !important" : "1px solid #e0e0e0 !important",
-        color: "text.secondary",
-        "&:hover": {
-          backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5",
-        },
-        "&.Mui-selected": {
-          backgroundColor: "#f5c52b !important",
-          color: "#212121 !important",
-          fontWeight: 600,
-          border: "1px solid #f5c52b !important",
-        },
-        "&.Mui-selected:hover": {
-          backgroundColor: "#e6b920 !important",
-        },
-      },
-    }}
-  >
-    {TABS.map((tab) => (
-      <ToggleButton key={tab} value={tab}>
-        {tab}
-        <Chip
-          label={getCount(tab)}
-          size="small"
+      {/* Tabs */}
+      <Box sx={{ mb: 2 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, val) => setActiveTab(val)}
           sx={{
-            ml: 0.8, height: 18, fontSize: "0.8rem", fontWeight: 600,
-            backgroundColor: "rgba(0,0,0,0.08)",
-            color: "inherit",
-            "& .MuiChip-label": { px: 0.7 },
+            minHeight: 36,
+            "& .MuiTab-root": { textTransform: "none", fontSize: "0.88rem", fontFamily: "'Inter', sans-serif", minHeight: 36, color: "text.secondary", px: 2 },
+            "& .Mui-selected":      { color: "text.primary !important", fontWeight: 600 },
+            "& .MuiTabs-indicator": { backgroundColor: "#f5c52b", height: 3, borderRadius: 2 },
           }}
-        />
-      </ToggleButton>
-    ))}
-  </ToggleButtonGroup>
-</Box>
+        >
+          {TABS.map((tab) => (
+            <Tab key={tab} value={tab} label={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                {tab}
+                <Chip label={getCount(tab)} size="small" sx={{ height: 20, fontSize: "0.75rem", fontWeight: 500, backgroundColor: activeTab === tab ? "#f5c52b" : isDark ? "#333" : "#f5f5f5", color: activeTab === tab ? "#212121" : "text.secondary", "& .MuiChip-label": { px: 0.8 } }} />
+              </Box>
+            } />
+          ))}
+        </Tabs>
+      </Box>
 
-      {/* Table card — clean, no tabs inside */}
+      {/* Table */}
       <Box sx={{ bgcolor: "background.paper", borderRadius: 2, boxShadow: 1, overflow: "hidden" }}>
         <Box sx={{ height: 500 }}>
           {loading ? (
@@ -386,25 +403,29 @@ export default function StaffersManagement() {
               pageSize={7}
               rowsPerPageOptions={[7]}
               disableSelectionOnClick
-              sx={dataGridSx}
+              getRowClassName={(params) =>
+                highlight && params.row.full_name?.toLowerCase().includes(highlight) ? "highlighted-row" : ""
+              }
+              sx={{
+                ...dataGridSx,
+                "& .highlighted-row": {
+                  backgroundColor: isDark ? "rgba(245,197,43,0.13)" : "rgba(245,197,43,0.18)",
+                  "&:hover": { backgroundColor: isDark ? "rgba(245,197,43,0.2)" : "rgba(245,197,43,0.28)" },
+                },
+              }}
             />
           )}
         </Box>
       </Box>
 
-      {/* Create / Edit Dialog */}
+      {/* ── Create / Edit Dialog ── */}
       <Dialog
         open={formOpen}
         onClose={() => !formLoading && setFormOpen(false)}
-        maxWidth="sm"
-        fullWidth
+        maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 3, backgroundColor: "background.paper" } }}
       >
-        <DialogTitle sx={{
-          fontWeight: 650, fontSize: "0.9rem",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", mb: 2,
-        }}>
+        <DialogTitle sx={{ fontWeight: 650, fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", mb: 2 }}>
           <Typography sx={{ fontWeight: 650, fontSize: "0.9rem", color: "text.primary" }}>
             {formMode === "create" ? "Add New Member" : "Edit Member"}
           </Typography>
@@ -445,7 +466,7 @@ export default function StaffersManagement() {
                       <IconButton size="small" onClick={() => setShowPassword((prev) => !prev)} edge="end">
                         {showPassword
                           ? <VisibilityOffOutlinedIcon sx={{ fontSize: 18 }} />
-                          : <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />}
+                          : <VisibilityOutlinedIcon   sx={{ fontSize: 18 }} />}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -474,7 +495,7 @@ export default function StaffersManagement() {
           </TextField>
 
           <TextField
-            label="Position / Section" select fullWidth size="small"
+            label="Section" select fullWidth size="small"
             value={formData.section}
             onChange={(e) => handleFormChange("section", e.target.value)}
             disabled={formLoading || !formData.division}
@@ -483,6 +504,17 @@ export default function StaffersManagement() {
             <MenuItem value="">— None —</MenuItem>
             {availableSections.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </TextField>
+
+          <TextField
+            label="Position" select fullWidth size="small"
+            value={formData.position}
+            onChange={(e) => handleFormChange("position", e.target.value)}
+            disabled={formLoading || !formData.section}
+            helperText={!formData.section ? "Select a section first" : ""}
+          >
+            <MenuItem value="">— None —</MenuItem>
+            {availablePositions.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+          </TextField>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
@@ -490,9 +522,7 @@ export default function StaffersManagement() {
             Cancel
           </Button>
           <Button
-            variant="contained"
-            onClick={handleFormSubmit}
-            disabled={formLoading}
+            variant="contained" onClick={handleFormSubmit} disabled={formLoading}
             sx={{ textTransform: "none", backgroundColor: "#f5c52b", color: "#212121", fontWeight: 500, "&:hover": { backgroundColor: "#e6b920" } }}
           >
             {formLoading
@@ -502,19 +532,14 @@ export default function StaffersManagement() {
         </DialogActions>
       </Dialog>
 
-      {/* Toggle Status Dialog */}
+      {/* ── Toggle Status Dialog ── */}
       <Dialog
         open={toggleOpen}
         onClose={() => !toggleLoading && setToggleOpen(false)}
-        maxWidth="sm"
-        fullWidth
+        maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 3, backgroundColor: "background.paper" } }}
       >
-        <DialogTitle sx={{
-          fontWeight: 700, fontSize: "0.9rem",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", mb: 1,
-        }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", mb: 1 }}>
           <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>
             {toggleTarget?.is_active ? "Deactivate Account" : "Reactivate Account"}
           </Typography>
@@ -534,14 +559,8 @@ export default function StaffersManagement() {
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
           <Button onClick={() => setToggleOpen(false)} disabled={toggleLoading} sx={{ textTransform: "none", color: "text.secondary" }}>Cancel</Button>
           <Button
-            variant="contained"
-            onClick={handleConfirmToggle}
-            disabled={toggleLoading}
-            sx={{
-              textTransform: "none", color: "#212121", fontWeight: 500,
-              backgroundColor: toggleTarget?.is_active ? "#f5c52b" : "#388e3c",
-              "&:hover": { backgroundColor: toggleTarget?.is_active ? "#e6b920" : "#2e7d32" },
-            }}
+            variant="contained" onClick={handleConfirmToggle} disabled={toggleLoading}
+            sx={{ textTransform: "none", color: "#212121", fontWeight: 500, backgroundColor: toggleTarget?.is_active ? "#f5c52b" : "#388e3c", "&:hover": { backgroundColor: toggleTarget?.is_active ? "#e6b920" : "#2e7d32" } }}
           >
             {toggleLoading
               ? <CircularProgress size={18} sx={{ color: "#212121" }} />
@@ -550,19 +569,14 @@ export default function StaffersManagement() {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* ── Delete Dialog ── */}
       <Dialog
         open={deleteOpen}
         onClose={() => !deleteLoading && setDeleteOpen(false)}
-        maxWidth="sm"
-        fullWidth
+        maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 3, backgroundColor: "background.paper" } }}
       >
-        <DialogTitle sx={{
-          fontWeight: 700, fontSize: "0.95rem",
-          borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0",
-          mb: 1, display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "0.95rem", borderBottom: isDark ? "1px solid #2e2e2e" : "1px solid #e0e0e0", mb: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "text.primary" }}>Delete Account</Typography>
           <IconButton onClick={() => setDeleteOpen(false)} size="small" disabled={deleteLoading}>
             <CloseIcon fontSize="small" />

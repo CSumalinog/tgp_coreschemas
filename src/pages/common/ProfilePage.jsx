@@ -13,6 +13,7 @@ import DarkModeOutlinedIcon       from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlinedIcon      from "@mui/icons-material/LightModeOutlined";
 import { supabase }               from "../../lib/supabaseClient";
 import { useThemeMode }           from "../../context/ThemeContext";
+import { getAvatarUrl }           from "../../components/common/UserAvatar";
 
 const BUCKET   = "coverage-files";
 const FOLDER   = "avatars";
@@ -25,7 +26,7 @@ export default function ProfilePage() {
   const [user,         setUser]         = useState(null);
   const [avatarUrl,    setAvatarUrl]    = useState(null);
   const [uploading,    setUploading]    = useState(false);
-  const [uploadMsg,    setUploadMsg]    = useState(null); // { type, text }
+  const [uploadMsg,    setUploadMsg]    = useState(null);
 
   const [currentPw,    setCurrentPw]    = useState("");
   const [newPw,        setNewPw]        = useState("");
@@ -34,9 +35,8 @@ export default function ProfilePage() {
   const [showNew,      setShowNew]      = useState(false);
   const [showConfirm,  setShowConfirm]  = useState(false);
   const [pwLoading,    setPwLoading]    = useState(false);
-  const [pwMsg,        setPwMsg]        = useState(null); // { type, text }
+  const [pwMsg,        setPwMsg]        = useState(null);
 
-  // ── Load profile ──
   useEffect(() => {
     async function load() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -49,11 +49,7 @@ export default function ProfilePage() {
         .single();
 
       setUser({ ...authUser, ...profile });
-
-      if (profile?.avatar_url) {
-        const { data } = supabase.storage.from(BUCKET).getPublicUrl(profile.avatar_url);
-        setAvatarUrl(data?.publicUrl || null);
-      }
+      setAvatarUrl(getAvatarUrl(profile?.avatar_url) || null);
     }
     load();
   }, []);
@@ -70,7 +66,6 @@ export default function ProfilePage() {
     return labels[user.role] || user.role;
   };
 
-  // ── Photo upload ──
   async function handlePhotoChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -91,22 +86,20 @@ export default function ProfilePage() {
       const ext      = file.name.split(".").pop();
       const filePath = `${FOLDER}/${user.id}.${ext}`;
 
-      // Upload — upsert so re-uploads overwrite
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
         .upload(filePath, file, { upsert: true, contentType: file.type });
       if (uploadErr) throw uploadErr;
 
-      // Save path to profiles table
       const { error: updateErr } = await supabase
         .from("profiles")
         .update({ avatar_url: filePath })
         .eq("id", user.id);
       if (updateErr) throw updateErr;
 
-      // Refresh display URL with cache-bust
-      const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
-      setAvatarUrl(`${data.publicUrl}?t=${Date.now()}`);
+      // Cache-bust after upload
+      const publicUrl = getAvatarUrl(filePath);
+      setAvatarUrl(`${publicUrl}?t=${Date.now()}`);
       setUploadMsg({ type: "success", text: "Profile photo updated." });
     } catch (err) {
       setUploadMsg({ type: "error", text: err.message });
@@ -116,7 +109,6 @@ export default function ProfilePage() {
     }
   }
 
-  // ── Change password ──
   async function handlePasswordChange() {
     setPwMsg(null);
 
@@ -139,10 +131,8 @@ export default function ProfilePage() {
 
     setPwLoading(true);
     try {
-      // Re-authenticate with current password to verify it
       const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email:    user.email,
-        password: currentPw,
+        email: user.email, password: currentPw,
       });
       if (signInErr) {
         setPwMsg({ type: "error", text: "Current password is incorrect." });
@@ -150,7 +140,6 @@ export default function ProfilePage() {
         return;
       }
 
-      // Update password
       const { error: updateErr } = await supabase.auth.updateUser({ password: newPw });
       if (updateErr) throw updateErr;
 
@@ -171,8 +160,6 @@ export default function ProfilePage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 560, mx: "auto" }}>
-
-      {/* Page header */}
       <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>
         Profile & Settings
       </Typography>
@@ -185,9 +172,7 @@ export default function ProfilePage() {
         <Typography sx={{ fontSize: "0.78rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, mb: 2 }}>
           Profile Photo
         </Typography>
-
         <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
-          {/* Avatar with camera overlay */}
           <Box sx={{ position: "relative", flexShrink: 0 }}>
             <Avatar
               src={avatarUrl || undefined}
@@ -214,8 +199,7 @@ export default function ProfilePage() {
             >
               {uploading
                 ? <CircularProgress size={12} sx={{ color: "white" }} />
-                : <PhotoCameraOutlinedIcon sx={{ fontSize: 14 }} />
-              }
+                : <PhotoCameraOutlinedIcon sx={{ fontSize: 14 }} />}
             </IconButton>
             <input
               ref={fileInputRef}
@@ -225,8 +209,6 @@ export default function ProfilePage() {
               onChange={handlePhotoChange}
             />
           </Box>
-
-          {/* Info + upload button */}
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ fontWeight: 600, fontSize: "0.95rem", color: "text.primary" }}>
               {user?.full_name}
@@ -236,8 +218,7 @@ export default function ProfilePage() {
               {getPositionLabel()}
             </Typography>
             <Button
-              size="small"
-              variant="outlined"
+              size="small" variant="outlined"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               sx={{
@@ -250,7 +231,6 @@ export default function ProfilePage() {
             </Button>
           </Box>
         </Box>
-
         {uploadMsg && (
           <Alert
             severity={uploadMsg.type}
@@ -260,7 +240,6 @@ export default function ProfilePage() {
             {uploadMsg.text}
           </Alert>
         )}
-
         <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", mt: 1.5 }}>
           JPG, PNG or GIF · Max 2MB
         </Typography>
@@ -271,67 +250,48 @@ export default function ProfilePage() {
         <Typography sx={{ fontSize: "0.78rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, mb: 2 }}>
           Change Password
         </Typography>
-
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField
-            label="Current Password"
-            type={showCurrent ? "text" : "password"}
-            value={currentPw}
-            onChange={(e) => setCurrentPw(e.target.value)}
-            size="small"
-            fullWidth
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setShowCurrent((p) => !p)}>
-                    {showCurrent ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
+            label="Current Password" type={showCurrent ? "text" : "password"}
+            value={currentPw} onChange={(e) => setCurrentPw(e.target.value)}
+            size="small" fullWidth
+            InputProps={{ endAdornment: (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setShowCurrent((p) => !p)}>
+                  {showCurrent ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
+                </IconButton>
+              </InputAdornment>
+            )}}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: "0.88rem" } }}
           />
-
           <Divider />
-
           <TextField
-            label="New Password"
-            type={showNew ? "text" : "password"}
-            value={newPw}
-            onChange={(e) => setNewPw(e.target.value)}
-            size="small"
-            fullWidth
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setShowNew((p) => !p)}>
-                    {showNew ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
+            label="New Password" type={showNew ? "text" : "password"}
+            value={newPw} onChange={(e) => setNewPw(e.target.value)}
+            size="small" fullWidth
+            InputProps={{ endAdornment: (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setShowNew((p) => !p)}>
+                  {showNew ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
+                </IconButton>
+              </InputAdornment>
+            )}}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: "0.88rem" } }}
           />
           <TextField
-            label="Confirm New Password"
-            type={showConfirm ? "text" : "password"}
-            value={confirmPw}
-            onChange={(e) => setConfirmPw(e.target.value)}
-            size="small"
-            fullWidth
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setShowConfirm((p) => !p)}>
-                    {showConfirm ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
+            label="Confirm New Password" type={showConfirm ? "text" : "password"}
+            value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
+            size="small" fullWidth
+            InputProps={{ endAdornment: (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setShowConfirm((p) => !p)}>
+                  {showConfirm ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}
+                </IconButton>
+              </InputAdornment>
+            )}}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: "0.88rem" } }}
           />
         </Box>
-
         {pwMsg && (
           <Alert
             severity={pwMsg.type}
@@ -341,12 +301,8 @@ export default function ProfilePage() {
             {pwMsg.text}
           </Alert>
         )}
-
         <Button
-          variant="contained"
-          onClick={handlePasswordChange}
-          disabled={pwLoading}
-          fullWidth
+          variant="contained" onClick={handlePasswordChange} disabled={pwLoading} fullWidth
           sx={{
             mt: 2.5, textTransform: "none", fontSize: "0.85rem",
             borderRadius: 2, fontWeight: 600, boxShadow: "none",
@@ -354,10 +310,7 @@ export default function ProfilePage() {
             "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
           }}
         >
-          {pwLoading
-            ? <CircularProgress size={18} sx={{ color: "#212121" }} />
-            : "Update Password"
-          }
+          {pwLoading ? <CircularProgress size={18} sx={{ color: "#212121" }} /> : "Update Password"}
         </Button>
       </Box>
 
@@ -366,7 +319,6 @@ export default function ProfilePage() {
         <Typography sx={{ fontSize: "0.78rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, mb: 2 }}>
           Display
         </Typography>
-
         <Box
           onClick={toggleDark}
           sx={{
@@ -378,16 +330,8 @@ export default function ProfilePage() {
             "&:hover": { borderColor: "#f5c52b" },
           }}
         >
-          <Box sx={{
-            p: 1, borderRadius: 1.5,
-            backgroundColor: isDark ? "#f5c52b" : "#f5f5f5",
-            color: isDark ? "#212121" : "#9e9e9e",
-            display: "flex",
-          }}>
-            {isDark
-              ? <LightModeOutlinedIcon sx={{ fontSize: 18 }} />
-              : <DarkModeOutlinedIcon  sx={{ fontSize: 18 }} />
-            }
+          <Box sx={{ p: 1, borderRadius: 1.5, backgroundColor: isDark ? "#f5c52b" : "#f5f5f5", color: isDark ? "#212121" : "#9e9e9e", display: "flex" }}>
+            {isDark ? <LightModeOutlinedIcon sx={{ fontSize: 18 }} /> : <DarkModeOutlinedIcon sx={{ fontSize: 18 }} />}
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ fontSize: "0.88rem", fontWeight: 600, color: isDark ? "#212121" : "text.primary" }}>
@@ -397,23 +341,11 @@ export default function ProfilePage() {
               {isDark ? "Switch to light theme" : "Switch to dark theme"}
             </Typography>
           </Box>
-          <Box sx={{
-            width: 36, height: 20, borderRadius: 10,
-            backgroundColor: isDark ? "#f5c52b" : "#e0e0e0",
-            position: "relative", transition: "background-color 0.2s",
-          }}>
-            <Box sx={{
-              position: "absolute", top: 2,
-              left: isDark ? 18 : 2,
-              width: 16, height: 16, borderRadius: "50%",
-              backgroundColor: "white",
-              transition: "left 0.2s",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-            }} />
+          <Box sx={{ width: 36, height: 20, borderRadius: 10, backgroundColor: isDark ? "#f5c52b" : "#e0e0e0", position: "relative", transition: "background-color 0.2s" }}>
+            <Box sx={{ position: "absolute", top: 2, left: isDark ? 18 : 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "white", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
           </Box>
         </Box>
       </Box>
-
     </Box>
   );
 }

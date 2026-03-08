@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 export async function fetchAllStaffers() {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role, division, section, is_active, created_at")
+    .select("id, full_name, role, division, section, position, is_active, avatar_url, created_at")
     .in("role", ["admin", "sec_head", "staff"])
     .order("full_name", { ascending: true });
 
@@ -15,36 +15,23 @@ export async function fetchAllStaffers() {
 export async function createStafferAccount({
   full_name, email, password, role, division, section,
 }) {
-  console.log("Invoking edge function..."); // add this
-  
   const { data, error } = await supabase.functions.invoke("create-staff-account", {
     body: {
-      full_name,
-      email,
-      password,
-      role,
+      full_name, email, password, role,
       division: division || null,
-      section: section || null,
+      section:  section  || null,
     },
   });
 
-  console.log("Result:", data, error); // add this
-  
   if (error) throw new Error(`Failed to create account: ${error.message}`);
   if (data?.error) throw new Error(data.error);
-
   return data?.userId;
 }
 
 export async function updateStafferProfile(userId, { full_name, role, division, section }) {
   const { error } = await supabase
     .from("profiles")
-    .update({
-      full_name,
-      role,
-      division: division || null,
-      section: section || null,
-    })
+    .update({ full_name, role, division: division || null, section: section || null })
     .eq("id", userId);
 
   if (error) throw new Error(`Failed to update profile: ${error.message}`);
