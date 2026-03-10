@@ -6,7 +6,20 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import { supabase } from "../../lib/supabaseClient";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// ── Brand tokens ───────────────────────────────────────────────────────────
+const GOLD     = "#F5C52B";
+const GOLD_08  = "rgba(245,197,43,0.08)";
+const GOLD_15  = "rgba(245,197,43,0.15)";
+const CHARCOAL = "#353535";
+
+// ── Keep legend-matched colors untouched ───────────────────────────────────
+// #15803d  → Available (green)
+// #F5C52B  → Fully Booked (gold, already brand)
+// #d32f2f  → Office Unavailable / blocked (red)
+// #4caf50  → Holidays in the Philippines (green)
+// #1976d2  → Today (blue) ← REPLACED with charcoal below
+
+const DAYS            = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_EVENTS_PER_DAY = 2;
 
 function getPhilippineHolidays(year) {
@@ -25,8 +38,8 @@ function getPhilippineHolidays(year) {
   Object.entries(fixedHolidays).forEach(([d, t]) => { holidays[`${year}-${d}`] = t; });
   Object.entries(specialDays).forEach(([d, t]) => { holidays[`${year}-${d}`] = t; });
 
-  const easter        = calculateEaster(year);
-  const goodFriday    = new Date(easter); goodFriday.setDate(easter.getDate() - 2);
+  const easter         = calculateEaster(year);
+  const goodFriday     = new Date(easter); goodFriday.setDate(easter.getDate() - 2);
   const maundyThursday = new Date(easter); maundyThursday.setDate(easter.getDate() - 3);
   const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   holidays[fmt(maundyThursday)] = "Maundy Thursday";
@@ -47,11 +60,11 @@ function Calendar() {
   const isDark = theme.palette.mode === "dark";
 
   const today = new Date(); today.setHours(0,0,0,0);
-  const [currentDate,  setCurrentDate]  = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [openDialog,   setOpenDialog]   = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [eventMap,     setEventMap]     = useState({});
-  const [blockedDates, setBlockedDates] = useState(new Set());
+  const [currentDate,    setCurrentDate]    = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [openDialog,     setOpenDialog]     = useState(false);
+  const [selectedDate,   setSelectedDate]   = useState(null);
+  const [eventMap,       setEventMap]       = useState({});
+  const [blockedDates,   setBlockedDates]   = useState(new Set());
   const [myRequestDates, setMyRequestDates] = useState(new Set());
 
   const PH_HOLIDAYS = getPhilippineHolidays(currentDate.getFullYear());
@@ -65,7 +78,6 @@ function Calendar() {
 
   const fetchMonthData = async (firstDay, lastDay) => {
     try {
-      // All requests (for slot counting)
       const { data: requests, error: reqError } = await supabase
         .from("coverage_requests").select("event_date")
         .in("status", ["Pending","Approved","Forwarded","Assigned"])
@@ -76,7 +88,6 @@ function Calendar() {
         setEventMap(map);
       }
 
-      // Current user's own requests (for dot indicator)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: myReqs } = await supabase
@@ -84,12 +95,9 @@ function Calendar() {
           .eq("client_id", user.id)
           .not("status", "eq", "Draft")
           .gte("event_date", firstDay).lte("event_date", lastDay);
-        if (myReqs) {
-          setMyRequestDates(new Set(myReqs.map((r) => r.event_date)));
-        }
+        if (myReqs) setMyRequestDates(new Set(myReqs.map((r) => r.event_date)));
       }
 
-      // Blocked dates
       const { data: blocked, error: blockedError } = await supabase
         .from("blocked_dates").select("start_date, end_date")
         .lte("start_date", lastDay).gte("end_date", firstDay);
@@ -148,12 +156,26 @@ function Calendar() {
 
       {/* ── Month Header ── */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <IconButton onClick={prevMonth} size="small">
-          <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
+        <IconButton
+          onClick={prevMonth}
+          size="small"
+          sx={{
+            borderRadius: "8px",
+            color: "text.secondary",
+            "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
+            transition: "all 0.15s",
+          }}
+        >
+          <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
         </IconButton>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Typography sx={{ fontSize: { xs: "0.9rem", md: "1rem" }, fontWeight: 600, color: "text.primary" }}>
+          <Typography sx={{
+            fontSize: { xs: "0.9rem", md: "1rem" },
+            fontWeight: 700,
+            color: "text.primary",
+            letterSpacing: "-0.02em",
+          }}>
             {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
           </Typography>
           <Button
@@ -161,17 +183,36 @@ function Calendar() {
             size="small"
             variant="outlined"
             sx={{
-              textTransform: "none", fontSize: "0.75rem", px: 1.5, py: 0.4,
-              borderColor: "divider", color: "text.secondary", borderRadius: 6,
-              "&:hover": { borderColor: "#f5c52b", color: "text.primary", backgroundColor: isDark ? "#2a2200" : "#fffbeb" },
+              textTransform: "none",
+              fontSize: "0.72rem",
+              px: 1.5, py: 0.35,
+              borderColor: "divider",
+              color: "text.secondary",
+              borderRadius: "8px",
+              fontWeight: 500,
+              "&:hover": {
+                borderColor: GOLD,
+                color: CHARCOAL,
+                backgroundColor: GOLD_08,
+              },
+              transition: "all 0.15s",
             }}
           >
             Today
           </Button>
         </Box>
 
-        <IconButton onClick={nextMonth} size="small">
-          <ArrowForwardIosIcon sx={{ fontSize: 16 }} />
+        <IconButton
+          onClick={nextMonth}
+          size="small"
+          sx={{
+            borderRadius: "8px",
+            color: "text.secondary",
+            "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
+            transition: "all 0.15s",
+          }}
+        >
+          <ArrowForwardIosIcon sx={{ fontSize: 14 }} />
         </IconButton>
       </Box>
 
@@ -179,8 +220,11 @@ function Calendar() {
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 0.5 }}>
         {DAYS.map((day) => (
           <Typography key={day} align="center" sx={{
-            fontSize: { xs: "0.65rem", md: "0.8rem" },
-            fontWeight: 600, color: "text.secondary",
+            fontSize: { xs: "0.65rem", md: "0.75rem" },
+            fontWeight: 600,
+            color: "text.disabled",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
           }}>
             {day}
           </Typography>
@@ -190,7 +234,12 @@ function Calendar() {
       {/* ── Calendar Grid ── */}
       <Box sx={{
         display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
-        border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden",
+        border: "1px solid",
+        borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.10)",
+        borderRadius: "12px", overflow: "hidden",
+        boxShadow: isDark
+          ? "0 2px 16px rgba(0,0,0,0.3)"
+          : "0 2px 16px rgba(53,53,53,0.07), 0 1px 4px rgba(53,53,53,0.04)",
       }}>
         {calendarDays.map((date, idx) => {
           const d              = date.cellDate;
@@ -204,11 +253,11 @@ function Calendar() {
           const isDisabled     = !date.isCurrentMonth || isPast || remainingSlots <= 0 || blocked;
           const isClickable    = !isDisabled;
 
-          // Cell background
+          // Cell background — keep legend-colour semantics, just clean up non-legend ones
           let cellBg = "background.paper";
-          if (isWeekend && date.isCurrentMonth)      cellBg = isDark ? "#1a1a1a" : "#f7f7f7";
-          if (!date.isCurrentMonth)                  cellBg = isDark ? "#141414" : "#fafafa";
-          if (blocked && date.isCurrentMonth)        cellBg = isDark ? "#1a0a0a" : "#fff5f5";
+          if (isWeekend && date.isCurrentMonth)  cellBg = isDark ? "#1a1a1a" : "rgba(53,53,53,0.02)";
+          if (!date.isCurrentMonth)              cellBg = isDark ? "#141414" : "rgba(53,53,53,0.015)";
+          if (blocked && date.isCurrentMonth)    cellBg = isDark ? "#1a0a0a" : "#fff5f5"; // legend: red
 
           const tooltipTitle =
             !date.isCurrentMonth   ? "" :
@@ -234,56 +283,74 @@ function Calendar() {
                 transition: "background-color 0.15s",
                 ...(isClickable && {
                   "&:hover": {
-                    backgroundColor: isDark ? "#2a2200" : "#fffbeb",
-                    "& .day-number-box": { backgroundColor: "#f5c52b", color: "#111827" },
+                    backgroundColor: GOLD_08,
+                    "& .day-number-box": {
+                      backgroundColor: GOLD,
+                      color: CHARCOAL,
+                    },
                   },
                 }),
               }}
             >
-              {/* Day number */}
+              {/* Day number circle */}
               <Box sx={{ display: "flex", justifyContent: "center", mb: 0.3 }}>
                 <Box
                   className="day-number-box"
                   sx={{
                     width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 },
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    borderRadius: "50%", fontSize: { xs: "0.7rem", md: "0.8rem" },
+                    borderRadius: "50%",
+                    fontSize: { xs: "0.7rem", md: "0.8rem" },
                     fontWeight: isToday ? 700 : 400,
                     transition: "background-color 0.15s, color 0.15s",
                     color: "text.primary",
-                    ...(isToday      && { backgroundColor: "#1976d2", color: "white" }),
-                    ...(holidayTitle && !isToday && { backgroundColor: "#4caf50", color: "white" }),
-                    ...(blocked && date.isCurrentMonth && !isToday && { backgroundColor: "#d32f2f", color: "white" }),
+                    // Today → charcoal (brand) instead of blue
+                    ...(isToday && {
+                      backgroundColor: CHARCOAL,
+                      color: "#ffffff",
+                    }),
+                    // Holiday → keep #4caf50 per legend
+                    ...(holidayTitle && !isToday && {
+                      backgroundColor: "#4caf50",
+                      color: "#ffffff",
+                    }),
+                    // Blocked → keep #d32f2f per legend
+                    ...(blocked && date.isCurrentMonth && !isToday && {
+                      backgroundColor: "#d32f2f",
+                      color: "#ffffff",
+                    }),
                   }}
                 >
                   {date.dayNumber}
                 </Box>
               </Box>
 
-              {/* Status label — only current month, future dates */}
+              {/* Slot status label — legend colours preserved */}
               {date.isCurrentMonth && !isPast && (
                 <Typography sx={{
-                  fontSize: { xs: "0.55rem", md: "0.65rem" },
-                  textAlign: "center", lineHeight: 1.2,
+                  fontSize: { xs: "0.55rem", md: "0.63rem" },
+                  textAlign: "center",
+                  lineHeight: 1.2,
+                  fontWeight: 500,
                   color:
-                    blocked              ? "#d32f2f" :
-                    remainingSlots === 0 ? "#d32f2f" :
-                    remainingSlots === 1 ? "#d97706" :
-                    "#15803d",
+                    blocked              ? "#d32f2f" :   // legend: red
+                    remainingSlots === 0 ? "#d32f2f" :   // legend: red / fully booked
+                    remainingSlots === 1 ? GOLD      :   // brand gold for "1 slot left"
+                    "#15803d",                           // legend: green / available
                 }}>
-                  {blocked             ? "Unavailable"  :
+                  {blocked              ? "Unavailable"  :
                    remainingSlots === 0 ? "Fully Booked" :
                    remainingSlots === 1 ? "1 slot left"  :
                    `${remainingSlots} slots open`}
                 </Typography>
               )}
 
-              {/* My request dot indicator */}
+              {/* My request dot — brand gold */}
               {hasRequest && date.isCurrentMonth && (
                 <Box sx={{
                   position: "absolute", bottom: 4, right: 5,
                   width: 6, height: 6, borderRadius: "50%",
-                  backgroundColor: "#f5c52b",
+                  backgroundColor: GOLD,
                   border: `1px solid ${isDark ? "#111" : "#fff"}`,
                 }} />
               )}
@@ -299,8 +366,6 @@ function Calendar() {
           );
         })}
       </Box>
-
-
 
       <CoverageRequestDialog
         open={openDialog}

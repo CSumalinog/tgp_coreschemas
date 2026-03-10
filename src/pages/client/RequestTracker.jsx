@@ -9,6 +9,7 @@ import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutl
 import DownloadOutlinedIcon        from "@mui/icons-material/DownloadOutlined";
 import CheckCircleIcon             from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon    from "@mui/icons-material/RadioButtonUnchecked";
+import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
 import { DataGrid }                from "@mui/x-data-grid";
 import { useClientRequests }       from "../../hooks/useClientRequests";
 import { supabase }                from "../../lib/supabaseClient";
@@ -34,6 +35,16 @@ const getFriendlyStatus = (status) => {
   return map[status] || status;
 };
 
+// ── Brand tokens ──────────────────────────────────────────────────────────────
+const GOLD        = "#F5C52B";
+const GOLD_08     = "rgba(245,197,43,0.08)";
+const GOLD_18     = "rgba(245,197,43,0.18)";
+const CHARCOAL    = "#353535";
+const BORDER      = "rgba(53,53,53,0.08)";
+const BORDER_DARK = "rgba(255,255,255,0.08)";
+const HOVER_BG    = "rgba(53,53,53,0.03)";
+const dm          = "'DM Sans', sans-serif";
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SECTION_COLORS = {
   News:            { bg: "#e3f2fd", color: "#1565c0" },
@@ -48,48 +59,63 @@ const PIPELINE_STAGES = [
   { key: "Approved",     label: "Approved",       sub: "Request approved"              },
 ];
 const STATUS_CONFIG = {
-  Pending:        { bg: "#fef3c7", color: "#d97706" },
-  Forwarded:      { bg: "#f3e8ff", color: "#7c3aed" },
-  Assigned:       { bg: "#fff7ed", color: "#c2410c" },
-  "For Approval": { bg: "#e0f2fe", color: "#0369a1" },
-  Approved:       { bg: "#dcfce7", color: "#15803d" },
-  Declined:       { bg: "#fee2e2", color: "#dc2626" },
-  Draft:          { bg: "#f3f4f6", color: "#6b7280" },
+  Pending:        { bg: "#fef9ec", color: "#b45309",  dot: "#f59e0b" },
+  Forwarded:      { bg: "#f5f3ff", color: "#6d28d9",  dot: "#8b5cf6" },
+  Assigned:       { bg: "#fff7ed", color: "#c2410c",  dot: "#f97316" },
+  "For Approval": { bg: "#eff6ff", color: "#1d4ed8",  dot: "#3b82f6" },
+  Approved:       { bg: "#f0fdf4", color: "#15803d",  dot: "#22c55e" },
+  Declined:       { bg: "#fef2f2", color: "#dc2626",  dot: "#ef4444" },
+  Draft:          { bg: "#f9fafb", color: "#6b7280",  dot: "#9ca3af" },
 };
 const getStageIndex = (status) => {
   const map = { Pending: 0, Forwarded: 1, Assigned: 2, "For Approval": 3, Approved: 4 };
   return map[status] ?? -1;
 };
 
+const TABS = ["Pipeline", "All Requests", "Pending", "Approved", "Declined"];
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function RequestTracker() {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const [tab,  setTab]  = useState(0);
+  const [tab, setTab] = useState(0);
+  const border = isDark ? BORDER_DARK : BORDER;
 
   return (
-    <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default" }}>
-      <Box sx={{ mb: 2.5 }}>
-        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+    <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default", fontFamily: dm }}>
+
+      {/* ── Page header ── */}
+      <Box sx={{ mb: 3 }}>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.5 }}>
           Track the status of your coverage requests from submission to completion.
         </Typography>
       </Box>
 
       {/* ── Tabs ── */}
-      <Box sx={{ mb: 3, display: "flex", gap: 1, flexWrap: "wrap" }}>
-        {["Pipeline", "All Requests", "Pending", "Approved", "Declined"].map((label, idx) => (
+      <Box sx={{
+        display: "flex", gap: 0, mb: 3,
+        borderBottom: `1px solid ${border}`,
+      }}>
+        {TABS.map((label, idx) => (
           <Box
             key={label}
             onClick={() => setTab(idx)}
             sx={{
-              px: 2, py: 0.75, borderRadius: 1.5, cursor: "pointer",
-              fontSize: "0.82rem", fontWeight: tab === idx ? 700 : 500,
-              border: "1px solid",
-              borderColor: tab === idx ? "#f5c52b" : "divider",
-              backgroundColor: tab === idx ? (isDark ? "#2a2200" : "#fffbeb") : "background.paper",
-              color: tab === idx ? "#d97706" : "text.secondary",
-              transition: "all 0.15s",
-              "&:hover": { borderColor: "#f5c52b", color: "#d97706", backgroundColor: isDark ? "#2a2200" : "#fffbeb" },
+              px: 2, py: 1.1, cursor: "pointer", position: "relative",
+              fontFamily: dm, fontSize: "0.8rem",
+              fontWeight: tab === idx ? 600 : 400,
+              color: tab === idx ? CHARCOAL : "text.secondary",
+              transition: "color 0.15s",
+              "&:hover": { color: CHARCOAL },
+              // gold underline on active
+              "&::after": tab === idx ? {
+                content: '""',
+                position: "absolute",
+                bottom: -1, left: 0, right: 0,
+                height: "2px",
+                borderRadius: "2px 2px 0 0",
+                backgroundColor: GOLD,
+              } : {},
             }}
           >
             {label}
@@ -97,17 +123,17 @@ export default function RequestTracker() {
         ))}
       </Box>
 
-      {tab === 0 && <PipelineTab    isDark={isDark} />}
-      {tab === 1 && <AllRequestsTab isDark={isDark} />}
-      {tab === 2 && <PendingTab     isDark={isDark} />}
-      {tab === 3 && <ApprovedTab    isDark={isDark} />}
-      {tab === 4 && <DeclinedTab    isDark={isDark} />}
+      {tab === 0 && <PipelineTab    isDark={isDark} border={border} />}
+      {tab === 1 && <AllRequestsTab isDark={isDark} border={border} />}
+      {tab === 2 && <PendingTab     isDark={isDark} border={border} />}
+      {tab === 3 && <ApprovedTab    isDark={isDark} border={border} />}
+      {tab === 4 && <DeclinedTab    isDark={isDark} border={border} />}
     </Box>
   );
 }
 
 // ── Pipeline Tab ──────────────────────────────────────────────────────────────
-function PipelineTab({ isDark }) {
+function PipelineTab({ isDark, border }) {
   const { requests, loading } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const active = requests.filter((r) =>
@@ -116,60 +142,80 @@ function PipelineTab({ isDark }) {
 
   if (loading) return <Loader />;
   if (active.length === 0) return (
-    <Box sx={{ py: 8, textAlign: "center" }}>
-      <Typography sx={{ fontSize: "0.88rem", color: "text.secondary" }}>No active requests in the pipeline.</Typography>
+    <Box sx={{ py: 10, textAlign: "center" }}>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", color: "text.secondary" }}>
+        No active requests in the pipeline.
+      </Typography>
     </Box>
   );
 
   return (
     <>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
         {active.map((req) => (
-          <PipelineCard key={req.id} request={req} isDark={isDark} onClick={() => setSelected(req)} />
+          <PipelineCard key={req.id} request={req} isDark={isDark} border={border} onClick={() => setSelected(req)} />
         ))}
       </Box>
-      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} />
+      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} border={border} />
     </>
   );
 }
 
-function PipelineCard({ request, isDark, onClick }) {
+function PipelineCard({ request, isDark, border, onClick }) {
   const currentIdx = getStageIndex(request.status);
   const isDeclined = request.status === "Declined";
+  const cfg        = STATUS_CONFIG[request.status] || STATUS_CONFIG.Draft;
 
   return (
     <Box
       onClick={onClick}
       sx={{
-        p: 2.5, borderRadius: 2, border: "1px solid", borderColor: "divider",
-        backgroundColor: "background.paper", cursor: "pointer",
+        px: 2.5, py: 2, borderRadius: "10px",
+        border: `1px solid ${border}`,
+        backgroundColor: "background.paper",
+        cursor: "pointer",
         transition: "border-color 0.15s, box-shadow 0.15s",
         "&:hover": {
-          borderColor: "#f5c52b",
-          boxShadow: isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.07)",
+          borderColor: GOLD,
+          boxShadow: `0 2px 16px ${isDark ? "rgba(0,0,0,0.25)" : "rgba(53,53,53,0.06)"}`,
         },
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2 }}>
-        <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary", lineHeight: 1.3 }}>
+      {/* Top row */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography sx={{
+            fontFamily: dm, fontWeight: 600, fontSize: "0.88rem",
+            color: "text.primary", lineHeight: 1.3,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
             {request.title}
           </Typography>
-          <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", mt: 0.3 }}>
-            {request.event_date || "—"} · {request.venue || "—"}
+          <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", mt: 0.25 }}>
+            {request.event_date || "—"}{request.venue ? ` · ${request.venue}` : ""}
           </Typography>
         </Box>
-        <Box sx={{
-          px: 1.5, py: 0.4, borderRadius: 1, flexShrink: 0, ml: 2,
-          backgroundColor: STATUS_CONFIG[request.status]?.bg || "#f3f4f6",
-          border: `1px solid ${STATUS_CONFIG[request.status]?.color || "#9ca3af"}30`,
-        }}>
-          <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: STATUS_CONFIG[request.status]?.color || "#6b7280", letterSpacing: "0.07em", textTransform: "uppercase" }}>
-            {getFriendlyStatus(request.status)}
-          </Typography>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2, flexShrink: 0 }}>
+          {/* Status pill */}
+          <Box sx={{
+            display: "flex", alignItems: "center", gap: 0.6,
+            px: 1.25, py: 0.35, borderRadius: "6px",
+            backgroundColor: cfg.bg,
+          }}>
+            <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
+            <Typography sx={{
+              fontFamily: dm, fontSize: "0.68rem", fontWeight: 600,
+              color: cfg.color, letterSpacing: "0.04em",
+            }}>
+              {getFriendlyStatus(request.status)}
+            </Typography>
+          </Box>
+          <ChevronRightIcon sx={{ fontSize: 16, color: "text.secondary" }} />
         </Box>
       </Box>
 
+      {/* Pipeline stepper */}
       {!isDeclined ? (
         <Box sx={{ display: "flex", alignItems: "center" }}>
           {PIPELINE_STAGES.map((stage, idx) => {
@@ -177,54 +223,80 @@ function PipelineCard({ request, isDark, onClick }) {
             const current = idx === currentIdx;
             return (
               <React.Fragment key={stage.key}>
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0, flex: 1 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
+                  <Box sx={{ mb: 0.5 }}>
                     {done
-                      ? <CheckCircleIcon sx={{ fontSize: 18, color: "#15803d" }} />
+                      ? <CheckCircleIcon sx={{ fontSize: 16, color: "#22c55e" }} />
                       : current
-                        ? <Box sx={{ width: 18, height: 18, borderRadius: "50%", backgroundColor: "#f5c52b", border: "2px solid #f5c52b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Box sx={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: "#111827" }} />
+                        ? <Box sx={{
+                            width: 16, height: 16, borderRadius: "50%",
+                            backgroundColor: GOLD,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            boxShadow: `0 0 0 3px ${GOLD_08}`,
+                          }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: CHARCOAL }} />
                           </Box>
-                        : <RadioButtonUncheckedIcon sx={{ fontSize: 18, color: isDark ? "#444" : "#d1d5db" }} />
+                        : <Box sx={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${isDark ? "#444" : "#d1d5db"}` }} />
                     }
                   </Box>
-                  <Typography sx={{ fontSize: "0.68rem", fontWeight: current ? 700 : 400, textAlign: "center", color: done ? "#15803d" : current ? "text.primary" : "text.secondary", lineHeight: 1.3, px: 0.5 }}>
+                  <Typography sx={{
+                    fontFamily: dm, fontSize: "0.64rem", textAlign: "center", lineHeight: 1.3, px: 0.5,
+                    fontWeight: current ? 600 : 400,
+                    color: done ? "#15803d" : current ? "text.primary" : "text.secondary",
+                  }}>
                     {stage.label}
                   </Typography>
                 </Box>
                 {idx < PIPELINE_STAGES.length - 1 && (
-                  <Box sx={{ height: 2, flex: 1, mx: 0.5, mb: 2.5, borderRadius: 1, backgroundColor: idx < currentIdx ? "#15803d" : isDark ? "#333" : "#e5e7eb", transition: "background-color 0.3s" }} />
+                  <Box sx={{
+                    height: "1.5px", flex: 1, mx: 0.5, mb: 2.8, borderRadius: 1,
+                    backgroundColor: idx < currentIdx ? "#22c55e" : isDark ? "#333" : "#e5e7eb",
+                    transition: "background-color 0.3s",
+                  }} />
                 )}
               </React.Fragment>
             );
           })}
         </Box>
       ) : (
-        <Box sx={{ px: 1.5, py: 1, borderRadius: 1.5, backgroundColor: isDark ? "#1a0a0a" : "#fef2f2", borderLeft: "3px solid #dc2626" }}>
-          <Typography sx={{ fontSize: "0.78rem", color: "#dc2626" }}>
+        <Box sx={{
+          px: 1.5, py: 1, borderRadius: "8px",
+          backgroundColor: isDark ? "#1a0a0a" : "#fef2f2",
+          borderLeft: "2.5px solid #ef4444",
+        }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "#dc2626", lineHeight: 1.5 }}>
             This request was declined.{request.declined_reason ? ` "${request.declined_reason}"` : ""}
           </Typography>
         </Box>
       )}
 
-      {!isDeclined && (
-        <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 1, textAlign: "center" }}>
-          {PIPELINE_STAGES[currentIdx]?.sub || ""}
+      {!isDeclined && currentIdx >= 0 && (
+        <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary", mt: 0.75, textAlign: "center" }}>
+          {PIPELINE_STAGES[currentIdx]?.sub}
         </Typography>
       )}
     </Box>
   );
 }
 
-// ── Grid Tabs (All / Pending / Approved / Declined) ───────────────────────────
-function RequestsGrid({ rows, columns, isDark }) {
+// ── Grid Tabs ─────────────────────────────────────────────────────────────────
+function RequestsGrid({ rows, columns, isDark, border }) {
   return (
-    <Box sx={{ height: 500, width: "100%", bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
+    <Box sx={{
+      width: "100%",
+      bgcolor: "background.paper",
+      borderRadius: "10px",
+      border: `1px solid ${border}`,
+      overflow: "hidden",
+    }}>
       <DataGrid
-        rows={rows} columns={columns}
-        pageSize={7} rowsPerPageOptions={[7]}
+        rows={rows}
+        columns={columns}
+        pageSize={8}
+        rowsPerPageOptions={[8]}
         disableSelectionOnClick
-        sx={makeDataGridSx(isDark)}
+        rowHeight={52}
+        sx={makeDataGridSx(isDark, border)}
       />
     </Box>
   );
@@ -232,17 +304,33 @@ function RequestsGrid({ rows, columns, isDark }) {
 
 function useGridColumns(isDark, onView) {
   return [
-    { field: "eventTitle",      headerName: "Event Title", flex: 1.4, renderCell: (p) => <CellText>{p.value}</CellText> },
-    { field: "submissionDate",  headerName: "Submitted",   flex: 0.9, renderCell: (p) => <CellText>{p.value}</CellText> },
-    { field: "eventDate",       headerName: "Event Date",  flex: 0.9, renderCell: (p) => <CellText>{p.value}</CellText> },
     {
-      field: "status", headerName: "Status", flex: 0.9,
+      field: "eventTitle", headerName: "Event Title", flex: 1.5,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {p.value}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "submissionDate", headerName: "Submitted", flex: 0.9,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+    {
+      field: "eventDate", headerName: "Event Date", flex: 0.9,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+    {
+      field: "status", headerName: "Status", flex: 1,
       renderCell: (p) => {
-        const cfg = STATUS_CONFIG[p.value] || { bg: "#f3f4f6", color: "#6b7280" };
+        const cfg = STATUS_CONFIG[p.value] || STATUS_CONFIG.Draft;
         return (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Box sx={{ px: 1.25, py: 0.3, borderRadius: 1, backgroundColor: cfg.bg, border: `1px solid ${cfg.color}30` }}>
-              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: cfg.color, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.35, borderRadius: "6px", backgroundColor: cfg.bg }}>
+              <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", fontWeight: 600, color: cfg.color, letterSpacing: "0.04em" }}>
                 {getFriendlyStatus(p.value)}
               </Typography>
             </Box>
@@ -251,13 +339,27 @@ function useGridColumns(isDark, onView) {
       },
     },
     {
-      field: "actions", headerName: "Action", flex: 0.8, sortable: false,
+      field: "actions", headerName: "", flex: 0.5, sortable: false, align: "right", headerAlign: "right",
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Button variant="outlined" size="small" onClick={() => onView(p.row._raw)}
-            sx={{ textTransform: "none", fontSize: "0.78rem" }}>
-            View
-          </Button>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+          <Box
+            onClick={() => onView(p.row._raw)}
+            sx={{
+              display: "flex", alignItems: "center", gap: 0.4,
+              px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer",
+              border: `1px solid ${isDark ? BORDER_DARK : BORDER}`,
+              fontFamily: dm, fontSize: "0.75rem", fontWeight: 500,
+              color: "text.secondary",
+              transition: "all 0.15s",
+              "&:hover": {
+                borderColor: GOLD,
+                color: CHARCOAL,
+                backgroundColor: GOLD_08,
+              },
+            }}
+          >
+            View <ChevronRightIcon sx={{ fontSize: 14 }} />
+          </Box>
         </Box>
       ),
     },
@@ -267,15 +369,15 @@ function useGridColumns(isDark, onView) {
 const toRow = (req) => ({
   id:             req.id,
   eventTitle:     req.title,
-  submissionDate: req.submitted_at ? new Date(req.submitted_at).toLocaleDateString() : "—",
-  eventDate:      req.event_date || "—",
+  submissionDate: req.submitted_at ? new Date(req.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
+  eventDate:      req.event_date   ? new Date(req.event_date).toLocaleDateString("en-US",   { month: "short", day: "numeric", year: "numeric" }) : "—",
   status:         req.status,
   dateApproved:   req.approved_at  ? new Date(req.approved_at).toLocaleDateString("en-US",  { month: "short", day: "numeric", year: "numeric" }) : "—",
   dateDeclined:   req.declined_at  ? new Date(req.declined_at).toLocaleDateString("en-US",  { month: "short", day: "numeric", year: "numeric" }) : "—",
   _raw:           req,
 });
 
-function AllRequestsTab({ isDark }) {
+function AllRequestsTab({ isDark, border }) {
   const { requests, loading } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const columns = useGridColumns(isDark, setSelected);
@@ -283,13 +385,13 @@ function AllRequestsTab({ isDark }) {
   if (loading) return <Loader />;
   return (
     <>
-      <RequestsGrid rows={rows} columns={columns} isDark={isDark} />
-      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} />
+      <RequestsGrid rows={rows} columns={columns} isDark={isDark} border={border} />
+      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} border={border} />
     </>
   );
 }
 
-function PendingTab({ isDark }) {
+function PendingTab({ isDark, border }) {
   const { pending, loading } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const columns = useGridColumns(isDark, setSelected);
@@ -297,60 +399,59 @@ function PendingTab({ isDark }) {
   if (loading) return <Loader />;
   return (
     <>
-      <RequestsGrid rows={rows} columns={columns} isDark={isDark} />
-      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} />
+      <RequestsGrid rows={rows} columns={columns} isDark={isDark} border={border} />
+      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} border={border} />
     </>
   );
 }
 
-function ApprovedTab({ isDark }) {
+function ApprovedTab({ isDark, border }) {
   const { requests, loading } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const baseColumns = useGridColumns(isDark, setSelected);
   const columns = [
     ...baseColumns.filter((c) => c.field !== "status" && c.field !== "actions"),
-    { field: "dateApproved", headerName: "Date Approved", flex: 1, renderCell: (p) => <CellText>{p.value}</CellText> },
+    { field: "dateApproved", headerName: "Date Approved", flex: 1, renderCell: (p) => <MetaCell>{p.value}</MetaCell> },
     baseColumns.find((c) => c.field === "actions"),
   ];
   const rows = requests.filter((r) => r.status === "Approved").map(toRow);
   if (loading) return <Loader />;
   return (
     <>
-      <RequestsGrid rows={rows} columns={columns} isDark={isDark} />
-      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} />
+      <RequestsGrid rows={rows} columns={columns} isDark={isDark} border={border} />
+      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} border={border} />
     </>
   );
 }
 
-function DeclinedTab({ isDark }) {
+function DeclinedTab({ isDark, border }) {
   const { requests, loading } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const baseColumns = useGridColumns(isDark, setSelected);
   const columns = [
     ...baseColumns.filter((c) => c.field !== "status" && c.field !== "actions"),
-    { field: "dateDeclined", headerName: "Date Declined", flex: 1, renderCell: (p) => <CellText>{p.value}</CellText> },
+    { field: "dateDeclined", headerName: "Date Declined", flex: 1, renderCell: (p) => <MetaCell>{p.value}</MetaCell> },
     baseColumns.find((c) => c.field === "actions"),
   ];
   const rows = requests.filter((r) => r.status === "Declined").map(toRow);
   if (loading) return <Loader />;
   return (
     <>
-      <RequestsGrid rows={rows} columns={columns} isDark={isDark} />
-      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} />
+      <RequestsGrid rows={rows} columns={columns} isDark={isDark} border={border} />
+      <RequestDetailDialog open={!!selected} onClose={() => setSelected(null)} request={selected} isDark={isDark} border={border} />
     </>
   );
 }
 
 // ── Detail Dialog ─────────────────────────────────────────────────────────────
-function RequestDetailDialog({ open, onClose, request, isDark }) {
+function RequestDetailDialog({ open, onClose, request, isDark, border }) {
   if (!request) return null;
 
-  const statusCfg  = STATUS_CONFIG[request.status] || { bg: "#f3f4f6", color: "#6b7280" };
+  const statusCfg  = STATUS_CONFIG[request.status] || STATUS_CONFIG.Draft;
   const currentIdx = getStageIndex(request.status);
   const isDeclined = request.status === "Declined";
   const showTeam   = ["Assigned", "For Approval", "Approved"].includes(request.status);
 
-  // Build teamBySection — dedupe by staffer id
   const teamBySection = {};
   if (showTeam) {
     (request.coverage_assignments || []).forEach((a) => {
@@ -369,41 +470,65 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
   return (
     <Dialog
       open={open} onClose={onClose} fullWidth maxWidth="sm"
-      PaperProps={{ sx: { borderRadius: 2, maxHeight: "90vh", backgroundColor: "background.paper", boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.08)" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: "14px",
+          maxHeight: "90vh",
+          backgroundColor: "background.paper",
+          border: `1px solid ${border}`,
+          boxShadow: isDark
+            ? "0 24px 64px rgba(0,0,0,0.6)"
+            : "0 8px 40px rgba(53,53,53,0.12)",
+        },
+      }}
     >
       {/* ── Dialog header ── */}
-      <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box sx={{ width: 3, height: 26, borderRadius: 1, backgroundColor: statusCfg.color, flexShrink: 0 }} />
-          <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "text.primary", lineHeight: 1.3 }}>
+      <Box sx={{
+        px: 3, py: 2,
+        borderBottom: `1px solid ${border}`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+          <Box sx={{ width: 2.5, height: 28, borderRadius: "2px", backgroundColor: statusCfg.dot, flexShrink: 0 }} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{
+              fontFamily: dm, fontWeight: 700, fontSize: "0.92rem",
+              color: "text.primary", lineHeight: 1.3,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
               {request.title}
             </Typography>
-            <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary", mt: 0.15 }}>
               {request.submitted_at
                 ? `Submitted ${new Date(request.submitted_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
                 : "Date unknown"}
             </Typography>
           </Box>
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1, backgroundColor: statusCfg.bg, border: `1px solid ${statusCfg.color}30` }}>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: statusCfg.color, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 1.5, flexShrink: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.4, borderRadius: "6px", backgroundColor: statusCfg.bg }}>
+            <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: statusCfg.dot }} />
+            <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: statusCfg.color, letterSpacing: "0.04em" }}>
               {getFriendlyStatus(request.status)}
             </Typography>
           </Box>
-          <IconButton onClick={onClose} size="small" sx={{ color: "text.secondary" }}>
-            <CloseIcon fontSize="small" />
+          <IconButton onClick={onClose} size="small" sx={{ color: "text.secondary", borderRadius: "8px", "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG } }}>
+            <CloseIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </Box>
       </Box>
 
-      <DialogContent sx={{ px: 3, py: 3, overflowY: "auto" }}>
+      <DialogContent sx={{ px: 3, py: 2.5, overflowY: "auto" }}>
 
         {/* Progress stepper */}
         {currentIdx >= 0 && !isDeclined && (
-          <Box sx={{ mb: 3, p: 2, borderRadius: 1.5, backgroundColor: isDark ? "#161616" : "#fafafa", border: "1px solid", borderColor: "divider" }}>
-            <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 1.5 }}>
+          <Box sx={{
+            mb: 3, p: 2, borderRadius: "10px",
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+            border: `1px solid ${border}`,
+          }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 1.5 }}>
               Request Progress
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -415,20 +540,20 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
                     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
                       <Box sx={{ mb: 0.5 }}>
                         {done
-                          ? <CheckCircleIcon sx={{ fontSize: 16, color: "#15803d" }} />
+                          ? <CheckCircleIcon sx={{ fontSize: 15, color: "#22c55e" }} />
                           : current
-                            ? <Box sx={{ width: 16, height: 16, borderRadius: "50%", backgroundColor: "#f5c52b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#111827" }} />
+                            ? <Box sx={{ width: 15, height: 15, borderRadius: "50%", backgroundColor: GOLD, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 3px ${GOLD_08}` }}>
+                                <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: CHARCOAL }} />
                               </Box>
-                            : <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: isDark ? "#444" : "#d1d5db" }} />
+                            : <Box sx={{ width: 15, height: 15, borderRadius: "50%", border: `1.5px solid ${isDark ? "#444" : "#d1d5db"}` }} />
                         }
                       </Box>
-                      <Typography sx={{ fontSize: "0.65rem", textAlign: "center", fontWeight: current ? 700 : 400, color: done ? "#15803d" : current ? "text.primary" : "text.secondary", lineHeight: 1.3, px: 0.3 }}>
+                      <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", textAlign: "center", fontWeight: current ? 600 : 400, color: done ? "#15803d" : current ? "text.primary" : "text.secondary", lineHeight: 1.3, px: 0.3 }}>
                         {stage.label}
                       </Typography>
                     </Box>
                     {idx < PIPELINE_STAGES.length - 1 && (
-                      <Box sx={{ height: 2, flex: 1, mx: 0.5, mb: 2.2, borderRadius: 1, backgroundColor: idx < currentIdx ? "#15803d" : isDark ? "#333" : "#e5e7eb" }} />
+                      <Box sx={{ height: "1.5px", flex: 1, mx: 0.5, mb: 2.5, borderRadius: 1, backgroundColor: idx < currentIdx ? "#22c55e" : isDark ? "#333" : "#e5e7eb" }} />
                     )}
                   </React.Fragment>
                 );
@@ -439,29 +564,32 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
 
         {/* Coverage team */}
         {showTeam && teamSections.length > 0 && (
-          <Section label="Your Coverage Team">
+          <Section label="Coverage Team" border={border}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {teamSections.map((sec) => {
                 const colors = SECTION_COLORS[sec] || { bg: "#f3f4f6", color: "#6b7280" };
                 return (
                   <Box key={sec}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1 }}>
-                      <Box sx={{ px: 1, py: 0.25, borderRadius: 1, backgroundColor: colors.bg }}>
-                        <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: colors.color, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-                          {sec}
-                        </Typography>
-                      </Box>
+                    <Box sx={{ display: "inline-flex", px: 1, py: 0.2, borderRadius: "5px", backgroundColor: colors.bg, mb: 1 }}>
+                      <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 700, color: colors.color, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                        {sec}
+                      </Typography>
                     </Box>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
                       {teamBySection[sec].map((staffer) => (
-                        <Box key={staffer.id} sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.25, py: 0.75, borderRadius: 1.5, border: "1px solid", borderColor: "divider", backgroundColor: isDark ? "#1a1a1a" : "#fafafa" }}>
+                        <Box key={staffer.id} sx={{
+                          display: "flex", alignItems: "center", gap: 0.75,
+                          px: 1, py: 0.6, borderRadius: "8px",
+                          border: `1px solid ${border}`,
+                          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+                        }}>
                           <Avatar
                             src={getAvatarUrl(staffer.avatar_url)}
-                            sx={{ width: 44, height: 44, fontSize: "0.82rem", fontWeight: 700, backgroundColor: colors.bg, color: colors.color }}
+                            sx={{ width: 22, height: 22, fontSize: "0.6rem", fontWeight: 700, backgroundColor: colors.bg, color: colors.color }}
                           >
                             {!getAvatarUrl(staffer.avatar_url) && getInitials(staffer.full_name)}
                           </Avatar>
-                          <Typography sx={{ fontSize: "0.82rem", fontWeight: 600, color: "text.primary" }}>
+                          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: "text.primary" }}>
                             {staffer.full_name}
                           </Typography>
                         </Box>
@@ -475,7 +603,7 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
         )}
 
         {/* Event info */}
-        <Section label="Event Information">
+        <Section label="Event Information" border={border}>
           <InfoGrid rows={[
             ["Event Title",  request.title],
             ["Description",  request.description],
@@ -486,25 +614,29 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
         </Section>
 
         {/* Coverage requirements */}
-        <Section label="Coverage Requirements">
+        <Section label="Coverage Requirements" border={border}>
           {coverageComponents.length > 0 ? (
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
               {coverageComponents.map((c, idx) => (
-                <Box key={idx} sx={{ px: 1.25, py: 0.5, borderRadius: 1, border: "1px solid", borderColor: "divider", backgroundColor: isDark ? "#1e1e1e" : "#f9fafb" }}>
-                  <Typography sx={{ fontSize: "0.8rem", color: "text.primary" }}>
+                <Box key={idx} sx={{
+                  px: 1.25, py: 0.4, borderRadius: "6px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+                }}>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>
                     {c.name}{" "}
-                    <Typography component="span" sx={{ fontSize: "0.78rem", color: "text.secondary" }}>×{c.pax}</Typography>
+                    <Box component="span" sx={{ color: "text.secondary" }}>×{c.pax}</Box>
                   </Typography>
                 </Box>
               ))}
             </Box>
           ) : (
-            <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>—</Typography>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>—</Typography>
           )}
         </Section>
 
         {/* Contact */}
-        <Section label="Contact Details">
+        <Section label="Contact Details" border={border}>
           <InfoGrid rows={[
             ["Contact Person", request.contact_person || "—"],
             ["Contact Info",   request.contact_info   || "—"],
@@ -512,34 +644,43 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
         </Section>
 
         {/* Attachment */}
-        <Section label="Attachment">
+        <Section label="Attachment" border={border}>
           {request.file_url ? (
             <Box
               onClick={() => openFile(request.file_url)}
-              sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, cursor: "pointer", color: "#1976d2", "&:hover": { textDecoration: "underline" } }}
+              sx={{
+                display: "inline-flex", alignItems: "center", gap: 0.75,
+                cursor: "pointer",
+                px: 1.25, py: 0.6, borderRadius: "7px",
+                border: `1px solid ${border}`,
+                transition: "border-color 0.15s",
+                "&:hover": { borderColor: GOLD },
+              }}
             >
-              <InsertDriveFileOutlinedIcon sx={{ fontSize: 15 }} />
-              <Typography sx={{ fontSize: "0.85rem" }}>{getFileName(request.file_url)}</Typography>
+              <InsertDriveFileOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>
+                {getFileName(request.file_url)}
+              </Typography>
             </Box>
           ) : (
-            <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>No file attached</Typography>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>No file attached</Typography>
           )}
         </Section>
 
         {/* Admin notes */}
         {request.status === "Approved" && request.admin_notes && (
-          <Section label="Admin Notes">
-            <Box sx={{ p: 1.5, borderRadius: 1.5, backgroundColor: isDark ? "#0a1a0a" : "#f0fdf4", borderLeft: "3px solid #15803d" }}>
-              <Typography sx={{ fontSize: "0.85rem", color: "#15803d" }}>{request.admin_notes}</Typography>
+          <Section label="Admin Notes" border={border}>
+            <Box sx={{ px: 1.5, py: 1, borderRadius: "8px", backgroundColor: isDark ? "#0a1a0a" : "#f0fdf4", borderLeft: "2.5px solid #22c55e" }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "#15803d", lineHeight: 1.6 }}>{request.admin_notes}</Typography>
             </Box>
           </Section>
         )}
 
         {/* Decline reason */}
         {isDeclined && (
-          <Section label="Decline Reason">
-            <Box sx={{ p: 1.5, borderRadius: 1.5, backgroundColor: isDark ? "#1a0a0a" : "#fef2f2", borderLeft: "3px solid #dc2626" }}>
-              <Typography sx={{ fontSize: "0.85rem", color: "#dc2626", lineHeight: 1.6 }}>
+          <Section label="Decline Reason" border={border}>
+            <Box sx={{ px: 1.5, py: 1, borderRadius: "8px", backgroundColor: isDark ? "#1a0a0a" : "#fef2f2", borderLeft: "2.5px solid #ef4444" }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626", lineHeight: 1.6 }}>
                 {request.declined_reason || "No reason provided."}
               </Typography>
             </Box>
@@ -548,28 +689,31 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
 
         {/* Approval + download */}
         {request.status === "Approved" && (
-          <Section label="Approval">
+          <Section label="Approval" border={border}>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
               <Box>
-                <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Approved on</Typography>
-                <Typography sx={{ fontSize: "0.85rem", color: "text.primary", fontWeight: 600, mt: 0.2 }}>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary" }}>Approved on</Typography>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", color: "text.primary", fontWeight: 600, mt: 0.2 }}>
                   {request.approved_at
                     ? new Date(request.approved_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
                     : "—"}
                 </Typography>
               </Box>
-              <Button
-                size="small" variant="outlined"
-                startIcon={<DownloadOutlinedIcon sx={{ fontSize: 15 }} />}
+              <Box
                 onClick={() => generateConfirmationPDF(request, teamBySection)}
                 sx={{
-                  textTransform: "none", fontSize: "0.78rem", flexShrink: 0,
-                  borderRadius: 1.5, borderColor: "#15803d", color: "#15803d",
-                  "&:hover": { borderColor: "#15803d", backgroundColor: "#f0fdf4" },
+                  display: "flex", alignItems: "center", gap: 0.75,
+                  px: 1.5, py: 0.7, borderRadius: "8px", cursor: "pointer",
+                  border: `1px solid ${border}`,
+                  fontFamily: dm, fontSize: "0.78rem", fontWeight: 500,
+                  color: "text.secondary", flexShrink: 0,
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
                 }}
               >
+                <DownloadOutlinedIcon sx={{ fontSize: 14 }} />
                 Download Confirmation
-              </Button>
+              </Box>
             </Box>
           </Section>
         )}
@@ -579,11 +723,15 @@ function RequestDetailDialog({ open, onClose, request, isDark }) {
   );
 }
 
-// ── Small shared components ───────────────────────────────────────────────────
-function Section({ label, children }) {
+// ── Shared components ─────────────────────────────────────────────────────────
+function Section({ label, children, border }) {
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 1, pb: 0.75, borderBottom: "1px solid", borderColor: "divider" }}>
+      <Typography sx={{
+        fontFamily: dm, fontSize: "0.62rem", fontWeight: 700,
+        color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase",
+        mb: 1, pb: 0.75, borderBottom: `1px solid ${border}`,
+      }}>
         {label}
       </Typography>
       {children}
@@ -593,41 +741,94 @@ function Section({ label, children }) {
 
 function InfoGrid({ rows }) {
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", rowGap: 0.6, columnGap: 1, alignItems: "start" }}>
+    <Box sx={{ display: "grid", gridTemplateColumns: "130px 1fr", rowGap: 0.75, columnGap: 1.5, alignItems: "start" }}>
       {rows.map(([label, value]) => (
         <React.Fragment key={label}>
-          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", pt: 0.2 }}>{label}</Typography>
-          <Typography sx={{ fontSize: "0.85rem", color: "text.primary", lineHeight: 1.5 }}>{value || "—"}</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" }}>{label}</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", lineHeight: 1.55 }}>{value || "—"}</Typography>
         </React.Fragment>
       ))}
     </Box>
   );
 }
 
-function CellText({ children }) {
+function MetaCell({ children }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-      <Typography sx={{ fontSize: "0.88rem", color: "text.primary" }}>{children}</Typography>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}>{children}</Typography>
     </Box>
   );
 }
 
 function Loader() {
   return (
-    <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
-      <CircularProgress size={28} sx={{ color: "#f5c52b" }} />
+    <Box sx={{ py: 10, display: "flex", justifyContent: "center" }}>
+      <CircularProgress size={26} sx={{ color: GOLD }} />
     </Box>
   );
 }
 
-function makeDataGridSx(isDark) {
+function makeDataGridSx(isDark, border) {
   return {
-    border: "none", fontFamily: "'Inter', sans-serif", fontSize: "0.88rem",
-    backgroundColor: "background.paper", color: "text.primary",
-    "& .MuiDataGrid-cell":            { outline: "none", color: "text.primary",    borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
-    "& .MuiDataGrid-columnHeaders":   { backgroundColor: isDark ? "#2a2a2a" : "#fafafa", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
-    "& .MuiDataGrid-footerContainer": { backgroundColor: isDark ? "#1e1e1e" : "#fff",    borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
-    "& .MuiDataGrid-row:hover":       { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
-    "& .MuiTablePagination-root":     { color: "text.secondary" },
+    border: "none",
+    fontFamily: dm,
+    fontSize: "0.82rem",
+    backgroundColor: "background.paper",
+    color: "text.primary",
+
+    // Column headers
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+      borderBottom: `1px solid ${border}`,
+      minHeight: "40px !important",
+      maxHeight: "40px !important",
+      lineHeight: "40px !important",
+    },
+    "& .MuiDataGrid-columnHeaderTitle": {
+      fontFamily: dm,
+      fontSize: "0.68rem",
+      fontWeight: 700,
+      color: "text.secondary",
+      letterSpacing: "0.07em",
+      textTransform: "uppercase",
+    },
+    "& .MuiDataGrid-columnSeparator": { display: "none" },
+    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
+
+    // Rows
+    "& .MuiDataGrid-row": {
+      borderBottom: `1px solid ${border}`,
+      transition: "background-color 0.12s",
+      "&:last-child": { borderBottom: "none" },
+    },
+    "& .MuiDataGrid-row:hover": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
+    },
+
+    // Cells
+    "& .MuiDataGrid-cell": {
+      border: "none",
+      outline: "none !important",
+      "&:focus, &:focus-within": { outline: "none" },
+    },
+
+    // Footer
+    "& .MuiDataGrid-footerContainer": {
+      borderTop: `1px solid ${border}`,
+      backgroundColor: "transparent",
+      minHeight: "44px",
+    },
+    "& .MuiTablePagination-root": {
+      fontFamily: dm,
+      fontSize: "0.75rem",
+      color: "text.secondary",
+    },
+    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
+      fontFamily: dm,
+      fontSize: "0.75rem",
+    },
+
+    // Checkbox / selected state
+    "& .MuiDataGrid-selectedRowCount": { fontFamily: dm, fontSize: "0.75rem" },
   };
 }

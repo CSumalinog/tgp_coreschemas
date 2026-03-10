@@ -26,7 +26,6 @@ import TrackChangesOutlinedIcon          from "@mui/icons-material/TrackChangesO
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-// ── Pages per role ─────────────────────────────────────────────────────────────
 const PAGES_BY_ROLE = {
   admin: [
     { label: "Dashboard",           path: "/admin/dashboard",           icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
@@ -65,41 +64,10 @@ const PAGES_BY_ROLE = {
   ],
 };
 
-// ── Smart path resolvers per role ──────────────────────────────────────────────
+const getAdminRequestPath   = (s) => ({ "Pending": "/admin/request-management", "Forwarded": "/admin/forwarded-requests", "For Approval": "/admin/for-approval", "Approved": "/admin/approved-requests", "Declined": "/admin/declined-requests" }[s] || "/admin/request-management");
+const getClientRequestPath  = (s) => ({ "Pending": "/client/pending-requests", "Approved": "/client/approved-requests", "Declined": "/client/declined-requests" }[s] || "/client/pending-requests");
+const getSecHeadAssignmentPath = (s) => ({ "Pending": "/sec_head/for-assignment", "Assigned": "/sec_head/assigned", "Completed": "/sec_head/history" }[s] || "/sec_head/for-assignment");
 
-// Admin: route request to the correct page based on its status
-const getAdminRequestPath = (status) => {
-  const map = {
-    "Pending":      "/admin/request-management",
-    "Forwarded":    "/admin/forwarded-requests",
-    "For Approval": "/admin/for-approval",
-    "Approved":     "/admin/approved-requests",
-    "Declined":     "/admin/declined-requests",
-  };
-  return map[status] || "/admin/request-management";
-};
-
-// Client: route their own request to the correct tracker page
-const getClientRequestPath = (status) => {
-  const map = {
-    "Pending":  "/client/pending-requests",
-    "Approved": "/client/approved-requests",
-    "Declined": "/client/declined-requests",
-  };
-  return map[status] || "/client/pending-requests";
-};
-
-// Sec head: route assignment to the correct page based on status
-const getSecHeadAssignmentPath = (status) => {
-  const map = {
-    "Pending":   "/sec_head/for-assignment",
-    "Assigned":  "/sec_head/assigned",
-    "Completed": "/sec_head/history",
-  };
-  return map[status] || "/sec_head/for-assignment";
-};
-
-// ── Highlight matching text ────────────────────────────────────────────────────
 function Highlight({ text, query }) {
   if (!query || !text) return <>{text}</>;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -115,10 +83,8 @@ function Highlight({ text, query }) {
   );
 }
 
-// ── Supabase queries per role ──────────────────────────────────────────────────
 async function fetchResults(role, query, userId) {
   const results = { staffers: [], requests: [], semesters: [], assignments: [] };
-
   switch (role) {
     case "admin": {
       const [stafferRes, requestRes, semesterRes] = await Promise.all([
@@ -126,9 +92,7 @@ async function fetchResults(role, query, userId) {
         supabase.from("coverage_requests").select("id, title, status").ilike("title", `%${query}%`).limit(4),
         supabase.from("semesters").select("id, name, is_active").ilike("name", `%${query}%`).limit(3),
       ]);
-      results.staffers  = stafferRes.data  || [];
-      results.requests  = requestRes.data  || [];
-      results.semesters = semesterRes.data || [];
+      results.staffers = stafferRes.data || []; results.requests = requestRes.data || []; results.semesters = semesterRes.data || [];
       break;
     }
     case "sec_head": {
@@ -136,44 +100,31 @@ async function fetchResults(role, query, userId) {
         supabase.from("profiles").select("id, full_name, section").ilike("full_name", `%${query}%`).limit(4),
         supabase.from("coverage_assignments").select("id, status, request:request_id(title)").ilike("request.title", `%${query}%`).limit(4),
       ]);
-      results.staffers    = stafferRes.data    || [];
-      results.assignments = assignmentRes.data || [];
+      results.staffers = stafferRes.data || []; results.assignments = assignmentRes.data || [];
       break;
     }
     case "staff": {
-      const { data } = await supabase
-        .from("coverage_assignments")
-        .select("id, status, request:request_id(title)")
-        .eq("assigned_to", userId)
-        .ilike("request.title", `%${query}%`)
-        .limit(4);
+      const { data } = await supabase.from("coverage_assignments").select("id, status, request:request_id(title)").eq("assigned_to", userId).ilike("request.title", `%${query}%`).limit(4);
       results.assignments = data || [];
       break;
     }
     case "client": {
-      const { data } = await supabase
-        .from("coverage_requests")
-        .select("id, title, status")
-        .eq("created_by", userId)
-        .ilike("title", `%${query}%`)
-        .limit(4);
+      const { data } = await supabase.from("coverage_requests").select("id, title, status").eq("created_by", userId).ilike("title", `%${query}%`).limit(4);
       results.requests = data || [];
       break;
     }
-    default:
-      break;
+    default: break;
   }
-
   return results;
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export default function GlobalSearch({ role = "staff", userId = null }) {
+export default function GlobalSearch({ role = "staff", userId = null, alwaysExpanded = false }) {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
   const navigate = useNavigate();
 
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(alwaysExpanded);
   const [query,    setQuery]    = useState("");
   const [open,     setOpen]     = useState(false);
   const [loading,  setLoading]  = useState(false);
@@ -184,19 +135,17 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
   const inputRef     = useRef(null);
   const debounceRef  = useRef(null);
 
-  const pages = PAGES_BY_ROLE[role] || [];
+  const pages    = PAGES_BY_ROLE[role] || [];
+  const allItems = [...results.pages, ...results.staffers, ...results.requests, ...results.semesters, ...results.assignments];
 
-  const allItems = [
-    ...results.pages,
-    ...results.staffers,
-    ...results.requests,
-    ...results.semesters,
-    ...results.assignments,
-  ];
+  // If alwaysExpanded, keep expanded true always
+  useEffect(() => {
+    if (alwaysExpanded) setExpanded(true);
+  }, [alwaysExpanded]);
 
   useEffect(() => {
-    if (expanded) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [expanded]);
+    if (expanded && !alwaysExpanded) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [expanded, alwaysExpanded]);
 
   const search = useCallback(async (q) => {
     const lower = q.toLowerCase();
@@ -221,20 +170,25 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
   useEffect(() => {
     const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false); setExpanded(false); setQuery(""); setFocused(-1);
+        setOpen(false);
+        setFocused(-1);
+        // only collapse if NOT alwaysExpanded
+        if (!alwaysExpanded) { setExpanded(false); setQuery(""); }
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [alwaysExpanded]);
 
   const handleSelect = (path) => {
     navigate(path);
-    setOpen(false); setExpanded(false); setQuery(""); setFocused(-1);
+    setOpen(false); setQuery(""); setFocused(-1);
+    if (!alwaysExpanded) setExpanded(false);
   };
 
   const handleClose = () => {
-    setExpanded(false); setOpen(false); setQuery(""); setFocused(-1);
+    setQuery(""); setOpen(false); setFocused(-1);
+    if (!alwaysExpanded) setExpanded(false);
   };
 
   const handleKeyDown = (e) => {
@@ -280,9 +234,7 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
           <Highlight text={primary} query={query} />
         </Typography>
         {secondary && (
-          <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", lineHeight: 1.2 }}>
-            {secondary}
-          </Typography>
+          <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", lineHeight: 1.2 }}>{secondary}</Typography>
         )}
       </Box>
     </Box>
@@ -291,8 +243,8 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
   return (
     <Box ref={containerRef} sx={{ position: "relative", display: "flex", alignItems: "center" }}>
 
-      {/* ── Collapsed: icon only ── */}
-      {!expanded && (
+      {/* ── Collapsed: icon only (shown when NOT alwaysExpanded and not expanded) ── */}
+      {!expanded && !alwaysExpanded && (
         <IconButton
           onClick={() => setExpanded(true)}
           size="small"
@@ -302,21 +254,22 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
         </IconButton>
       )}
 
-      {/* ── Expanded: full input ── */}
+      {/* ── Expanded input (always shown when alwaysExpanded) ── */}
       {expanded && (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <TextField
             inputRef={inputRef}
             size="small"
-            placeholder="Search..."
+            placeholder="Search anything..."
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); setFocused(-1); }}
             onKeyDown={handleKeyDown}
             sx={{
-              width: { xs: 160, sm: 200, md: 300 },
+              // wider when alwaysExpanded to fill the header nicely
+              width: alwaysExpanded ? { xs: 180, sm: 240, md: 320 } : { xs: 160, sm: 200, md: 300 },
               transition: "width 0.2s ease",
               "& .MuiOutlinedInput-root": {
-                borderRadius: 3, height: 34,
+                borderRadius: 1, height: 36,
                 paddingTop: 0, paddingBottom: 0, fontSize: "0.85rem",
               },
             }}
@@ -324,23 +277,30 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
               startAdornment: (
                 <InputAdornment position="start">
                   {loading
-                    ? <CircularProgress size={20} sx={{ color: "#9e9e9e" }} />
-                    : <SearchOutlinedIcon sx={{ fontSize: 20, color: "#9e9e9e" }} />}
+                    ? <CircularProgress size={16} sx={{ color: "#9e9e9e" }} />
+                    : <SearchOutlinedIcon sx={{ fontSize: 18, color: "#9e9e9e" }} />}
                 </InputAdornment>
               ),
+              // only show close button if NOT alwaysExpanded
+              endAdornment: !alwaysExpanded && query ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={handleClose}>
+                    <CloseIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
             }}
           />
-          <IconButton
-            size="small"
-            onClick={handleClose}
-            sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}
-          >
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+          {/* close button only for collapsible mode */}
+          {!alwaysExpanded && (
+            <IconButton size="small" onClick={handleClose} sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          )}
         </Box>
       )}
 
-      {/* ── Dropdown ── */}
+      {/* ── Dropdown results ── */}
       {expanded && open && query.trim() && (
         <Box sx={{
           position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340,
@@ -348,111 +308,61 @@ export default function GlobalSearch({ role = "staff", userId = null }) {
           boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.12)",
           zIndex: 1400, overflow: "hidden", py: 0.5,
         }}>
-
           {loading && (
             <Box sx={{ px: 2, py: 2, display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={14} sx={{ color: "#9e9e9e" }} />
               <Typography sx={{ fontSize: "0.82rem", color: "text.secondary" }}>Searching...</Typography>
             </Box>
           )}
-
           {!loading && !hasResults && (
             <Box sx={{ px: 2, py: 2.5, textAlign: "center" }}>
-              <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>
-                No results for "{query}"
-              </Typography>
+              <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>No results for "{query}"</Typography>
             </Box>
           )}
-
           {!loading && hasResults && (
             <>
-              {/* Pages */}
               {hasPages && (
                 <>
                   <Typography sx={sectionLabelSx}>Pages</Typography>
-                  {results.pages.map((p) => (
-                    <ResultItem key={p.path} icon={p.icon} primary={p.label} path={p.path} globalIndex={gIdx++} />
-                  ))}
+                  {results.pages.map((p) => <ResultItem key={p.path} icon={p.icon} primary={p.label} path={p.path} globalIndex={gIdx++} />)}
                 </>
               )}
-
-              {/* Staffers — admin + sec_head */}
               {hasStaffers && (
                 <>
                   {hasPages && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Staffers</Typography>
                   {results.staffers.map((s) => (
-                    <ResultItem key={s.id}
-                      icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
-                      primary={s.full_name}
-                      secondary={[s.section, s.division].filter(Boolean).join(" · ")}
-                      path={role === "admin" ? "/admin/staffers-management" : "/sec_head/my-staffers"}
-                      globalIndex={gIdx++}
-                    />
+                    <ResultItem key={s.id} icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 16 }} />} primary={s.full_name} secondary={[s.section, s.division].filter(Boolean).join(" · ")} path={role === "admin" ? "/admin/staffers-management" : "/sec_head/my-staffers"} globalIndex={gIdx++} />
                   ))}
                 </>
               )}
-
-              {/* Requests — admin (status-based) + client (status-based) */}
               {hasRequests && (
                 <>
                   {(hasPages || hasStaffers) && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Requests</Typography>
                   {results.requests.map((r) => (
-                    <ResultItem key={r.id}
-                      icon={<FolderOutlinedIcon sx={{ fontSize: 16 }} />}
-                      primary={r.title}
-                      secondary={r.status}
-                      path={
-                        role === "admin"
-                          ? getAdminRequestPath(r.status)
-                          : getClientRequestPath(r.status)
-                      }
-                      globalIndex={gIdx++}
-                    />
+                    <ResultItem key={r.id} icon={<FolderOutlinedIcon sx={{ fontSize: 16 }} />} primary={r.title} secondary={r.status} path={role === "admin" ? getAdminRequestPath(r.status) : getClientRequestPath(r.status)} globalIndex={gIdx++} />
                   ))}
                 </>
               )}
-
-              {/* Semesters — admin only */}
               {hasSemesters && (
                 <>
                   {(hasPages || hasStaffers || hasRequests) && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Semesters</Typography>
                   {results.semesters.map((s) => (
-                    <ResultItem key={s.id}
-                      icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />}
-                      primary={s.name}
-                      secondary={s.is_active ? "Active" : "Inactive"}
-                      path="/admin/semester-management"
-                      globalIndex={gIdx++}
-                    />
+                    <ResultItem key={s.id} icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />} primary={s.name} secondary={s.is_active ? "Active" : "Inactive"} path="/admin/semester-management" globalIndex={gIdx++} />
                   ))}
                 </>
               )}
-
-              {/* Assignments — sec_head (status-based) + staff */}
               {hasAssignments && (
                 <>
                   {(hasPages || hasStaffers || hasRequests || hasSemesters) && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Assignments</Typography>
                   {results.assignments.map((a) => (
-                    <ResultItem key={a.id}
-                      icon={<AssignmentOutlinedIcon sx={{ fontSize: 16 }} />}
-                      primary={a.request?.title || "—"}
-                      secondary={a.status}
-                      path={
-                        role === "staff"
-                          ? "/staff/my-assignment"
-                          : getSecHeadAssignmentPath(a.status)
-                      }
-                      globalIndex={gIdx++}
-                    />
+                    <ResultItem key={a.id} icon={<AssignmentOutlinedIcon sx={{ fontSize: 16 }} />} primary={a.request?.title || "—"} secondary={a.status} path={role === "staff" ? "/staff/my-assignment" : getSecHeadAssignmentPath(a.status)} globalIndex={gIdx++} />
                   ))}
                 </>
               )}
-
-              {/* Footer */}
               <Box sx={{ px: 1.5, py: 0.8, borderTop: `1px solid ${borderColor}`, mt: 0.5, display: "flex", gap: 1.5 }}>
                 <Typography sx={{ fontSize: "0.68rem", color: "#bdbdbd" }}>↑↓ navigate</Typography>
                 <Typography sx={{ fontSize: "0.68rem", color: "#bdbdbd" }}>↵ select</Typography>
