@@ -28,7 +28,8 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id:      requestData.entity,
+    entity_id:      requestData.entity       || null,
+    other_entity:   requestData.other_entity || null,
     contact_person: requestData.contact_person,
     contact_info:   requestData.contact_info,
     file_url:       fileUrl,
@@ -45,7 +46,6 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
 
 /**
  * Fetch all coverage requests for the currently logged-in client.
- * Includes assigned staffers (name, section, avatar) grouped via coverage_assignments.
  */
 export async function fetchMyRequests() {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -74,6 +74,7 @@ export async function fetchMyRequests() {
       declined_at,
       forwarded_at,
       created_at,
+      other_entity,
       client_type:client_type_id ( id, name ),
       entity:entity_id ( id, name ),
       coverage_assignments (
@@ -121,7 +122,8 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id:      requestData.entity,
+    entity_id:      requestData.entity       || null,
+    other_entity:   requestData.other_entity || null,
     contact_person: requestData.contact_person,
     contact_info:   requestData.contact_info,
     file_url:       fileUrl,

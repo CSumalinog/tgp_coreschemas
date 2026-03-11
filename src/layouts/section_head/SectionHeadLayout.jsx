@@ -60,7 +60,7 @@ const MENU_SECTIONS = [
     group: "MENU",
     items: [
       { label: "Dashboard",             to: "dashboard",             Icon: DashboardOutlinedIcon  },
-      { label: "Assignment Management", to: "assignment-management", Icon: AssignmentOutlinedIcon },
+      { label: "Coverage Assignment",   to: "coverage-assignment",   Icon: AssignmentOutlinedIcon },
       { label: "My Staffers",           to: "my-staffers",           Icon: GroupOutlinedIcon      },
     ],
   },

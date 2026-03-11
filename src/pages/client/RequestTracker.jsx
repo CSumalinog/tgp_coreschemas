@@ -52,11 +52,13 @@ const SECTION_COLORS = {
   Videojournalism: { bg: "#e8f5e9", color: "#2e7d32" },
 };
 const PIPELINE_STAGES = [
-  { key: "Pending",      label: "Submitted",      sub: "Awaiting admin review"         },
-  { key: "Forwarded",    label: "Under Review",   sub: "Forwarded to section heads"    },
-  { key: "Assigned",     label: "Staff Assigned", sub: "Staffers have been assigned"   },
-  { key: "For Approval", label: "For Approval",   sub: "Awaiting final admin sign-off" },
-  { key: "Approved",     label: "Approved",       sub: "Request approved"              },
+  { key: "Pending",      label: "Submitted",      sub: "Awaiting admin review",         phase: 1 },
+  { key: "Forwarded",    label: "Under Review",   sub: "Forwarded to section heads",    phase: 1 },
+  { key: "Assigned",     label: "Staff Assigned", sub: "Staffers have been assigned",   phase: 1 },
+  { key: "For Approval", label: "For Approval",   sub: "Awaiting final admin sign-off", phase: 1 },
+  { key: "Approved",     label: "Approved",       sub: "Request approved",              phase: 1 },
+  { key: "On Going",     label: "On Going",       sub: "Coverage is underway",          phase: 2 },
+  { key: "Completed",    label: "Completed",      sub: "Coverage complete",             phase: 2 },
 ];
 const STATUS_CONFIG = {
   Pending:        { bg: "#fef9ec", color: "#b45309",  dot: "#f59e0b" },
@@ -64,11 +66,13 @@ const STATUS_CONFIG = {
   Assigned:       { bg: "#fff7ed", color: "#c2410c",  dot: "#f97316" },
   "For Approval": { bg: "#eff6ff", color: "#1d4ed8",  dot: "#3b82f6" },
   Approved:       { bg: "#f0fdf4", color: "#15803d",  dot: "#22c55e" },
+  "On Going":     { bg: "#eff6ff", color: "#1d4ed8",  dot: "#3b82f6" },
+  Completed:      { bg: "#f0fdf4", color: "#15803d",  dot: "#22c55e" },
   Declined:       { bg: "#fef2f2", color: "#dc2626",  dot: "#ef4444" },
   Draft:          { bg: "#f9fafb", color: "#6b7280",  dot: "#9ca3af" },
 };
 const getStageIndex = (status) => {
-  const map = { Pending: 0, Forwarded: 1, Assigned: 2, "For Approval": 3, Approved: 4 };
+  const map = { Pending: 0, Forwarded: 1, Assigned: 2, "For Approval": 3, Approved: 4, "On Going": 5, Completed: 6 };
   return map[status] ?? -1;
 };
 
@@ -197,7 +201,7 @@ function PipelineTab({ isDark, border }) {
   const { requests, loading } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const active = requests.filter((r) =>
-    ["Pending", "Forwarded", "Assigned", "For Approval", "Approved"].includes(r.status)
+    ["Pending", "Forwarded", "Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(r.status)
   );
 
   if (loading) return <Loader />;
@@ -261,36 +265,83 @@ function PipelineCard({ request, isDark, border, onClick }) {
         </Box>
       </Box>
 
-      {!isDeclined ? (
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          {PIPELINE_STAGES.map((stage, idx) => {
-            const done    = idx < currentIdx;
-            const current = idx === currentIdx;
-            return (
-              <React.Fragment key={stage.key}>
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
-                  <Box sx={{ mb: 0.5 }}>
-                    {done
-                      ? <CheckCircleIcon sx={{ fontSize: 16, color: "#22c55e" }} />
-                      : current
-                        ? <Box sx={{ width: 16, height: 16, borderRadius: "50%", backgroundColor: GOLD, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 3px ${GOLD_08}` }}>
-                            <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: CHARCOAL }} />
-                          </Box>
-                        : <Box sx={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${isDark ? "#444" : "#d1d5db"}` }} />
-                    }
-                  </Box>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", textAlign: "center", lineHeight: 1.3, px: 0.5, fontWeight: current ? 600 : 400, color: done ? "#15803d" : current ? "text.primary" : "text.secondary" }}>
-                    {stage.label}
+      {!isDeclined ? (() => {
+        const phase1 = PIPELINE_STAGES.filter((s) => s.phase === 1);
+        const phase2 = PIPELINE_STAGES.filter((s) => s.phase === 2);
+        const currentPhase = currentIdx >= 5 ? 2 : 1;
+
+        const renderStages = (stages, baseOffset) => stages.map((stage, i) => {
+          const idx     = baseOffset + i;
+          const done    = idx < currentIdx;
+          const current = idx === currentIdx;
+          const ahead   = idx > currentIdx;
+          const isP2    = stage.phase === 2;
+          return (
+            <React.Fragment key={stage.key}>
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0, opacity: isP2 && currentPhase < 2 ? 0.45 : 1, transition: "opacity 0.2s" }}>
+                <Box sx={{ mb: 0.5 }}>
+                  {done
+                    ? <CheckCircleIcon sx={{ fontSize: 16, color: "#22c55e" }} />
+                    : current
+                      ? <Box sx={{ width: 16, height: 16, borderRadius: "50%", backgroundColor: isP2 ? "#3b82f6" : GOLD, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 3px ${isP2 ? "rgba(59,130,246,0.15)" : GOLD_08}` }}>
+                          <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#fff" }} />
+                        </Box>
+                      : <Box sx={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${isDark ? "#444" : "#d1d5db"}` }} />
+                  }
+                </Box>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.61rem", textAlign: "center", lineHeight: 1.3, px: 0.25, fontWeight: current ? 600 : 400, color: done ? "#15803d" : current ? "text.primary" : "text.secondary" }}>
+                  {stage.label}
+                </Typography>
+              </Box>
+              {i < stages.length - 1 && (
+                <Box sx={{ height: "1.5px", flex: 1, mx: 0.5, mb: 2.8, borderRadius: 1, backgroundColor: idx < currentIdx ? "#22c55e" : isDark ? "#333" : "#e5e7eb", transition: "background-color 0.3s", opacity: isP2 && currentPhase < 2 ? 0.35 : 1 }} />
+              )}
+            </React.Fragment>
+          );
+        });
+
+        return (
+          <Box>
+            {/* Phase row */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.25 }}>
+              {/* Phase 1 label + line */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flex: phase1.length }}>
+                <Box sx={{ px: 0.75, py: 0.1, borderRadius: "4px", backgroundColor: currentPhase === 1 ? GOLD_08 : (isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)"), border: `1px solid ${currentPhase === 1 ? "rgba(245,197,43,0.3)" : (isDark ? "#2e2e2e" : "#e8e8e8")}`, flexShrink: 0 }}>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.56rem", fontWeight: 700, color: currentPhase === 1 ? (isDark ? GOLD : "#7a5c00") : "text.disabled", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+                    Phase 1
                   </Typography>
                 </Box>
-                {idx < PIPELINE_STAGES.length - 1 && (
-                  <Box sx={{ height: "1.5px", flex: 1, mx: 0.5, mb: 2.8, borderRadius: 1, backgroundColor: idx < currentIdx ? "#22c55e" : isDark ? "#333" : "#e5e7eb", transition: "background-color 0.3s" }} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </Box>
-      ) : (
+                <Box sx={{ flex: 1, height: "1px", backgroundColor: currentPhase === 1 ? "rgba(245,197,43,0.25)" : (isDark ? "#2a2a2a" : "#ebebeb") }} />
+              </Box>
+
+              {/* Phase divider dot */}
+              <Box sx={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, backgroundColor: currentPhase === 2 ? "#3b82f6" : (isDark ? "#444" : "#d1d5db"), boxShadow: currentPhase === 2 ? "0 0 0 3px rgba(59,130,246,0.15)" : "none", transition: "all 0.25s" }} />
+
+              {/* Phase 2 label + line */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flex: phase2.length }}>
+                <Box sx={{ flex: 1, height: "1px", backgroundColor: currentPhase === 2 ? "rgba(59,130,246,0.25)" : (isDark ? "#2a2a2a" : "#ebebeb") }} />
+                <Box sx={{ px: 0.75, py: 0.1, borderRadius: "4px", backgroundColor: currentPhase === 2 ? "rgba(59,130,246,0.08)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)"), border: `1px solid ${currentPhase === 2 ? "rgba(59,130,246,0.2)" : (isDark ? "#2e2e2e" : "#e8e8e8")}`, flexShrink: 0 }}>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.56rem", fontWeight: 700, color: currentPhase === 2 ? "#3b82f6" : "text.disabled", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+                    Phase 2
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Stages row */}
+            <Box sx={{ display: "flex", alignItems: "flex-start" }}>
+              {renderStages(phase1, 0)}
+
+              {/* Phase break connector */}
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mx: 0.5, mb: 2.8, flexShrink: 0 }}>
+                <Box sx={{ height: "1.5px", width: 16, backgroundColor: currentIdx >= 5 ? "#22c55e" : isDark ? "#333" : "#e5e7eb", borderRadius: 1 }} />
+              </Box>
+
+              {renderStages(phase2, phase1.length)}
+            </Box>
+          </Box>
+        );
+      })() : (
         <Box sx={{ px: 1.5, py: 1, borderRadius: "8px", backgroundColor: isDark ? "#1a0a0a" : "#fef2f2", borderLeft: "2.5px solid #ef4444" }}>
           <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "#dc2626", lineHeight: 1.5 }}>
             This request was declined.{request.declined_reason ? ` "${request.declined_reason}"` : ""}

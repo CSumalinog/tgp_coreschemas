@@ -92,13 +92,13 @@ function AppRoutes() {
       }>
         <Route index                        element={<Navigate to="dashboard" />} />
         <Route path="dashboard"             element={<SecHeadDashboard />} />
-        <Route path="assignment-management" element={<SecHeadAssignmentManagement />} />
+        <Route path="coverage-assignment" element={<SecHeadAssignmentManagement />} />
         <Route path="my-staffers"           element={<SecHeadMyStaffers />} />
         <Route path="profile"               element={<ProfilePage />} />
         {/* Legacy redirects */}
-        <Route path="for-assignment" element={<Navigate to="/sec_head/assignment-management" replace />} />
-        <Route path="assigned"       element={<Navigate to="/sec_head/assignment-management" replace />} />
-        <Route path="history"        element={<Navigate to="/sec_head/assignment-management" replace />} />
+        <Route path="for-assignment" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="assigned"       element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="history"        element={<Navigate to="/sec_head/coverage-assignment" replace />} />
       </Route>
 
       {/* Regular Staff Routes — only role: "staff" */}

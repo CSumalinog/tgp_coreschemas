@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog, DialogContent, DialogActions,
-  TextField, Button, Box, Typography, IconButton,
+  TextField, Box, Typography, IconButton,
   Divider, useTheme,
 } from "@mui/material";
 import CloseIcon                 from "@mui/icons-material/Close";
@@ -14,6 +14,13 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import AccessTimeOutlinedIcon    from "@mui/icons-material/AccessTimeOutlined";
 import dayjs from "dayjs";
 
+// ── Brand tokens ──────────────────────────────────────────────────────────────
+const GOLD        = "#F5C52B";
+const GOLD_08     = "rgba(245,197,43,0.08)";
+const GOLD_16     = "rgba(245,197,43,0.16)";
+const CHARCOAL    = "#353535";
+const dm          = "'DM Sans', sans-serif";
+
 const MODE = { VIEW: "view", EDIT: "edit", CREATE: "create" };
 
 export default function CalendarEventDialog({
@@ -23,16 +30,20 @@ export default function CalendarEventDialog({
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
 
+  const border    = isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)";
+  const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
+  const subtleBg  = isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)";
+
   const titleRef = useRef(null);
 
-  const [mode,               setMode]               = useState(MODE.CREATE);
-  const [eventType,          setEventType]          = useState("single");
-  const [title,              setTitle]              = useState("");
-  const [notes,              setNotes]              = useState("");
-  const [start,              setStart]              = useState(null);
-  const [end,                setEnd]                = useState(null);
-  const [error,              setError]              = useState("");
-  const [confirmDeleteOpen,  setConfirmDeleteOpen]  = useState(false);
+  const [mode,              setMode]              = useState(MODE.CREATE);
+  const [eventType,         setEventType]         = useState("single");
+  const [title,             setTitle]             = useState("");
+  const [notes,             setNotes]             = useState("");
+  const [start,             setStart]             = useState(null);
+  const [end,               setEnd]               = useState(null);
+  const [error,             setError]             = useState("");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -55,24 +66,21 @@ export default function CalendarEventDialog({
     setError("");
   }, [open, existingEvent, defaultDate, initialEventType]);
 
-  const isEditable  = mode !== MODE.VIEW;
-  const borderColor = isDark ? "#2e2e2e" : "#e8e8e8";
-  const surfaceBg   = isDark ? "#181818" : "#ffffff";
-  const subtleBg    = isDark ? "#1e1e1e" : "#f9f9f9";
+  const isEditable = mode !== MODE.VIEW;
 
   // ── Logic ─────────────────────────────────────────────────────────────────
   const hasConflict = (newStart, newEnd) =>
-    existingEvents.some((event) => {
-      if (existingEvent && event.id === existingEvent.id) return false;
-      const s = dayjs(event.startDate), e = dayjs(event.endDate);
+    existingEvents.some((ev) => {
+      if (existingEvent && ev.id === existingEvent.id) return false;
+      const s = dayjs(ev.startDate), e = dayjs(ev.endDate);
       return newStart.isBefore(e) && newEnd.isAfter(s);
     });
 
   const validate = () => {
-    if (!title.trim())       { setError("Title is required."); return false; }
-    if (!start || !end)      { setError("Start and end are required."); return false; }
-    if (end.isBefore(start)) { setError("End must be after start."); return false; }
-    if (hasConflict(start, end)) { setError("Conflicts with an existing block."); return false; }
+    if (!title.trim())           { setError("Title is required.");                    return false; }
+    if (!start || !end)          { setError("Start and end are required.");           return false; }
+    if (end.isBefore(start))     { setError("End must be after start.");              return false; }
+    if (hasConflict(start, end)) { setError("Conflicts with an existing block.");     return false; }
     return true;
   };
 
@@ -92,40 +100,49 @@ export default function CalendarEventDialog({
   // ── Shared input sx ───────────────────────────────────────────────────────
   const inputSx = {
     "& .MuiOutlinedInput-root": {
-      borderRadius: "6px",
+      borderRadius: "8px",
       fontSize: "0.85rem",
-      backgroundColor: isEditable ? (isDark ? "#1a1a1a" : "#fafafa") : "transparent",
-      "& fieldset":                  { borderColor },
-      "&:hover fieldset":            { borderColor: isEditable ? "#f5c52b" : borderColor },
-      "&.Mui-focused fieldset":      { borderColor: "#f5c52b", borderWidth: "1.5px" },
-      "&.Mui-disabled":              { backgroundColor: "transparent" },
+      fontFamily: dm,
+      backgroundColor: isEditable ? subtleBg : "transparent",
+      "& fieldset":             { borderColor: border },
+      "&:hover fieldset":       { borderColor: isEditable ? GOLD : border },
+      "&.Mui-focused fieldset": { borderColor: GOLD, borderWidth: "1px" },
+      "&.Mui-disabled":         { backgroundColor: "transparent" },
     },
-    "& .MuiInputLabel-root":             { fontSize: "0.82rem", color: "text.secondary" },
-    "& .MuiInputLabel-root.Mui-focused": { color: "#d97706" },
-    "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: isDark ? "#666" : "#999" },
+    "& .MuiInputLabel-root":             { fontSize: "0.82rem", fontFamily: dm, color: "text.secondary" },
+    "& .MuiInputLabel-root.Mui-focused": { color: GOLD },
+    "& .MuiInputBase-input.Mui-disabled": {
+      WebkitTextFillColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(53,53,53,0.35)",
+    },
   };
+
+  // ── Field label ───────────────────────────────────────────────────────────
+  const FieldLabel = ({ children, optional }) => (
+    <Typography sx={{
+      fontFamily: dm, fontSize: "0.68rem", fontWeight: 700,
+      color: "text.disabled", textTransform: "uppercase",
+      letterSpacing: "0.09em", mb: 0.75,
+    }}>
+      {children}
+      {optional && (
+        <Typography component="span" sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 400, color: "text.disabled", textTransform: "none", letterSpacing: 0, ml: 0.5 }}>
+          (optional)
+        </Typography>
+      )}
+    </Typography>
+  );
 
   // ── Mode pill ─────────────────────────────────────────────────────────────
   const modePill = {
-    [MODE.VIEW]:   { label: "Viewing",  bg: isDark ? "#1e2a1e" : "#f0fdf4", color: "#16a34a", border: isDark ? "#1e3a1e" : "#bbf7d0" },
-    [MODE.EDIT]:   { label: "Editing",  bg: isDark ? "#2a2200" : "#fffbeb", color: "#d97706", border: isDark ? "#3a3000" : "#fde68a" },
-    [MODE.CREATE]: { label: "New Block",bg: isDark ? "#1a1a2e" : "#eff6ff", color: "#2563eb", border: isDark ? "#1e2a4e" : "#bfdbfe" },
+    [MODE.VIEW]:   { label: "Viewing",   dotColor: "#16a34a" },
+    [MODE.EDIT]:   { label: "Editing",   dotColor: GOLD },
+    [MODE.CREATE]: { label: "New Block", dotColor: "#2563eb" },
   }[mode];
 
-  // ── Block type cards ──────────────────────────────────────────────────────
+  // ── Block type options ────────────────────────────────────────────────────
   const typeOptions = [
-    {
-      value: "single",
-      label: "Single Day",
-      sub: "Block specific hours",
-      icon: <AccessTimeOutlinedIcon sx={{ fontSize: 15 }} />,
-    },
-    {
-      value: "multi",
-      label: "Multi Day",
-      sub: "Block full day range",
-      icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />,
-    },
+    { value: "single", label: "Single Day",  sub: "Block specific hours",  Icon: AccessTimeOutlinedIcon },
+    { value: "multi",  label: "Multi Day",   sub: "Block full day range",  Icon: CalendarMonthOutlinedIcon },
   ];
 
   return (
@@ -141,48 +158,50 @@ export default function CalendarEventDialog({
           sx: {
             width: 460,
             borderRadius: "12px",
-            backgroundColor: surfaceBg,
+            backgroundColor: paperBg,
             backgroundImage: "none",
-            border: `1px solid ${borderColor}`,
+            border: `1px solid ${border}`,
             boxShadow: isDark
-              ? "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)"
-              : "0 8px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)",
+              ? "0 20px 60px rgba(0,0,0,0.5)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
             overflow: "hidden",
           },
         }}
       >
-        {/* ── Header band ── */}
+        {/* ── Header ── */}
         <Box sx={{
-          px: 2.5, pt: 2.5, pb: 2,
-          background: isDark
-            ? "linear-gradient(135deg, #1e1e1e 0%, #1a1a1a 100%)"
-            : "linear-gradient(135deg, #fffff9 0%, #fff 100%)",
-          borderBottom: `1px solid ${isDark ? "#2a2a00" : "#fce97a"}`,
+          px: 2.5, pt: 2.25, pb: 2,
+          borderBottom: `1px solid ${border}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         }}>
-          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.25 }}>
             {/* Icon badge */}
             <Box sx={{
-              mt: 0.2,
-              width: 36, height: 36, borderRadius: "10px",
-              background: existingEvent
-                ? isDark ? "linear-gradient(135deg,#3a0a0a,#2a0505)" : "linear-gradient(135deg,#fee2e2,#fecaca)"
-                : isDark ? "linear-gradient(135deg,#2a2200,#1e1900)" : "linear-gradient(135deg,#fef9c3,#fde68a)",
-              border: `1px solid ${existingEvent ? (isDark ? "#5a1010" : "#fca5a5") : (isDark ? "#4a3800" : "#fcd34d")}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
+              mt: 0.15,
+              width: 34, height: 34, borderRadius: "9px",
+              backgroundColor: existingEvent
+                ? isDark ? "rgba(220,38,38,0.1)" : "rgba(220,38,38,0.06)"
+                : GOLD_08,
+              border: `1px solid ${existingEvent
+                ? isDark ? "rgba(220,38,38,0.2)" : "rgba(220,38,38,0.15)"
+                : GOLD_16}`,
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>
               {existingEvent
-                ? <EventBusyOutlinedIcon sx={{ fontSize: 17, color: isDark ? "#f87171" : "#dc2626" }} />
-                : <BlockOutlinedIcon    sx={{ fontSize: 17, color: isDark ? "#fbbf24" : "#d97706" }} />
+                ? <EventBusyOutlinedIcon sx={{ fontSize: 16, color: isDark ? "#f87171" : "#dc2626" }} />
+                : <BlockOutlinedIcon    sx={{ fontSize: 16, color: GOLD }} />
               }
             </Box>
 
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "text.primary", lineHeight: 1.25, fontFamily: "'Inter', sans-serif" }}>
+              <Typography sx={{
+                fontFamily: dm, fontWeight: 700, fontSize: "0.92rem",
+                color: "text.primary", lineHeight: 1.25,
+              }}>
                 {existingEvent ? existingEvent.title || "Blocked Date" : "Block a Date"}
               </Typography>
-              <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.3, lineHeight: 1.4 }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary", mt: 0.25, lineHeight: 1.4 }}>
                 {mode === MODE.VIEW   && "View-only — click edit to make changes"}
                 {mode === MODE.EDIT   && "Editing this block — clients will see changes"}
                 {mode === MODE.CREATE && "Clients won't be able to request on blocked dates"}
@@ -191,55 +210,53 @@ export default function CalendarEventDialog({
           </Box>
 
           {/* Action icons */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 1, flexShrink: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, ml: 1, flexShrink: 0 }}>
             {existingEvent && mode === MODE.VIEW && (
               <IconButton size="small" onClick={() => setMode(MODE.EDIT)} sx={{
-                width: 28, height: 28, color: "text.secondary",
-                "&:hover": { backgroundColor: isDark ? "#2a2200" : "#fef3c7", color: "#d97706" },
+                width: 28, height: 28, borderRadius: "7px", color: "text.secondary",
+                "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
               }}>
-                <EditOutlinedIcon sx={{ fontSize: 15 }} />
+                <EditOutlinedIcon sx={{ fontSize: 14 }} />
               </IconButton>
             )}
             {existingEvent && (
               <IconButton size="small" onClick={() => setConfirmDeleteOpen(true)} sx={{
-                width: 28, height: 28, color: "text.secondary",
-                "&:hover": { backgroundColor: isDark ? "#2a0a0a" : "#fee2e2", color: "#dc2626" },
+                width: 28, height: 28, borderRadius: "7px", color: "text.secondary",
+                "&:hover": { backgroundColor: isDark ? "rgba(220,38,38,0.1)" : "#fef2f2", color: "#dc2626" },
               }}>
-                <DeleteOutlinedIcon sx={{ fontSize: 15 }} />
+                <DeleteOutlinedIcon sx={{ fontSize: 14 }} />
               </IconButton>
             )}
             <IconButton size="small" onClick={handleClose} sx={{
-              width: 28, height: 28, color: "text.secondary",
-              "&:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+              width: 28, height: 28, borderRadius: "7px", color: "text.secondary",
+              "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)" },
             }}>
-              <CloseIcon sx={{ fontSize: 15 }} />
+              <CloseIcon sx={{ fontSize: 14 }} />
             </IconButton>
           </Box>
         </Box>
 
         {/* ── Body ── */}
-        <DialogContent sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 0 }}>
+        <DialogContent sx={{ px: 2.5, py: 2.25, display: "flex", flexDirection: "column", gap: 0 }}>
 
           {/* Mode pill */}
           <Box sx={{ mb: 2 }}>
             <Box sx={{
               display: "inline-flex", alignItems: "center", gap: 0.6,
-              px: 1.2, py: 0.4, borderRadius: "20px",
-              backgroundColor: modePill.bg,
-              border: `1px solid ${modePill.border}`,
+              px: 1.1, py: 0.35, borderRadius: "20px",
+              border: `1px solid ${border}`,
+              backgroundColor: subtleBg,
             }}>
-              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: modePill.color }} />
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: modePill.color, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: modePill.dotColor, flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.65rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" }}>
                 {modePill.label}
               </Typography>
             </Box>
           </Box>
 
-          {/* Title field */}
+          {/* Title */}
           <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.7 }}>
-              Title / Reason
-            </Typography>
+            <FieldLabel>Title / Reason</FieldLabel>
             <TextField
               inputRef={titleRef}
               fullWidth size="small"
@@ -251,41 +268,40 @@ export default function CalendarEventDialog({
             />
           </Box>
 
-          {/* Block type cards */}
+          {/* Block type */}
           <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.7 }}>
-              Block Type
-            </Typography>
+            <FieldLabel>Block Type</FieldLabel>
             <Box sx={{ display: "flex", gap: 1 }}>
-              {typeOptions.map((opt) => {
-                const selected = eventType === opt.value;
+              {typeOptions.map(({ value, label, sub, Icon }) => {
+                const selected = eventType === value;
                 return (
                   <Box
-                    key={opt.value}
-                    onClick={() => isEditable && setEventType(opt.value)}
+                    key={value}
+                    onClick={() => isEditable && setEventType(value)}
                     sx={{
-                      flex: 1, px: 1.5, py: 1.2,
+                      flex: 1, px: 1.5, py: 1.25,
                       borderRadius: "8px",
-                      border: "1.5px solid",
-                      borderColor: selected ? "#f5c52b" : borderColor,
-                      backgroundColor: selected
-                        ? isDark ? "#2a2200" : "#fffbeb"
-                        : subtleBg,
+                      border: `1px solid ${selected ? GOLD : border}`,
+                      backgroundColor: selected ? GOLD_08 : subtleBg,
                       cursor: isEditable ? "pointer" : "default",
-                      transition: "all 0.15s ease",
+                      transition: "all 0.15s",
                       ...(isEditable && !selected && {
-                        "&:hover": { borderColor: isDark ? "#5a4800" : "#fcd34d", backgroundColor: isDark ? "#1e1a00" : "#fffde7" },
+                        "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
                       }),
                     }}
                   >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.7, mb: 0.3, color: selected ? "#d97706" : "text.secondary" }}>
-                      {opt.icon}
-                      <Typography sx={{ fontSize: "0.8rem", fontWeight: selected ? 700 : 500, color: selected ? "#d97706" : "text.primary" }}>
-                        {opt.label}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mb: 0.2 }}>
+                      <Icon sx={{ fontSize: 13, color: selected ? GOLD : "text.disabled" }} />
+                      <Typography sx={{
+                        fontFamily: dm, fontSize: "0.8rem",
+                        fontWeight: selected ? 700 : 500,
+                        color: selected ? CHARCOAL : "text.primary",
+                      }}>
+                        {label}
                       </Typography>
                     </Box>
-                    <Typography sx={{ fontSize: "0.68rem", color: "text.secondary", lineHeight: 1.3 }}>
-                      {opt.sub}
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.67rem", color: "text.secondary", lineHeight: 1.3 }}>
+                      {sub}
                     </Typography>
                   </Box>
                 );
@@ -295,22 +311,16 @@ export default function CalendarEventDialog({
 
           {/* Date / time range */}
           <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.7 }}>
-              {eventType === "single" ? "Time Range" : "Date Range"}
-            </Typography>
-            <Box sx={{ display: "flex", gap: 1.5 }}>
+            <FieldLabel>{eventType === "single" ? "Time Range" : "Date Range"}</FieldLabel>
+            <Box sx={{ display: "flex", gap: 1.25 }}>
               {eventType === "single" ? (
                 <>
-                  <TextField
-                    label="Start" type="datetime-local" size="small" fullWidth
-                    disabled={!isEditable}
+                  <TextField label="Start" type="datetime-local" size="small" fullWidth disabled={!isEditable}
                     value={start ? start.format("YYYY-MM-DDTHH:mm") : ""}
                     onChange={(e) => setStart(dayjs(e.target.value))}
                     InputLabelProps={{ shrink: true }} sx={inputSx}
                   />
-                  <TextField
-                    label="End" type="datetime-local" size="small" fullWidth
-                    disabled={!isEditable}
+                  <TextField label="End" type="datetime-local" size="small" fullWidth disabled={!isEditable}
                     value={end ? end.format("YYYY-MM-DDTHH:mm") : ""}
                     onChange={(e) => setEnd(dayjs(e.target.value))}
                     InputLabelProps={{ shrink: true }} sx={inputSx}
@@ -318,16 +328,12 @@ export default function CalendarEventDialog({
                 </>
               ) : (
                 <>
-                  <TextField
-                    label="From" type="date" size="small" fullWidth
-                    disabled={!isEditable}
+                  <TextField label="From" type="date" size="small" fullWidth disabled={!isEditable}
                     value={start ? start.format("YYYY-MM-DD") : ""}
                     onChange={(e) => setStart(dayjs(e.target.value).startOf("day"))}
                     InputLabelProps={{ shrink: true }} sx={inputSx}
                   />
-                  <TextField
-                    label="To" type="date" size="small" fullWidth
-                    disabled={!isEditable}
+                  <TextField label="To" type="date" size="small" fullWidth disabled={!isEditable}
                     value={end ? end.format("YYYY-MM-DD") : ""}
                     onChange={(e) => setEnd(dayjs(e.target.value).endOf("day"))}
                     InputLabelProps={{ shrink: true }} sx={inputSx}
@@ -339,12 +345,7 @@ export default function CalendarEventDialog({
 
           {/* Notes */}
           <Box sx={{ mb: error ? 2 : 0 }}>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.7 }}>
-              Notes{" "}
-              <Typography component="span" sx={{ fontSize: "0.68rem", color: "text.disabled", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
-                (optional)
-              </Typography>
-            </Typography>
+            <FieldLabel optional>Notes</FieldLabel>
             <TextField
               fullWidth multiline rows={2} size="small"
               value={notes}
@@ -355,17 +356,18 @@ export default function CalendarEventDialog({
             />
           </Box>
 
-          {/* Error banner */}
+          {/* Error */}
           {error && (
             <Box sx={{
               display: "flex", alignItems: "center", gap: 1,
-              px: 1.5, py: 1,
-              borderRadius: "8px",
-              backgroundColor: isDark ? "#2a0a0a" : "#fff5f5",
-              border: `1px solid ${isDark ? "#5a1010" : "#fca5a5"}`,
+              px: 1.5, py: 1, borderRadius: "8px",
+              backgroundColor: isDark ? "rgba(220,38,38,0.08)" : "#fef2f2",
+              border: `1px solid ${isDark ? "rgba(220,38,38,0.2)" : "rgba(220,38,38,0.2)"}`,
             }}>
-              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#dc2626", flexShrink: 0 }} />
-              <Typography sx={{ fontSize: "0.78rem", color: isDark ? "#f87171" : "#dc2626" }}>{error}</Typography>
+              <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#dc2626", flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: isDark ? "#f87171" : "#dc2626" }}>
+                {error}
+              </Typography>
             </Box>
           )}
         </DialogContent>
@@ -373,31 +375,37 @@ export default function CalendarEventDialog({
         {/* ── Footer ── */}
         {isEditable && (
           <>
-            <Divider sx={{ borderColor }} />
-            <DialogActions sx={{ px: 2.5, py: 1.75, gap: 1, justifyContent: "flex-end" }}>
-              <Button
-                size="small" onClick={handleClose}
+            <Divider sx={{ borderColor: border }} />
+            <DialogActions sx={{ px: 2.5, py: 1.75, gap: 1 }}>
+              {/* Cancel */}
+              <Box
+                onClick={handleClose}
                 sx={{
-                  textTransform: "none", fontSize: "0.82rem", fontWeight: 500,
-                  color: "text.secondary", borderRadius: "6px", px: 2,
-                  "&:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+                  px: 2, py: 0.65, borderRadius: "8px",
+                  border: `1px solid ${border}`,
+                  fontFamily: dm, fontSize: "0.8rem", fontWeight: 500,
+                  color: "text.secondary", cursor: "pointer", userSelect: "none",
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08, color: CHARCOAL },
                 }}
               >
                 Cancel
-              </Button>
-              <Button
-                size="small" variant="contained" onClick={handleSubmit}
+              </Box>
+
+              {/* Save / Block */}
+              <Box
+                onClick={handleSubmit}
                 sx={{
-                  textTransform: "none", fontSize: "0.82rem", fontWeight: 700,
-                  borderRadius: "6px", px: 2.5,
-                  backgroundColor: "#f5c52b", color: "#111827",
-                  boxShadow: "none",
-                  "&:hover": { backgroundColor: "#e6b920", boxShadow: "0 2px 8px rgba(245,197,43,0.4)" },
-                  transition: "all 0.15s ease",
+                  px: 2.5, py: 0.65, borderRadius: "8px",
+                  backgroundColor: GOLD, color: CHARCOAL,
+                  fontFamily: dm, fontSize: "0.8rem", fontWeight: 700,
+                  cursor: "pointer", userSelect: "none",
+                  transition: "background-color 0.15s",
+                  "&:hover": { backgroundColor: "#e6b920" },
                 }}
               >
                 {existingEvent ? "Save Changes" : "Block Date"}
-              </Button>
+              </Box>
             </DialogActions>
           </>
         )}
@@ -412,36 +420,34 @@ export default function CalendarEventDialog({
         PaperProps={{
           sx: {
             width: 380, borderRadius: "12px",
-            backgroundColor: surfaceBg,
+            backgroundColor: paperBg,
             backgroundImage: "none",
-            border: `1px solid ${borderColor}`,
-            boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.6)" : "0 8px 40px rgba(0,0,0,0.12)",
+            border: `1px solid ${border}`,
+            boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.5)" : "0 8px 40px rgba(53,53,53,0.12)",
             overflow: "hidden",
           },
         }}
       >
         {/* Header */}
         <Box sx={{
-          px: 2.5, pt: 2.5, pb: 2,
-          background: isDark
-            ? "linear-gradient(135deg,#2a0a0a,#1e0505)"
-            : "linear-gradient(135deg,white)",
-          borderBottom: `1px solid ${isDark ? "#5a1010" : "#fecaca"}`,
-          display: "flex", alignItems: "center", gap: 1.5,
+          px: 2.5, pt: 2.25, pb: 2,
+          borderBottom: `1px solid ${border}`,
+          backgroundColor: isDark ? "rgba(220,38,38,0.04)" : "rgba(220,38,38,0.02)",
+          display: "flex", alignItems: "center", gap: 1.25,
         }}>
           <Box sx={{
-            width: 34, height: 34, borderRadius: "9px",
-            background: isDark ? "linear-gradient(135deg,#3a0a0a,#2a0505)" : "linear-gradient(135deg,#fee2e2,#fecaca)",
-            border: `1px solid ${isDark ? "#5a1010" : "#fca5a5"}`,
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            width: 32, height: 32, borderRadius: "8px", flexShrink: 0,
+            backgroundColor: isDark ? "rgba(220,38,38,0.1)" : "rgba(220,38,38,0.06)",
+            border: `1px solid ${isDark ? "rgba(220,38,38,0.2)" : "rgba(220,38,38,0.15)"}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <DeleteOutlinedIcon sx={{ fontSize: 16, color: isDark ? "#f87171" : "#dc2626" }} />
+            <DeleteOutlinedIcon sx={{ fontSize: 15, color: isDark ? "#f87171" : "#dc2626" }} />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: "0.92rem", color: "text.primary", lineHeight: 1.2 }}>
+            <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.9rem", color: "text.primary", lineHeight: 1.2 }}>
               Remove Block
             </Typography>
-            <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", mt: 0.2 }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary", mt: 0.2 }}>
               This action cannot be undone
             </Typography>
           </Box>
@@ -449,42 +455,45 @@ export default function CalendarEventDialog({
 
         {/* Body */}
         <Box sx={{ px: 2.5, py: 2 }}>
-          <Typography sx={{ fontSize: "0.84rem", color: "text.secondary", lineHeight: 1.65 }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.83rem", color: "text.secondary", lineHeight: 1.65 }}>
             Remove{" "}
-            <Typography component="span" sx={{ fontWeight: 700, color: "text.primary" }}>
+            <Typography component="span" sx={{ fontFamily: dm, fontWeight: 700, color: "text.primary" }}>
               "{existingEvent?.title}"
             </Typography>
             ? Clients will immediately be able to book this date again.
           </Typography>
         </Box>
 
-        <Divider sx={{ borderColor }} />
+        <Divider sx={{ borderColor: border }} />
 
         {/* Actions */}
         <Box sx={{ px: 2.5, py: 1.75, display: "flex", justifyContent: "flex-end", gap: 1 }}>
-          <Button
-            size="small" onClick={() => setConfirmDeleteOpen(false)}
+          <Box
+            onClick={() => setConfirmDeleteOpen(false)}
             sx={{
-              textTransform: "none", fontSize: "0.82rem", fontWeight: 500,
-              color: "text.secondary", borderRadius: "6px", px: 2,
-              "&:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
+              px: 2, py: 0.65, borderRadius: "8px",
+              border: `1px solid ${border}`,
+              fontFamily: dm, fontSize: "0.8rem", fontWeight: 500,
+              color: "text.secondary", cursor: "pointer", userSelect: "none",
+              transition: "all 0.15s",
+              "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08, color: CHARCOAL },
             }}
           >
             Cancel
-          </Button>
-          <Button
-            size="small" variant="contained" onClick={confirmDelete}
+          </Box>
+          <Box
+            onClick={confirmDelete}
             sx={{
-              textTransform: "none", fontSize: "0.82rem", fontWeight: 700,
-              borderRadius: "6px", px: 2,
+              px: 2, py: 0.65, borderRadius: "8px",
               backgroundColor: "#dc2626", color: "#fff",
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#b91c1c", boxShadow: "0 2px 8px rgba(220,38,38,0.4)" },
-              transition: "all 0.15s ease",
+              fontFamily: dm, fontSize: "0.8rem", fontWeight: 700,
+              cursor: "pointer", userSelect: "none",
+              transition: "background-color 0.15s",
+              "&:hover": { backgroundColor: "#b91c1c" },
             }}
           >
             Remove Block
-          </Button>
+          </Box>
         </Box>
       </Dialog>
     </>

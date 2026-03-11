@@ -9,18 +9,21 @@ import { supabase } from "../../lib/supabaseClient";
 // ── Brand tokens ───────────────────────────────────────────────────────────
 const GOLD     = "#F5C52B";
 const GOLD_08  = "rgba(245,197,43,0.08)";
-const GOLD_15  = "rgba(245,197,43,0.15)";
 const CHARCOAL = "#353535";
 
-// ── Keep legend-matched colors untouched ───────────────────────────────────
-// #15803d  → Available (green)
-// #F5C52B  → Fully Booked (gold, already brand)
-// #d32f2f  → Office Unavailable / blocked (red)
-// #4caf50  → Holidays in the Philippines (green)
-// #1976d2  → Today (blue) ← REPLACED with charcoal below
-
-const DAYS            = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS               = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_EVENTS_PER_DAY = 2;
+
+// ── Timezone-safe ISO helper ──────────────────────────────────────────────
+// Always format from LOCAL date parts — never let JS parse YYYY-MM-DD as UTC
+const toISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// Parse a YYYY-MM-DD string as LOCAL midnight (not UTC midnight)
+const parseLocalDate = (str) => {
+  const [y, m, d] = str.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
 
 function getPhilippineHolidays(year) {
   const holidays = {};
@@ -41,9 +44,8 @@ function getPhilippineHolidays(year) {
   const easter         = calculateEaster(year);
   const goodFriday     = new Date(easter); goodFriday.setDate(easter.getDate() - 2);
   const maundyThursday = new Date(easter); maundyThursday.setDate(easter.getDate() - 3);
-  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  holidays[fmt(maundyThursday)] = "Maundy Thursday";
-  holidays[fmt(goodFriday)]     = "Good Friday";
+  holidays[toISO(maundyThursday)] = "Maundy Thursday";
+  holidays[toISO(goodFriday)]     = "Good Friday";
   return holidays;
 }
 
@@ -52,14 +54,16 @@ function calculateEaster(Y) {
   const f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
   const i=Math.floor(c/4),k=c%4,L=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*L)/451);
   const month=Math.floor((h+L-7*m+114)/31),day=((h+L-7*m+114)%31)+1;
-  return new Date(Y,month-1,day);
+  return new Date(Y, month - 1, day);
 }
 
 function Calendar() {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  const today = new Date(); today.setHours(0,0,0,0);
+  // today at LOCAL midnight
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
   const [currentDate,    setCurrentDate]    = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [openDialog,     setOpenDialog]     = useState(false);
   const [selectedDate,   setSelectedDate]   = useState(null);
@@ -70,9 +74,10 @@ function Calendar() {
   const PH_HOLIDAYS = getPhilippineHolidays(currentDate.getFullYear());
 
   useEffect(() => {
-    const year = currentDate.getFullYear(), month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
-    const lastDay  = new Date(year, month+1, 0).toISOString().split("T")[0];
+    const year  = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = toISO(new Date(year, month, 1));
+    const lastDay  = toISO(new Date(year, month + 1, 0));
     fetchMonthData(firstDay, lastDay);
   }, [currentDate]);
 
@@ -80,11 +85,12 @@ function Calendar() {
     try {
       const { data: requests, error: reqError } = await supabase
         .from("coverage_requests").select("event_date")
-        .in("status", ["Pending","Approved","Forwarded","Assigned"])
+        .in("status", ["Pending", "Approved", "Forwarded", "Assigned"])
         .gte("event_date", firstDay).lte("event_date", lastDay);
+
       if (!reqError && requests) {
         const map = {};
-        requests.forEach(({ event_date }) => { map[event_date] = (map[event_date]||0)+1; });
+        requests.forEach(({ event_date }) => { map[event_date] = (map[event_date] || 0) + 1; });
         setEventMap(map);
       }
 
@@ -101,11 +107,17 @@ function Calendar() {
       const { data: blocked, error: blockedError } = await supabase
         .from("blocked_dates").select("start_date, end_date")
         .lte("start_date", lastDay).gte("end_date", firstDay);
+
       if (!blockedError && blocked) {
         const blockedSet = new Set();
         blocked.forEach(({ start_date, end_date }) => {
-          let d = new Date(start_date), end = new Date(end_date);
-          while (d <= end) { blockedSet.add(d.toISOString().split("T")[0]); d.setDate(d.getDate()+1); }
+          // ✅ Parse as LOCAL date — not UTC — to avoid off-by-one in UTC+8
+          let d   = parseLocalDate(start_date);
+          const e = parseLocalDate(end_date);
+          while (d <= e) {
+            blockedSet.add(toISO(d));
+            d.setDate(d.getDate() + 1);
+          }
         });
         setBlockedDates(blockedSet);
       }
@@ -117,23 +129,34 @@ function Calendar() {
   const isBlocked         = (iso) => blockedDates.has(iso);
   const hasMyRequest      = (iso) => myRequestDates.has(iso);
 
-  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1));
-  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1));
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const goToToday = () => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
 
   const generateCalendarGrid = () => {
-    const year=currentDate.getFullYear(), month=currentDate.getMonth();
-    const firstDayOfMonth=new Date(year,month,1).getDay(), daysInMonth=new Date(year,month+1,0).getDate();
-    const prevMonthDays=new Date(year,month,0).getDate();
-    const totalCells=Math.ceil((firstDayOfMonth+daysInMonth)/7)*7;
-    const calendar=[];
-    for (let i=0;i<totalCells;i++) {
-      let dayNumber="",isCurrentMonth=true,cellDate;
-      if (i<firstDayOfMonth) { dayNumber=prevMonthDays-firstDayOfMonth+1+i; isCurrentMonth=false; cellDate=new Date(year,month-1,dayNumber); }
-      else if (i>=firstDayOfMonth+daysInMonth) { dayNumber=i-(firstDayOfMonth+daysInMonth)+1; isCurrentMonth=false; cellDate=new Date(year,month+1,dayNumber); }
-      else { dayNumber=i-firstDayOfMonth+1; cellDate=new Date(year,month,dayNumber); }
-      const iso=`${cellDate.getFullYear()}-${String(cellDate.getMonth()+1).padStart(2,"0")}-${String(cellDate.getDate()).padStart(2,"0")}`;
-      calendar.push({ dayNumber, isCurrentMonth, iso, cellDate });
+    const year = currentDate.getFullYear(), month = currentDate.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const daysInMonth     = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays   = new Date(year, month, 0).getDate();
+    const totalCells      = Math.ceil((firstDayOfMonth + daysInMonth) / 7) * 7;
+    const calendar        = [];
+
+    for (let i = 0; i < totalCells; i++) {
+      let cellDate;
+      if (i < firstDayOfMonth) {
+        cellDate = new Date(year, month - 1, prevMonthDays - firstDayOfMonth + 1 + i);
+      } else if (i >= firstDayOfMonth + daysInMonth) {
+        cellDate = new Date(year, month + 1, i - (firstDayOfMonth + daysInMonth) + 1);
+      } else {
+        cellDate = new Date(year, month, i - firstDayOfMonth + 1);
+      }
+      // ✅ Use local date parts for ISO — avoids UTC shift
+      calendar.push({
+        dayNumber:      cellDate.getDate(),
+        isCurrentMonth: cellDate.getMonth() === month,
+        iso:            toISO(cellDate),
+        cellDate,
+      });
     }
     return calendar;
   };
@@ -147,8 +170,8 @@ function Calendar() {
   };
 
   const handleSuccess = () => {
-    const year=currentDate.getFullYear(), month=currentDate.getMonth();
-    fetchMonthData(new Date(year,month,1).toISOString().split("T")[0], new Date(year,month+1,0).toISOString().split("T")[0]);
+    const year = currentDate.getFullYear(), month = currentDate.getMonth();
+    fetchMonthData(toISO(new Date(year, month, 1)), toISO(new Date(year, month + 1, 0)));
   };
 
   return (
@@ -156,62 +179,33 @@ function Calendar() {
 
       {/* ── Month Header ── */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <IconButton
-          onClick={prevMonth}
-          size="small"
-          sx={{
-            borderRadius: "8px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
-            transition: "all 0.15s",
-          }}
-        >
+        <IconButton onClick={prevMonth} size="small" sx={{
+          borderRadius: "8px", color: "text.secondary",
+          "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
+          transition: "all 0.15s",
+        }}>
           <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
         </IconButton>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Typography sx={{
-            fontSize: { xs: "0.9rem", md: "1rem" },
-            fontWeight: 700,
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-          }}>
+          <Typography sx={{ fontSize: { xs: "0.9rem", md: "1rem" }, fontWeight: 700, color: "text.primary", letterSpacing: "-0.02em" }}>
             {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
           </Typography>
-          <Button
-            onClick={goToToday}
-            size="small"
-            variant="outlined"
-            sx={{
-              textTransform: "none",
-              fontSize: "0.72rem",
-              px: 1.5, py: 0.35,
-              borderColor: "divider",
-              color: "text.secondary",
-              borderRadius: "8px",
-              fontWeight: 500,
-              "&:hover": {
-                borderColor: GOLD,
-                color: CHARCOAL,
-                backgroundColor: GOLD_08,
-              },
-              transition: "all 0.15s",
-            }}
-          >
+          <Button onClick={goToToday} size="small" variant="outlined" sx={{
+            textTransform: "none", fontSize: "0.72rem", px: 1.5, py: 0.35,
+            borderColor: "divider", color: "text.secondary", borderRadius: "8px", fontWeight: 500,
+            "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
+            transition: "all 0.15s",
+          }}>
             Today
           </Button>
         </Box>
 
-        <IconButton
-          onClick={nextMonth}
-          size="small"
-          sx={{
-            borderRadius: "8px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
-            transition: "all 0.15s",
-          }}
-        >
+        <IconButton onClick={nextMonth} size="small" sx={{
+          borderRadius: "8px", color: "text.secondary",
+          "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
+          transition: "all 0.15s",
+        }}>
           <ArrowForwardIosIcon sx={{ fontSize: 14 }} />
         </IconButton>
       </Box>
@@ -220,11 +214,8 @@ function Calendar() {
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 0.5 }}>
         {DAYS.map((day) => (
           <Typography key={day} align="center" sx={{
-            fontSize: { xs: "0.65rem", md: "0.75rem" },
-            fontWeight: 600,
-            color: "text.disabled",
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
+            fontSize: { xs: "0.65rem", md: "0.75rem" }, fontWeight: 600,
+            color: "text.disabled", letterSpacing: "0.04em", textTransform: "uppercase",
           }}>
             {day}
           </Typography>
@@ -245,7 +236,7 @@ function Calendar() {
           const d              = date.cellDate;
           const isWeekend      = d.getDay() === 0 || d.getDay() === 6;
           const holidayTitle   = PH_HOLIDAYS[date.iso];
-          const isToday        = d.toDateString() === today.toDateString() && date.isCurrentMonth;
+          const isToday        = toISO(d) === toISO(today) && date.isCurrentMonth;
           const isPast         = d < today;
           const remainingSlots = getRemainingSlots(date.iso);
           const blocked        = isBlocked(date.iso);
@@ -253,19 +244,17 @@ function Calendar() {
           const isDisabled     = !date.isCurrentMonth || isPast || remainingSlots <= 0 || blocked;
           const isClickable    = !isDisabled;
 
-          // Cell background — keep legend-colour semantics, just clean up non-legend ones
           let cellBg = "background.paper";
           if (isWeekend && date.isCurrentMonth)  cellBg = isDark ? "#1a1a1a" : "rgba(53,53,53,0.02)";
           if (!date.isCurrentMonth)              cellBg = isDark ? "#141414" : "rgba(53,53,53,0.015)";
-          if (blocked && date.isCurrentMonth)    cellBg = isDark ? "#1a0a0a" : "#fff5f5"; // legend: red
+          if (blocked && date.isCurrentMonth)    cellBg = isDark ? "#1a0a0a" : "#fff5f5";
 
           const tooltipTitle =
-            !date.isCurrentMonth   ? "" :
-            blocked                ? "Blocked by Admin" :
-            isPast                 ? "" :
-            remainingSlots === 0   ? "Fully booked" :
-            holidayTitle           ? holidayTitle :
-            "";
+            !date.isCurrentMonth ? "" :
+            blocked              ? "Blocked by Admin" :
+            isPast               ? "" :
+            remainingSlots === 0 ? "Fully booked" :
+            holidayTitle         ? holidayTitle : "";
 
           const cellContent = (
             <Box
@@ -284,59 +273,39 @@ function Calendar() {
                 ...(isClickable && {
                   "&:hover": {
                     backgroundColor: GOLD_08,
-                    "& .day-number-box": {
-                      backgroundColor: GOLD,
-                      color: CHARCOAL,
-                    },
+                    "& .day-number-box": { backgroundColor: GOLD, color: CHARCOAL },
                   },
                 }),
               }}
             >
-              {/* Day number circle */}
+              {/* Day number */}
               <Box sx={{ display: "flex", justifyContent: "center", mb: 0.3 }}>
-                <Box
-                  className="day-number-box"
-                  sx={{
-                    width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 },
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    borderRadius: "50%",
-                    fontSize: { xs: "0.7rem", md: "0.8rem" },
-                    fontWeight: isToday ? 700 : 400,
-                    transition: "background-color 0.15s, color 0.15s",
-                    color: "text.primary",
-                    // Today → charcoal (brand) instead of blue
-                    ...(isToday && {
-                      backgroundColor: CHARCOAL,
-                      color: "#ffffff",
-                    }),
-                    // Holiday → keep #4caf50 per legend
-                    ...(holidayTitle && !isToday && {
-                      backgroundColor: "#4caf50",
-                      color: "#ffffff",
-                    }),
-                    // Blocked → keep #d32f2f per legend
-                    ...(blocked && date.isCurrentMonth && !isToday && {
-                      backgroundColor: "#d32f2f",
-                      color: "#ffffff",
-                    }),
-                  }}
-                >
+                <Box className="day-number-box" sx={{
+                  width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 },
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: "50%",
+                  fontSize: { xs: "0.7rem", md: "0.8rem" },
+                  fontWeight: isToday ? 700 : 400,
+                  transition: "background-color 0.15s, color 0.15s",
+                  color: "text.primary",
+                  ...(isToday && { backgroundColor: CHARCOAL, color: "#ffffff" }),
+                  ...(holidayTitle && !isToday && { backgroundColor: "#4caf50", color: "#ffffff" }),
+                  ...(blocked && date.isCurrentMonth && !isToday && { backgroundColor: "#d32f2f", color: "#ffffff" }),
+                }}>
                   {date.dayNumber}
                 </Box>
               </Box>
 
-              {/* Slot status label — legend colours preserved */}
+              {/* Slot status */}
               {date.isCurrentMonth && !isPast && (
                 <Typography sx={{
                   fontSize: { xs: "0.55rem", md: "0.63rem" },
-                  textAlign: "center",
-                  lineHeight: 1.2,
-                  fontWeight: 500,
+                  textAlign: "center", lineHeight: 1.2, fontWeight: 500,
                   color:
-                    blocked              ? "#d32f2f" :   // legend: red
-                    remainingSlots === 0 ? "#d32f2f" :   // legend: red / fully booked
-                    remainingSlots === 1 ? GOLD      :   // brand gold for "1 slot left"
-                    "#15803d",                           // legend: green / available
+                    blocked              ? "#d32f2f" :
+                    remainingSlots === 0 ? "#d32f2f" :
+                    remainingSlots === 1 ? GOLD      :
+                    "#15803d",
                 }}>
                   {blocked              ? "Unavailable"  :
                    remainingSlots === 0 ? "Fully Booked" :
@@ -345,7 +314,7 @@ function Calendar() {
                 </Typography>
               )}
 
-              {/* My request dot — brand gold */}
+              {/* My request dot */}
               {hasRequest && date.isCurrentMonth && (
                 <Box sx={{
                   position: "absolute", bottom: 4, right: 5,
