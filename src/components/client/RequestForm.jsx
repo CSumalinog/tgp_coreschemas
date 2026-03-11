@@ -272,7 +272,7 @@ export default function CoverageRequestDialog({
                         setServices((prev) => ({ ...prev, [service]: val }));
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      inputProps={{ min: 0, max: 20 }}
+                      inputProps={{ min: 0, max: 5 }}
                       disabled={!isChecked || loading}
                       sx={{
                         width: 80,

@@ -17,36 +17,36 @@ import CancelOutlinedIcon                from "@mui/icons-material/CancelOutline
 import ForwardToInboxOutlinedIcon        from "@mui/icons-material/ForwardToInboxOutlined";
 import PersonOutlineOutlinedIcon         from "@mui/icons-material/PersonOutlineOutlined";
 import FolderOutlinedIcon                from "@mui/icons-material/FolderOutlined";
-import SchoolOutlinedIcon                from "@mui/icons-material/SchoolOutlined";
 import AssignmentOutlinedIcon            from "@mui/icons-material/AssignmentOutlined";
 import AssignmentIndOutlinedIcon         from "@mui/icons-material/AssignmentIndOutlined";
 import CalendarTodayOutlinedIcon         from "@mui/icons-material/CalendarTodayOutlined";
 import HistoryOutlinedIcon               from "@mui/icons-material/HistoryOutlined";
 import TrackChangesOutlinedIcon          from "@mui/icons-material/TrackChangesOutlined";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import HowToRegOutlinedIcon              from "@mui/icons-material/HowToRegOutlined";
+import TaskAltOutlinedIcon               from "@mui/icons-material/TaskAltOutlined";
+import { useNavigate }                   from "react-router-dom";
+import { supabase }                      from "../../lib/supabaseClient";
 
+// ─── Pages per role (no duplicates) ──────────────────────────────────────────
 const PAGES_BY_ROLE = {
   admin: [
     { label: "Dashboard",           path: "/admin/dashboard",           icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Pending Requests",    path: "/admin/request-management",  icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Forwarded Requests",  path: "/admin/forwarded-requests",  icon: <ForwardToInboxOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "For Approval",        path: "/admin/for-approval",        icon: <DescriptionOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "For Approval",        path: "/admin/for-approval",        icon: <HowToRegOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Approved Requests",   path: "/admin/approved-requests",   icon: <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Declined Requests",   path: "/admin/declined-requests",   icon: <CancelOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Semester Management", path: "/admin/semester-management", icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Duty Schedule View",  path: "/admin/duty-schedule-view",  icon: <TableChartOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Calendar Management", path: "/admin/calendar-management", icon: <EventOutlinedIcon sx={{ fontSize: 16 }} /> },
     { label: "Staffers Management", path: "/admin/staffers-management", icon: <GroupOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Scheduling",          path: "/admin/semester-management", icon: <SchoolOutlinedIcon sx={{ fontSize: 16 }} /> },
   ],
   sec_head: [
-    { label: "Dashboard",      path: "/sec_head/dashboard",      icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "For Assignment", path: "/sec_head/for-assignment",  icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Assigned",       path: "/sec_head/assigned",        icon: <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "History",        path: "/sec_head/history",         icon: <HistoryOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "My Staffers",    path: "/sec_head/my-staffers",     icon: <GroupOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Assignments",    path: "/sec_head/for-assignment",  icon: <AssignmentOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Dashboard",      path: "/sec_head/dashboard",             icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "For Assignment", path: "/sec_head/assignment-management", icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Assigned",       path: "/sec_head/assignment-management", icon: <TaskAltOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "History",        path: "/sec_head/assignment-management", icon: <HistoryOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "My Staffers",    path: "/sec_head/my-staffers",           icon: <GroupOutlinedIcon sx={{ fontSize: 16 }} /> },
   ],
   staff: [
     { label: "Dashboard",     path: "/staff/dashboard",     icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
@@ -54,20 +54,139 @@ const PAGES_BY_ROLE = {
     { label: "My Schedule",   path: "/staff/my-schedule",   icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} /> },
   ],
   client: [
-    { label: "Calendar",         path: "/client/calendar",          icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Draft",            path: "/client/draft",             icon: <DescriptionOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Pending Request",  path: "/client/pending-requests",  icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Approved Request", path: "/client/approved-requests", icon: <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Declined Request", path: "/client/declined-requests", icon: <CancelOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "History",          path: "/client/history",           icon: <HistoryOutlinedIcon sx={{ fontSize: 16 }} /> },
-    { label: "Request Tracker",  path: "/client/pending-requests",  icon: <TrackChangesOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Calendar",          path: "/client/calendar",          icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Draft",             path: "/client/draft",             icon: <DescriptionOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Pending Requests",  path: "/client/pending-requests",  icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Approved Requests", path: "/client/approved-requests", icon: <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Declined Requests", path: "/client/declined-requests", icon: <CancelOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "History",           path: "/client/history",           icon: <HistoryOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { label: "Request Tracker",   path: "/client/pending-requests",  icon: <TrackChangesOutlinedIcon sx={{ fontSize: 16 }} /> },
   ],
 };
 
-const getAdminRequestPath   = (s) => ({ "Pending": "/admin/request-management", "Forwarded": "/admin/forwarded-requests", "For Approval": "/admin/for-approval", "Approved": "/admin/approved-requests", "Declined": "/admin/declined-requests" }[s] || "/admin/request-management");
-const getClientRequestPath  = (s) => ({ "Pending": "/client/pending-requests", "Approved": "/client/approved-requests", "Declined": "/client/declined-requests" }[s] || "/client/pending-requests");
-const getSecHeadAssignmentPath = (s) => ({ "Pending": "/sec_head/for-assignment", "Assigned": "/sec_head/assigned", "Completed": "/sec_head/history" }[s] || "/sec_head/for-assignment");
+// ─── Path resolvers (complete status coverage) ────────────────────────────────
+const getAdminRequestPath = (status) => ({
+  "Pending":          "/admin/request-management",
+  "Forwarded":        "/admin/forwarded-requests",
+  "Assigned":         "/admin/forwarded-requests",   // assigned lives under forwarded tab
+  "For Approval":     "/admin/for-approval",
+  "Approved":         "/admin/approved-requests",
+  "Coverage Complete":"/admin/approved-requests",
+  "Declined":         "/admin/declined-requests",
+}[status] || "/admin/request-management");
 
+const getClientRequestPath = (status) => ({
+  "Pending":  "/client/pending-requests",
+  "Approved": "/client/approved-requests",
+  "Declined": "/client/declined-requests",
+  "Draft":    "/client/draft",
+}[status] || "/client/pending-requests");
+
+const getSecHeadAssignmentPath = (status) => ({
+  "Pending":          "/sec_head/assignment-management",
+  "Assigned":         "/sec_head/assignment-management",
+  "Completed":        "/sec_head/assignment-management",
+  "Coverage Complete":"/sec_head/assignment-management",
+}[status] || "/sec_head/assignment-management");
+
+// ─── Fetch results — fixed foreign key ilike queries ─────────────────────────
+async function fetchResults(role, query, userId) {
+  const results = { staffers: [], requests: [], semesters: [], assignments: [] };
+
+  switch (role) {
+
+    case "admin": {
+      const [stafferRes, requestRes, semesterRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, section, division")
+          .ilike("full_name", `%${query}%`)
+          .limit(4),
+        supabase
+          .from("coverage_requests")
+          .select("id, title, status")
+          .ilike("title", `%${query}%`)
+          .neq("status", "Draft")
+          .limit(4),
+        supabase
+          .from("semesters")
+          .select("id, name, is_active")
+          .ilike("name", `%${query}%`)
+          .limit(3),
+      ]);
+      results.staffers  = stafferRes.data  || [];
+      results.requests  = requestRes.data  || [];
+      results.semesters = semesterRes.data || [];
+      break;
+    }
+
+    case "sec_head": {
+      // Fix: query requests table first, then fetch matching assignments
+      const [stafferRes, requestRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, section")
+          .ilike("full_name", `%${query}%`)
+          .limit(4),
+        supabase
+          .from("coverage_requests")
+          .select("id, title")
+          .ilike("title", `%${query}%`)
+          .limit(8),
+      ]);
+      results.staffers = stafferRes.data || [];
+
+      const matchedRequestIds = (requestRes.data || []).map((r) => r.id);
+      if (matchedRequestIds.length > 0) {
+        const { data: assignmentData } = await supabase
+          .from("coverage_assignments")
+          .select("id, status, request:request_id(id, title)")
+          .in("request_id", matchedRequestIds)
+          .limit(4);
+        results.assignments = assignmentData || [];
+      }
+      break;
+    }
+
+    case "staff": {
+      // Fix: query requests first, then find this user's assignments for those requests
+      const { data: requestData } = await supabase
+        .from("coverage_requests")
+        .select("id, title")
+        .ilike("title", `%${query}%`)
+        .limit(8);
+
+      const matchedRequestIds = (requestData || []).map((r) => r.id);
+      if (matchedRequestIds.length > 0) {
+        const { data: assignmentData } = await supabase
+          .from("coverage_assignments")
+          .select("id, status, request:request_id(id, title)")
+          .eq("assigned_to", userId)
+          .in("request_id", matchedRequestIds)
+          .limit(4);
+        results.assignments = assignmentData || [];
+      }
+      break;
+    }
+
+    case "client": {
+      const { data } = await supabase
+        .from("coverage_requests")
+        .select("id, title, status")
+        .eq("created_by", userId)
+        .ilike("title", `%${query}%`)
+        .limit(4);
+      results.requests = data || [];
+      break;
+    }
+
+    default: break;
+  }
+
+  return results;
+}
+
+// ─── Highlight matching text ──────────────────────────────────────────────────
 function Highlight({ text, query }) {
   if (!query || !text) return <>{text}</>;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -83,42 +202,7 @@ function Highlight({ text, query }) {
   );
 }
 
-async function fetchResults(role, query, userId) {
-  const results = { staffers: [], requests: [], semesters: [], assignments: [] };
-  switch (role) {
-    case "admin": {
-      const [stafferRes, requestRes, semesterRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, section, division").ilike("full_name", `%${query}%`).limit(4),
-        supabase.from("coverage_requests").select("id, title, status").ilike("title", `%${query}%`).limit(4),
-        supabase.from("semesters").select("id, name, is_active").ilike("name", `%${query}%`).limit(3),
-      ]);
-      results.staffers = stafferRes.data || []; results.requests = requestRes.data || []; results.semesters = semesterRes.data || [];
-      break;
-    }
-    case "sec_head": {
-      const [stafferRes, assignmentRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, section").ilike("full_name", `%${query}%`).limit(4),
-        supabase.from("coverage_assignments").select("id, status, request:request_id(title)").ilike("request.title", `%${query}%`).limit(4),
-      ]);
-      results.staffers = stafferRes.data || []; results.assignments = assignmentRes.data || [];
-      break;
-    }
-    case "staff": {
-      const { data } = await supabase.from("coverage_assignments").select("id, status, request:request_id(title)").eq("assigned_to", userId).ilike("request.title", `%${query}%`).limit(4);
-      results.assignments = data || [];
-      break;
-    }
-    case "client": {
-      const { data } = await supabase.from("coverage_requests").select("id, title, status").eq("created_by", userId).ilike("title", `%${query}%`).limit(4);
-      results.requests = data || [];
-      break;
-    }
-    default: break;
-  }
-  return results;
-}
-
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function GlobalSearch({ role = "staff", userId = null, alwaysExpanded = false }) {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -136,21 +220,21 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
   const debounceRef  = useRef(null);
 
   const pages    = PAGES_BY_ROLE[role] || [];
-  const allItems = [...results.pages, ...results.staffers, ...results.requests, ...results.semesters, ...results.assignments];
+  const allItems = [
+    ...results.pages,
+    ...results.staffers,
+    ...results.requests,
+    ...results.semesters,
+    ...results.assignments,
+  ];
 
-  // If alwaysExpanded, keep expanded true always
-  useEffect(() => {
-    if (alwaysExpanded) setExpanded(true);
-  }, [alwaysExpanded]);
-
-  useEffect(() => {
-    if (expanded && !alwaysExpanded) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [expanded, alwaysExpanded]);
+  useEffect(() => { if (alwaysExpanded) setExpanded(true); }, [alwaysExpanded]);
+  useEffect(() => { if (expanded && !alwaysExpanded) setTimeout(() => inputRef.current?.focus(), 50); }, [expanded, alwaysExpanded]);
 
   const search = useCallback(async (q) => {
-    const lower = q.toLowerCase();
+    const lower        = q.toLowerCase();
     const matchedPages = pages.filter((p) => p.label.toLowerCase().includes(lower)).slice(0, 5);
-    const dbResults = await fetchResults(role, q, userId);
+    const dbResults    = await fetchResults(role, q, userId);
     setResults({ ...dbResults, pages: matchedPages });
     setLoading(false);
   }, [role, userId, pages]);
@@ -170,9 +254,7 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
   useEffect(() => {
     const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false);
-        setFocused(-1);
-        // only collapse if NOT alwaysExpanded
+        setOpen(false); setFocused(-1);
         if (!alwaysExpanded) { setExpanded(false); setQuery(""); }
       }
     };
@@ -240,10 +322,22 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
     </Box>
   );
 
+  // ─── Dropdown position — left-align on mobile to prevent clipping ──────────
+  const dropdownPositionSx = {
+    position: "absolute",
+    top: "calc(100% + 8px)",
+    // right-align on desktop, left-align on mobile
+    right:  { xs: "auto", sm: 0 },
+    left:   { xs: 0,      sm: "auto" },
+    // cap width on mobile so it doesn't overflow viewport
+    width:  { xs: "calc(100vw - 32px)", sm: 340 },
+    maxWidth: 340,
+  };
+
   return (
     <Box ref={containerRef} sx={{ position: "relative", display: "flex", alignItems: "center" }}>
 
-      {/* ── Collapsed: icon only (shown when NOT alwaysExpanded and not expanded) ── */}
+      {/* ── Collapsed: icon only ── */}
       {!expanded && !alwaysExpanded && (
         <IconButton
           onClick={() => setExpanded(true)}
@@ -254,7 +348,7 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
         </IconButton>
       )}
 
-      {/* ── Expanded input (always shown when alwaysExpanded) ── */}
+      {/* ── Expanded input ── */}
       {expanded && (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <TextField
@@ -265,8 +359,9 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
             onChange={(e) => { setQuery(e.target.value); setOpen(true); setFocused(-1); }}
             onKeyDown={handleKeyDown}
             sx={{
-              // wider when alwaysExpanded to fill the header nicely
-              width: alwaysExpanded ? { xs: 180, sm: 240, md: 320 } : { xs: 160, sm: 200, md: 300 },
+              width: alwaysExpanded
+                ? { xs: 160, sm: 220, md: 300 }
+                : { xs: 140, sm: 180, md: 260 },
               transition: "width 0.2s ease",
               "& .MuiOutlinedInput-root": {
                 borderRadius: 1, height: 36,
@@ -281,7 +376,6 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
                     : <SearchOutlinedIcon sx={{ fontSize: 18, color: "#9e9e9e" }} />}
                 </InputAdornment>
               ),
-              // only show close button if NOT alwaysExpanded
               endAdornment: !alwaysExpanded && query ? (
                 <InputAdornment position="end">
                   <IconButton size="small" onClick={handleClose}>
@@ -291,7 +385,6 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
               ) : undefined,
             }}
           />
-          {/* close button only for collapsible mode */}
           {!alwaysExpanded && (
             <IconButton size="small" onClick={handleClose} sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}>
               <CloseIcon sx={{ fontSize: 18 }} />
@@ -303,66 +396,115 @@ export default function GlobalSearch({ role = "staff", userId = null, alwaysExpa
       {/* ── Dropdown results ── */}
       {expanded && open && query.trim() && (
         <Box sx={{
-          position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340,
-          backgroundColor: dropdownBg, border: `1px solid ${borderColor}`, borderRadius: 2,
+          ...dropdownPositionSx,
+          backgroundColor: dropdownBg,
+          border: `1px solid ${borderColor}`,
+          borderRadius: 2,
           boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.12)",
           zIndex: 1400, overflow: "hidden", py: 0.5,
         }}>
+
+          {/* Loading */}
           {loading && (
             <Box sx={{ px: 2, py: 2, display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={14} sx={{ color: "#9e9e9e" }} />
               <Typography sx={{ fontSize: "0.82rem", color: "text.secondary" }}>Searching...</Typography>
             </Box>
           )}
+
+          {/* No results */}
           {!loading && !hasResults && (
             <Box sx={{ px: 2, py: 2.5, textAlign: "center" }}>
               <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>No results for "{query}"</Typography>
             </Box>
           )}
+
+          {/* Results */}
           {!loading && hasResults && (
             <>
+              {/* Pages */}
               {hasPages && (
                 <>
                   <Typography sx={sectionLabelSx}>Pages</Typography>
-                  {results.pages.map((p) => <ResultItem key={p.path} icon={p.icon} primary={p.label} path={p.path} globalIndex={gIdx++} />)}
+                  {results.pages.map((p) => (
+                    <ResultItem key={p.path + p.label} icon={p.icon} primary={p.label} path={p.path} globalIndex={gIdx++} />
+                  ))}
                 </>
               )}
+
+              {/* Staffers */}
               {hasStaffers && (
                 <>
                   {hasPages && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Staffers</Typography>
                   {results.staffers.map((s) => (
-                    <ResultItem key={s.id} icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 16 }} />} primary={s.full_name} secondary={[s.section, s.division].filter(Boolean).join(" · ")} path={role === "admin" ? "/admin/staffers-management" : "/sec_head/my-staffers"} globalIndex={gIdx++} />
+                    <ResultItem
+                      key={s.id}
+                      icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
+                      primary={s.full_name}
+                      secondary={[s.section, s.division].filter(Boolean).join(" · ")}
+                      path={role === "admin" ? "/admin/staffers-management" : "/sec_head/my-staffers"}
+                      globalIndex={gIdx++}
+                    />
                   ))}
                 </>
               )}
+
+              {/* Requests */}
               {hasRequests && (
                 <>
                   {(hasPages || hasStaffers) && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Requests</Typography>
                   {results.requests.map((r) => (
-                    <ResultItem key={r.id} icon={<FolderOutlinedIcon sx={{ fontSize: 16 }} />} primary={r.title} secondary={r.status} path={role === "admin" ? getAdminRequestPath(r.status) : getClientRequestPath(r.status)} globalIndex={gIdx++} />
+                    <ResultItem
+                      key={r.id}
+                      icon={<FolderOutlinedIcon sx={{ fontSize: 16 }} />}
+                      primary={r.title}
+                      secondary={r.status}
+                      path={role === "admin" ? getAdminRequestPath(r.status) : getClientRequestPath(r.status)}
+                      globalIndex={gIdx++}
+                    />
                   ))}
                 </>
               )}
+
+              {/* Semesters */}
               {hasSemesters && (
                 <>
                   {(hasPages || hasStaffers || hasRequests) && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Semesters</Typography>
                   {results.semesters.map((s) => (
-                    <ResultItem key={s.id} icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />} primary={s.name} secondary={s.is_active ? "Active" : "Inactive"} path="/admin/semester-management" globalIndex={gIdx++} />
+                    <ResultItem
+                      key={s.id}
+                      icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />}
+                      primary={s.name}
+                      secondary={s.is_active ? "Active" : "Inactive"}
+                      path="/admin/semester-management"
+                      globalIndex={gIdx++}
+                    />
                   ))}
                 </>
               )}
+
+              {/* Assignments */}
               {hasAssignments && (
                 <>
                   {(hasPages || hasStaffers || hasRequests || hasSemesters) && <Divider sx={{ my: 0.5, borderColor }} />}
                   <Typography sx={sectionLabelSx}>Assignments</Typography>
                   {results.assignments.map((a) => (
-                    <ResultItem key={a.id} icon={<AssignmentOutlinedIcon sx={{ fontSize: 16 }} />} primary={a.request?.title || "—"} secondary={a.status} path={role === "staff" ? "/staff/my-assignment" : getSecHeadAssignmentPath(a.status)} globalIndex={gIdx++} />
+                    <ResultItem
+                      key={a.id}
+                      icon={<AssignmentOutlinedIcon sx={{ fontSize: 16 }} />}
+                      primary={a.request?.title || "—"}
+                      secondary={a.status}
+                      path={role === "staff" ? "/staff/my-assignment" : getSecHeadAssignmentPath(a.status)}
+                      globalIndex={gIdx++}
+                    />
                   ))}
                 </>
               )}
+
+              {/* Keyboard hints */}
               <Box sx={{ px: 1.5, py: 0.8, borderTop: `1px solid ${borderColor}`, mt: 0.5, display: "flex", gap: 1.5 }}>
                 <Typography sx={{ fontSize: "0.68rem", color: "#bdbdbd" }}>↑↓ navigate</Typography>
                 <Typography sx={{ fontSize: "0.68rem", color: "#bdbdbd" }}>↵ select</Typography>

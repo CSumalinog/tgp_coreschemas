@@ -2,13 +2,13 @@
 import React, { useState } from "react";
 import {
   Box, Typography, CircularProgress, useTheme,
-  Dialog, DialogContent, IconButton, Button, Avatar,
+  Dialog, DialogContent, IconButton, Avatar, GlobalStyles,
 } from "@mui/material";
 import CloseIcon                   from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import DownloadOutlinedIcon        from "@mui/icons-material/DownloadOutlined";
 import CheckCircleIcon             from "@mui/icons-material/CheckCircle";
-import RadioButtonUncheckedIcon    from "@mui/icons-material/RadioButtonUnchecked";
+
 import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
 import { DataGrid }                from "@mui/x-data-grid";
 import { useClientRequests }       from "../../hooks/useClientRequests";
@@ -74,6 +74,69 @@ const getStageIndex = (status) => {
 
 const TABS = ["Pipeline", "All Requests", "Pending", "Approved", "Declined"];
 
+// ── Column menu GlobalStyles ──────────────────────────────────────────────────
+function ColumnMenuStyles({ isDark, border }) {
+  const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
+  const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
+  const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
+  const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
+  const hoverBg   = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
+
+  return (
+    <GlobalStyles styles={{
+      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
+        borderRadius:    "10px !important",
+        border:          `1px solid ${border} !important`,
+        backgroundColor: `${paperBg} !important`,
+        boxShadow:       `${shadow} !important`,
+        minWidth:        "180px !important",
+        overflow:        "hidden !important",
+      },
+      ".MuiDataGrid-menuList": {
+        padding: "4px 0 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root": {
+        fontFamily:  `${dm} !important`,
+        fontSize:    "0.78rem !important",
+        fontWeight:  "500 !important",
+        color:       `${textColor} !important`,
+        padding:     "7px 14px !important",
+        minHeight:   "unset !important",
+        gap:         "10px !important",
+        transition:  "background-color 0.12s, color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
+        backgroundColor: `${hoverBg} !important`,
+        color:           "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
+        minWidth:   "unset !important",
+        color:      `${iconColor} !important`,
+        transition: "color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
+        fontSize: "1rem !important",
+        color:    `${iconColor} !important`,
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiListItemText-primary": {
+        fontFamily: `${dm} !important`,
+        fontSize:   "0.78rem !important",
+        fontWeight: "500 !important",
+      },
+      ".MuiDataGrid-menuList .MuiDivider-root": {
+        borderColor: `${border} !important`,
+        margin:      "4px 12px !important",
+      },
+    }} />
+  );
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function RequestTracker() {
   const theme  = useTheme();
@@ -84,6 +147,9 @@ export default function RequestTracker() {
   return (
     <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default", fontFamily: dm }}>
 
+      {/* ── Column menu styles ── */}
+      <ColumnMenuStyles isDark={isDark} border={border} />
+
       {/* ── Page header ── */}
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.5 }}>
@@ -92,10 +158,7 @@ export default function RequestTracker() {
       </Box>
 
       {/* ── Tabs ── */}
-      <Box sx={{
-        display: "flex", gap: 0, mb: 3,
-        borderBottom: `1px solid ${border}`,
-      }}>
+      <Box sx={{ display: "flex", gap: 0, mb: 3, borderBottom: `1px solid ${border}` }}>
         {TABS.map((label, idx) => (
           <Box
             key={label}
@@ -107,13 +170,10 @@ export default function RequestTracker() {
               color: tab === idx ? CHARCOAL : "text.secondary",
               transition: "color 0.15s",
               "&:hover": { color: CHARCOAL },
-              // gold underline on active
               "&::after": tab === idx ? {
-                content: '""',
-                position: "absolute",
+                content: '""', position: "absolute",
                 bottom: -1, left: 0, right: 0,
-                height: "2px",
-                borderRadius: "2px 2px 0 0",
+                height: "2px", borderRadius: "2px 2px 0 0",
                 backgroundColor: GOLD,
               } : {},
             }}
@@ -181,33 +241,19 @@ function PipelineCard({ request, isDark, border, onClick }) {
         },
       }}
     >
-      {/* Top row */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{
-            fontFamily: dm, fontWeight: 600, fontSize: "0.88rem",
-            color: "text.primary", lineHeight: 1.3,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
+          <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.88rem", color: "text.primary", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {request.title}
           </Typography>
           <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", mt: 0.25 }}>
             {request.event_date || "—"}{request.venue ? ` · ${request.venue}` : ""}
           </Typography>
         </Box>
-
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2, flexShrink: 0 }}>
-          {/* Status pill */}
-          <Box sx={{
-            display: "flex", alignItems: "center", gap: 0.6,
-            px: 1.25, py: 0.35, borderRadius: "6px",
-            backgroundColor: cfg.bg,
-          }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.35, borderRadius: "6px", backgroundColor: cfg.bg }}>
             <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
-            <Typography sx={{
-              fontFamily: dm, fontSize: "0.68rem", fontWeight: 600,
-              color: cfg.color, letterSpacing: "0.04em",
-            }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: cfg.color, letterSpacing: "0.04em" }}>
               {getFriendlyStatus(request.status)}
             </Typography>
           </Box>
@@ -215,7 +261,6 @@ function PipelineCard({ request, isDark, border, onClick }) {
         </Box>
       </Box>
 
-      {/* Pipeline stepper */}
       {!isDeclined ? (
         <Box sx={{ display: "flex", alignItems: "center" }}>
           {PIPELINE_STAGES.map((stage, idx) => {
@@ -228,42 +273,25 @@ function PipelineCard({ request, isDark, border, onClick }) {
                     {done
                       ? <CheckCircleIcon sx={{ fontSize: 16, color: "#22c55e" }} />
                       : current
-                        ? <Box sx={{
-                            width: 16, height: 16, borderRadius: "50%",
-                            backgroundColor: GOLD,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            boxShadow: `0 0 0 3px ${GOLD_08}`,
-                          }}>
+                        ? <Box sx={{ width: 16, height: 16, borderRadius: "50%", backgroundColor: GOLD, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 0 3px ${GOLD_08}` }}>
                             <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: CHARCOAL }} />
                           </Box>
                         : <Box sx={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${isDark ? "#444" : "#d1d5db"}` }} />
                     }
                   </Box>
-                  <Typography sx={{
-                    fontFamily: dm, fontSize: "0.64rem", textAlign: "center", lineHeight: 1.3, px: 0.5,
-                    fontWeight: current ? 600 : 400,
-                    color: done ? "#15803d" : current ? "text.primary" : "text.secondary",
-                  }}>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", textAlign: "center", lineHeight: 1.3, px: 0.5, fontWeight: current ? 600 : 400, color: done ? "#15803d" : current ? "text.primary" : "text.secondary" }}>
                     {stage.label}
                   </Typography>
                 </Box>
                 {idx < PIPELINE_STAGES.length - 1 && (
-                  <Box sx={{
-                    height: "1.5px", flex: 1, mx: 0.5, mb: 2.8, borderRadius: 1,
-                    backgroundColor: idx < currentIdx ? "#22c55e" : isDark ? "#333" : "#e5e7eb",
-                    transition: "background-color 0.3s",
-                  }} />
+                  <Box sx={{ height: "1.5px", flex: 1, mx: 0.5, mb: 2.8, borderRadius: 1, backgroundColor: idx < currentIdx ? "#22c55e" : isDark ? "#333" : "#e5e7eb", transition: "background-color 0.3s" }} />
                 )}
               </React.Fragment>
             );
           })}
         </Box>
       ) : (
-        <Box sx={{
-          px: 1.5, py: 1, borderRadius: "8px",
-          backgroundColor: isDark ? "#1a0a0a" : "#fef2f2",
-          borderLeft: "2.5px solid #ef4444",
-        }}>
+        <Box sx={{ px: 1.5, py: 1, borderRadius: "8px", backgroundColor: isDark ? "#1a0a0a" : "#fef2f2", borderLeft: "2.5px solid #ef4444" }}>
           <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "#dc2626", lineHeight: 1.5 }}>
             This request was declined.{request.declined_reason ? ` "${request.declined_reason}"` : ""}
           </Typography>
@@ -282,20 +310,11 @@ function PipelineCard({ request, isDark, border, onClick }) {
 // ── Grid Tabs ─────────────────────────────────────────────────────────────────
 function RequestsGrid({ rows, columns, isDark, border }) {
   return (
-    <Box sx={{
-      width: "100%",
-      bgcolor: "background.paper",
-      borderRadius: "10px",
-      border: `1px solid ${border}`,
-      overflow: "hidden",
-    }}>
+    <Box sx={{ width: "100%", bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden" }}>
       <DataGrid
-        rows={rows}
-        columns={columns}
-        pageSize={8}
-        rowsPerPageOptions={[8]}
-        disableSelectionOnClick
-        rowHeight={52}
+        rows={rows} columns={columns}
+        pageSize={8} rowsPerPageOptions={[8]}
+        disableSelectionOnClick rowHeight={52}
         sx={makeDataGridSx(isDark, border)}
       />
     </Box>
@@ -339,26 +358,21 @@ function useGridColumns(isDark, onView) {
       },
     },
     {
-      field: "actions", headerName: "", flex: 0.5, sortable: false, align: "right", headerAlign: "right",
+      field: "actions", headerName: "", width: 80, sortable: false, align: "right", headerAlign: "right",
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.75 }}>
           <Box
             onClick={() => onView(p.row._raw)}
             sx={{
-              display: "flex", alignItems: "center", gap: 0.4,
-              px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer",
+              px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
               border: `1px solid ${isDark ? BORDER_DARK : BORDER}`,
-              fontFamily: dm, fontSize: "0.75rem", fontWeight: 500,
+              fontFamily: dm, fontSize: "0.73rem", fontWeight: 500,
               color: "text.secondary",
               transition: "all 0.15s",
-              "&:hover": {
-                borderColor: GOLD,
-                color: CHARCOAL,
-                backgroundColor: GOLD_08,
-              },
+              "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
             }}
           >
-            View <ChevronRightIcon sx={{ fontSize: 14 }} />
+            View
           </Box>
         </Box>
       ),
@@ -472,30 +486,18 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
       open={open} onClose={onClose} fullWidth maxWidth="sm"
       PaperProps={{
         sx: {
-          borderRadius: "14px",
-          maxHeight: "90vh",
+          borderRadius: "14px", maxHeight: "90vh",
           backgroundColor: "background.paper",
           border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+          boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)",
         },
       }}
     >
-      {/* ── Dialog header ── */}
-      <Box sx={{
-        px: 3, py: 2,
-        borderBottom: `1px solid ${border}`,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
+      <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
           <Box sx={{ width: 2.5, height: 28, borderRadius: "2px", backgroundColor: statusCfg.dot, flexShrink: 0 }} />
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{
-              fontFamily: dm, fontWeight: 700, fontSize: "0.92rem",
-              color: "text.primary", lineHeight: 1.3,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
+            <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.92rem", color: "text.primary", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {request.title}
             </Typography>
             <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary", mt: 0.15 }}>
@@ -505,7 +507,6 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
             </Typography>
           </Box>
         </Box>
-
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 1.5, flexShrink: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.4, borderRadius: "6px", backgroundColor: statusCfg.bg }}>
             <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: statusCfg.dot }} />
@@ -521,13 +522,8 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
 
       <DialogContent sx={{ px: 3, py: 2.5, overflowY: "auto" }}>
 
-        {/* Progress stepper */}
         {currentIdx >= 0 && !isDeclined && (
-          <Box sx={{
-            mb: 3, p: 2, borderRadius: "10px",
-            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
-            border: `1px solid ${border}`,
-          }}>
+          <Box sx={{ mb: 3, p: 2, borderRadius: "10px", backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", border: `1px solid ${border}` }}>
             <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 1.5 }}>
               Request Progress
             </Typography>
@@ -562,7 +558,6 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Box>
         )}
 
-        {/* Coverage team */}
         {showTeam && teamSections.length > 0 && (
           <Section label="Coverage Team" border={border}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -577,16 +572,8 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
                     </Box>
                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
                       {teamBySection[sec].map((staffer) => (
-                        <Box key={staffer.id} sx={{
-                          display: "flex", alignItems: "center", gap: 0.75,
-                          px: 1, py: 0.6, borderRadius: "8px",
-                          border: `1px solid ${border}`,
-                          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
-                        }}>
-                          <Avatar
-                            src={getAvatarUrl(staffer.avatar_url)}
-                            sx={{ width: 22, height: 22, fontSize: "0.6rem", fontWeight: 700, backgroundColor: colors.bg, color: colors.color }}
-                          >
+                        <Box key={staffer.id} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1, py: 0.6, borderRadius: "8px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
+                          <Avatar src={getAvatarUrl(staffer.avatar_url)} sx={{ width: 22, height: 22, fontSize: "0.6rem", fontWeight: 700, backgroundColor: colors.bg, color: colors.color }}>
                             {!getAvatarUrl(staffer.avatar_url) && getInitials(staffer.full_name)}
                           </Avatar>
                           <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: "text.primary" }}>
@@ -602,7 +589,6 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Section>
         )}
 
-        {/* Event info */}
         <Section label="Event Information" border={border}>
           <InfoGrid rows={[
             ["Event Title",  request.title],
@@ -613,19 +599,13 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           ]} />
         </Section>
 
-        {/* Coverage requirements */}
         <Section label="Coverage Requirements" border={border}>
           {coverageComponents.length > 0 ? (
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
               {coverageComponents.map((c, idx) => (
-                <Box key={idx} sx={{
-                  px: 1.25, py: 0.4, borderRadius: "6px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
-                }}>
+                <Box key={idx} sx={{ px: 1.25, py: 0.4, borderRadius: "6px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
                   <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>
-                    {c.name}{" "}
-                    <Box component="span" sx={{ color: "text.secondary" }}>×{c.pax}</Box>
+                    {c.name}{" "}<Box component="span" sx={{ color: "text.secondary" }}>×{c.pax}</Box>
                   </Typography>
                 </Box>
               ))}
@@ -635,7 +615,6 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           )}
         </Section>
 
-        {/* Contact */}
         <Section label="Contact Details" border={border}>
           <InfoGrid rows={[
             ["Contact Person", request.contact_person || "—"],
@@ -643,31 +622,17 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           ]} />
         </Section>
 
-        {/* Attachment */}
         <Section label="Attachment" border={border}>
           {request.file_url ? (
-            <Box
-              onClick={() => openFile(request.file_url)}
-              sx={{
-                display: "inline-flex", alignItems: "center", gap: 0.75,
-                cursor: "pointer",
-                px: 1.25, py: 0.6, borderRadius: "7px",
-                border: `1px solid ${border}`,
-                transition: "border-color 0.15s",
-                "&:hover": { borderColor: GOLD },
-              }}
-            >
+            <Box onClick={() => openFile(request.file_url)} sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, cursor: "pointer", px: 1.25, py: 0.6, borderRadius: "7px", border: `1px solid ${border}`, transition: "border-color 0.15s", "&:hover": { borderColor: GOLD } }}>
               <InsertDriveFileOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>
-                {getFileName(request.file_url)}
-              </Typography>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>{getFileName(request.file_url)}</Typography>
             </Box>
           ) : (
             <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>No file attached</Typography>
           )}
         </Section>
 
-        {/* Admin notes */}
         {request.status === "Approved" && request.admin_notes && (
           <Section label="Admin Notes" border={border}>
             <Box sx={{ px: 1.5, py: 1, borderRadius: "8px", backgroundColor: isDark ? "#0a1a0a" : "#f0fdf4", borderLeft: "2.5px solid #22c55e" }}>
@@ -676,7 +641,6 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Section>
         )}
 
-        {/* Decline reason */}
         {isDeclined && (
           <Section label="Decline Reason" border={border}>
             <Box sx={{ px: 1.5, py: 1, borderRadius: "8px", backgroundColor: isDark ? "#1a0a0a" : "#fef2f2", borderLeft: "2.5px solid #ef4444" }}>
@@ -687,30 +651,16 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Section>
         )}
 
-        {/* Approval + download */}
         {request.status === "Approved" && (
           <Section label="Approval" border={border}>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
               <Box>
                 <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary" }}>Approved on</Typography>
                 <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", color: "text.primary", fontWeight: 600, mt: 0.2 }}>
-                  {request.approved_at
-                    ? new Date(request.approved_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                    : "—"}
+                  {request.approved_at ? new Date(request.approved_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—"}
                 </Typography>
               </Box>
-              <Box
-                onClick={() => generateConfirmationPDF(request, teamBySection)}
-                sx={{
-                  display: "flex", alignItems: "center", gap: 0.75,
-                  px: 1.5, py: 0.7, borderRadius: "8px", cursor: "pointer",
-                  border: `1px solid ${border}`,
-                  fontFamily: dm, fontSize: "0.78rem", fontWeight: 500,
-                  color: "text.secondary", flexShrink: 0,
-                  transition: "all 0.15s",
-                  "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
-                }}
-              >
+              <Box onClick={() => generateConfirmationPDF(request, teamBySection)} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.5, py: 0.7, borderRadius: "8px", cursor: "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: "text.secondary", flexShrink: 0, transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 } }}>
                 <DownloadOutlinedIcon sx={{ fontSize: 14 }} />
                 Download Confirmation
               </Box>
@@ -727,11 +677,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
 function Section({ label, children, border }) {
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography sx={{
-        fontFamily: dm, fontSize: "0.62rem", fontWeight: 700,
-        color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase",
-        mb: 1, pb: 0.75, borderBottom: `1px solid ${border}`,
-      }}>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 1, pb: 0.75, borderBottom: `1px solid ${border}` }}>
         {label}
       </Typography>
       {children}
@@ -770,65 +716,21 @@ function Loader() {
 
 function makeDataGridSx(isDark, border) {
   return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-
-    // Column headers
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
+    border: "none", fontFamily: dm, fontSize: "0.82rem",
+    backgroundColor: "background.paper", color: "text.primary",
+    "& .MuiDataGrid-columnHeaders": { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", borderBottom: `1px solid ${border}`, minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important" },
+    "& .MuiDataGrid-columnHeaderTitle": { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
     "& .MuiDataGrid-columnSeparator": { display: "none" },
     "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
-
-    // Rows
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-
-    // Cells
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-
-    // Footer
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-
-    // Checkbox / selected state
+    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
+    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
+    "& .MuiDataGrid-row": { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
+    "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
+    "& .MuiDataGrid-cell": { border: "none", outline: "none !important", "&:focus, &:focus-within": { outline: "none" } },
+    "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px" },
+    "& .MuiTablePagination-root": { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
+    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
     "& .MuiDataGrid-selectedRowCount": { fontFamily: dm, fontSize: "0.75rem" },
   };
 }

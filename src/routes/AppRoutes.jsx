@@ -1,10 +1,11 @@
 // src/routes/AppRoutes.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import AdminLayout        from "../layouts/admin/AdminLayout";
-import ClientLayout       from "../layouts/client/ClientLayout";
-import SectionHeadLayout  from "../layouts/section_head/SectionHeadLayout";
-import RegularStaffLayout from "../layouts/regular_staff/RegularStaffLayout";
+import ProtectedRoute         from "../components/ProtectedRoute";
+import AdminLayout            from "../layouts/admin/AdminLayout";
+import ClientLayout           from "../layouts/client/ClientLayout";
+import SectionHeadLayout      from "../layouts/section_head/SectionHeadLayout";
+import RegularStaffLayout     from "../layouts/regular_staff/RegularStaffLayout";
 
 // Auth Pages
 import Login  from "../pages/auth/Login";
@@ -44,17 +45,20 @@ function AppRoutes() {
       <Route path="/login"  element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
-      {/* Admin Routes */}
-      <Route path="/admin" element={<AdminLayout />}>
+      {/* Admin Routes — only role: "admin" */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
         <Route index                      element={<Navigate to="dashboard" />} />
-        <Route path="dashboard"            element={<Dashboard />} />
-        <Route path="request-management"   element={<AdminRequestManagement />} />
-        <Route path="calendar-management"  element={<CalendarManagement />} />
-        <Route path="staffers-management"  element={<StaffersManagement />} />
-        <Route path="semester-management"  element={<SemesterManagement />} />
-        <Route path="duty-schedule-view"   element={<DutyScheduleView />} />
-        <Route path="profile"              element={<ProfilePage />} />
-
+        <Route path="dashboard"           element={<Dashboard />} />
+        <Route path="request-management"  element={<AdminRequestManagement />} />
+        <Route path="calendar-management" element={<CalendarManagement />} />
+        <Route path="staffers-management" element={<StaffersManagement />} />
+        <Route path="semester-management" element={<SemesterManagement />} />
+        <Route path="duty-schedule-view"  element={<DutyScheduleView />} />
+        <Route path="profile"             element={<ProfilePage />} />
         {/* Legacy redirects */}
         <Route path="approved-requests"  element={<Navigate to="/admin/request-management" replace />} />
         <Route path="forwarded-requests" element={<Navigate to="/admin/request-management" replace />} />
@@ -62,37 +66,47 @@ function AppRoutes() {
         <Route path="for-approval"       element={<Navigate to="/admin/request-management" replace />} />
       </Route>
 
-      {/* Client Routes */}
-      <Route path="/client" element={<ClientLayout />}>
+      {/* Client Routes — only role: "client" */}
+      <Route path="/client" element={
+        <ProtectedRoute allowedRoles={["client"]}>
+          <ClientLayout />
+        </ProtectedRoute>
+      }>
         <Route index                  element={<Navigate to="calendar" />} />
         <Route path="calendar"        element={<Calendar />} />
         <Route path="draft"           element={<Draft />} />
         <Route path="request-tracker" element={<RequestTracker />} />
         <Route path="profile"         element={<ProfilePage />} />
-
-        {/* Legacy redirects — keep old nav links working */}
+        {/* Legacy redirects */}
         <Route path="pending-requests"  element={<Navigate to="/client/request-tracker" replace />} />
         <Route path="approved-requests" element={<Navigate to="/client/request-tracker" replace />} />
         <Route path="declined-requests" element={<Navigate to="/client/request-tracker" replace />} />
         <Route path="history"           element={<Navigate to="/client/request-tracker" replace />} />
       </Route>
 
-      {/* Section Head Routes */}
-      <Route path="/sec_head" element={<SectionHeadLayout />}>
+      {/* Section Head Routes — only role: "sec_head" */}
+      <Route path="/sec_head" element={
+        <ProtectedRoute allowedRoles={["sec_head"]}>
+          <SectionHeadLayout />
+        </ProtectedRoute>
+      }>
         <Route index                        element={<Navigate to="dashboard" />} />
         <Route path="dashboard"             element={<SecHeadDashboard />} />
         <Route path="assignment-management" element={<SecHeadAssignmentManagement />} />
         <Route path="my-staffers"           element={<SecHeadMyStaffers />} />
         <Route path="profile"               element={<ProfilePage />} />
-
         {/* Legacy redirects */}
         <Route path="for-assignment" element={<Navigate to="/sec_head/assignment-management" replace />} />
         <Route path="assigned"       element={<Navigate to="/sec_head/assignment-management" replace />} />
         <Route path="history"        element={<Navigate to="/sec_head/assignment-management" replace />} />
       </Route>
 
-      {/* Regular Staff Routes */}
-      <Route path="/staff" element={<RegularStaffLayout />}>
+      {/* Regular Staff Routes — only role: "staff" */}
+      <Route path="/staff" element={
+        <ProtectedRoute allowedRoles={["staff"]}>
+          <RegularStaffLayout />
+        </ProtectedRoute>
+      }>
         <Route index                element={<Navigate to="dashboard" />} />
         <Route path="dashboard"     element={<StaffDashboard />} />
         <Route path="my-assignment" element={<MyAssignment />} />

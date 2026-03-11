@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box, Typography, CircularProgress, MenuItem,
   Select, FormControl, InputLabel, useTheme, IconButton,
-  Badge, Paper, Divider, ClickAwayListener,
+  Badge, Paper, Divider, ClickAwayListener, GlobalStyles,
 } from "@mui/material";
 import { DataGrid }                     from "@mui/x-data-grid";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -50,6 +50,69 @@ const TAB_DESCRIPTIONS = {
   Approved:       "Requests that have been fully approved and confirmed.",
   Declined:       "Requests that were declined and their reasons.",
 };
+
+// ── Column menu GlobalStyles ──────────────────────────────────────────────────
+function ColumnMenuStyles({ isDark, border }) {
+  const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
+  const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
+  const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
+  const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
+  const hoverBg   = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
+
+  return (
+    <GlobalStyles styles={{
+      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
+        borderRadius:    "10px !important",
+        border:          `1px solid ${border} !important`,
+        backgroundColor: `${paperBg} !important`,
+        boxShadow:       `${shadow} !important`,
+        minWidth:        "180px !important",
+        overflow:        "hidden !important",
+      },
+      ".MuiDataGrid-menuList": {
+        padding: "4px 0 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root": {
+        fontFamily:  `${dm} !important`,
+        fontSize:    "0.78rem !important",
+        fontWeight:  "500 !important",
+        color:       `${textColor} !important`,
+        padding:     "7px 14px !important",
+        minHeight:   "unset !important",
+        gap:         "10px !important",
+        transition:  "background-color 0.12s, color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
+        backgroundColor: `${hoverBg} !important`,
+        color:           "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
+        minWidth:   "unset !important",
+        color:      `${iconColor} !important`,
+        transition: "color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
+        fontSize: "1rem !important",
+        color:    `${iconColor} !important`,
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiListItemText-primary": {
+        fontFamily: `${dm} !important`,
+        fontSize:   "0.78rem !important",
+        fontWeight: "500 !important",
+      },
+      ".MuiDataGrid-menuList .MuiDivider-root": {
+        borderColor: `${border} !important`,
+        margin:      "4px 12px !important",
+      },
+    }} />
+  );
+}
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function AdminRequestManagement() {
@@ -201,11 +264,7 @@ export default function AdminRequestManagement() {
       <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.5, flexWrap: "wrap" }}>
         {p.value?.length > 0
           ? p.value.map((s, i) => (
-              <Box key={i} sx={{
-                display: "flex", alignItems: "center", gap: 0.5,
-                px: 1, py: 0.25, borderRadius: "5px",
-                backgroundColor: "#f5f3ff",
-              }}>
+              <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1, py: 0.25, borderRadius: "5px", backgroundColor: "#f5f3ff" }}>
                 <Box sx={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#8b5cf6", flexShrink: 0 }} />
                 <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "#6d28d9" }}>{s}</Typography>
               </Box>
@@ -240,16 +299,15 @@ export default function AdminRequestManagement() {
         <Box
           onClick={() => setSelectedRequest(p.row._raw)}
           sx={{
-            display: "flex", alignItems: "center", gap: 0.4,
-            px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer",
+            px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
             border: `1px solid ${border}`,
-            fontFamily: dm, fontSize: "0.75rem", fontWeight: 500,
+            fontFamily: dm, fontSize: "0.73rem", fontWeight: 500,
             color: "text.secondary",
             transition: "all 0.15s",
             "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
           }}
         >
-          View <ChevronRightIcon sx={{ fontSize: 14 }} />
+          View
         </Box>
       </Box>
     ),
@@ -265,6 +323,9 @@ export default function AdminRequestManagement() {
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, height: "100%", boxSizing: "border-box", backgroundColor: "background.default", fontFamily: dm }}>
 
+      {/* ── Column menu styles ── */}
+      <ColumnMenuStyles isDark={isDark} border={border} />
+
       {/* ── Page description ── */}
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>
@@ -274,15 +335,9 @@ export default function AdminRequestManagement() {
 
       {/* ── Tabs row + filter ── */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0, gap: 1 }}>
-        {/* Underline tabs */}
-        <Box sx={{
-          display: "flex", gap: 0, flex: 1,
-          borderBottom: `1px solid ${border}`,
-          overflowX: "auto",
-          "&::-webkit-scrollbar": { height: 0 },
-        }}>
+        <Box sx={{ display: "flex", gap: 0, flex: 1, borderBottom: `1px solid ${border}`, overflowX: "auto", "&::-webkit-scrollbar": { height: 0 } }}>
           {TABS.map((t, idx) => {
-            const count   = getTabCount(t.key);
+            const count    = getTabCount(t.key);
             const isActive = tab === idx;
             return (
               <Box
@@ -297,28 +352,13 @@ export default function AdminRequestManagement() {
                   color: isActive ? CHARCOAL : "text.secondary",
                   transition: "color 0.15s",
                   "&:hover": { color: CHARCOAL },
-                  "&::after": isActive ? {
-                    content: '""',
-                    position: "absolute",
-                    bottom: -1, left: 0, right: 0,
-                    height: "2px",
-                    borderRadius: "2px 2px 0 0",
-                    backgroundColor: GOLD,
-                  } : {},
+                  "&::after": isActive ? { content: '""', position: "absolute", bottom: -1, left: 0, right: 0, height: "2px", borderRadius: "2px 2px 0 0", backgroundColor: GOLD } : {},
                 }}
               >
                 {t.label}
                 {count > 0 && (
-                  <Box sx={{
-                    minWidth: 17, height: 17, borderRadius: "9px", px: 0.5,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)",
-                    flexShrink: 0,
-                  }}>
-                    <Typography sx={{
-                      fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, lineHeight: 1,
-                      color: isActive ? CHARCOAL : "text.secondary",
-                    }}>
+                  <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)", flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>
                       {count}
                     </Typography>
                   </Box>
@@ -344,26 +384,18 @@ export default function AdminRequestManagement() {
                   "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08, color: CHARCOAL },
                 }}
               >
-                <Badge
-                  badgeContent={activeFilterCount}
-                  sx={{ "& .MuiBadge-badge": { fontSize: "0.58rem", height: 14, minWidth: 14, backgroundColor: GOLD, color: CHARCOAL } }}
-                >
+                <Badge badgeContent={activeFilterCount} sx={{ "& .MuiBadge-badge": { fontSize: "0.58rem", height: 14, minWidth: 14, backgroundColor: GOLD, color: CHARCOAL } }}>
                   <FilterListIcon sx={{ fontSize: 17 }} />
                 </Badge>
               </IconButton>
 
-              {/* Filter popover */}
               {filterOpen && (
                 <Paper
                   elevation={0}
                   sx={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    right: 0,
-                    width: { xs: "calc(100vw - 48px)", sm: 240 },
-                    maxWidth: 280,
-                    zIndex: 1300,
-                    borderRadius: "10px",
+                    position: "absolute", top: "calc(100% + 8px)", right: 0,
+                    width: { xs: "calc(100vw - 48px)", sm: 240 }, maxWidth: 280,
+                    zIndex: 1300, borderRadius: "10px",
                     border: `1px solid ${border}`,
                     backgroundColor: "background.paper",
                     boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 4px 24px rgba(53,53,53,0.1)",
@@ -371,51 +403,26 @@ export default function AdminRequestManagement() {
                   }}
                 >
                   <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}>
-                      Filters
-                    </Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}>Filters</Typography>
                     {activeFilterCount > 0 && (
-                      <Box
-                        onClick={() => { setSelectedSem("all"); setSelectedEntity("all"); }}
-                        sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: "text.primary" } }}
-                      >
+                      <Box onClick={() => { setSelectedSem("all"); setSelectedEntity("all"); }} sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: "text.primary" } }}>
                         Clear all
                       </Box>
                     )}
                   </Box>
-
                   <Box sx={{ px: 2, py: 2, display: "flex", flexDirection: "column", gap: 1.75 }}>
                     <FormControl size="small" fullWidth>
                       <InputLabel sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Semester</InputLabel>
-                      <Select
-                        value={selectedSem} label="Semester"
-                        onChange={(e) => setSelectedSem(e.target.value)}
-                        sx={{
-                          fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px",
-                          "& .MuiOutlinedInput-notchedOutline": { borderColor: border },
-                          "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD },
-                        }}
-                      >
+                      <Select value={selectedSem} label="Semester" onChange={(e) => setSelectedSem(e.target.value)} sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px", "& .MuiOutlinedInput-notchedOutline": { borderColor: border }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD } }}>
                         <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Semesters</MenuItem>
                         {semesters.map((s) => (
                           <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{s.name}</MenuItem>
                         ))}
                       </Select>
                     </FormControl>
-
                     <FormControl size="small" fullWidth>
                       <InputLabel sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Client</InputLabel>
-                      <Select
-                        value={selectedEntity} label="Client"
-                        onChange={(e) => setSelectedEntity(e.target.value)}
-                        sx={{
-                          fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px",
-                          "& .MuiOutlinedInput-notchedOutline": { borderColor: border },
-                          "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD },
-                        }}
-                      >
+                      <Select value={selectedEntity} label="Client" onChange={(e) => setSelectedEntity(e.target.value)} sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px", "& .MuiOutlinedInput-notchedOutline": { borderColor: border }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD } }}>
                         <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Clients</MenuItem>
                         {entityOptions.map((name) => (
                           <MenuItem key={name} value={name} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{name}</MenuItem>
@@ -433,15 +440,8 @@ export default function AdminRequestManagement() {
       {/* ── Active filter chips ── */}
       {activeFilterCount > 0 && (
         <Box sx={{ display: "flex", gap: 0.75, mt: 1.5, flexWrap: "wrap" }}>
-          {selectedSem !== "all" && (
-            <FilterChip
-              label={semesters.find((s) => s.id === selectedSem)?.name}
-              onDelete={() => setSelectedSem("all")}
-            />
-          )}
-          {selectedEntity !== "all" && (
-            <FilterChip label={selectedEntity} onDelete={() => setSelectedEntity("all")} />
-          )}
+          {selectedSem !== "all" && <FilterChip label={semesters.find((s) => s.id === selectedSem)?.name} onDelete={() => setSelectedSem("all")} />}
+          {selectedEntity !== "all" && <FilterChip label={selectedEntity} onDelete={() => setSelectedEntity("all")} />}
         </Box>
       )}
 
@@ -454,13 +454,7 @@ export default function AdminRequestManagement() {
 
       {/* ── Data Grid ── */}
       <Box sx={{ width: "100%", overflowX: "auto" }}>
-        <Box sx={{
-          minWidth: 680,
-          bgcolor: "background.paper",
-          borderRadius: "10px",
-          border: `1px solid ${border}`,
-          overflow: "hidden",
-        }}>
+        <Box sx={{ minWidth: 680, bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden" }}>
           {loading ? (
             <Box sx={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <CircularProgress size={26} sx={{ color: GOLD }} />
@@ -474,9 +468,7 @@ export default function AdminRequestManagement() {
               disableSelectionOnClick
               rowHeight={52}
               getRowClassName={(params) =>
-                highlight && params.row.requestTitle?.toLowerCase().includes(highlight)
-                  ? "highlighted-row"
-                  : ""
+                highlight && params.row.requestTitle?.toLowerCase().includes(highlight) ? "highlighted-row" : ""
               }
               sx={{
                 ...makeDataGridSx(isDark, border),
@@ -512,24 +504,9 @@ function MetaCell({ children }) {
 
 function FilterChip({ label, onDelete }) {
   return (
-    <Box sx={{
-      display: "flex", alignItems: "center", gap: 0.5,
-      pl: 1.25, pr: 0.75, py: 0.35, borderRadius: "6px",
-      backgroundColor: GOLD_08,
-      border: `1px solid rgba(245,197,43,0.3)`,
-    }}>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 600, color: "#b45309" }}>
-        {label}
-      </Typography>
-      <Box
-        onClick={onDelete}
-        sx={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: 14, height: 14, borderRadius: "4px", cursor: "pointer",
-          color: "#b45309", opacity: 0.7,
-          "&:hover": { opacity: 1 },
-        }}
-      >
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, pl: 1.25, pr: 0.75, py: 0.35, borderRadius: "6px", backgroundColor: GOLD_08, border: `1px solid rgba(245,197,43,0.3)` }}>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 600, color: "#b45309" }}>{label}</Typography>
+      <Box onClick={onDelete} sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "4px", cursor: "pointer", color: "#b45309", opacity: 0.7, "&:hover": { opacity: 1 } }}>
         <CloseIcon sx={{ fontSize: 11 }} />
       </Box>
     </Box>
@@ -538,56 +515,21 @@ function FilterChip({ label, onDelete }) {
 
 function makeDataGridSx(isDark, border) {
   return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
+    border: "none", fontFamily: dm, fontSize: "0.82rem",
+    backgroundColor: "background.paper", color: "text.primary",
+    "& .MuiDataGrid-columnHeaders": { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", borderBottom: `1px solid ${border}`, minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important" },
+    "& .MuiDataGrid-columnHeaderTitle": { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
     "& .MuiDataGrid-columnSeparator": { display: "none" },
     "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
-
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm, fontSize: "0.75rem", color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm, fontSize: "0.75rem",
-    },
+    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
+    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
+    "& .MuiDataGrid-row": { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
+    "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
+    "& .MuiDataGrid-cell": { border: "none", outline: "none !important", "&:focus, &:focus-within": { outline: "none" } },
+    "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px" },
+    "& .MuiTablePagination-root": { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
+    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
     "& .MuiDataGrid-virtualScroller":  { backgroundColor: "background.paper" },
     "& .MuiDataGrid-overlay":          { backgroundColor: "background.paper" },
   };

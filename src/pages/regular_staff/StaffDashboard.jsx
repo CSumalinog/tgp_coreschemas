@@ -1,16 +1,16 @@
 // src/pages/regular_staff/StaffDashboard.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Box, Typography, CircularProgress, Chip, Divider, useTheme,
+  Box, Typography, CircularProgress, Chip, Divider, useTheme, useMediaQuery,
 } from "@mui/material";
-import AssignmentOutlinedIcon       from "@mui/icons-material/AssignmentOutlined";
-import CheckCircleOutlineIcon       from "@mui/icons-material/CheckCircleOutline";
+import AssignmentOutlinedIcon         from "@mui/icons-material/AssignmentOutlined";
+import CheckCircleOutlineIcon         from "@mui/icons-material/CheckCircleOutline";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
-import AccessTimeOutlinedIcon       from "@mui/icons-material/AccessTimeOutlined";
-import CalendarTodayOutlinedIcon    from "@mui/icons-material/CalendarTodayOutlined";
-import LocationOnOutlinedIcon       from "@mui/icons-material/LocationOnOutlined";
-import PersonOutlineOutlinedIcon    from "@mui/icons-material/PersonOutlineOutlined";
-import { supabase }                 from "../../lib/supabaseClient";
+import AccessTimeOutlinedIcon         from "@mui/icons-material/AccessTimeOutlined";
+import CalendarTodayOutlinedIcon      from "@mui/icons-material/CalendarTodayOutlined";
+import LocationOnOutlinedIcon         from "@mui/icons-material/LocationOnOutlined";
+import PersonOutlineOutlinedIcon      from "@mui/icons-material/PersonOutlineOutlined";
+import { supabase }                   from "../../lib/supabaseClient";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const BRAND = {
@@ -67,8 +67,10 @@ function SectionHeader({ title }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StaffDashboard() {
-  const theme  = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const theme   = useTheme();
+  const isDark  = theme.palette.mode === "dark";
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));  // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));  // < 900px
 
   const border   = isDark ? BRAND.borderDark  : BRAND.borderLight;
   const surf     = isDark ? BRAND.surfDark    : BRAND.surfLight;
@@ -141,12 +143,18 @@ export default function StaffDashboard() {
     </Box>
   );
 
+  const kpiCards = [
+    { label: "Total",     value: total,     sub: "assignments",   icon: AssignmentOutlinedIcon, isRed: false          },
+    { label: "Pending",   value: pending,   sub: "to be covered", icon: AccessTimeOutlinedIcon, isRed: pending > 0    },
+    { label: "Completed", value: completed, sub: "done",          icon: CheckCircleOutlineIcon, isRed: false          },
+  ];
+
   return (
-    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
+    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 }, backgroundColor: "background.default", minHeight: "100%" }}>
 
       {/* ── Header ── */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "text.primary", letterSpacing: "-0.02em" }}>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.1rem" }, color: "text.primary", letterSpacing: "-0.02em" }}>
           {getGreeting()}, {currentUser.full_name?.split(" ")[0]} 👋
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
@@ -167,33 +175,39 @@ export default function StaffDashboard() {
             />
           ) : (
             <Chip
-              label="No duty day set"
-              size="small"
-              sx={{
-                fontSize: "0.7rem", height: 20,
-                backgroundColor: surf,
-                color: "text.disabled",
-                border: `1px solid ${border}`,
-              }}
+              label="No duty day set" size="small"
+              sx={{ fontSize: "0.7rem", height: 20, backgroundColor: surf, color: "text.disabled", border: `1px solid ${border}` }}
             />
           )}
         </Box>
       </Box>
 
       {/* ── ROW 1: Hero + 3 KPI cards ── */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "220px repeat(3, 1fr)", gap: 1.5, mb: 2.5 }}>
+      <Box sx={{
+        display: "grid",
+        gap: { xs: 1.5, md: 1.5 },
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",   // 2-col grid; hero spans full width
+          sm: "repeat(3, 1fr)",   // hero spans full width, 3 KPIs in a row
+          md: "220px repeat(3, 1fr)",
+        },
+        mb: { xs: 2, md: 2.5 },
+      }}>
 
-        {/* Hero card */}
+        {/* Hero card — full width on xs/sm */}
         <Box sx={{
+          gridColumn: { xs: "1 / -1", md: "1 / 2" },
           borderRadius: 3, overflow: "hidden", position: "relative",
           background: isDark
             ? `linear-gradient(140deg, #1e1a00 0%, ${BRAND.charcoal} 55%, #141400 100%)`
             : `linear-gradient(140deg, ${BRAND.charcoal} 0%, #1a1a1a 60%, #0d0d0d 100%)`,
-          p: 2.5, display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 130,
+          p: { xs: 2, md: 2.5 },
+          display: "flex", flexDirection: "column", justifyContent: "space-between",
+          minHeight: { xs: 100, md: 130 },
         }}>
-          <Box sx={{ position: "absolute", top: -32, right: -32, width: 96,  height: 96,  borderRadius: "50%", border: `1.5px solid ${BRAND.goldAlpha12}`,        pointerEvents: "none" }} />
-          <Box sx={{ position: "absolute", top: -14, right: -14, width: 58,  height: 58,  borderRadius: "50%", border: `1.5px solid rgba(245,197,43,0.07)`,       pointerEvents: "none" }} />
-          <Box sx={{ position: "absolute", bottom: -20, left: -20, width: 68, height: 68, borderRadius: "50%", backgroundColor: "rgba(245,197,43,0.04)",          pointerEvents: "none" }} />
+          <Box sx={{ position: "absolute", top: -32, right: -32, width: 96,  height: 96,  borderRadius: "50%", border: `1.5px solid ${BRAND.goldAlpha12}`,      pointerEvents: "none" }} />
+          <Box sx={{ position: "absolute", top: -14, right: -14, width: 58,  height: 58,  borderRadius: "50%", border: `1.5px solid rgba(245,197,43,0.07)`,     pointerEvents: "none" }} />
+          <Box sx={{ position: "absolute", bottom: -20, left: -20, width: 68, height: 68, borderRadius: "50%", backgroundColor: "rgba(245,197,43,0.04)",        pointerEvents: "none" }} />
 
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 1 }}>
@@ -210,21 +224,21 @@ export default function StaffDashboard() {
 
             {pending > 0 ? (
               <>
-                <Typography sx={{ fontSize: "0.95rem", fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                <Typography sx={{ fontSize: { xs: "0.88rem", md: "0.95rem" }, fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                   {pending} assignment{pending > 1 ? "s" : ""} pending
                 </Typography>
                 <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)", mt: 0.5 }}>Ready for coverage</Typography>
               </>
             ) : completed > 0 ? (
               <>
-                <Typography sx={{ fontSize: "0.95rem", fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                <Typography sx={{ fontSize: { xs: "0.88rem", md: "0.95rem" }, fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                   {completed} assignment{completed > 1 ? "s" : ""} completed
                 </Typography>
                 <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)", mt: 0.5 }}>Great work</Typography>
               </>
             ) : (
               <>
-                <Typography sx={{ fontSize: "0.95rem", fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                <Typography sx={{ fontSize: { xs: "0.88rem", md: "0.95rem" }, fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                   No assignments yet
                 </Typography>
                 <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)", mt: 0.5 }}>Nothing assigned to you</Typography>
@@ -240,29 +254,27 @@ export default function StaffDashboard() {
         </Box>
 
         {/* 3 KPI cards */}
-        {[
-          { label: "Total",     value: total,     sub: "assignments",    icon: AssignmentOutlinedIcon,   isRed: false },
-          { label: "Pending",   value: pending,   sub: "to be covered",  icon: AccessTimeOutlinedIcon,   isRed: pending > 0 },
-          { label: "Completed", value: completed, sub: "done",           icon: CheckCircleOutlineIcon,   isRed: false },
-        ].map((k) => {
+        {kpiCards.map((k) => {
           const Icon = k.icon;
           return (
             <Box key={k.label} sx={{
               bgcolor: "background.paper", borderRadius: 3, border: `1px solid ${border}`,
-              p: 2.5, minHeight: 130, display: "flex", flexDirection: "column", justifyContent: "space-between",
+              p: { xs: 1.75, md: 2.5 },
+              minHeight: { xs: 100, md: 130 },
+              display: "flex", flexDirection: "column", justifyContent: "space-between",
             }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", fontWeight: 500 }}>{k.label}</Typography>
+                <Typography sx={{ fontSize: { xs: "0.68rem", md: "0.72rem" }, color: "text.secondary", fontWeight: 500 }}>{k.label}</Typography>
                 <Box sx={{
-                  width: 30, height: 30, borderRadius: 2, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: { xs: 26, md: 30 }, height: { xs: 26, md: 30 },
+                  borderRadius: 2, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
                   backgroundColor: k.isRed ? (isDark ? BRAND.redAlpha15 : BRAND.redLight) : iconWell,
                 }}>
-                  <Icon sx={{ fontSize: 15, color: k.isRed ? BRAND.red : BRAND.gold }} />
+                  <Icon sx={{ fontSize: { xs: 13, md: 15 }, color: k.isRed ? BRAND.red : BRAND.gold }} />
                 </Box>
               </Box>
               <Box>
-                <Typography sx={{ fontSize: "2rem", fontWeight: 800, lineHeight: 1, letterSpacing: "-0.03em", color: k.isRed ? BRAND.red : "text.primary" }}>
+                <Typography sx={{ fontSize: { xs: "1.6rem", md: "2rem" }, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.03em", color: k.isRed ? BRAND.red : "text.primary" }}>
                   {k.value}
                 </Typography>
                 <Typography sx={{ fontSize: "0.7rem", color: "text.disabled", mt: 0.5 }}>{k.sub}</Typography>
@@ -284,27 +296,25 @@ export default function StaffDashboard() {
           </Box>
         ) : (
           assignments.map((a, idx) => (
-            <Box
-              key={a.id}
-              sx={{
-                px: 2.5, py: 1.75,
-                borderBottom: idx < assignments.length - 1 ? `1px solid ${border}` : "none",
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
-                // left accent bar
-                borderLeft: "3px solid",
-                borderLeftColor: a.status === "Completed"
-                  ? isDark ? "#444" : "#ddd"
-                  : BRAND.gold,
-                backgroundColor: a.status === "Pending"
-                  ? isDark ? "rgba(245,197,43,0.03)" : "rgba(245,197,43,0.03)"
-                  : "transparent",
-              }}
-            >
+            <Box key={a.id} sx={{
+              px: { xs: 2, md: 2.5 }, py: { xs: 1.5, md: 1.75 },
+              borderBottom: idx < assignments.length - 1 ? `1px solid ${border}` : "none",
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "flex-start", sm: "center" },
+              justifyContent: "space-between",
+              gap: { xs: 1, sm: 2 },
+              borderLeft: "3px solid",
+              borderLeftColor: a.status === "Completed" ? (isDark ? "#444" : "#ddd") : BRAND.gold,
+              backgroundColor: a.status === "Pending"
+                ? isDark ? "rgba(245,197,43,0.03)" : "rgba(245,197,43,0.03)"
+                : "transparent",
+            }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600, fontSize: "0.875rem", color: "text.primary", mb: 0.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {a.request?.title || "—"}
                 </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 0.8, sm: 1.5 } }}>
                   {a.request?.event_date && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
                       <CalendarTodayOutlinedIcon sx={{ fontSize: 11, color: "text.disabled" }} />
@@ -314,7 +324,7 @@ export default function StaffDashboard() {
                       </Typography>
                     </Box>
                   )}
-                  {a.request?.venue && (
+                  {a.request?.venue && !isMobile && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
                       <LocationOnOutlinedIcon sx={{ fontSize: 11, color: "text.disabled" }} />
                       <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>{a.request.venue}</Typography>

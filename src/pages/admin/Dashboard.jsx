@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box, Typography, CircularProgress, Chip, Alert, Divider, Avatar,
-  MenuItem, Select, FormControl, Button, Tooltip, useTheme,
+  MenuItem, Select, FormControl, Button, Tooltip, useTheme, useMediaQuery,
 } from "@mui/material";
 import { useNavigate }                      from "react-router-dom";
 import PendingActionsOutlinedIcon           from "@mui/icons-material/PendingActionsOutlined";
@@ -31,18 +31,15 @@ const BRAND = {
   goldAlpha20: "rgba(245,197,43,0.20)",
   charcoal:    "#353535",
   white:       "#ffffff",
-  // Semantic red — kept for decline / overdue legibility only
   red:         "#c62828",
   redAlpha15:  "rgba(198,40,40,0.15)",
   redLight:    "#ffebee",
-  // Neutral
   borderLight: "#e8e8e8",
   borderDark:  "#2e2e2e",
   surfLight:   "#f7f7f7",
   surfDark:    "#282828",
 };
 
-// ─── Status chip palettes ─────────────────────────────────────────────────────
 const STATUS = {
   light: {
     Pending:             { bg: BRAND.goldAlpha15, color: "#7a5c00"  },
@@ -64,33 +61,31 @@ const STATUS = {
   },
 };
 
-// ─── Section workload palettes ────────────────────────────────────────────────
 const SECTION = {
   light: {
-    News:            { avatarBg: BRAND.goldAlpha15,           avatarColor: "#7a5c00", bar: BRAND.gold  },
-    Photojournalism: { avatarBg: "rgba(53,53,53,0.08)",       avatarColor: "#353535", bar: "#888"      },
-    Videojournalism: { avatarBg: "rgba(245,197,43,0.08)",     avatarColor: "#a07c00", bar: "#c49b00"   },
+    News:            { avatarBg: BRAND.goldAlpha15,       avatarColor: "#7a5c00", bar: BRAND.gold },
+    Photojournalism: { avatarBg: "rgba(53,53,53,0.08)",   avatarColor: "#353535", bar: "#888"     },
+    Videojournalism: { avatarBg: "rgba(245,197,43,0.08)", avatarColor: "#a07c00", bar: "#c49b00"  },
   },
   dark: {
-    News:            { avatarBg: BRAND.goldAlpha20,           avatarColor: BRAND.gold, bar: BRAND.gold },
-    Photojournalism: { avatarBg: "rgba(255,255,255,0.08)",    avatarColor: "#aaa",     bar: "#888"     },
-    Videojournalism: { avatarBg: "rgba(245,197,43,0.10)",     avatarColor: "#e6b920",  bar: "#c49b00"  },
+    News:            { avatarBg: BRAND.goldAlpha20,        avatarColor: BRAND.gold, bar: BRAND.gold },
+    Photojournalism: { avatarBg: "rgba(255,255,255,0.08)", avatarColor: "#aaa",     bar: "#888"     },
+    Videojournalism: { avatarBg: "rgba(245,197,43,0.10)",  avatarColor: "#e6b920",  bar: "#c49b00"  },
   },
 };
 
-// ─── Urgency palettes ─────────────────────────────────────────────────────────
 const URGENCY = {
   light: {
-    overdue:  { color: BRAND.red,     border: "#ef9a9a",              dot: BRAND.red,     label: "Overdue"  },
-    critical: { color: BRAND.red,     border: "rgba(198,40,40,0.3)",  dot: BRAND.red,     label: "Critical" },
-    soon:     { color: "#8a6800",     border: "rgba(245,197,43,0.5)", dot: BRAND.gold,    label: "Soon"     },
-    upcoming: { color: "#888",        border: "#e0e0e0",              dot: "#ccc",        label: "Upcoming" },
+    overdue:  { color: BRAND.red,  border: "#ef9a9a",              dot: BRAND.red,  label: "Overdue"  },
+    critical: { color: BRAND.red,  border: "rgba(198,40,40,0.3)",  dot: BRAND.red,  label: "Critical" },
+    soon:     { color: "#8a6800",  border: "rgba(245,197,43,0.5)", dot: BRAND.gold, label: "Soon"     },
+    upcoming: { color: "#888",     border: "#e0e0e0",              dot: "#ccc",     label: "Upcoming" },
   },
   dark: {
-    overdue:  { color: "#ef5350",     border: "rgba(198,40,40,0.4)",  dot: "#ef5350",     label: "Overdue"  },
-    critical: { color: "#ef5350",     border: "rgba(198,40,40,0.3)",  dot: "#ef5350",     label: "Critical" },
-    soon:     { color: BRAND.gold,    border: "rgba(245,197,43,0.35)",dot: BRAND.gold,    label: "Soon"     },
-    upcoming: { color: "#666",        border: "#3a3a3a",              dot: "#555",        label: "Upcoming" },
+    overdue:  { color: "#ef5350",  border: "rgba(198,40,40,0.4)",   dot: "#ef5350",  label: "Overdue"  },
+    critical: { color: "#ef5350",  border: "rgba(198,40,40,0.3)",   dot: "#ef5350",  label: "Critical" },
+    soon:     { color: BRAND.gold, border: "rgba(245,197,43,0.35)", dot: BRAND.gold, label: "Soon"     },
+    upcoming: { color: "#666",     border: "#3a3a3a",               dot: "#555",     label: "Upcoming" },
   },
 };
 
@@ -139,7 +134,7 @@ function SectionCard({ children, sx = {}, onClick }) {
 
 function SectionHeader({ title, action }) {
   return (
-    <Box sx={{ px: 2.5, pt: 2, pb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <Box sx={{ px: 2.5, pt: 2, pb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
       <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.09em" }}>
         {title}
       </Typography>
@@ -191,7 +186,11 @@ export default function Dashboard() {
   const isDark = theme.palette.mode === "dark";
   const navigate = useNavigate();
 
-  // theme-resolved shortcuts
+  // ── Responsive breakpoints ────────────────────────────────────────────────
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));   // <600px
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));   // <900px
+  const isLg     = useMediaQuery(theme.breakpoints.down("lg"));   // <1200px
+
   const border   = isDark ? BRAND.borderDark  : BRAND.borderLight;
   const surf     = isDark ? BRAND.surfDark    : BRAND.surfLight;
   const iconWell = isDark ? BRAND.goldAlpha15 : BRAND.goldAlpha12;
@@ -199,18 +198,18 @@ export default function Dashboard() {
   const urgency  = isDark ? URGENCY.dark      : URGENCY.light;
   const section  = isDark ? SECTION.dark      : SECTION.light;
 
-  const [semesters, setSemesters]               = useState([]);
-  const [selectedSemester, setSelectedSemester] = useState(null);
-  const [isAllTime, setIsAllTime]               = useState(false);
-  const [activeSemester, setActiveSemester]     = useState(null);
-  const [loading, setLoading]                   = useState(true);
-  const [error, setError]                       = useState("");
-  const [showReports, setShowReports]           = useState(false);
-  const [statusCounts, setStatusCounts]         = useState({});
-  const [perfStats, setPerfStats]               = useState({ total: 0, approved: 0, declined: 0, declineRate: 0, completionRate: 0, avgTurnaround: null });
-  const [sectionWorkload, setSectionWorkload]   = useState([]);
-  const [recentRequests, setRecentRequests]     = useState([]);
-  const [scheduleStats, setScheduleStats]       = useState({ total: 0, set: 0 });
+  const [semesters,         setSemesters]         = useState([]);
+  const [selectedSemester,  setSelectedSemester]  = useState(null);
+  const [isAllTime,         setIsAllTime]         = useState(false);
+  const [activeSemester,    setActiveSemester]    = useState(null);
+  const [loading,           setLoading]           = useState(true);
+  const [error,             setError]             = useState("");
+  const [showReports,       setShowReports]       = useState(false);
+  const [statusCounts,      setStatusCounts]      = useState({});
+  const [perfStats,         setPerfStats]         = useState({ total: 0, approved: 0, declined: 0, declineRate: 0, completionRate: 0, avgTurnaround: null });
+  const [sectionWorkload,   setSectionWorkload]   = useState([]);
+  const [recentRequests,    setRecentRequests]    = useState([]);
+  const [scheduleStats,     setScheduleStats]     = useState({ total: 0, set: 0 });
 
   const channelRef       = useRef(null);
   const loadDashboardRef = useRef(null);
@@ -329,15 +328,33 @@ export default function Dashboard() {
     backgroundColor: active ? BRAND.gold : "background.paper",
     "&:hover": { backgroundColor: active ? "#e6b920" : surf, borderColor: BRAND.gold, boxShadow: "none" },
     transition: "all 0.18s",
+    minWidth: "unset",
+    px: isMobile ? 1.25 : 1.75,
   });
 
+  const kpiCards = [
+    { label: "Total Requests", value: perfStats.total,    sub: "submitted this period",         navTab: "all",      icon: AssignmentOutlinedIcon,         isRed: false },
+    { label: "Approved",       value: perfStats.approved, trend: perfStats.total > 0 ? `${((perfStats.approved/perfStats.total)*100).toFixed(0)}% of total` : null, navTab: "Approved",  icon: CheckCircleOutlineOutlinedIcon, isRed: false },
+    { label: "Declined",       value: perfStats.declined, sub: `${perfStats.declineRate}% decline rate`, navTab: "Declined",  icon: CancelOutlinedIcon,            isRed: true  },
+    { label: "Completion",     value: `${perfStats.completionRate}%`, sub: "assigned → covered", navTab: null,       icon: TrendingUpOutlinedIcon,         isRed: false },
+  ];
+
   return (
-    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", maxWidth: 1200 }}>
+    <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 }, backgroundColor: "background.default", minHeight: "100%" }}>
 
       {/* ── TOP BAR ── */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, mb: 3 }}>
+      <Box sx={{
+        display: "flex",
+        alignItems: { xs: "flex-start", sm: "center" },
+        flexDirection: { xs: "column", sm: "row" },
+        justifyContent: "space-between",
+        gap: { xs: 1.5, sm: 2 },
+        mb: 3,
+      }}>
         <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "text.primary", letterSpacing: "-0.02em" }}>Dashboard</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.1rem" }, color: "text.primary", letterSpacing: "-0.02em" }}>
+            Dashboard
+          </Typography>
           <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", mt: 0.2 }}>
             {isAllTime ? "Showing all-time data" : selectedSemester?.name || "—"}
             {!isAllTime && activeSemester && selectedSemester?.id !== activeSemester?.id && (
@@ -345,7 +362,9 @@ export default function Dashboard() {
             )}
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+
+        {/* Controls — wrap on mobile */}
+        <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1, width: { xs: "100%", sm: "auto" } }}>
           <Button size="small" variant={showReports ? "contained" : "outlined"}
             startIcon={<AssessmentOutlinedIcon sx={{ fontSize: 15 }} />}
             onClick={() => setShowReports((p) => !p)} sx={toggleSx(showReports)}>
@@ -355,8 +374,9 @@ export default function Dashboard() {
             onClick={() => setIsAllTime((p) => !p)} sx={toggleSx(isAllTime)}>
             All Time
           </Button>
-          <FormControl size="small" disabled={isAllTime}>
-            <Select value={selectedSemester?.id || ""}
+          <FormControl size="small" disabled={isAllTime} sx={{ flex: { xs: 1, sm: "unset" } }}>
+            <Select
+              value={selectedSemester?.id || ""}
               onChange={(e) => setSelectedSemester(semesters.find((s) => s.id === e.target.value) || null)}
               sx={{
                 fontSize: "0.82rem", borderRadius: 2,
@@ -364,7 +384,8 @@ export default function Dashboard() {
                 "& .MuiOutlinedInput-notchedOutline": { borderColor: border },
                 "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: BRAND.gold },
                 "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: BRAND.gold },
-                minWidth: 185,
+                minWidth: { xs: "unset", sm: 185 },
+                width: { xs: "100%", sm: "auto" },
               }}>
               {semesters.map((s) => (
                 <MenuItem key={s.id} value={s.id} sx={{ fontSize: "0.82rem" }}>
@@ -385,18 +406,31 @@ export default function Dashboard() {
           <CircularProgress size={28} sx={{ color: BRAND.gold }} />
         </Box>
       ) : (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 2, md: 2.5 } }}>
 
-          {/* ── ROW 1: Hero + 4 KPIs ── */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "272px repeat(4, 1fr)", gap: 1.5 }}>
+          {/* ── ROW 1: Hero + KPIs ── */}
+          <Box sx={{
+            display: "grid",
+            gap: { xs: 1.5, md: 1.5 },
+            // mobile: 2 cols, tablet: 2+2, desktop: hero + 4 kpis
+            gridTemplateColumns: {
+              xs: "repeat(2, 1fr)",
+              md: "240px repeat(4, 1fr)",
+              lg: "272px repeat(4, 1fr)",
+            },
+            gridTemplateRows: { xs: "auto auto", md: "1fr" },
+          }}>
 
-            {/* Hero card */}
+            {/* Hero card — spans full width on mobile/tablet */}
             <Box sx={{
+              gridColumn: { xs: "1 / -1", md: "1 / 2" },
               borderRadius: 3, overflow: "hidden", position: "relative",
               background: isDark
                 ? `linear-gradient(140deg, #1e1a00 0%, ${BRAND.charcoal} 55%, #141400 100%)`
                 : `linear-gradient(140deg, ${BRAND.charcoal} 0%, #1a1a1a 60%, #0d0d0d 100%)`,
-              p: 2.5, display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 138,
+              p: { xs: 2, md: 2.5 },
+              display: "flex", flexDirection: "column", justifyContent: "space-between",
+              minHeight: { xs: 110, md: 138 },
             }}>
               {/* decorative rings */}
               <Box sx={{ position: "absolute", top: -36, right: -36, width: 110, height: 110, borderRadius: "50%", border: `1.5px solid ${BRAND.goldAlpha12}`, pointerEvents: "none" }} />
@@ -416,21 +450,21 @@ export default function Dashboard() {
 
                 {forApprovalCount > 0 ? (
                   <>
-                    <Typography sx={{ fontSize: "0.98rem", fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                    <Typography sx={{ fontSize: { xs: "0.88rem", md: "0.98rem" }, fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                       {forApprovalCount} request{forApprovalCount > 1 ? "s" : ""} awaiting approval
                     </Typography>
                     <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)", mt: 0.5 }}>Action required from you</Typography>
                   </>
                 ) : overdueCount > 0 ? (
                   <>
-                    <Typography sx={{ fontSize: "0.98rem", fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                    <Typography sx={{ fontSize: { xs: "0.88rem", md: "0.98rem" }, fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                       {overdueCount} overdue event{overdueCount > 1 ? "s" : ""} need attention
                     </Typography>
                     <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)", mt: 0.5 }}>Check the list below</Typography>
                   </>
                 ) : (
                   <>
-                    <Typography sx={{ fontSize: "0.98rem", fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                    <Typography sx={{ fontSize: { xs: "0.88rem", md: "0.98rem" }, fontWeight: 800, color: BRAND.white, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                       All clear — pipeline running smoothly
                     </Typography>
                     <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)", mt: 0.5 }}>No urgent items right now</Typography>
@@ -449,31 +483,34 @@ export default function Dashboard() {
             </Box>
 
             {/* 4 KPI cards */}
-            {[
-              { label: "Total Requests", value: perfStats.total,    sub: "submitted this period",         navTab: "all",      icon: AssignmentOutlinedIcon,         isRed: false },
-              { label: "Approved",       value: perfStats.approved, trend: perfStats.total > 0 ? `${((perfStats.approved/perfStats.total)*100).toFixed(0)}% of total` : null, navTab: "Approved",  icon: CheckCircleOutlineOutlinedIcon, isRed: false },
-              { label: "Declined",       value: perfStats.declined, sub: `${perfStats.declineRate}% decline rate`, navTab: "Declined",  icon: CancelOutlinedIcon,            isRed: true  },
-              { label: "Completion",     value: `${perfStats.completionRate}%`, sub: "assigned → covered", navTab: null,       icon: TrendingUpOutlinedIcon,         isRed: false },
-            ].map((k) => {
+            {kpiCards.map((k) => {
               const Icon = k.icon;
               return (
                 <Tooltip key={k.label} title={k.navTab ? `Go to ${k.label.toLowerCase()}` : ""} placement="top" arrow>
                   <Box onClick={k.navTab ? () => goToRequests(k.navTab) : undefined} sx={{
                     bgcolor: "background.paper", borderRadius: 3, border: `1px solid ${border}`,
-                    p: 2.5, minHeight: 138, display: "flex", flexDirection: "column", justifyContent: "space-between",
+                    p: { xs: 1.75, md: 2.5 },
+                    minHeight: { xs: 100, md: 138 },
+                    display: "flex", flexDirection: "column", justifyContent: "space-between",
                     ...(k.navTab ? {
                       cursor: "pointer", transition: "border-color 0.2s, box-shadow 0.2s",
                       "&:hover": { borderColor: BRAND.gold, boxShadow: `0 2px 16px ${BRAND.goldAlpha12}` },
                     } : {}),
                   }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", fontWeight: 500 }}>{k.label}</Typography>
-                      <Box sx={{ width: 30, height: 30, borderRadius: 2, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: k.isRed ? (isDark ? BRAND.redAlpha15 : BRAND.redLight) : iconWell }}>
-                        <Icon sx={{ fontSize: 15, color: k.isRed ? BRAND.red : BRAND.gold }} />
+                      <Typography sx={{ fontSize: { xs: "0.68rem", md: "0.72rem" }, color: "text.secondary", fontWeight: 500 }}>
+                        {k.label}
+                      </Typography>
+                      <Box sx={{
+                        width: { xs: 26, md: 30 }, height: { xs: 26, md: 30 },
+                        borderRadius: 2, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                        backgroundColor: k.isRed ? (isDark ? BRAND.redAlpha15 : BRAND.redLight) : iconWell,
+                      }}>
+                        <Icon sx={{ fontSize: { xs: 13, md: 15 }, color: k.isRed ? BRAND.red : BRAND.gold }} />
                       </Box>
                     </Box>
                     <Box>
-                      <Typography sx={{ fontSize: "2rem", fontWeight: 800, lineHeight: 1, letterSpacing: "-0.03em", color: k.isRed ? BRAND.red : "text.primary" }}>
+                      <Typography sx={{ fontSize: { xs: "1.6rem", md: "2rem" }, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.03em", color: k.isRed ? BRAND.red : "text.primary" }}>
                         {k.value}
                       </Typography>
                       {k.trend ? (
@@ -492,16 +529,25 @@ export default function Dashboard() {
           </Box>
 
           {/* ── ROW 2: Attention list + right column ── */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 2 }}>
+          <Box sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: "1fr 300px" },
+            gap: { xs: 2, md: 2 },
+            alignItems: "start",
+          }}>
 
             {/* Needs Attention */}
             <SectionCard>
               <SectionHeader
                 title="Needs Attention"
                 action={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                    {overdueCount > 0 && <Chip size="small" label={`${overdueCount} overdue`} sx={{ fontSize: "0.68rem", height: 20, fontWeight: 600, backgroundColor: isDark ? BRAND.redAlpha15 : BRAND.redLight, color: isDark ? "#ef5350" : BRAND.red }} />}
-                    {criticalCount > 0 && <Chip size="small" label={`${criticalCount} critical`} sx={{ fontSize: "0.68rem", height: 20, fontWeight: 600, backgroundColor: isDark ? BRAND.redAlpha15 : BRAND.redLight, color: isDark ? "#ef9a9a" : "#b71c1c" }} />}
+                  <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.8 }}>
+                    {overdueCount > 0 && (
+                      <Chip size="small" label={`${overdueCount} overdue`} sx={{ fontSize: "0.68rem", height: 20, fontWeight: 600, backgroundColor: isDark ? BRAND.redAlpha15 : BRAND.redLight, color: isDark ? "#ef5350" : BRAND.red }} />
+                    )}
+                    {criticalCount > 0 && (
+                      <Chip size="small" label={`${criticalCount} critical`} sx={{ fontSize: "0.68rem", height: 20, fontWeight: 600, backgroundColor: isDark ? BRAND.redAlpha15 : BRAND.redLight, color: isDark ? "#ef9a9a" : "#b71c1c" }} />
+                    )}
                     {recentRequests.length > 0 && (
                       <Tooltip title="View all in Request Management" arrow>
                         <Box onClick={() => goToRequests("all")} sx={{ display: "flex", alignItems: "center", gap: 0.3, cursor: "pointer", color: "text.disabled", "&:hover": { color: BRAND.gold }, transition: "color 0.15s" }}>
@@ -526,9 +572,13 @@ export default function Dashboard() {
                   return (
                     <Tooltip key={r.id} title="Click to view full details" placement="left" arrow>
                       <Box onClick={() => goToRequest(r.id, r.status)} sx={{
-                        px: 2.5, py: 1.6,
+                        px: { xs: 2, md: 2.5 }, py: { xs: 1.4, md: 1.6 },
                         borderBottom: idx < recentRequests.length - 1 ? `1px solid ${border}` : "none",
-                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        alignItems: { xs: "flex-start", sm: "center" },
+                        justifyContent: "space-between",
+                        gap: { xs: 1, sm: 2 },
                         borderLeft: "3px solid", borderLeftColor: urg.border,
                         backgroundColor:
                           r.urgency === "overdue"  ? (isDark ? "rgba(198,40,40,0.06)" : "rgba(255,235,238,0.5)") :
@@ -545,8 +595,10 @@ export default function Dashboard() {
                               {r.title}
                             </Typography>
                           </Box>
-                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2, pl: "14px" }}>
-                            {r.entity?.name && <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.entity.name}</Typography>}
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 0.8, sm: 1.2 }, pl: "14px" }}>
+                            {r.entity?.name && (
+                              <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.entity.name}</Typography>
+                            )}
                             {r.event_date && (
                               <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
                                 <CalendarTodayOutlinedIcon sx={{ fontSize: 11, color: urg.dot }} />
@@ -558,7 +610,7 @@ export default function Dashboard() {
                                 </Typography>
                               </Box>
                             )}
-                            {r.venue && (
+                            {r.venue && !isMobile && (
                               <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
                                 <LocationOnOutlinedIcon sx={{ fontSize: 11, color: "text.disabled" }} />
                                 <Typography sx={{ fontSize: "0.72rem", color: "text.disabled" }}>{r.venue}</Typography>
@@ -566,7 +618,7 @@ export default function Dashboard() {
                             )}
                           </Box>
                         </Box>
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5, flexShrink: 0 }}>
+                        <Box sx={{ display: "flex", flexDirection: { xs: "row", sm: "column" }, alignItems: { xs: "center", sm: "flex-end" }, gap: 0.5, flexShrink: 0 }}>
                           <Chip label={r.status} size="small" sx={{ fontSize: "0.68rem", fontWeight: 600, height: 20, backgroundColor: status[r.status]?.bg || surf, color: status[r.status]?.color || "#888" }} />
                           {r.urgency !== "upcoming" && (
                             <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
@@ -582,7 +634,7 @@ export default function Dashboard() {
               )}
             </SectionCard>
 
-            {/* RIGHT COLUMN */}
+            {/* RIGHT COLUMN — stacks below on mobile/tablet */}
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
               {/* Overview donut */}
@@ -698,17 +750,30 @@ export default function Dashboard() {
             </Box>
           </Box>
 
-          {/* ── ROW 3: Section Workload (full width) ── */}
+          {/* ── ROW 3: Section Workload ── */}
           <SectionCard>
             <SectionHeader title="Section Workload" />
             <Divider sx={{ borderColor: border }} />
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+            <Box sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+            }}>
               {sectionWorkload.map((s, idx) => {
                 const total  = s.pending + s.completed;
                 const pct    = total > 0 ? (s.completed / total) * 100 : 0;
                 const colors = section[s.section] || { avatarBg: surf, avatarColor: "#888", bar: BRAND.gold };
                 return (
-                  <Box key={s.section} sx={{ p: 2.5, borderRight: idx < sectionWorkload.length - 1 ? `1px solid ${border}` : "none" }}>
+                  <Box key={s.section} sx={{
+                    p: { xs: 2, md: 2.5 },
+                    borderRight: {
+                      xs: "none",
+                      sm: idx < sectionWorkload.length - 1 ? `1px solid ${border}` : "none",
+                    },
+                    borderBottom: {
+                      xs: idx < sectionWorkload.length - 1 ? `1px solid ${border}` : "none",
+                      sm: "none",
+                    },
+                  }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, mb: 2 }}>
                       <Avatar sx={{ width: 30, height: 30, fontSize: "0.7rem", fontWeight: 700, backgroundColor: colors.avatarBg, color: colors.avatarColor }}>
                         {s.section[0]}

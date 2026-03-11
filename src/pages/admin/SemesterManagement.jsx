@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Typography, CircularProgress, Dialog,
-  Alert, IconButton, TextField, Switch, FormControlLabel, useTheme,
+  Alert, IconButton, TextField, Switch, FormControlLabel, useTheme, GlobalStyles,
 } from "@mui/material";
 import { DataGrid }                  from "@mui/x-data-grid";
 import AddIcon                       from "@mui/icons-material/Add";
@@ -30,6 +30,69 @@ const EMPTY_FORM = { name: "", start_date: "", end_date: "", is_active: false, s
 const fmt = (d) => d
   ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   : "—";
+
+// ── Column menu GlobalStyles ──────────────────────────────────────────────────
+function ColumnMenuStyles({ isDark, border }) {
+  const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
+  const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
+  const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
+  const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
+  const hoverBg   = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
+
+  return (
+    <GlobalStyles styles={{
+      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
+        borderRadius:    "10px !important",
+        border:          `1px solid ${border} !important`,
+        backgroundColor: `${paperBg} !important`,
+        boxShadow:       `${shadow} !important`,
+        minWidth:        "180px !important",
+        overflow:        "hidden !important",
+      },
+      ".MuiDataGrid-menuList": {
+        padding: "4px 0 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root": {
+        fontFamily:  `${dm} !important`,
+        fontSize:    "0.78rem !important",
+        fontWeight:  "500 !important",
+        color:       `${textColor} !important`,
+        padding:     "7px 14px !important",
+        minHeight:   "unset !important",
+        gap:         "10px !important",
+        transition:  "background-color 0.12s, color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
+        backgroundColor: `${hoverBg} !important`,
+        color:           "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
+        minWidth:   "unset !important",
+        color:      `${iconColor} !important`,
+        transition: "color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
+        fontSize: "1rem !important",
+        color:    `${iconColor} !important`,
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiListItemText-primary": {
+        fontFamily: `${dm} !important`,
+        fontSize:   "0.78rem !important",
+        fontWeight: "500 !important",
+      },
+      ".MuiDataGrid-menuList .MuiDivider-root": {
+        borderColor: `${border} !important`,
+        margin:      "4px 12px !important",
+      },
+    }} />
+  );
+}
 
 export default function SemesterManagement() {
   const theme  = useTheme();
@@ -122,21 +185,11 @@ export default function SemesterManagement() {
       field: "scheduling_open", headerName: "Scheduling", flex: 0.8, minWidth: 120,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Box sx={{
-            display: "flex", alignItems: "center", gap: 0.6,
-            px: 1.25, py: 0.35, borderRadius: "6px",
-            backgroundColor: p.value
-              ? "#eff6ff"
-              : isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)",
-          }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.35, borderRadius: "6px", backgroundColor: p.value ? "#eff6ff" : isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)" }}>
             {p.value
               ? <LockOpenOutlinedIcon sx={{ fontSize: 11, color: "#1d4ed8" }} />
               : <LockOutlinedIcon    sx={{ fontSize: 11, color: "text.secondary" }} />}
-            <Typography sx={{
-              fontFamily: dm, fontSize: "0.68rem", fontWeight: 600,
-              color: p.value ? "#1d4ed8" : "text.secondary",
-              letterSpacing: "0.04em",
-            }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: p.value ? "#1d4ed8" : "text.secondary", letterSpacing: "0.04em" }}>
               {p.value ? "Open" : "Closed"}
             </Typography>
           </Box>
@@ -148,39 +201,14 @@ export default function SemesterManagement() {
       align: "right", headerAlign: "right",
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.75, height: "100%", pr: 0.5 }}>
-          {/* Set Active toggle */}
-          <ActionChip
-            active={p.row.is_active}
-            onClick={() => toggleActive(p.row)}
-            activeColor="#15803d"
-            activeBg="#f0fdf4"
-            icon={p.row.is_active
-              ? <CheckCircleOutlineIcon   sx={{ fontSize: 12 }} />
-              : <RadioButtonUncheckedIcon sx={{ fontSize: 12 }} />}
-            border={border}
-          >
+          <ActionChip active={p.row.is_active} onClick={() => toggleActive(p.row)} activeColor="#15803d" activeBg="#f0fdf4" icon={p.row.is_active ? <CheckCircleOutlineIcon sx={{ fontSize: 12 }} /> : <RadioButtonUncheckedIcon sx={{ fontSize: 12 }} />} border={border}>
             {p.row.is_active ? "Active" : "Set Active"}
           </ActionChip>
-
-          {/* Scheduling toggle */}
-          <ActionChip
-            active={p.row.scheduling_open}
-            onClick={() => toggleScheduling(p.row)}
-            activeColor="#1d4ed8"
-            activeBg="#eff6ff"
-            icon={p.row.scheduling_open
-              ? <LockOpenOutlinedIcon sx={{ fontSize: 12 }} />
-              : <LockOutlinedIcon     sx={{ fontSize: 12 }} />}
-            border={border}
-          >
+          <ActionChip active={p.row.scheduling_open} onClick={() => toggleScheduling(p.row)} activeColor="#1d4ed8" activeBg="#eff6ff" icon={p.row.scheduling_open ? <LockOpenOutlinedIcon sx={{ fontSize: 12 }} /> : <LockOutlinedIcon sx={{ fontSize: 12 }} />} border={border}>
             {p.row.scheduling_open ? "Close Scheduling" : "Open Scheduling"}
           </ActionChip>
-
-          {/* Edit */}
-          <IconButton
-            size="small" onClick={() => openEdit(p.row)}
-            sx={{ borderRadius: "7px", border: `1px solid ${border}`, p: 0.55, color: "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 } }}
-          >
+          <IconButton size="small" onClick={() => openEdit(p.row)}
+            sx={{ borderRadius: "7px", border: `1px solid ${border}`, p: 0.55, color: "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 } }}>
             <EditOutlinedIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Box>
@@ -190,6 +218,9 @@ export default function SemesterManagement() {
 
   return (
     <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
+
+      {/* ── Column menu styles ── */}
+      <ColumnMenuStyles isDark={isDark} border={border} />
 
       {/* ── Header ── */}
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
@@ -201,19 +232,7 @@ export default function SemesterManagement() {
             Manage semesters and control when staffers can pick their duty days.
           </Typography>
         </Box>
-
-        {/* New Semester button */}
-        <Box
-          onClick={openCreate}
-          sx={{
-            display: "flex", alignItems: "center", gap: 0.75,
-            px: 1.75, py: 0.75, borderRadius: "9px", cursor: "pointer",
-            backgroundColor: GOLD, color: CHARCOAL,
-            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-            transition: "background-color 0.15s",
-            "&:hover": { backgroundColor: "#e6b920" },
-          }}
-        >
+        <Box onClick={openCreate} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.75, py: 0.75, borderRadius: "9px", cursor: "pointer", backgroundColor: GOLD, color: CHARCOAL, fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, transition: "background-color 0.15s", "&:hover": { backgroundColor: "#e6b920" } }}>
           <AddIcon sx={{ fontSize: 15 }} />
           New Semester
         </Box>
@@ -221,35 +240,23 @@ export default function SemesterManagement() {
 
       {/* ── Active semester banner ── */}
       {activeSemester && (
-        <Box sx={{
-          mb: 3, px: 2.5, py: 1.75,
-          borderRadius: "10px",
-          border: `1px solid rgba(245,197,43,0.35)`,
-          backgroundColor: isDark ? GOLD_08 : "#fefce8",
-          display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap",
-        }}>
+        <Box sx={{ mb: 3, px: 2.5, py: 1.75, borderRadius: "10px", border: `1px solid rgba(245,197,43,0.35)`, backgroundColor: isDark ? GOLD_08 : "#fefce8", display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: GOLD, boxShadow: `0 0 6px ${GOLD}`, animation: "blink 2s ease-in-out infinite", "@keyframes blink": { "0%,100%": { opacity: 1 }, "50%": { opacity: 0.35 } } }} />
             <Typography sx={{ fontFamily: dm, fontSize: "0.65rem", fontWeight: 700, color: "#b45309", letterSpacing: "0.08em", textTransform: "uppercase" }}>
               Active Semester
             </Typography>
           </Box>
-
           <Box sx={{ width: "1px", height: 24, backgroundColor: "rgba(245,197,43,0.3)" }} />
-
           <Box>
-            <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.88rem", color: "text.primary" }}>
-              {activeSemester.name}
-            </Typography>
+            <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.88rem", color: "text.primary" }}>{activeSemester.name}</Typography>
           </Box>
-
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
             <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: "text.secondary" }} />
             <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
               {fmt(activeSemester.start_date)} — {fmt(activeSemester.end_date)}
             </Typography>
           </Box>
-
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.35, borderRadius: "6px", backgroundColor: activeSemester.scheduling_open ? "#eff6ff" : isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)" }}>
             {activeSemester.scheduling_open
               ? <LockOpenOutlinedIcon sx={{ fontSize: 11, color: "#1d4ed8" }} />
@@ -274,11 +281,8 @@ export default function SemesterManagement() {
             <DataGrid
               rows={semesters.map((s) => ({ ...s }))}
               columns={columns}
-              pageSize={8}
-              rowsPerPageOptions={[8]}
-              rowHeight={52}
-              disableSelectionOnClick
-              autoHeight
+              pageSize={8} rowsPerPageOptions={[8]}
+              rowHeight={52} disableSelectionOnClick autoHeight
               sx={makeDataGridSx(isDark, border)}
             />
           )}
@@ -286,20 +290,9 @@ export default function SemesterManagement() {
       </Box>
 
       {/* ── Create / Edit Dialog ── */}
-      <Dialog
-        open={dialogOpen}
-        onClose={() => !saving && setDialogOpen(false)}
-        fullWidth maxWidth="sm"
-        PaperProps={{
-          sx: {
-            borderRadius: "14px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)",
-          },
-        }}
+      <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} fullWidth maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: "14px", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)" } }}
       >
-        {/* Dialog header */}
         <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box sx={{ width: 2.5, height: 26, borderRadius: "2px", backgroundColor: GOLD, flexShrink: 0 }} />
@@ -313,71 +306,17 @@ export default function SemesterManagement() {
           </IconButton>
         </Box>
 
-        {/* Dialog body */}
         <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
-          {saveError && (
-            <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{saveError}</Alert>
-          )}
-
-          <TextField
-            label="Semester Name"
-            placeholder='e.g. "1st Sem 2025-2026"'
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            size="small" fullWidth
-            sx={inputSx(border)}
-          />
-
+          {saveError && <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{saveError}</Alert>}
+          <TextField label="Semester Name" placeholder='e.g. "1st Sem 2025-2026"' value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} size="small" fullWidth sx={inputSx(border)} />
           <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-            <TextField
-              label="Start Date" type="date"
-              value={form.start_date}
-              onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-              size="small" fullWidth InputLabelProps={{ shrink: true }}
-              sx={{ ...inputSx(border), flex: "1 1 140px" }}
-            />
-            <TextField
-              label="End Date" type="date"
-              value={form.end_date}
-              onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
-              size="small" fullWidth InputLabelProps={{ shrink: true }}
-              sx={{ ...inputSx(border), flex: "1 1 140px" }}
-            />
+            <TextField label="Start Date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} size="small" fullWidth InputLabelProps={{ shrink: true }} sx={{ ...inputSx(border), flex: "1 1 140px" }} />
+            <TextField label="End Date" type="date" value={form.end_date} onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))} size="small" fullWidth InputLabelProps={{ shrink: true }} sx={{ ...inputSx(border), flex: "1 1 140px" }} />
           </Box>
-
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", pt: 0.5 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.is_active}
-                  onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-                  size="small"
-                  sx={{
-                    "& .MuiSwitch-switchBase.Mui-checked":                    { color: GOLD },
-                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: GOLD },
-                    "& .MuiSwitch-track":                                     { backgroundColor: "rgba(53,53,53,0.2)" },
-                  }}
-                />
-              }
-              label={<Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>Set as Active</Typography>}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.scheduling_open}
-                  onChange={(e) => setForm((f) => ({ ...f, scheduling_open: e.target.checked }))}
-                  size="small"
-                  sx={{
-                    "& .MuiSwitch-switchBase.Mui-checked":                    { color: "#1d4ed8" },
-                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#1d4ed8" },
-                    "& .MuiSwitch-track":                                     { backgroundColor: "rgba(53,53,53,0.2)" },
-                  }}
-                />
-              }
-              label={<Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>Open Scheduling</Typography>}
-            />
+            <FormControlLabel control={<Switch checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} size="small" sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: GOLD }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: GOLD }, "& .MuiSwitch-track": { backgroundColor: "rgba(53,53,53,0.2)" } }} />} label={<Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>Set as Active</Typography>} />
+            <FormControlLabel control={<Switch checked={form.scheduling_open} onChange={(e) => setForm((f) => ({ ...f, scheduling_open: e.target.checked }))} size="small" sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#1d4ed8" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#1d4ed8" }, "& .MuiSwitch-track": { backgroundColor: "rgba(53,53,53,0.2)" } }} />} label={<Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>Open Scheduling</Typography>} />
           </Box>
-
           {form.is_active && (
             <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "#fefce8", border: `1px solid rgba(245,197,43,0.3)` }}>
               <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#b45309", lineHeight: 1.55 }}>
@@ -387,41 +326,12 @@ export default function SemesterManagement() {
           )}
         </Box>
 
-        {/* Dialog footer */}
-        <Box sx={{
-          px: 3, py: 1.75,
-          borderTop: `1px solid ${border}`,
-          display: "flex", justifyContent: "flex-end", gap: 1,
-          backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)",
-        }}>
-          <Box
-            onClick={() => !saving && setDialogOpen(false)}
-            sx={{
-              px: 1.75, py: 0.65, borderRadius: "8px", cursor: saving ? "default" : "pointer",
-              border: `1px solid ${border}`,
-              fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "text.secondary",
-              opacity: saving ? 0.5 : 1,
-              transition: "all 0.15s",
-              "&:hover": { borderColor: "rgba(53,53,53,0.2)", color: "text.primary", backgroundColor: HOVER_BG },
-            }}
-          >
+        <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
+          <Box onClick={() => !saving && setDialogOpen(false)} sx={{ px: 1.75, py: 0.65, borderRadius: "8px", cursor: saving ? "default" : "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "text.secondary", opacity: saving ? 0.5 : 1, transition: "all 0.15s", "&:hover": { borderColor: "rgba(53,53,53,0.2)", color: "text.primary", backgroundColor: HOVER_BG } }}>
             Cancel
           </Box>
-          <Box
-            onClick={!saving ? handleSave : undefined}
-            sx={{
-              display: "flex", alignItems: "center", gap: 0.75,
-              px: 1.75, py: 0.65, borderRadius: "8px", cursor: saving ? "default" : "pointer",
-              backgroundColor: GOLD, color: CHARCOAL,
-              fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-              opacity: saving ? 0.8 : 1,
-              transition: "background-color 0.15s",
-              "&:hover": { backgroundColor: saving ? GOLD : "#e6b920" },
-            }}
-          >
-            {saving
-              ? <><CircularProgress size={13} sx={{ color: CHARCOAL }} /> Saving…</>
-              : editTarget ? "Save Changes" : "Create Semester"}
+          <Box onClick={!saving ? handleSave : undefined} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.75, py: 0.65, borderRadius: "8px", cursor: saving ? "default" : "pointer", backgroundColor: GOLD, color: CHARCOAL, fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, opacity: saving ? 0.8 : 1, transition: "background-color 0.15s", "&:hover": { backgroundColor: saving ? GOLD : "#e6b920" } }}>
+            {saving ? <><CircularProgress size={13} sx={{ color: CHARCOAL }} /> Saving…</> : editTarget ? "Save Changes" : "Create Semester"}
           </Box>
         </Box>
       </Dialog>
@@ -440,23 +350,7 @@ function MetaCell({ children }) {
 
 function ActionChip({ children, onClick, active, activeColor, activeBg, icon, border }) {
   return (
-    <Box
-      onClick={onClick}
-      sx={{
-        display: "flex", alignItems: "center", gap: 0.5,
-        px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
-        border: `1px solid ${active ? `${activeColor}30` : border}`,
-        backgroundColor: active ? activeBg : "transparent",
-        fontFamily: dm, fontSize: "0.72rem", fontWeight: 500,
-        color: active ? activeColor : "text.secondary",
-        transition: "all 0.15s",
-        whiteSpace: "nowrap",
-        "&:hover": {
-          borderColor: active ? activeColor : "rgba(53,53,53,0.2)",
-          backgroundColor: active ? activeBg : HOVER_BG,
-        },
-      }}
-    >
+    <Box onClick={onClick} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer", border: `1px solid ${active ? `${activeColor}30` : border}`, backgroundColor: active ? activeBg : "transparent", fontFamily: dm, fontSize: "0.72rem", fontWeight: 500, color: active ? activeColor : "text.secondary", transition: "all 0.15s", whiteSpace: "nowrap", "&:hover": { borderColor: active ? activeColor : "rgba(53,53,53,0.2)", backgroundColor: active ? activeBg : HOVER_BG } }}>
       {icon}{children}
     </Box>
   );
@@ -466,55 +360,31 @@ function inputSx(border) {
   return {
     "& .MuiOutlinedInput-root": {
       fontFamily: dm, fontSize: "0.82rem", borderRadius: "8px",
-      "& fieldset":        { borderColor: border },
-      "&:hover fieldset":  { borderColor: "rgba(245,197,43,0.5)" },
+      "& fieldset":             { borderColor: border },
+      "&:hover fieldset":       { borderColor: "rgba(245,197,43,0.5)" },
       "&.Mui-focused fieldset": { borderColor: "#F5C52B" },
     },
-    "& .MuiInputLabel-root": { fontFamily: dm, fontSize: "0.8rem" },
+    "& .MuiInputLabel-root":            { fontFamily: dm, fontSize: "0.8rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: "#b45309" },
   };
 }
 
 function makeDataGridSx(isDark, border) {
   return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm, fontSize: "0.68rem", fontWeight: 700,
-      color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase",
-    },
+    border: "none", fontFamily: dm, fontSize: "0.82rem",
+    backgroundColor: "background.paper", color: "text.primary",
+    "& .MuiDataGrid-columnHeaders": { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", borderBottom: `1px solid ${border}`, minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important" },
+    "& .MuiDataGrid-columnHeaderTitle": { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
     "& .MuiDataGrid-columnSeparator": { display: "none" },
     "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
-
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-
-    "& .MuiDataGrid-cell": {
-      border: "none", outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px",
-    },
-    "& .MuiTablePagination-root":      { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
+    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
+    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
+    "& .MuiDataGrid-row": { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
+    "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
+    "& .MuiDataGrid-cell": { border: "none", outline: "none !important", "&:focus, &:focus-within": { outline: "none" } },
+    "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px" },
+    "& .MuiTablePagination-root": { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
     "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
     "& .MuiDataGrid-virtualScroller":  { backgroundColor: "background.paper" },
     "& .MuiDataGrid-overlay":          { backgroundColor: "background.paper" },

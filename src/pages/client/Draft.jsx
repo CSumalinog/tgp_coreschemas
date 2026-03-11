@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import {
   Box, Dialog, DialogContent,
-  Typography, IconButton, CircularProgress, Alert,
+  Typography, IconButton, CircularProgress, Alert, GlobalStyles,
 } from "@mui/material";
 import CloseIcon                   from "@mui/icons-material/Close";
 import EditOutlinedIcon            from "@mui/icons-material/EditOutlined";
@@ -10,7 +10,6 @@ import SendOutlinedIcon            from "@mui/icons-material/SendOutlined";
 import DeleteOutlineIcon           from "@mui/icons-material/DeleteOutline";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import WarningAmberOutlinedIcon    from "@mui/icons-material/WarningAmberOutlined";
-import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
 import { DataGrid }                from "@mui/x-data-grid";
 import { useTheme }                from "@mui/material/styles";
 import { useClientRequests }       from "../../hooks/useClientRequests";
@@ -38,6 +37,77 @@ const openFile = (filePath) => {
   const { data } = supabase.storage.from("coverage-files").getPublicUrl(filePath);
   if (data?.publicUrl) window.open(data.publicUrl, "_blank");
 };
+
+// ── Column menu GlobalStyles ──────────────────────────────────────────────────
+// Confirmed DOM structure from DevTools:
+//   <div class="MuiPaper-root ...">           ← portalled to <body>
+//     <ul class="MuiDataGrid-menuList ...">
+//       <li class="MuiMenuItem-root ...">
+//         <div class="MuiListItemIcon-root">
+//         <div class="MuiListItemText-root">
+//           <span class="MuiListItemText-primary">
+//       <hr class="MuiDivider-root ...">
+function ColumnMenuStyles({ isDark, border }) {
+  const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
+  const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
+  const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
+  const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
+  const hoverBg   = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
+
+  return (
+    <GlobalStyles styles={{
+      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
+        borderRadius:    "10px !important",
+        border:          `1px solid ${border} !important`,
+        backgroundColor: `${paperBg} !important`,
+        boxShadow:       `${shadow} !important`,
+        minWidth:        "180px !important",
+        overflow:        "hidden !important",
+      },
+      ".MuiDataGrid-menuList": {
+        padding: "4px 0 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root": {
+        fontFamily:  `${dm} !important`,
+        fontSize:    "0.78rem !important",
+        fontWeight:  "500 !important",
+        color:       `${textColor} !important`,
+        padding:     "7px 14px !important",
+        minHeight:   "unset !important",
+        gap:         "10px !important",
+        transition:  "background-color 0.12s, color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
+        backgroundColor: `${hoverBg} !important`,
+        color:           "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
+        minWidth:   "unset !important",
+        color:      `${iconColor} !important`,
+        transition: "color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
+        fontSize: "1rem !important",
+        color:    `${iconColor} !important`,
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiListItemText-primary": {
+        fontFamily: `${dm} !important`,
+        fontSize:   "0.78rem !important",
+        fontWeight: "500 !important",
+      },
+      ".MuiDataGrid-menuList .MuiDivider-root": {
+        borderColor: `${border} !important`,
+        margin:      "4px 12px !important",
+      },
+    }} />
+  );
+}
 
 export default function Draft() {
   const theme  = useTheme();
@@ -148,22 +218,21 @@ export default function Draft() {
       ),
     },
     {
-      field: "actions", headerName: "", flex: 0.5, sortable: false, align: "right", headerAlign: "right",
+      field: "actions", headerName: "", width: 80, sortable: false, align: "right", headerAlign: "right",
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.75 }}>
           <Box
             onClick={() => handleView(p.row)}
             sx={{
-              display: "flex", alignItems: "center", gap: 0.4,
-              px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer",
+              px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
               border: `1px solid ${border}`,
-              fontFamily: dm, fontSize: "0.75rem", fontWeight: 500,
+              fontFamily: dm, fontSize: "0.73rem", fontWeight: 500,
               color: "text.secondary",
               transition: "all 0.15s",
               "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
             }}
           >
-            View <ChevronRightIcon sx={{ fontSize: 14 }} />
+            View
           </Box>
         </Box>
       ),
@@ -172,6 +241,9 @@ export default function Draft() {
 
   return (
     <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
+
+      {/* ── Column menu styles ── */}
+      <ColumnMenuStyles isDark={isDark} border={border} />
 
       {/* ── Header ── */}
       <Box sx={{ mb: 3 }}>
@@ -451,14 +523,11 @@ function ConfirmDialog({
       </Box>
 
       <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 1.25 }}>
-        {/* Item name preview */}
         <Box sx={{ px: 1.5, py: 1.25, borderRadius: "8px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
           <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", fontWeight: 600, color: "text.primary" }}>
             {itemName}
           </Typography>
         </Box>
-
-        {/* Warning */}
         <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: warningBg, border: `1px solid ${warningBorder}` }}>
           {warningIcon}
           <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: warningColor, lineHeight: 1.55 }}>
@@ -562,6 +631,9 @@ function makeDataGridSx(isDark, border) {
     },
     "& .MuiDataGrid-columnSeparator": { display: "none" },
     "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
+    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
+    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
 
     "& .MuiDataGrid-row": {
       borderBottom: `1px solid ${border}`,

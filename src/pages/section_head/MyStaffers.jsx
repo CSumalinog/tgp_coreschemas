@@ -1,30 +1,202 @@
 // src/pages/sechead/MyStaffers.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Box, Typography, CircularProgress, Alert, Chip, Avatar, useTheme,
+  Box, Typography, CircularProgress, Alert, Avatar, useTheme, GlobalStyles,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { supabase }     from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 
-const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const DAY_COLORS = ["#e3f2fd", "#f3e5f5", "#e8f5e9", "#fff3e0", "#fce4ec"];
-const DAY_TEXT   = ["#1565c0", "#6a1b9a", "#2e7d32", "#e65100", "#880e4f"];
+// ── Brand tokens ──────────────────────────────────────────────────────────────
+const GOLD        = "#F5C52B";
+const GOLD_08     = "rgba(245,197,43,0.08)";
+const CHARCOAL    = "#353535";
+const BORDER      = "rgba(53,53,53,0.08)";
+const BORDER_DARK = "rgba(255,255,255,0.08)";
+const HOVER_BG    = "rgba(53,53,53,0.03)";
+const dm          = "'DM Sans', sans-serif";
 
+// ── Day config ────────────────────────────────────────────────────────────────
+const DAY_CFG = [
+  { label: "Monday",    dot: "#3b82f6", color: "#1d4ed8", bg: "#eff6ff" },
+  { label: "Tuesday",   dot: "#a855f7", color: "#7c3aed", bg: "#f5f3ff" },
+  { label: "Wednesday", dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
+  { label: "Thursday",  dot: "#f97316", color: "#c2410c", bg: "#fff7ed" },
+  { label: "Friday",    dot: "#ec4899", color: "#be185d", bg: "#fdf2f8" },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const getInitials = (name) => {
   if (!name) return "?";
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 };
 
+// ── Day Pill ──────────────────────────────────────────────────────────────────
+function DayPill({ dayIndex, isDark }) {
+  if (dayIndex === null || dayIndex === undefined) return (
+    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>Not set</Typography>
+  );
+  const cfg = DAY_CFG[dayIndex];
+  return (
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.55, px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? `${cfg.dot}18` : cfg.bg }}>
+      <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
+      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? cfg.dot : cfg.color, letterSpacing: "0.04em" }}>
+        {cfg.label}
+      </Typography>
+    </Box>
+  );
+}
+
+// ── Count Badge ───────────────────────────────────────────────────────────────
+function CountBadge({ value, colorDot, colorText, colorBg, isDark }) {
+  const isZero = !value || value === 0;
+  return (
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: 0.55,
+      px: 1.1, py: 0.3, borderRadius: "6px",
+      backgroundColor: isZero
+        ? (isDark ? "rgba(255,255,255,0.04)" : "#f5f5f5")
+        : (isDark ? `${colorDot}18` : colorBg),
+    }}>
+      <Box sx={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, backgroundColor: isZero ? (isDark ? "rgba(255,255,255,0.15)" : "#d1d5db") : colorDot }} />
+      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.04em", color: isZero ? "text.disabled" : (isDark ? colorDot : colorText) }}>
+        {value ?? 0}
+      </Typography>
+    </Box>
+  );
+}
+
+// ── Cell text ─────────────────────────────────────────────────────────────────
+function CellText({ children, secondary }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: secondary ? "text.secondary" : "text.primary" }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
+// ── DataGrid sx ───────────────────────────────────────────────────────────────
+function makeDataGridSx(isDark, border) {
+  return {
+    border: "none", fontFamily: dm, fontSize: "0.82rem",
+    backgroundColor: "background.paper", color: "text.primary",
+    "& .MuiDataGrid-columnHeaders":      { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", borderBottom: `1px solid ${border}`, minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important" },
+    "& .MuiDataGrid-columnHeaderTitle":  { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
+    "& .MuiDataGrid-columnSeparator":    { display: "none" },
+    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
+    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
+    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
+    "& .MuiDataGrid-row":                { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
+    "& .MuiDataGrid-row:hover":          { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
+    "& .MuiDataGrid-cell":               { border: "none", outline: "none !important", "&:focus, &:focus-within": { outline: "none" } },
+    "& .MuiDataGrid-footerContainer":    { borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px" },
+    "& .MuiTablePagination-root":        { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
+    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
+    "& .MuiDataGrid-virtualScroller":    { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-overlay":            { backgroundColor: "background.paper" },
+  };
+}
+
+// ── Column menu GlobalStyles ──────────────────────────────────────────────────
+// Confirmed DOM structure from DevTools:
+//   <div class="MuiPaper-root ... ">          ← portalled to <body>
+//     <ul class="MuiDataGrid-menuList ...">   ← the list
+//       <li class="MuiMenuItem-root ...">     ← each item
+//         <div class="MuiListItemIcon-root">  ← icon wrapper
+//         <div class="MuiListItemText-root">  ← label wrapper
+//           <span class="MuiTypography-root"> ← text
+//       <hr class="MuiDivider-root ...">      ← divider
+//
+// The Paper is portalled directly into <body> with no DataGrid ancestor,
+// so GlobalStyles is the only reliable way to reach it.
+// We scope every rule to "has a MuiDataGrid-menuList child" via the
+// :has() selector, which is supported in all modern browsers.
+function ColumnMenuStyles({ isDark, border }) {
+  const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
+  const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
+  const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
+  const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
+  const hoverBg   = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
+
+  return (
+    <GlobalStyles styles={{
+      // Paper that contains the menuList
+      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
+        borderRadius:    "10px !important",
+        border:          `1px solid ${border} !important`,
+        backgroundColor: `${paperBg} !important`,
+        boxShadow:       `${shadow} !important`,
+        minWidth:        "180px !important",
+        overflow:        "hidden !important",
+      },
+      // The ul list itself
+      ".MuiDataGrid-menuList": {
+        padding: "4px 0 !important",
+      },
+      // Each menu item (li)
+      ".MuiDataGrid-menuList .MuiMenuItem-root": {
+        fontFamily:  `${dm} !important`,
+        fontSize:    "0.78rem !important",
+        fontWeight:  "500 !important",
+        color:       `${textColor} !important`,
+        padding:     "7px 14px !important",
+        minHeight:   "unset !important",
+        gap:         "10px !important",
+        transition:  "background-color 0.12s, color 0.12s !important",
+      },
+      // Item hover
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
+        backgroundColor: `${hoverBg} !important`,
+        color:           "#b45309 !important",
+      },
+      // Icon inside item
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
+        minWidth:   "unset !important",
+        color:      `${iconColor} !important`,
+        transition: "color 0.12s !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
+        fontSize: "1rem !important",
+        color:    `${iconColor} !important`,
+      },
+      // Icon on hover
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
+        color: "#b45309 !important",
+      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
+        color: "#b45309 !important",
+      },
+      // Label text
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemText-primary": {
+        fontFamily: `${dm} !important`,
+        fontSize:   "0.78rem !important",
+        fontWeight: "500 !important",
+      },
+      // Divider
+      ".MuiDataGrid-menuList .MuiDivider-root": {
+        borderColor: `${border} !important`,
+        margin:      "4px 12px !important",
+      },
+    }} />
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function MyStaffers() {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const border = isDark ? BORDER_DARK : BORDER;
 
   const [currentUser,    setCurrentUser]    = useState(null);
   const [staffers,       setStaffers]       = useState([]);
   const [activeSemester, setActiveSemester] = useState(null);
   const [loading,        setLoading]        = useState(true);
   const [error,          setError]          = useState("");
+
+  const dataGridSx = useMemo(() => makeDataGridSx(isDark, border), [isDark, border]);
 
   useEffect(() => {
     async function loadUser() {
@@ -87,36 +259,25 @@ export default function MyStaffers() {
     setLoading(false);
   }, [currentUser, activeSemester]);
 
-  useEffect(() => { if (currentUser && activeSemester) loadStaffers(); }, [currentUser, activeSemester, loadStaffers]);
-
-  const dataGridSx = {
-    border: "none",
-    fontFamily: "'Helvetica Neue', sans-serif",
-    fontSize: "0.9rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    "& .MuiDataGrid-cell":           { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", outline: "none", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
-    "& .MuiDataGrid-columnHeaders":  { fontFamily: "'Helvetica Neue', sans-serif", fontSize: "0.9rem", backgroundColor: isDark ? "#2a2a2a" : "#fafafa", color: "text.primary", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
-    "& .MuiDataGrid-footerContainer":{ backgroundColor: isDark ? "#1e1e1e" : "#fff", borderColor: isDark ? "#2e2e2e" : "#e0e0e0" },
-    "& .MuiDataGrid-row:hover":      { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5" },
-    "& .MuiTablePagination-root":    { color: "text.secondary" },
-  };
+  useEffect(() => {
+    if (currentUser && activeSemester) loadStaffers();
+  }, [currentUser, activeSemester, loadStaffers]);
 
   const rows = staffers.map((s) => ({ id: s.id, ...s }));
 
   const columns = [
     {
-      field: "full_name", headerName: "Staffer", flex: 1.2,
+      field: "full_name", headerName: "Staffer", flex: 1.3,
       renderCell: (params) => {
         const url = getAvatarUrl(params.row.avatar_url);
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, height: "100%" }}>
-            <Avatar src={url} sx={{ width: 32, height: 32, fontSize: "0.72rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#212121" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, height: "100%" }}>
+            <Avatar src={url} sx={{ width: 28, height: 28, fontSize: "0.62rem", fontWeight: 700, backgroundColor: GOLD, color: CHARCOAL, flexShrink: 0 }}>
               {!url && getInitials(params.value)}
             </Avatar>
-            <Box>
-              <Typography sx={{ fontSize: "0.88rem", fontWeight: 500, color: "text.primary" }}>{params.value}</Typography>
-              <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>{params.row.role}</Typography>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, color: "text.primary", lineHeight: 1.2 }}>{params.value}</Typography>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary", lineHeight: 1.2 }}>{params.row.role}</Typography>
             </Box>
           </Box>
         );
@@ -126,47 +287,39 @@ export default function MyStaffers() {
       field: "section", headerName: "Section", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Chip label={params.value} size="small"
-            sx={{ fontSize: "0.78rem", backgroundColor: "#f3e5f5", color: "#7b1fa2", fontWeight: 500 }} />
+          <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.55, px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? "rgba(168,85,247,0.1)" : "#f5f3ff" }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? "#a855f7" : "#7c3aed", letterSpacing: "0.04em" }}>
+              {params.value}
+            </Typography>
+          </Box>
         </Box>
       ),
     },
     {
-      field: "dutyDay", headerName: "Duty Day", flex: 0.8,
+      field: "dutyDay", headerName: "Duty Day", flex: 0.9,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          {params.value !== null && params.value !== undefined ? (
-            <Chip label={DAY_LABELS[params.value]} size="small"
-              sx={{ fontSize: "0.78rem", fontWeight: 600, backgroundColor: DAY_COLORS[params.value], color: DAY_TEXT[params.value] }} />
-          ) : (
-            <Typography sx={{ fontSize: "0.82rem", color: "text.secondary" }}>Not set</Typography>
-          )}
+          <DayPill dayIndex={params.value} isDark={isDark} />
         </Box>
       ),
     },
     {
       field: "total", headerName: "Total", flex: 0.55,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontSize: "0.88rem", fontWeight: 600, color: "text.primary" }}>{params.value}</Typography>
-        </Box>
-      ),
+      renderCell: (params) => <CellText>{params.value}</CellText>,
     },
     {
       field: "pending", headerName: "Pending", flex: 0.65,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Chip label={params.value} size="small"
-            sx={{ fontSize: "0.78rem", fontWeight: 600, backgroundColor: params.value > 0 ? "#fff3e0" : "#f5f5f5", color: params.value > 0 ? "#e65100" : "#bdbdbd" }} />
+          <CountBadge value={params.value} isDark={isDark} colorDot="#f97316" colorText="#c2410c" colorBg="#fff7ed" />
         </Box>
       ),
     },
     {
-      field: "completed", headerName: "Completed", flex: 0.75,
+      field: "completed", headerName: "Completed", flex: 0.8,
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Chip label={params.value} size="small"
-            sx={{ fontSize: "0.78rem", fontWeight: 600, backgroundColor: params.value > 0 ? "#e8f5e9" : "#f5f5f5", color: params.value > 0 ? "#2e7d32" : "#bdbdbd" }} />
+          <CountBadge value={params.value} isDark={isDark} colorDot="#22c55e" colorText="#15803d" colorBg="#f0fdf4" />
         </Box>
       ),
     },
@@ -174,34 +327,64 @@ export default function MyStaffers() {
 
   if (!currentUser) return (
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-      <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
+      <CircularProgress size={26} sx={{ color: GOLD }} />
     </Box>
   );
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%" }}>
-      <Box sx={{ mb: 2 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "text.primary" }}>My Staffers</Typography>
-        <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mt: 0.3 }}>
-          {activeSemester ? `${currentUser.division} division — ${activeSemester.name}` : `${currentUser.division} division`}
+    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
+
+      {/* ── Column menu styles (portalled to <body>, scoped via :has) ── */}
+      <ColumnMenuStyles isDark={isDark} border={border} />
+
+      {/* ── Header ── */}
+      <Box sx={{ mb: 3 }}>
+        <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "1.05rem", color: "text.primary", letterSpacing: "-0.02em" }}>
+          My Staffers
+        </Typography>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.3 }}>
+          {activeSemester
+            ? `${currentUser.division} division — ${activeSemester.name}`
+            : `${currentUser.division} division`}
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
-      {!activeSemester && <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>No active semester. Duty day info won't be available.</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>
+          {error}
+        </Alert>
+      )}
+      {!activeSemester && (
+        <Alert severity="info" sx={{ mb: 2, borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>
+          No active semester. Duty day info won't be available.
+        </Alert>
+      )}
 
-      <Box sx={{ height: 500, width: "100%", bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
-        {loading ? (
-          <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CircularProgress size={32} sx={{ color: "#f5c52b" }} />
-          </Box>
-        ) : staffers.length === 0 ? (
-          <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Typography sx={{ fontSize: "0.88rem", color: "text.secondary" }}>No staffers found in your division.</Typography>
-          </Box>
-        ) : (
-          <DataGrid rows={rows} columns={columns} pageSize={10} rowsPerPageOptions={[10]} disableSelectionOnClick sx={dataGridSx} />
-        )}
+      {/* ── Table ── */}
+      <Box sx={{ width: "100%", overflowX: "auto" }}>
+        <Box sx={{ minWidth: 600, bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
+          {loading ? (
+            <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <CircularProgress size={26} sx={{ color: GOLD }} />
+            </Box>
+          ) : staffers.length === 0 ? (
+            <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>
+                No staffers found in your division.
+              </Typography>
+            </Box>
+          ) : (
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
+              disableSelectionOnClick
+              rowHeight={52}
+              sx={dataGridSx}
+            />
+          )}
+        </Box>
       </Box>
     </Box>
   );
