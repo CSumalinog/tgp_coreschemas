@@ -5,7 +5,6 @@ import {
 } from "@mui/material";
 import CheckCircleIcon            from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon           from "@mui/icons-material/LockOutlined";
-import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
 import CalendarTodayOutlinedIcon  from "@mui/icons-material/CalendarTodayOutlined";
 import { supabase }               from "../../lib/supabaseClient";
 
@@ -15,7 +14,6 @@ const GOLD_08     = "rgba(245,197,43,0.08)";
 const CHARCOAL    = "#353535";
 const BORDER      = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
-const HOVER_BG    = "rgba(53,53,53,0.03)";
 const dm          = "'DM Sans', sans-serif";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -67,7 +65,7 @@ export default function MySchedule() {
     setSlotCounts(counts);
     const myPick = (allSchedules || []).find((s) => s.staffer_id === currentUser.id);
     if (myPick) { setExistingSchedule(myPick); setSelectedDay(myPick.duty_day); }
-    else { setExistingSchedule(null); setSelectedDay(null); }
+    else        { setExistingSchedule(null);   setSelectedDay(null);            }
     setLoading(false);
   }, [activeSemester, currentUser]);
 
@@ -80,21 +78,31 @@ export default function MySchedule() {
       const countForDay = slotCounts[selectedDay];
       const isChanging  = existingSchedule && existingSchedule.duty_day !== selectedDay;
       const isNew       = !existingSchedule;
+
+      // Slot cap check — skip if they're just re-confirming their current day
       if ((isNew || isChanging) && countForDay >= MAX_SLOTS) {
         setSaveError(`${DAY_LABELS[selectedDay]} is already full (${MAX_SLOTS}/${MAX_SLOTS}). Please pick another day.`);
         setSaving(false); return;
       }
-      if (existingSchedule) {
-        await supabase.from("duty_schedules").delete().eq("staffer_id", currentUser.id).eq("semester_id", activeSemester.id);
-      }
-      if (!existingSchedule || isChanging) {
-        const { error: insErr } = await supabase.from("duty_schedules").insert({ staffer_id: currentUser.id, semester_id: activeSemester.id, duty_day: selectedDay });
-        if (insErr) throw insErr;
-      }
+
+      // ── Upsert instead of delete+insert ──────────────────────────────────
+      // onConflict: "staffer_id,semester_id" → updates duty_day if row exists,
+      // inserts new row if it doesn't. Eliminates the duplicate key error.
+      const { error: upsertErr } = await supabase
+        .from("duty_schedules")
+        .upsert(
+          { staffer_id: currentUser.id, semester_id: activeSemester.id, duty_day: selectedDay },
+          { onConflict: "staffer_id,semester_id" }
+        );
+      if (upsertErr) throw upsertErr;
+
       setSaveSuccess(true);
       await loadScheduleData();
-    } catch (err) { setSaveError(err.message); }
-    finally { setSaving(false); }
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const schedulingClosed = activeSemester && !activeSemester.scheduling_open;
@@ -136,7 +144,12 @@ export default function MySchedule() {
             display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap",
           }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: GOLD, boxShadow: `0 0 6px ${GOLD}`, animation: "blink 2s ease-in-out infinite", "@keyframes blink": { "0%,100%": { opacity: 1 }, "50%": { opacity: 0.35 } } }} />
+              <Box sx={{
+                width: 6, height: 6, borderRadius: "50%",
+                backgroundColor: GOLD, boxShadow: `0 0 6px ${GOLD}`,
+                animation: "blink 2s ease-in-out infinite",
+                "@keyframes blink": { "0%,100%": { opacity: 1 }, "50%": { opacity: 0.35 } },
+              }} />
               <Typography sx={{ fontFamily: dm, fontSize: "0.65rem", fontWeight: 700, color: "#b45309", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Active Semester
               </Typography>
@@ -248,7 +261,11 @@ export default function MySchedule() {
                       ? "rgba(34,197,94,0.15)"
                       : isDark ? "rgba(255,255,255,0.05)" : "rgba(53,53,53,0.05)",
                     transition: "background-color 0.15s",
-                    border: isSelected ? "none" : isMyPick ? "1.5px solid rgba(34,197,94,0.4)" : `1.5px solid ${border}`,
+                    border: isSelected
+                      ? "none"
+                      : isMyPick
+                      ? "1.5px solid rgba(34,197,94,0.4)"
+                      : `1.5px solid ${border}`,
                   }}>
                     {isSelected ? (
                       <CheckCircleIcon sx={{ fontSize: 15, color: CHARCOAL }} />
@@ -259,7 +276,7 @@ export default function MySchedule() {
                     )}
                   </Box>
 
-                  {/* Slot count + label */}
+                  {/* Slot count + labels */}
                   <Box>
                     <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: isFull ? "#dc2626" : "text.secondary", fontWeight: isFull ? 600 : 400 }}>
                       {count}/{MAX_SLOTS}
@@ -292,7 +309,9 @@ export default function MySchedule() {
               sx={{
                 display: "flex", alignItems: "center", gap: 0.75,
                 mt: 2, px: 2, py: 0.75, borderRadius: "9px",
-                cursor: saving || selectedDay === null || !hasChanged || schedulingClosed ? "not-allowed" : "pointer",
+                cursor: saving || selectedDay === null || !hasChanged || schedulingClosed
+                  ? "not-allowed"
+                  : "pointer",
                 backgroundColor: saving || selectedDay === null || !hasChanged || schedulingClosed
                   ? isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)"
                   : GOLD,

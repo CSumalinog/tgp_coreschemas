@@ -91,17 +91,6 @@ function StatusPill({ status, isDark }) {
 }
 
 // ── Column menu GlobalStyles ──────────────────────────────────────────────────
-// Confirmed DOM structure from DevTools:
-//   <div class="MuiPaper-root ...">           ← portalled to <body>
-//     <ul class="MuiDataGrid-menuList ...">
-//       <li class="MuiMenuItem-root ...">
-//         <div class="MuiListItemIcon-root">
-//         <div class="MuiListItemText-root">
-//           <span class="MuiListItemText-primary">
-//       <hr class="MuiDivider-root ...">
-//
-// Paper is portalled directly to <body> with no DataGrid ancestor.
-// :has(> .MuiDataGrid-menuList) scopes the Paper rule to this menu only.
 function ColumnMenuStyles({ isDark, border }) {
   const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
   const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
@@ -111,7 +100,6 @@ function ColumnMenuStyles({ isDark, border }) {
 
   return (
     <GlobalStyles styles={{
-      // Paper wrapping the menu list
       ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
         borderRadius:    "10px !important",
         border:          `1px solid ${border} !important`,
@@ -120,55 +108,19 @@ function ColumnMenuStyles({ isDark, border }) {
         minWidth:        "180px !important",
         overflow:        "hidden !important",
       },
-      // The <ul> list
-      ".MuiDataGrid-menuList": {
-        padding: "4px 0 !important",
-      },
-      // Each <li> item
+      ".MuiDataGrid-menuList": { padding: "4px 0 !important" },
       ".MuiDataGrid-menuList .MuiMenuItem-root": {
-        fontFamily:  `${dm} !important`,
-        fontSize:    "0.78rem !important",
-        fontWeight:  "500 !important",
-        color:       `${textColor} !important`,
-        padding:     "7px 14px !important",
-        minHeight:   "unset !important",
-        gap:         "10px !important",
-        transition:  "background-color 0.12s, color 0.12s !important",
+        fontFamily: `${dm} !important`, fontSize: "0.78rem !important", fontWeight: "500 !important",
+        color: `${textColor} !important`, padding: "7px 14px !important", minHeight: "unset !important",
+        gap: "10px !important", transition: "background-color 0.12s, color 0.12s !important",
       },
-      // Item hover state
-      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
-        backgroundColor: `${hoverBg} !important`,
-        color:           "#b45309 !important",
-      },
-      // Icon wrapper
-      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
-        minWidth:   "unset !important",
-        color:      `${iconColor} !important`,
-        transition: "color 0.12s !important",
-      },
-      // SVG icon
-      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
-        fontSize: "1rem !important",
-        color:    `${iconColor} !important`,
-      },
-      // Icon on hover
-      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
-        color: "#b45309 !important",
-      },
-      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
-        color: "#b45309 !important",
-      },
-      // Label text
-      ".MuiDataGrid-menuList .MuiListItemText-primary": {
-        fontFamily: `${dm} !important`,
-        fontSize:   "0.78rem !important",
-        fontWeight: "500 !important",
-      },
-      // Divider <hr>
-      ".MuiDataGrid-menuList .MuiDivider-root": {
-        borderColor: `${border} !important`,
-        margin:      "4px 12px !important",
-      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover": { backgroundColor: `${hoverBg} !important`, color: "#b45309 !important" },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": { minWidth: "unset !important", color: `${iconColor} !important`, transition: "color 0.12s !important" },
+      ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": { fontSize: "1rem !important", color: `${iconColor} !important` },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": { color: "#b45309 !important" },
+      ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": { color: "#b45309 !important" },
+      ".MuiDataGrid-menuList .MuiListItemText-primary": { fontFamily: `${dm} !important`, fontSize: "0.78rem !important", fontWeight: "500 !important" },
+      ".MuiDataGrid-menuList .MuiDivider-root": { borderColor: `${border} !important`, margin: "4px 12px !important" },
     }} />
   );
 }
@@ -382,15 +334,55 @@ export default function SecHeadAssignmentManagement() {
     finally { setAssignLoading(false); }
   };
 
+  // ── UPDATED: handleSubmitForApproval with admin notifications ───────────────
   const handleSubmitForApproval = async (requestId) => {
     setSubmitLoading(true);
     try {
-      const { error } = await supabase.from("coverage_requests").update({ status: "For Approval" }).eq("id", requestId);
+      // 1. Fetch request title for notification message
+      const { data: req } = await supabase
+        .from("coverage_requests")
+        .select("title")
+        .eq("id", requestId)
+        .single();
+
+      // 2. Update request status to For Approval
+      const { error } = await supabase
+        .from("coverage_requests")
+        .update({ status: "For Approval" })
+        .eq("id", requestId);
       if (error) throw error;
-      setConfirmRequest(null); loadAll();
-    } catch (err) { setError(err.message); }
-    finally { setSubmitLoading(false); }
+
+      // 3. Notify all admins
+      const { data: admins } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("role", "admin")
+        .eq("is_active", true);
+
+      if (admins && admins.length > 0) {
+        await supabase.from("notifications").insert(
+          admins.map((admin) => ({
+            user_id:        admin.id,
+            recipient_id:   admin.id,
+            recipient_role: "admin",
+            request_id:     requestId,
+            type:           "for_approval",
+            title:          "Assignment Ready for Approval",
+            message:        `${currentUser?.full_name || "A section head"} has submitted the staff assignment for "${req?.title || "a coverage request"}" for your approval.`,
+            is_read:        false,
+          }))
+        );
+      }
+
+      setConfirmRequest(null);
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitLoading(false);
+    }
   };
+  // ── END updated function ────────────────────────────────────────────────────
 
   const selectedSemLabel    = semesters.find((s) => s.id === activeSemesterId)?.label || semesters.find((s) => s.id === activeSemesterId)?.name;
   const selectedStafferName = allStaffers.find((s) => s.id === stafferFilter)?.full_name;
@@ -404,7 +396,6 @@ export default function SecHeadAssignmentManagement() {
   return (
     <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
 
-      {/* ── Column menu styles ── */}
       <ColumnMenuStyles isDark={isDark} border={border} />
 
       {/* ── Header ── */}
@@ -632,9 +623,9 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
   });
 
   const columns = [
-    { field: "requestTitle",  headerName: "Event Title",     flex: 1.4, renderCell: (p) => <CellText>{p.value}</CellText> },
-    { field: "client",        headerName: "Client",          flex: 1,   renderCell: (p) => <CellText secondary>{p.value}</CellText> },
-    { field: "eventDate",     headerName: "Event Date",      flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "requestTitle",  headerName: "Event Title",  flex: 1.4, renderCell: (p) => <CellText>{p.value}</CellText> },
+    { field: "client",        headerName: "Client",       flex: 1,   renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "eventDate",     headerName: "Event Date",   flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
     {
       field: "paxNeeded", headerName: "Pax", flex: 0.6,
       renderCell: (p) => (

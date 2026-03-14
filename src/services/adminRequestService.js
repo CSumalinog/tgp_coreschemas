@@ -1,8 +1,9 @@
 // src/services/adminRequestService.js
-import { supabase } from "../lib/supabaseClient";
+import { supabase }                                                    from "../lib/supabaseClient";
+import { notifyAdmins, notifyClient, notifySecHeads, notifyAssignedStaff } from "./notificationService";
 
 /**
- * Fetch all coverage requests for Admin (all statuses)
+ * Fetch all coverage requests for Admin (all statuses except Draft)
  */
 export async function fetchAllRequests() {
   const { data, error } = await supabase
@@ -42,50 +43,89 @@ export async function fetchAllRequests() {
 
 /**
  * Forward a request to selected sections
+ * → Notifies sec heads of the forwarded sections
  */
 export async function forwardRequest(requestId, sections) {
+  const { data: req } = await supabase
+    .from("coverage_requests")
+    .select("title, requester_id")
+    .eq("id", requestId)
+    .single();
+
   const { data, error } = await supabase
     .from("coverage_requests")
     .update({
-      status: "Forwarded",
+      status:             "Forwarded",
       forwarded_sections: sections,
-      forwarded_at: new Date().toISOString(),
+      forwarded_at:       new Date().toISOString(),
     })
     .eq("id", requestId)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to forward request: ${error.message}`);
+
+  await notifySecHeads({
+    sections,
+    type:      "forwarded",
+    title:     "Request Forwarded to You",
+    message:   `"${req?.title || "A coverage request"}" has been forwarded to your section for staff assignment.`,
+    requestId,
+  });
+
   return data;
 }
 
 /**
  * Decline a request with a reason
+ * → Notifies the client
  */
 export async function declineRequest(requestId, reason) {
+  const { data: req } = await supabase
+    .from("coverage_requests")
+    .select("title, requester_id")
+    .eq("id", requestId)
+    .single();
+
   const { data, error } = await supabase
     .from("coverage_requests")
     .update({
-      status: "Declined",
+      status:          "Declined",
       declined_reason: reason,
-      declined_at: new Date().toISOString(),
+      declined_at:     new Date().toISOString(),
     })
     .eq("id", requestId)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to decline request: ${error.message}`);
+
+  await notifyClient({
+    requesterId: req?.requester_id,
+    type:        "declined",
+    title:       "Coverage Request Declined",
+    message:     `Your request "${req?.title || "your coverage request"}" was declined. Reason: ${reason}`,
+    requestId,
+  });
+
   return data;
 }
 
 /**
- * Approve a request (after Sec Head has assigned staffers)
+ * Approve a request
+ * → Notifies the client + all assigned staff
  */
 export async function approveRequest(requestId, adminNotes = "") {
+  const { data: req } = await supabase
+    .from("coverage_requests")
+    .select("title, requester_id")
+    .eq("id", requestId)
+    .single();
+
   const { data, error } = await supabase
     .from("coverage_requests")
     .update({
-      status: "Approved",
+      status:      "Approved",
       admin_notes: adminNotes,
       approved_at: new Date().toISOString(),
     })
@@ -94,5 +134,23 @@ export async function approveRequest(requestId, adminNotes = "") {
     .single();
 
   if (error) throw new Error(`Failed to approve request: ${error.message}`);
+
+  const requestTitle = req?.title || "a coverage request";
+
+  await notifyClient({
+    requesterId: req?.requester_id,
+    type:        "approved",
+    title:       "Coverage Request Approved",
+    message:     `Your request "${requestTitle}" has been approved! Please coordinate with the assigned staffers.`,
+    requestId,
+  });
+
+  await notifyAssignedStaff({
+    requestId,
+    type:    "assigned",
+    title:   "You Have a Coverage Assignment",
+    message: `You have been assigned to cover "${requestTitle}". Check your assignments for details.`,
+  });
+
   return data;
 }

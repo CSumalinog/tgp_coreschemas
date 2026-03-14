@@ -1,5 +1,10 @@
 // src/services/coverageService.js
-import { supabase } from "../lib/supabaseClient";
+import { supabase }        from "../lib/supabaseClient";
+import { notifyAdmins }    from "./notificationService";
+
+// ── Timezone-safe date serializer ─────────────────────────────────────────────
+const toLocalISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /**
  * Submit or save a coverage request as Draft or Pending
@@ -22,7 +27,7 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   const payload = {
     title:          requestData.title,
     description:    requestData.description,
-    event_date:     requestData.date instanceof Date ? requestData.date.toISOString().split("T")[0] : requestData.date,
+    event_date:     requestData.date instanceof Date ? toLocalISO(requestData.date) : requestData.date,
     from_time:      requestData.from_time instanceof Date ? requestData.from_time.toTimeString().slice(0, 5) : requestData.from_time,
     to_time:        requestData.to_time instanceof Date ? requestData.to_time.toTimeString().slice(0, 5) : requestData.to_time,
     venue:          requestData.venue,
@@ -41,6 +46,23 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   const { data, error } = await supabase
     .from("coverage_requests").insert([payload]).select().single();
   if (error) throw new Error(`Failed to submit request: ${error.message}`);
+
+  if (!isDraft) {
+    // Fetch entity name from DB for accurate notification
+    let entityName = "a client";
+    if (requestData.entity) {
+      const { data: ent } = await supabase
+        .from("client_entities").select("name").eq("id", requestData.entity).single();
+      if (ent?.name) entityName = ent.name;
+    }
+    await notifyAdmins({
+      type:      "new_request",
+      title:     "New Coverage Request",
+      message:   `"${data.title}" was submitted by ${entityName}.`,
+      requestId: data.id,
+    });
+  }
+
   return data;
 }
 
@@ -116,7 +138,7 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
   const payload = {
     title:          requestData.title,
     description:    requestData.description,
-    event_date:     requestData.date instanceof Date ? requestData.date.toISOString().split("T")[0] : requestData.date,
+    event_date:     requestData.date instanceof Date ? toLocalISO(requestData.date) : requestData.date,
     from_time:      requestData.from_time instanceof Date ? requestData.from_time.toTimeString().slice(0, 5) : requestData.from_time,
     to_time:        requestData.to_time instanceof Date ? requestData.to_time.toTimeString().slice(0, 5) : requestData.to_time,
     venue:          requestData.venue,
@@ -135,6 +157,22 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
     .from("coverage_requests").update(payload)
     .eq("id", requestId).eq("requester_id", user.id).select().single();
   if (error) throw new Error(`Failed to update request: ${error.message}`);
+
+  if (submitNow) {
+    let entityName = "a client";
+    if (requestData.entity) {
+      const { data: ent } = await supabase
+        .from("client_entities").select("name").eq("id", requestData.entity).single();
+      if (ent?.name) entityName = ent.name;
+    }
+    await notifyAdmins({
+      type:      "new_request",
+      title:     "New Coverage Request",
+      message:   `"${data.title}" was submitted by ${entityName}.`,
+      requestId: data.id,
+    });
+  }
+
   return data;
 }
 

@@ -190,7 +190,6 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            {/* Yellow left-accent bar */}
             <Box sx={{ width: 3, height: 28, borderRadius: 1, backgroundColor: "#f5c52b", flexShrink: 0 }} />
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "text.primary", lineHeight: 1.3 }}>
@@ -283,7 +282,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               )}
             </Section>
 
-            {/* Conditional status sections */}
+            {/* Forwarded sections */}
             {request.status === "Forwarded" && request.forwarded_sections?.length > 0 && (
               <Section label="Forwarded To">
                 <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
@@ -303,7 +302,6 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
             {/* Assigned Staffers — shown for Assigned, For Approval, Approved */}
             {["Assigned", "For Approval", "Approved"].includes(request.status) && assignedStaffers.length > 0 && (
               <Section label="Assigned Staff">
-                {/* Group by section */}
                 {["News", "Photojournalism", "Videojournalism"].map((sec) => {
                   const secStaffers = assignedStaffers.filter((a) => a.staffer?.section === sec);
                   if (secStaffers.length === 0) return null;
@@ -428,6 +426,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
           display: "flex", justifyContent: "flex-end", gap: 1,
           backgroundColor: isDark ? "#161616" : "#fafafa",
         }}>
+          {/* Pending: Decline + Forward */}
           {request.status === "Pending" && (
             <>
               <Button
@@ -448,25 +447,17 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Button>
             </>
           )}
+
+          {/* For Approval: Approve only — eligibility was already cleared at Pending */}
           {request.status === "For Approval" && (
-            <>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => { setError(""); setDeclineOpen(true); }}
-                sx={{ textTransform: "none", fontSize: "0.82rem", borderColor: "divider", color: "text.secondary", "&:hover": { borderColor: "#dc2626", color: "#dc2626" } }}
-              >
-                Decline
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => { setError(""); setApproveOpen(true); }}
-                sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#15803d", color: "white", boxShadow: "none", "&:hover": { backgroundColor: "#166534", boxShadow: "none" } }}
-              >
-                Approve Request
-              </Button>
-            </>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => { setError(""); setApproveOpen(true); }}
+              sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#15803d", color: "white", boxShadow: "none", "&:hover": { backgroundColor: "#166534", boxShadow: "none" } }}
+            >
+              Approve Request
+            </Button>
           )}
         </Box>
       </Dialog>
