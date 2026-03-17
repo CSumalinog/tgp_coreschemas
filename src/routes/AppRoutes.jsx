@@ -26,7 +26,7 @@ import RequestTracker from "../pages/client/RequestTracker";
 
 // Section Head Pages
 import SecHeadDashboard from "../pages/section_head/SecHeadDashboard";
-import SecHeadAssignmentManagement from "../pages/section_head/SecHeadAssignmentManagement.jsx";
+import SecHeadAssignmentManagement from "../pages/section_head/SecHeadAssignmentManagement";
 import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
 
 // Regular Staff Pages
