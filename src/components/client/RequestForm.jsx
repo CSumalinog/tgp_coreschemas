@@ -1,9 +1,9 @@
 // src/components/client/CoverageRequestDialog.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Dialog, DialogContent, DialogActions,
+  Dialog, DialogContent,
   TextField, Button, MenuItem, Select, InputLabel,
-  FormControl, Typography, Box, CircularProgress, Alert, useTheme,
+  FormControl, FormHelperText, Typography, Box, CircularProgress, Alert, useTheme,
 } from "@mui/material";
 import { DatePicker, TimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -17,6 +17,21 @@ const SERVICES = [
   "Video Documentation",
   "Camera Operator (for live streaming)",
 ];
+
+const EMPTY_ERRORS = {
+  title:         "",
+  description:   "",
+  date:          "",
+  fromTime:      "",
+  toTime:        "",
+  venue:         "",
+  services:      "",
+  clientType:    "",
+  entity:        "",
+  contactPerson: "",
+  contactInfo:   "",
+  file:          "",
+};
 
 export default function CoverageRequestDialog({
   open,
@@ -42,7 +57,8 @@ export default function CoverageRequestDialog({
   const [file,          setFile]          = useState(null);
   const [confirmOpen,   setConfirmOpen]   = useState(false);
   const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState("");
+  const [submitError,   setSubmitError]   = useState("");
+  const [errors,        setErrors]        = useState(EMPTY_ERRORS);
   const [clientTypes,   setClientTypes]   = useState([]);
   const [entities,      setEntities]      = useState([]);
 
@@ -58,7 +74,8 @@ export default function CoverageRequestDialog({
     }
     if (open) {
       loadClientTypes();
-      setError("");
+      setErrors(EMPTY_ERRORS);
+      setSubmitError("");
       if (existingRequest) {
         setTitle(existingRequest.title || "");
         setDescription(existingRequest.description || "");
@@ -96,42 +113,46 @@ export default function CoverageRequestDialog({
       return;
     }
     setFile(selectedFile);
+    if (selectedFile) setErrors((prev) => ({ ...prev, file: "" }));
   };
 
   const resetForm = () => {
     setTitle(""); setDescription(""); setDate(null); setFromTime(null); setToTime(null);
     setServices(SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {}));
     setVenue(""); setClientType(""); setEntity(""); setContactPerson(""); setContactInfo("");
-    setFile(null); setError("");
+    setFile(null); setErrors(EMPTY_ERRORS); setSubmitError("");
   };
 
-  // ── Validate each field individually ──
+  // ── Validate and populate inline errors ──
   const validate = () => {
     const totalServices = Object.values(services).reduce((sum, val) => sum + val, 0);
+    const newErrors = { ...EMPTY_ERRORS };
+    let hasError = false;
 
-    if (!title)              return "Please enter the event title.";
-    if (!description)        return "Please enter the event description.";
-    if (!date)               return "Please select an event date.";
-    if (!fromTime)           return "Please select a start time.";
-    if (!toTime)             return "Please select an end time.";
-    if (!venue)              return "Please enter the venue.";
-    if (totalServices === 0) return "Please select at least one service.";
-    if (!clientType)         return "Please select a client type.";
-    if (!entity)             return "Please select an entity name.";
-    if (!contactPerson)      return "Please enter a contact person.";
-    if (!contactInfo)        return "Please enter contact information.";
-    if (!file && !existingRequest?.file_url) return "Please upload the program flow (PDF).";
+    if (!title)              { newErrors.title         = "Event title is required.";               hasError = true; }
+    if (!description)        { newErrors.description   = "Description is required.";               hasError = true; }
+    if (!date)               { newErrors.date          = "Event date is required.";                hasError = true; }
+    if (!fromTime)           { newErrors.fromTime      = "Start time is required.";                hasError = true; }
+    if (!toTime)             { newErrors.toTime        = "End time is required.";                  hasError = true; }
+    if (!venue)              { newErrors.venue         = "Venue is required.";                     hasError = true; }
+    if (totalServices === 0) { newErrors.services      = "Please select at least one service.";    hasError = true; }
+    if (!clientType)         { newErrors.clientType    = "Client type is required.";               hasError = true; }
+    if (!entity)             { newErrors.entity        = "Entity name is required.";               hasError = true; }
+    if (!contactPerson)      { newErrors.contactPerson = "Contact person is required.";            hasError = true; }
+    if (!contactInfo)        { newErrors.contactInfo   = "Contact information is required.";       hasError = true; }
+    if (!file && !existingRequest?.file_url) { newErrors.file = "Please upload the program flow (PDF)."; hasError = true; }
 
-    return null;
+    setErrors(newErrors);
+    return !hasError;
   };
 
   const submitForm = async (isDraft = false) => {
-    setError("");
+    setSubmitError("");
     if (!isDraft) {
-      const validationError = validate();
-      if (validationError) { setError(validationError); return; }
+      const isValid = validate();
+      if (!isValid) return;
     } else {
-      if (!title) { setError("Please enter at least an event title to save as draft."); return; }
+      if (!title) { setErrors((prev) => ({ ...prev, title: "Please enter at least an event title to save as draft." })); return; }
     }
     setLoading(true);
     try {
@@ -146,7 +167,7 @@ export default function CoverageRequestDialog({
       handleClose();
       if (onSuccess) onSuccess();
     } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setSubmitError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -158,6 +179,25 @@ export default function CoverageRequestDialog({
     "& .MuiInputLabel-root":    { fontSize: "0.85rem" },
     "& .MuiOutlinedInput-root": { borderRadius: 1.5 },
   };
+
+  // ── Error field sx (red border) ──
+  const errorFieldSx = (hasErr) => ({
+    ...fieldSx,
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 1.5,
+      ...(hasErr && {
+        "& fieldset": { borderColor: "#ef4444" },
+        "&:hover fieldset": { borderColor: "#ef4444" },
+        "&.Mui-focused fieldset": { borderColor: "#ef4444" },
+      }),
+    },
+    ...(hasErr && {
+      "& .MuiInputLabel-root":           { color: "#ef4444" },
+      "& .MuiInputLabel-root.Mui-focused": { color: "#ef4444" },
+    }),
+  });
+
+  const helperSx = { fontSize: "0.72rem", color: "#ef4444", mt: 0.25, ml: 0.5 };
 
   return (
     <>
@@ -188,48 +228,96 @@ export default function CoverageRequestDialog({
         </Box>
 
         <DialogContent sx={{ px: 3, py: 2.5 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5, fontSize: "0.82rem" }}>{error}</Alert>
-          )}
 
           {/* ── Section: Event Details ── */}
           <FormSection label="Event Details">
-            <TextField label="Event Title" fullWidth margin="dense" value={title} onChange={(e) => setTitle(e.target.value)} required disabled={loading} sx={fieldSx} />
-            <TextField label="Description" fullWidth multiline rows={3} margin="dense" value={description} onChange={(e) => setDescription(e.target.value)} required disabled={loading} sx={fieldSx} />
+            <TextField
+              label="Event Title" fullWidth margin="dense" value={title}
+              onChange={(e) => { setTitle(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, title: "" })); }}
+              required disabled={loading}
+              error={!!errors.title}
+              helperText={errors.title}
+              sx={errorFieldSx(!!errors.title)}
+              FormHelperTextProps={{ sx: helperSx }}
+            />
+            <TextField
+              label="Description" fullWidth multiline rows={3} margin="dense" value={description}
+              onChange={(e) => { setDescription(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, description: "" })); }}
+              required disabled={loading}
+              error={!!errors.description}
+              helperText={errors.description}
+              sx={errorFieldSx(!!errors.description)}
+              FormHelperTextProps={{ sx: helperSx }}
+            />
 
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                {/* Date */}
                 <Box sx={{ flex: 5, minWidth: 0 }}>
                   <DatePicker
                     label="Event Date"
                     value={date}
-                    onChange={setDate}
+                    onChange={(val) => { setDate(val); if (val) setErrors((p) => ({ ...p, date: "" })); }}
                     disabled={loading}
-                    renderInput={(params) => <TextField {...params} fullWidth margin="dense" sx={fieldSx} />}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params} fullWidth margin="dense"
+                        error={!!errors.date}
+                        helperText={errors.date}
+                        sx={errorFieldSx(!!errors.date)}
+                        FormHelperTextProps={{ sx: helperSx }}
+                      />
+                    )}
                   />
                 </Box>
+                {/* From */}
                 <Box sx={{ flex: 3, minWidth: 0 }}>
                   <TimePicker
                     label="From"
                     value={fromTime}
-                    onChange={setFromTime}
+                    onChange={(val) => { setFromTime(val); if (val) setErrors((p) => ({ ...p, fromTime: "" })); }}
                     disabled={loading}
-                    renderInput={(params) => <TextField {...params} fullWidth margin="dense" sx={fieldSx} />}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params} fullWidth margin="dense"
+                        error={!!errors.fromTime}
+                        helperText={errors.fromTime}
+                        sx={errorFieldSx(!!errors.fromTime)}
+                        FormHelperTextProps={{ sx: helperSx }}
+                      />
+                    )}
                   />
                 </Box>
+                {/* To */}
                 <Box sx={{ flex: 3, minWidth: 0 }}>
                   <TimePicker
                     label="To"
                     value={toTime}
-                    onChange={setToTime}
+                    onChange={(val) => { setToTime(val); if (val) setErrors((p) => ({ ...p, toTime: "" })); }}
                     disabled={loading}
-                    renderInput={(params) => <TextField {...params} fullWidth margin="dense" sx={fieldSx} />}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params} fullWidth margin="dense"
+                        error={!!errors.toTime}
+                        helperText={errors.toTime}
+                        sx={errorFieldSx(!!errors.toTime)}
+                        FormHelperTextProps={{ sx: helperSx }}
+                      />
+                    )}
                   />
                 </Box>
               </Box>
             </LocalizationProvider>
 
-            <TextField label="Venue" fullWidth margin="dense" value={venue} onChange={(e) => setVenue(e.target.value)} required disabled={loading} sx={fieldSx} />
+            <TextField
+              label="Venue" fullWidth margin="dense" value={venue}
+              onChange={(e) => { setVenue(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, venue: "" })); }}
+              required disabled={loading}
+              error={!!errors.venue}
+              helperText={errors.venue}
+              sx={errorFieldSx(!!errors.venue)}
+              FormHelperTextProps={{ sx: helperSx }}
+            />
           </FormSection>
 
           {/* ── Section: Services ── */}
@@ -247,7 +335,7 @@ export default function CoverageRequestDialog({
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       px: 1.5, py: 1, borderRadius: 1.5,
                       border: "1px solid",
-                      borderColor: isChecked ? "#f5c52b" : "divider",
+                      borderColor: isChecked ? "#f5c52b" : (errors.services ? "#ef4444" : "divider"),
                       backgroundColor: isChecked
                         ? (isDark ? "#1e1800" : "#fffbeb")
                         : (isDark ? "#1a1a1a" : "#fafafa"),
@@ -257,7 +345,12 @@ export default function CoverageRequestDialog({
                     }}
                     onClick={() => {
                       if (loading) return;
-                      setServices((prev) => ({ ...prev, [service]: prev[service] > 0 ? 0 : 1 }));
+                      setServices((prev) => {
+                        const updated = { ...prev, [service]: prev[service] > 0 ? 0 : 1 };
+                        const total = Object.values(updated).reduce((sum, v) => sum + v, 0);
+                        if (total > 0) setErrors((p) => ({ ...p, services: "" }));
+                        return updated;
+                      });
                     }}
                   >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -272,13 +365,16 @@ export default function CoverageRequestDialog({
                       <Typography sx={{ fontSize: "0.83rem", color: "text.primary" }}>{service}</Typography>
                     </Box>
                     <TextField
-                      type="number"
-                      size="small"
-                      value={services[service]}
+                      type="number" size="small" value={services[service]}
                       onChange={(e) => {
                         e.stopPropagation();
                         const val = Math.max(0, Number(e.target.value));
-                        setServices((prev) => ({ ...prev, [service]: val }));
+                        setServices((prev) => {
+                          const updated = { ...prev, [service]: val };
+                          const total = Object.values(updated).reduce((sum, v) => sum + v, 0);
+                          if (total > 0) setErrors((p) => ({ ...p, services: "" }));
+                          return updated;
+                        });
                       }}
                       onClick={(e) => e.stopPropagation()}
                       inputProps={{ min: 0, max: 5 }}
@@ -293,41 +389,70 @@ export default function CoverageRequestDialog({
                 );
               })}
             </Box>
+            {errors.services && (
+              <Typography sx={{ ...helperSx, mt: 0.75 }}>{errors.services}</Typography>
+            )}
           </FormSection>
 
           {/* ── Section: Client Info ── */}
           <FormSection label="Client Information">
-            <TextField label="Contact Person" fullWidth margin="dense" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} required disabled={loading} sx={fieldSx} />
-            <TextField label="Contact Info (phone / messenger / email)" fullWidth margin="dense" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} required disabled={loading} sx={fieldSx} />
+            <TextField
+              label="Contact Person" fullWidth margin="dense" value={contactPerson}
+              onChange={(e) => { setContactPerson(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, contactPerson: "" })); }}
+              required disabled={loading}
+              error={!!errors.contactPerson}
+              helperText={errors.contactPerson}
+              sx={errorFieldSx(!!errors.contactPerson)}
+              FormHelperTextProps={{ sx: helperSx }}
+            />
+            <TextField
+              label="Contact Info (phone / messenger / email)" fullWidth margin="dense" value={contactInfo}
+              onChange={(e) => { setContactInfo(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, contactInfo: "" })); }}
+              required disabled={loading}
+              error={!!errors.contactInfo}
+              helperText={errors.contactInfo}
+              sx={errorFieldSx(!!errors.contactInfo)}
+              FormHelperTextProps={{ sx: helperSx }}
+            />
 
             <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-              <FormControl fullWidth margin="dense" required sx={fieldSx}>
-                <InputLabel sx={{ fontSize: "0.85rem" }}>Client Type</InputLabel>
+              {/* Client Type */}
+              <FormControl fullWidth margin="dense" required error={!!errors.clientType} sx={fieldSx}>
+                <InputLabel sx={{ fontSize: "0.85rem", ...(errors.clientType && { color: "#ef4444" }) }}>Client Type</InputLabel>
                 <Select
                   label="Client Type" value={clientType}
-                  onChange={(e) => setClientType(e.target.value)}
+                  onChange={(e) => { setClientType(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, clientType: "", entity: "" })); }}
                   disabled={loading}
-                  sx={{ borderRadius: 1.5, fontSize: "0.85rem" }}
+                  sx={{
+                    borderRadius: 1.5, fontSize: "0.85rem",
+                    ...(errors.clientType && { "& fieldset": { borderColor: "#ef4444" } }),
+                  }}
                 >
                   {clientTypes.map((type) => (
                     <MenuItem key={type.id} value={type.id} sx={{ fontSize: "0.85rem" }}>{type.name}</MenuItem>
                   ))}
                 </Select>
+                {errors.clientType && <FormHelperText sx={helperSx}>{errors.clientType}</FormHelperText>}
               </FormControl>
 
+              {/* Entity Name */}
               {clientType && (
-                <FormControl fullWidth margin="dense" required sx={fieldSx}>
-                  <InputLabel sx={{ fontSize: "0.85rem" }}>Entity Name</InputLabel>
+                <FormControl fullWidth margin="dense" required error={!!errors.entity} sx={fieldSx}>
+                  <InputLabel sx={{ fontSize: "0.85rem", ...(errors.entity && { color: "#ef4444" }) }}>Entity Name</InputLabel>
                   <Select
                     label="Entity Name" value={entity}
-                    onChange={(e) => setEntity(e.target.value)}
+                    onChange={(e) => { setEntity(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, entity: "" })); }}
                     disabled={loading}
-                    sx={{ borderRadius: 1.5, fontSize: "0.85rem" }}
+                    sx={{
+                      borderRadius: 1.5, fontSize: "0.85rem",
+                      ...(errors.entity && { "& fieldset": { borderColor: "#ef4444" } }),
+                    }}
                   >
                     {entities.map((ent) => (
                       <MenuItem key={ent.id} value={ent.id} sx={{ fontSize: "0.85rem" }}>{ent.name}</MenuItem>
                     ))}
                   </Select>
+                  {errors.entity && <FormHelperText sx={helperSx}>{errors.entity}</FormHelperText>}
                 </FormControl>
               )}
             </Box>
@@ -342,13 +467,18 @@ export default function CoverageRequestDialog({
               size="small"
               sx={{
                 textTransform: "none", fontSize: "0.82rem", borderRadius: 1.5,
-                borderColor: "divider", color: "text.secondary",
+                borderColor: errors.file ? "#ef4444" : "divider",
+                color: errors.file ? "#ef4444" : "text.secondary",
                 "&:hover": { borderColor: "#f5c52b", color: "text.primary" },
               }}
             >
               {existingRequest ? "Replace Program Flow (PDF)" : "Upload Program Flow (PDF)"}
               <input type="file" hidden onChange={handleFileChange} accept="application/pdf" />
             </Button>
+
+            {errors.file && (
+              <Typography sx={{ ...helperSx, mt: 0.5 }}>{errors.file}</Typography>
+            )}
 
             {file ? (
               <Typography sx={{ mt: 1, fontSize: "0.8rem", color: "#15803d" }}>✓ {file.name}</Typography>
@@ -379,9 +509,9 @@ export default function CoverageRequestDialog({
             variant="contained"
             size="small"
             onClick={() => {
-              const validationError = validate();
-              if (validationError) { setError(validationError); return; }
-              setError("");
+              const isValid = validate();
+              if (!isValid) return;
+              setErrors(EMPTY_ERRORS);
               setConfirmOpen(true);
             }}
             disabled={loading}
@@ -406,7 +536,6 @@ export default function CoverageRequestDialog({
           },
         }}
       >
-        {/* Header */}
         <Box sx={{
           px: 3, py: 2,
           borderBottom: "1px solid", borderColor: "divider",
@@ -429,7 +558,7 @@ export default function CoverageRequestDialog({
             </Typography>
           </Box>
 
-          {error && <Alert severity="error" sx={{ mt: 2, borderRadius: 1.5, fontSize: "0.82rem" }}>{error}</Alert>}
+          {submitError && <Alert severity="error" sx={{ mt: 2, borderRadius: 1.5, fontSize: "0.82rem" }}>{submitError}</Alert>}
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
               <CircularProgress size={20} sx={{ color: "#f5c52b" }} />

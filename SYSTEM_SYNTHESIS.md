@@ -19,6 +19,7 @@ The frontend is constructed using **React 18** with functional components and ho
 **Material-UI (MUI)** provides the design system, offering a comprehensive set of pre-built components such as DataGrid for tabular data display, DatePicker and TimePicker for datetime selection, Dialogs for modal interactions, and theming capabilities for consistent styling. The application leverages MUI's theming provider to support both light and dark modes, with custom color tokens (gold, charcoal, and status-specific colors) applied throughout to maintain brand consistency.
 
 **Custom React Hooks** provide centralized data management:
+
 - `useAdminRequests()` - Fetches and manages all coverage requests for admin views
 - `useClientRequests()` - Manages client-side request data with filtering
 - `useRealtimeNotify()` - Handles real-time notifications and data synchronization
@@ -87,6 +88,7 @@ Section Heads manage specific coverage sections (News, Photojournalism, Videojou
 - **Profile Management**: Maintaining their profile information.
 
 The Section Head Assignment Management interface features:
+
 - Three-tab organization: For Assignment, Assigned, History
 - Semester and staffer filtering capabilities
 - Duty schedule integration (eligible staffers based on duty day)
@@ -114,6 +116,7 @@ Staff assignments follow a lifecycle: Pending → Approved → On Going (Time In
 The system implements secure authentication with Supabase Auth. Upon login, the system queries the user's profile to determine their role, section assignment, and active status. Users with inactive accounts are prevented from logging in. The `ProtectedRoute` component wraps all authenticated routes, verifying both authentication status and role-based access before rendering protected content.
 
 The login flow includes:
+
 1. Email and password submission
 2. Supabase authentication
 3. Profile verification (role, section, is_active flag)
@@ -183,6 +186,7 @@ A GlobalSearch component enables searching across requests, staff, and other ent
 ### 4.9 Two-Phase Pipeline Visualization
 
 The Client Request Tracker implements a two-phase pipeline visualization:
+
 - **Phase 1**: Submission → Admin Review → Forwarding → Staff Assignment → Admin Approval
 - **Phase 2**: Execution → Coverage Complete
 
@@ -191,6 +195,7 @@ This provides clients with clear visual feedback on their request progress throu
 ### 4.10 Duty Schedule Integration
 
 The Section Head Assignment Management integrates with duty schedules to:
+
 - Filter eligible staffers based on their assigned duty days
 - Consider weekends vs. weekdays for staffing decisions
 - Track assignment counts per staffer for workload balancing
@@ -236,6 +241,7 @@ The system uses MUI's `useMediaQuery` hook to adapt layouts for mobile, tablet, 
 ### 6.4 Custom DataGrid Styling
 
 All data grids throughout the application feature custom-styled column menus with:
+
 - Consistent border radius (10px)
 - Custom shadows for light/dark modes
 - Hover effects with gold accent colors
@@ -289,11 +295,10 @@ These functions extend the application's capabilities beyond client-side logic, 
 8. **Completed** → Coverage finished
 9. **Declined** → Request denied at any stage
 
----
-
 ## 9. Recent Enhancements
 
 ### 9.1 Section Head Assignment Management (v2.0)
+
 - Complete UI redesign with three-tab organization (For Assignment, Assigned, History)
 - Semester-based filtering
 - Staffer filtering and workload visualization
@@ -303,6 +308,7 @@ These functions extend the application's capabilities beyond client-side logic, 
 - Enhanced status pills with custom styling
 
 ### 9.2 Admin Dashboard (v2.0)
+
 - Hero banner with live status indicators
 - KPI cards (Total, Approved, Declined, Completion) with navigation to filtered views
 - Needs Attention section with urgency categorization (Overdue, Critical, Soon)
@@ -311,6 +317,7 @@ These functions extend the application's capabilities beyond client-side logic, 
 - Real-time subscription to multiple tables
 
 ### 9.3 Client Request Tracker (v2.0)
+
 - Two-phase pipeline visualization
 - Tabbed interface (Pipeline, All Requests, Pending, Approved, Declined)
 - Visual progress indicators with phase markers
@@ -318,16 +325,37 @@ These functions extend the application's capabilities beyond client-side logic, 
 - Real-time updates
 
 ### 9.4 Regular Staff My Assignment (v2.0)
+
 - Smart Time In logic (opens 10 minutes before event, early/passed states)
 - Weekend detection and badge display
 - Assignment card redesign with status pills
 - Detailed assignment dialog with full coverage information
 
 ### 9.5 Admin Request Management (v2.0)
+
 - Enhanced status filtering tabs
 - Semester and entity filtering
 - Custom DataGrid column menu styling
 - Tab descriptions for better UX
+
+### 9.6 Admin Request Details - Assessment Warning Dialog (v2.1)
+
+- **Intelligent Request Assessment**: Integration with [`RequestAssistant`](src/hooks/RequestAssistant.js:1) hook to automatically evaluate requests for potential issues
+- **Pre-Forward Warning System**: Before forwarding requests, administrators are alerted to any assessment flags including:
+  - **Late Submission Warnings**: Detects requests submitted too close to the event date
+  - **Incomplete Information**: Identifies missing or incomplete required fields
+  - **Scheduling Conflicts**: Flags potential conflicts with existing coverage assignments
+- **Assessment Flag Dialog**: Dedicated warning dialog that displays all detected issues with:
+  - Color-coded severity indicators (warning vs. error states)
+  - Detailed issue descriptions and specific missing fields
+  - Conflict details showing overlapping events with times
+  - Acknowledgment workflow requiring admin to explicitly proceed despite warnings
+- **Service-Based Section Pre-selection**: Automatically pre-selects relevant sections based on requested services:
+  - News Article → News section
+  - Photo Documentation → Photojournalism section
+  - Video Documentation/Camera Operator → Videojournalism section
+  - Only allows forwarding to sections relevant to the client's requested services
+- **Enhanced User Experience**: Prevents accidental forwarding of problematic requests while still allowing admin override when necessary
 
 ---
 
