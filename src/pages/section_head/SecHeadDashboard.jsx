@@ -208,7 +208,7 @@ export default function SecHeadDashboard() {
   useRealtimeNotify("coverage_requests",    loadData, null, { title: "Coverage Request" });
   useRealtimeNotify("coverage_assignments", loadData, null, { title: "Assignment" });
 
-  const goToTab     = (tab) => navigate("/sec_head/assignment-management", { state: { tab } });
+  const goToTab     = (tab) => navigate("/sec_head/coverage-assignment", { state: { tab } });
   const goToRequest = (s)   => goToTab(STATUS_TO_TAB[s] || "for-assignment");
 
   const dutyDaySet   = teamSnapshot.filter((s) => s.dutyDay !== null).length;
