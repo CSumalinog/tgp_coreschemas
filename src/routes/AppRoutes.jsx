@@ -1,7 +1,7 @@
 // src/routes/AppRoutes.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
+import ProtectedRoute from "../components/common/ProtectedRoute";
 import AdminLayout from "../layouts/admin/AdminLayout";
 import ClientLayout from "../layouts/client/ClientLayout";
 import SectionHeadLayout from "../layouts/section_head/SectionHeadLayout";
