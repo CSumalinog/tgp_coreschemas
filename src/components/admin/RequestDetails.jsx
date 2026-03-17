@@ -4,7 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Box, Typography, IconButton, Button, Chip, Stack,
   Divider, TextField, FormGroup, CircularProgress,
-  Alert, Avatar, useTheme, Checkbox,
+  Alert, Avatar, useTheme, Checkbox, Tooltip,
 } from "@mui/material";
 import CloseIcon                   from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
@@ -17,10 +17,10 @@ import { useRequestAssistant }     from "../../hooks/RequestAssistant";
 const ALL_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
 const SERVICE_SECTION_MAP = {
-  "News Article":                       "News",
-  "Photo Documentation":                "Photojournalism",
-  "Video Documentation":                "Videojournalism",
-  "Camera Operator (for live streaming)": "Videojournalism",
+  "News Article":                           "News",
+  "Photo Documentation":                    "Photojournalism",
+  "Video Documentation":                    "Videojournalism",
+  "Camera Operator (for live streaming)":   "Videojournalism",
 };
 
 const STATUS_CONFIG = {
@@ -69,10 +69,19 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
   const [declineReason,     setDeclineReason]     = useState("");
   const [approveOpen,       setApproveOpen]       = useState(false);
   const [adminNotes,        setAdminNotes]        = useState("");
-
-  const [assignedStaffers, setAssignedStaffers] = useState([]);
+  const [assignedStaffers,  setAssignedStaffers]  = useState([]);
 
   const checks = useRequestAssistant(open ? request : null);
+
+  // ✅ Derive which sections are relevant based on requested services
+  const allowedSections = request?.services
+    ? [...new Set(
+        Object.entries(request.services)
+          .filter(([_, pax]) => pax > 0)
+          .map(([svc]) => SERVICE_SECTION_MAP[svc])
+          .filter(Boolean)
+      )]
+    : [];
 
   // Load assigned staffers whenever dialog opens with a non-pending request
   useEffect(() => {
@@ -88,6 +97,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
     loadAssignments();
   }, [open, request?.id, request?.status]);
 
+  // ✅ Pre-select only the allowed sections on request change
   useEffect(() => {
     if (request?.services) {
       const suggested = Object.entries(request.services)
@@ -256,11 +266,11 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
 
             <Section label="Client Details">
               <InfoGrid rows={[
-                ["Organization",  request.entity?.name || "—"],
-                ["Client Type",   request.client_type?.name || "—"],
-                ["Submitted By",  request.requester?.full_name || "—"],
-                ["Contact Person",request.contact_person || "—"],
-                ["Contact Info",  request.contact_info || "—"],
+                ["Organization",   request.entity?.name || "—"],
+                ["Client Type",    request.client_type?.name || "—"],
+                ["Submitted By",   request.requester?.full_name || "—"],
+                ["Contact Person", request.contact_person || "—"],
+                ["Contact Info",   request.contact_info || "—"],
               ]} isDark={isDark} />
             </Section>
 
@@ -299,7 +309,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Section>
             )}
 
-            {/* Assigned Staffers — shown for Assigned, For Approval, Approved */}
+            {/* Assigned Staffers */}
             {["Assigned", "For Approval", "Approved"].includes(request.status) && assignedStaffers.length > 0 && (
               <Section label="Assigned Staff">
                 {["News", "Photojournalism", "Videojournalism"].map((sec) => {
@@ -426,7 +436,6 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
           display: "flex", justifyContent: "flex-end", gap: 1,
           backgroundColor: isDark ? "#161616" : "#fafafa",
         }}>
-          {/* Pending: Decline + Forward */}
           {request.status === "Pending" && (
             <>
               <Button
@@ -448,7 +457,6 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
             </>
           )}
 
-          {/* For Approval: Approve only — eligibility was already cleared at Pending */}
           {request.status === "For Approval" && (
             <Button
               variant="contained"
@@ -477,7 +485,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
         </Box>
         <DialogContent sx={{ pt: 2 }}>
           <Typography sx={{ fontSize: "0.82rem", color: "text.secondary", mb: 2, lineHeight: 1.6 }}>
-            Select the sections to handle this request. Pre-selected based on requested services.
+            Sections are pre-selected based on the client's requested services. Only relevant sections can be forwarded to.
           </Typography>
           {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5, fontSize: "0.82rem" }}>{error}</Alert>}
           {secHeadsLoading ? (
@@ -487,47 +495,72 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
           ) : (
             <FormGroup sx={{ gap: 1 }}>
               {ALL_SECTIONS.map((section) => {
-                const secHead   = secHeads[section];
-                const isChecked = selectedSections.includes(section);
+                const secHead    = secHeads[section];
+                const isAllowed  = allowedSections.includes(section);
+                const isChecked  = selectedSections.includes(section);
+
+                // ✅ Disabled if section is not relevant to requested services
+                const isDisabled = actionLoading || !isAllowed;
+
                 return (
-                  <Box
+                  <Tooltip
                     key={section}
-                    onClick={() => !actionLoading && setSelectedSections((prev) =>
-                      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
-                    )}
-                    sx={{
-                      display: "flex", alignItems: "center", gap: 1.5,
-                      p: 1.5, borderRadius: 1.5,
-                      border: "1px solid",
-                      borderColor: isChecked ? "#f5c52b" : "divider",
-                      backgroundColor: isChecked
-                        ? (isDark ? "#1e1800" : "#fffbeb")
-                        : "background.paper",
-                      cursor: "pointer",
-                      transition: "border-color 0.15s, background-color 0.15s",
-                      "&:hover": { borderColor: "#f5c52b" },
-                    }}
+                    title={!isAllowed ? "Not required for this request's services" : ""}
+                    placement="right"
+                    arrow
                   >
-                    <Avatar sx={{
-                      width: 44, height: 44, fontSize: "0.8rem", fontWeight: 700,
-                      backgroundColor: secHead ? "#f5c52b" : (isDark ? "#333" : "#e5e7eb"),
-                      color: secHead ? "#111827" : "text.secondary",
-                    }}>
-                      {secHead ? getInitials(secHead.full_name) : "?"}
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "text.primary" }}>{section}</Typography>
-                      <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
-                        {secHead ? secHead.full_name : "No section head assigned"}
-                      </Typography>
+                    <Box
+                      onClick={() => {
+                        if (isDisabled) return;
+                        setSelectedSections((prev) =>
+                          prev.includes(section)
+                            ? prev.filter((s) => s !== section)
+                            : [...prev, section]
+                        );
+                      }}
+                      sx={{
+                        display: "flex", alignItems: "center", gap: 1.5,
+                        p: 1.5, borderRadius: 1.5,
+                        border: "1px solid",
+                        borderColor: isDisabled
+                          ? "divider"
+                          : isChecked ? "#f5c52b" : "divider",
+                        backgroundColor: isDisabled
+                          ? (isDark ? "#111" : "#f9fafb")
+                          : isChecked
+                            ? (isDark ? "#1e1800" : "#fffbeb")
+                            : "background.paper",
+                        cursor: isDisabled ? "not-allowed" : "pointer",
+                        opacity: isDisabled ? 0.45 : 1,
+                        transition: "border-color 0.15s, background-color 0.15s, opacity 0.15s",
+                        "&:hover": !isDisabled ? { borderColor: "#f5c52b" } : {},
+                      }}
+                    >
+                      <Avatar sx={{
+                        width: 44, height: 44, fontSize: "0.8rem", fontWeight: 700,
+                        backgroundColor: secHead && isAllowed ? "#f5c52b" : (isDark ? "#333" : "#e5e7eb"),
+                        color: secHead && isAllowed ? "#111827" : "text.secondary",
+                      }}>
+                        {secHead ? getInitials(secHead.full_name) : "?"}
+                      </Avatar>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: isDisabled ? "text.disabled" : "text.primary" }}>
+                          {section}
+                        </Typography>
+                        <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
+                          {isDisabled
+                            ? "Not required for this request"
+                            : secHead ? secHead.full_name : "No section head assigned"}
+                        </Typography>
+                      </Box>
+                      <Checkbox
+                        checked={isChecked}
+                        disabled={isDisabled}
+                        size="small"
+                        sx={{ p: 0, color: "divider", "&.Mui-checked": { color: "#f5c52b" } }}
+                      />
                     </Box>
-                    <Checkbox
-                      checked={isChecked}
-                      disabled={actionLoading}
-                      size="small"
-                      sx={{ p: 0, color: "divider", "&.Mui-checked": { color: "#f5c52b" } }}
-                    />
-                  </Box>
+                  </Tooltip>
                 );
               })}
             </FormGroup>
