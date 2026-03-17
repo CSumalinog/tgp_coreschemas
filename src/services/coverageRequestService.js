@@ -6,12 +6,44 @@ import { notifyAdmins }    from "./NotificationService";
 const toLocalISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+// ── Upsert "Others" entity into client_entities and return its ID ─────────────
+// If the entity already exists (case-insensitive, same client type), reuse it.
+// Otherwise insert it as a new record.
+async function resolveEntityId(otherEntityName, clientTypeId) {
+  const trimmed = otherEntityName.trim();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("client_entities")
+    .select("id")
+    .ilike("name", trimmed)
+    .eq("client_type_id", clientTypeId)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+  if (existing) return existing.id;
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("client_entities")
+    .insert([{ name: trimmed, client_type_id: clientTypeId }])
+    .select()
+    .single();
+
+  if (insertError) throw insertError;
+  return inserted.id;
+}
+
 /**
  * Submit or save a coverage request as Draft or Pending
  */
 export async function submitCoverageRequest(requestData, file, isDraft = false) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("You must be logged in to submit a request.");
+
+  // ── Resolve "Others" entity before anything else ──
+  let resolvedEntityId = requestData.entity || null;
+  if (requestData.other_entity) {
+    resolvedEntityId = await resolveEntityId(requestData.other_entity, requestData.client_type);
+  }
 
   let fileUrl = null;
   if (file) {
@@ -33,8 +65,8 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id:      requestData.entity       || null,
-    other_entity:   requestData.other_entity || null,
+    entity_id:      resolvedEntityId,   // always a real FK now
+    other_entity:   null,               // no longer needed
     contact_person: requestData.contact_person,
     contact_info:   requestData.contact_info,
     file_url:       fileUrl,
@@ -48,11 +80,10 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   if (error) throw new Error(`Failed to submit request: ${error.message}`);
 
   if (!isDraft) {
-    // Fetch entity name from DB for accurate notification
     let entityName = "a client";
-    if (requestData.entity) {
+    if (resolvedEntityId) {
       const { data: ent } = await supabase
-        .from("client_entities").select("name").eq("id", requestData.entity).single();
+        .from("client_entities").select("name").eq("id", resolvedEntityId).single();
       if (ent?.name) entityName = ent.name;
     }
     await notifyAdmins({
@@ -96,7 +127,6 @@ export async function fetchMyRequests() {
       declined_at,
       forwarded_at,
       created_at,
-      other_entity,
       client_type:client_type_id ( id, name ),
       entity:entity_id ( id, name ),
       coverage_assignments (
@@ -124,6 +154,12 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("Not authenticated.");
 
+  // ── Resolve "Others" entity before anything else ──
+  let resolvedEntityId = requestData.entity || null;
+  if (requestData.other_entity) {
+    resolvedEntityId = await resolveEntityId(requestData.other_entity, requestData.client_type);
+  }
+
   let fileUrl = requestData.file_url || null;
   if (file) {
     const timestamp     = Date.now();
@@ -144,8 +180,8 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id:      requestData.entity       || null,
-    other_entity:   requestData.other_entity || null,
+    entity_id:      resolvedEntityId,   // always a real FK now
+    other_entity:   null,               // no longer needed
     contact_person: requestData.contact_person,
     contact_info:   requestData.contact_info,
     file_url:       fileUrl,
@@ -160,9 +196,9 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
 
   if (submitNow) {
     let entityName = "a client";
-    if (requestData.entity) {
+    if (resolvedEntityId) {
       const { data: ent } = await supabase
-        .from("client_entities").select("name").eq("id", requestData.entity).single();
+        .from("client_entities").select("name").eq("id", resolvedEntityId).single();
       if (ent?.name) entityName = ent.name;
     }
     await notifyAdmins({

@@ -36,6 +36,9 @@ import MySchedule from "../pages/regular_staff/MySchedule";
 // Shared Profile Page
 import ProfilePage from "../pages/common/ProfilePage";
 
+// Public Pages
+import TimeoutPage from "../pages/public/TimeoutPage";
+
 function AppRoutes() {
   return (
     <Routes>
@@ -43,6 +46,9 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/login" />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+
+      {/* ── Public timeout page — no auth required ── */}
+      <Route path="/timeout/:requestId" element={<TimeoutPage />} />
 
       {/* Admin Routes — only role: "admin" */}
       <Route
@@ -103,7 +109,7 @@ function AppRoutes() {
         <Route path="coverage-assignment" element={<SecHeadAssignmentManagement />} />
         <Route path="my-staffers" element={<SecHeadMyStaffers />} />
         <Route path="profile" element={<ProfilePage />} />
-        {/* ✅ Legacy redirects — covers old paths that may still be referenced */}
+        {/* Legacy redirects */}
         <Route path="assignment-management" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
         <Route path="for-assignment"        element={<Navigate to="/sec_head/coverage-assignment" replace />} />
         <Route path="assigned"              element={<Navigate to="/sec_head/coverage-assignment" replace />} />
