@@ -62,6 +62,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
   const [actionLoading,     setActionLoading]     = useState(false);
   const [error,             setError]             = useState("");
   const [forwardOpen,       setForwardOpen]       = useState(false);
+  const [warningOpen,       setWarningOpen]       = useState(false);
   const [selectedSections,  setSelectedSections]  = useState([]);
   const [secHeads,          setSecHeads]          = useState({});
   const [secHeadsLoading,   setSecHeadsLoading]   = useState(false);
@@ -72,6 +73,19 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
   const [assignedStaffers,  setAssignedStaffers]  = useState([]);
 
   const checks = useRequestAssistant(open ? request : null);
+
+  // ✅ Collect all warning/error flags from the assessment
+  const assessmentFlags = React.useMemo(() => {
+    if (!checks || checks.loading) return [];
+    const flags = [];
+    if (checks.lateSubmission?.type === "warning" || checks.lateSubmission?.type === "error")
+      flags.push({ title: "Submission Timing", message: checks.lateSubmission.message, type: checks.lateSubmission.type });
+    if (checks.incomplete?.type === "warning" || checks.incomplete?.type === "error")
+      flags.push({ title: "Completeness", message: checks.incomplete.message, issues: checks.incomplete?.issues, type: checks.incomplete.type });
+    if (checks.conflict?.type === "warning" || checks.conflict?.type === "error")
+      flags.push({ title: "Scheduling Conflict", message: checks.conflict.message, conflicts: checks.conflict?.conflicts, type: checks.conflict.type });
+    return flags;
+  }, [checks]);
 
   // ✅ Derive which sections are relevant based on requested services
   const allowedSections = request?.services
@@ -126,7 +140,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
   }, [forwardOpen]);
 
   const resetState = () => {
-    setError(""); setForwardOpen(false); setDeclineOpen(false);
+    setError(""); setForwardOpen(false); setWarningOpen(false); setDeclineOpen(false);
     setApproveOpen(false); setDeclineReason(""); setAdminNotes("");
     setSelectedSections([]);
   };
@@ -449,7 +463,15 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               <Button
                 variant="contained"
                 size="small"
-                onClick={() => { setError(""); setForwardOpen(true); }}
+                onClick={() => {
+                  setError("");
+                  // ✅ If there are assessment flags, show warning dialog first
+                  if (assessmentFlags.length > 0) {
+                    setWarningOpen(true);
+                  } else {
+                    setForwardOpen(true);
+                  }
+                }}
                 sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#f5c52b", color: "#111827", boxShadow: "none", "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}
               >
                 Forward to Section
@@ -468,6 +490,75 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
             </Button>
           )}
         </Box>
+      </Dialog>
+
+      {/* ── Assessment Warning Dialog ────────────────────────────────── */}
+      <Dialog
+        open={warningOpen}
+        onClose={() => setWarningOpen(false)}
+        maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}
+      >
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ width: 3, height: 28, borderRadius: 1, backgroundColor: "#d97706", flexShrink: 0 }} />
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Assessment Flags Detected</Typography>
+            <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}>
+              This request has issues that require your attention before forwarding.
+            </Typography>
+          </Box>
+        </Box>
+
+        <DialogContent sx={{ pt: 2.5, pb: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+            {assessmentFlags.map((flag, idx) => {
+              const isError   = flag.type === "error";
+              const borderClr = isError ? "#dc2626" : "#d97706";
+              const bgClr     = isError ? (isDark ? "rgba(220,38,38,0.06)" : "#fef2f2") : (isDark ? "rgba(217,119,6,0.06)" : "#fffbeb");
+              const textClr   = isError ? "#dc2626" : "#b45309";
+              return (
+                <Box key={idx} sx={{ px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: bgClr, borderLeft: `3px solid ${borderClr}` }}>
+                  <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: textClr, mb: 0.4 }}>
+                    {isError ? "⚠ " : "• "}{flag.title}
+                  </Typography>
+                  {flag.message && (
+                    <Typography sx={{ fontSize: "0.75rem", color: textClr, lineHeight: 1.55 }}>{flag.message}</Typography>
+                  )}
+                  {flag.issues?.map((issue, i) => (
+                    <Typography key={i} sx={{ fontSize: "0.73rem", color: textClr, lineHeight: 1.6 }}>· {issue}</Typography>
+                  ))}
+                  {flag.conflicts?.map((c, i) => (
+                    <Typography key={i} sx={{ fontSize: "0.73rem", color: "#d97706", lineHeight: 1.6 }}>· {c.title} ({c.time})</Typography>
+                  ))}
+                </Box>
+              );
+            })}
+          </Box>
+
+          <Box sx={{ mt: 2, px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb", border: "1px solid", borderColor: "divider" }}>
+            <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.6 }}>
+              You may still forward this request, but you are acknowledging that these issues have been reviewed and you are choosing to proceed.
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1 }}>
+          <Button
+            onClick={() => setWarningOpen(false)}
+            size="small"
+            sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}
+          >
+            Go Back
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => { setWarningOpen(false); setForwardOpen(true); }}
+            sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#d97706", color: "#fff", boxShadow: "none", "&:hover": { backgroundColor: "#b45309", boxShadow: "none" } }}
+          >
+            I Understand, Proceed
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* ── Forward Dialog ───────────────────────────────────────────── */}
