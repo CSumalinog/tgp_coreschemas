@@ -62,22 +62,10 @@ function AppRoutes() {
         <Route path="duty-schedule-view" element={<DutyScheduleView />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
-        <Route
-          path="approved-requests"
-          element={<Navigate to="/admin/request-management" replace />}
-        />
-        <Route
-          path="forwarded-requests"
-          element={<Navigate to="/admin/request-management" replace />}
-        />
-        <Route
-          path="declined-requests"
-          element={<Navigate to="/admin/request-management" replace />}
-        />
-        <Route
-          path="for-approval"
-          element={<Navigate to="/admin/request-management" replace />}
-        />
+        <Route path="approved-requests"  element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="forwarded-requests" element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="declined-requests"  element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="for-approval"       element={<Navigate to="/admin/request-management" replace />} />
       </Route>
 
       {/* Client Routes — only role: "client" */}
@@ -95,22 +83,10 @@ function AppRoutes() {
         <Route path="request-tracker" element={<RequestTracker />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
-        <Route
-          path="pending-requests"
-          element={<Navigate to="/client/request-tracker" replace />}
-        />
-        <Route
-          path="approved-requests"
-          element={<Navigate to="/client/request-tracker" replace />}
-        />
-        <Route
-          path="declined-requests"
-          element={<Navigate to="/client/request-tracker" replace />}
-        />
-        <Route
-          path="history"
-          element={<Navigate to="/client/request-tracker" replace />}
-        />
+        <Route path="pending-requests"  element={<Navigate to="/client/request-tracker" replace />} />
+        <Route path="approved-requests" element={<Navigate to="/client/request-tracker" replace />} />
+        <Route path="declined-requests" element={<Navigate to="/client/request-tracker" replace />} />
+        <Route path="history"           element={<Navigate to="/client/request-tracker" replace />} />
       </Route>
 
       {/* Section Head Routes — only role: "sec_head" */}
@@ -124,25 +100,14 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="dashboard" />} />
         <Route path="dashboard" element={<SecHeadDashboard />} />
-        <Route
-          path="coverage-assignment"
-          element={<SecHeadAssignmentManagement />}
-        />
+        <Route path="coverage-assignment" element={<SecHeadAssignmentManagement />} />
         <Route path="my-staffers" element={<SecHeadMyStaffers />} />
         <Route path="profile" element={<ProfilePage />} />
-        {/* Legacy redirects */}
-        <Route
-          path="for-assignment"
-          element={<Navigate to="/sec_head/coverage-assignment" replace />}
-        />
-        <Route
-          path="assigned"
-          element={<Navigate to="/sec_head/coverage-assignment" replace />}
-        />
-        <Route
-          path="history"
-          element={<Navigate to="/sec_head/coverage-assignment" replace />}
-        />
+        {/* ✅ Legacy redirects — covers old paths that may still be referenced */}
+        <Route path="assignment-management" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="for-assignment"        element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="assigned"              element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="history"               element={<Navigate to="/sec_head/coverage-assignment" replace />} />
       </Route>
 
       {/* Regular Staff Routes — only role: "staff" */}
