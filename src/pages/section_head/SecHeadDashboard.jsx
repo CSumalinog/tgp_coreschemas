@@ -55,11 +55,15 @@ const STATUS = {
   light: {
     Forwarded:           { bg: BRAND.goldAlpha15,         color: "#7a5c00"  },
     Assigned:            { bg: BRAND.goldAlpha12,         color: "#856900"  },
+    // ✅ Added On Going status styling
+    "On Going":          { bg: "rgba(59,130,246,0.10)",   color: "#1d4ed8"  },
     "Coverage Complete": { bg: "rgba(53,53,53,0.07)",     color: "#353535"  },
   },
   dark: {
     Forwarded:           { bg: BRAND.goldAlpha15,         color: BRAND.gold },
     Assigned:            { bg: BRAND.goldAlpha12,         color: "#e6b920"  },
+    // ✅ Added On Going status styling
+    "On Going":          { bg: "rgba(59,130,246,0.15)",   color: "#60a5fa"  },
     "Coverage Complete": { bg: "rgba(255,255,255,0.07)",  color: "#aaa"     },
   },
 };
@@ -68,6 +72,7 @@ const STATUS_TO_TAB = {
   "Forwarded":         "for-assignment",
   "Assigned":          "assigned",
   "For Approval":      "assigned",
+  "On Going":          "assigned",  // ✅ On Going maps to assigned tab
   "Coverage Complete": "history",
   "Approved":          "history",
   "Declined":          "history",
@@ -164,15 +169,17 @@ export default function SecHeadDashboard() {
     if (!currentUser?.section || !currentUser?.division) return;
     setLoading(true);
 
+    // ✅ Added "On Going" to the status filter so in-progress requests are included
     const { data: allRequests } = await supabase
       .from("coverage_requests")
       .select("id, status, title, event_date, venue, forwarded_at, entity:client_entities(name)")
       .contains("forwarded_sections", [currentUser.section])
-      .in("status", ["Forwarded", "Assigned", "Coverage Complete"])
+      .in("status", ["Forwarded", "Assigned", "On Going", "Coverage Complete"])
       .order("forwarded_at", { ascending: false });
 
     const pending  = (allRequests || []).filter((r) => r.status === "Forwarded").length;
-    const assigned = (allRequests || []).filter((r) => r.status === "Assigned").length;
+    // ✅ assigned (In Progress) now counts both "Assigned" and "On Going"
+    const assigned = (allRequests || []).filter((r) => r.status === "Assigned" || r.status === "On Going").length;
     const complete = (allRequests || []).filter((r) => r.status === "Coverage Complete").length;
     setStats({ pending, assigned, complete });
     setRecentRequests((allRequests || []).slice(0, 5));
@@ -223,7 +230,8 @@ export default function SecHeadDashboard() {
   );
 
   const kpiCards = [
-    { label: "Needs Assignment", value: stats.pending,  sub: "awaiting staffers", tab: "for-assignment", icon: AccessTimeOutlinedIcon, isRed: stats.pending > 0 },
+    { label: "Needs Assignment", value: stats.pending,  sub: "awaiting staffers", tab: "for-assignment", icon: AccessTimeOutlinedIcon,  isRed: stats.pending > 0 },
+    // ✅ "In Progress" now reflects both Assigned and On Going counts
     { label: "In Progress",      value: stats.assigned, sub: "being covered",     tab: "assigned",       icon: AssignmentOutlinedIcon, isRed: false             },
     { label: "Coverage Done",    value: stats.complete, sub: "completed",         tab: "history",        icon: TaskAltOutlinedIcon,    isRed: false             },
   ];
@@ -418,7 +426,12 @@ export default function SecHeadDashboard() {
                     cursor: "pointer", transition: "background 0.15s",
                     "&:hover": { backgroundColor: isDark ? "#1e1e1e" : "#fafafa" },
                     borderLeft: "3px solid",
-                    borderLeftColor: r.status === "Forwarded" ? BRAND.gold : r.status === "Coverage Complete" ? (isDark ? "#555" : "#ddd") : border,
+                    // ✅ On Going gets blue left border
+                    borderLeftColor:
+                      r.status === "Forwarded"         ? BRAND.gold :
+                      r.status === "On Going"          ? "#3b82f6" :
+                      r.status === "Coverage Complete" ? (isDark ? "#555" : "#ddd") :
+                      border,
                   }}
                 >
                   <Box sx={{ flex: 1, minWidth: 0 }}>

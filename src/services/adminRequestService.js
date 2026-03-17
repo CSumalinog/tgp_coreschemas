@@ -1,6 +1,6 @@
 // src/services/adminRequestService.js
 import { supabase }                                                    from "../lib/supabaseClient";
-import { notifyClient, notifySecHeads, notifyAssignedStaff } from "./notificationService";
+import { notifyClient, notifySecHeads, notifyAssignedStaff } from "./NotificationService";
 
 /**
  * Fetch all coverage requests for Admin (all statuses except Draft)

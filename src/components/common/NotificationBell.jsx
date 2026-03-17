@@ -161,7 +161,7 @@ export default function NotificationBell({ userId }) {
           <Box sx={{
             position: "absolute",
             top: "calc(100% + 8px)", right: 0,
-            width: 340, maxHeight: 480,
+            width: 350, maxHeight: "auto", minHeight: "auto",
             zIndex: 1400, borderRadius: "12px",
             border: `1px solid ${border}`,
             backgroundColor: isDark ? "#1a1a1a" : "#ffffff",

@@ -1,6 +1,6 @@
 // src/services/coverageService.js
 import { supabase }        from "../lib/supabaseClient";
-import { notifyAdmins }    from "./notificationService";
+import { notifyAdmins }    from "./NotificationService";
 
 // ── Timezone-safe date serializer ─────────────────────────────────────────────
 const toLocalISO = (d) =>

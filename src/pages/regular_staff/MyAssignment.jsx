@@ -205,24 +205,8 @@ function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
 
         {/* ── CTA button ── */}
         <Box onClick={(e) => e.stopPropagation()}>
-          {a.status === "Pending" && (
-            <Box
-              onClick={() => onComplete(a)}
-              sx={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
-                py: 0.9, borderRadius: "8px", cursor: "pointer",
-                border: `1px solid ${border}`,
-                fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-                color: "text.secondary",
-                transition: "all 0.15s",
-                "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
-              }}
-            >
-              <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-              Mark Complete
-            </Box>
-          )}
 
+          {/* ✅ Time In — only when Approved and window is open */}
           {a.status === "Approved" && state === "open" && (
             <Box
               onClick={() => onTimeIn(a)}
@@ -264,16 +248,23 @@ function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
             </Box>
           )}
 
+          {/* ✅ On Going — show Mark Complete button */}
           {a.status === "On Going" && (
-            <Box sx={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
-              py: 0.9, borderRadius: "8px",
-              border: `1px solid rgba(59,130,246,0.3)`,
-              backgroundColor: "rgba(59,130,246,0.06)",
-              fontFamily: dm, fontSize: "0.76rem", fontWeight: 600, color: "#1d4ed8",
-            }}>
+            <Box
+              onClick={() => onComplete(a)}
+              sx={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
+                py: 0.9, borderRadius: "8px", cursor: "pointer",
+                backgroundColor: "rgba(34,197,94,0.08)",
+                border: `1px solid rgba(34,197,94,0.3)`,
+                fontFamily: dm, fontSize: "0.8rem", fontWeight: 700,
+                color: "#15803d",
+                transition: "all 0.15s",
+                "&:hover": { backgroundColor: "rgba(34,197,94,0.15)", borderColor: "#22c55e" },
+              }}
+            >
               <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-              Checked In
+              Mark Complete
             </Box>
           )}
 
@@ -406,6 +397,7 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </DetailSection>
           )}
 
+          {/* ✅ Time In hint when Approved and window open */}
           {assignment.status === "Approved" && getTimeInState(assignment.request) === "open" && (
             <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(59,130,246,0.06)", border: `1px solid rgba(59,130,246,0.25)` }}>
               <HowToRegOutlinedIcon sx={{ fontSize: 14, color: "#1d4ed8", flexShrink: 0, mt: 0.1 }} />
@@ -414,11 +406,13 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
               </Typography>
             </Box>
           )}
+
+          {/* ✅ On Going info + checked in timestamp */}
           {assignment.status === "On Going" && (
             <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.25)` }}>
               <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#15803d", flexShrink: 0, mt: 0.1 }} />
               <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#15803d", lineHeight: 1.55 }}>
-                You've checked in.{assignment.timed_in_at && ` Checked in at ${new Date(assignment.timed_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`} Coverage is underway.
+                You've checked in.{assignment.timed_in_at && ` Checked in at ${new Date(assignment.timed_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`} Mark complete when coverage is done.
               </Typography>
             </Box>
           )}
@@ -427,6 +421,8 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
 
       <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
         <CancelBtn onClick={onClose} border={isDark ? BORDER_DARK : BORDER} />
+
+        {/* ✅ Approved → Time In */}
         {assignment.status === "Approved" && (() => {
           const state = getTimeInState(assignment.request);
           if (state === "open") return (
@@ -446,6 +442,14 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </Box>
           );
         })()}
+
+        {/* ✅ On Going → Mark Complete */}
+        {assignment.status === "On Going" && (
+          <PrimaryBtn onClick={() => { onClose(); onMarkComplete(assignment); }}>
+            <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
+            Mark Complete
+          </PrimaryBtn>
+        )}
       </Box>
     </Dialog>
   );
@@ -556,7 +560,7 @@ export default function MyAssignment() {
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
           id, title, description, event_date, from_time, to_time,
-          venue, services, file_url,
+          venue, services, file_url, requester_id,
           entity:entity_id ( id, name ),
           contact_person, contact_info
         )
@@ -634,18 +638,38 @@ export default function MyAssignment() {
   const allFiltered       = useMemo(() => applyFilters(assignments),                                                                                   [assignments, applyFilters]);
   const completedFiltered = useMemo(() => applyFilters(assignments.filter((a) => a.status === "Completed")),                                           [assignments, applyFilters]);
 
+  // ── Mark Complete ─────────────────────────────────────────────────────────
   const handleComplete = async () => {
     if (!confirmTarget) return;
     setCompleting(true); setCompleteError("");
-    const { error: updErr } = await supabase.from("coverage_assignments").update({ status: "Completed" }).eq("id", confirmTarget.id);
+    const now = new Date().toISOString();
+
+    // ✅ Update assignment status + completed_at timestamp
+    const { error: updErr } = await supabase
+      .from("coverage_assignments")
+      .update({ status: "Completed", completed_at: now })
+      .eq("id", confirmTarget.id);
     if (updErr) { setCompleteError(updErr.message); setCompleting(false); return; }
-    const { data: allA } = await supabase.from("coverage_assignments").select("status").eq("request_id", confirmTarget.request.id);
+
+    // ✅ If ALL assignments for this request are completed → update coverage_request to Completed
+    const { data: allA } = await supabase
+      .from("coverage_assignments")
+      .select("status")
+      .eq("request_id", confirmTarget.request.id);
+
     if ((allA || []).every((a) => a.status === "Completed")) {
-      await supabase.from("coverage_requests").update({ status: "Coverage Complete", completed_at: new Date().toISOString() }).eq("id", confirmTarget.request.id);
+      await supabase
+        .from("coverage_requests")
+        .update({ status: "Completed", completed_at: now })
+        .eq("id", confirmTarget.request.id);
     }
-    setConfirmTarget(null); setCompleting(false); loadAssignments();
+
+    setConfirmTarget(null);
+    setCompleting(false);
+    loadAssignments();
   };
 
+  // ── Time In ───────────────────────────────────────────────────────────────
   const handleTimeIn = async ({ selfieFile, gpsData }) => {
     if (!timeInTarget || !selfieFile) return;
     setTimingIn(true); setTimeInError("");
@@ -654,34 +678,67 @@ export default function MyAssignment() {
       const timestamp = Date.now();
       const ext       = selfieFile.name.split(".").pop() || "jpg";
       const filePath  = `${currentUser.id}/${timeInTarget.id}_${timestamp}.${ext}`;
+
       const { data: uploadData, error: uploadErr } = await supabase.storage
         .from("login-proof").upload(filePath, selfieFile, { cacheControl: "3600", upsert: false });
       if (uploadErr) throw new Error(`Selfie upload failed: ${uploadErr.message}`);
 
+      // ✅ Update assignment to On Going
       const { error: assignErr } = await supabase.from("coverage_assignments").update({
         status: "On Going", timed_in_at: now, selfie_url: uploadData.path,
         gps_lat: gpsData?.lat || null, gps_lng: gpsData?.lng || null, gps_verified: gpsData?.verified ?? false,
       }).eq("id", timeInTarget.id);
       if (assignErr) throw assignErr;
 
-      const { error: reqErr } = await supabase.from("coverage_requests")
-        .update({ status: "On Going", ongoing_at: now })
-        .eq("id", timeInTarget.request.id).eq("status", "Approved");
+      // ✅ Update coverage_request to On Going — NO status guard so it always fires
+      const { error: reqErr } = await supabase
+        .from("coverage_requests")
+        .update({ status: "On Going" })
+        .eq("id", timeInTarget.request.id);
       if (reqErr) throw reqErr;
 
-      const { data: admins, error: admErr } = await supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true);
+      // ✅ Notify admins
+      const { data: admins, error: admErr } = await supabase
+        .from("profiles").select("id").eq("role", "admin").eq("is_active", true);
       if (admErr) throw admErr;
 
       const timeLabel = new Date(now).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
       const gpsNote   = gpsData?.verified ? " · GPS verified ✓" : gpsData?.lat ? " · GPS unverified" : " · GPS unavailable";
-      const notifs    = (admins || []).map((admin) => ({
+
+      const adminNotifs = (admins || []).map((admin) => ({
         user_id: admin.id, recipient_id: admin.id, recipient_role: "admin",
         request_id: timeInTarget.request.id, type: "time_in_alert",
         title: timeInTarget.is_reassigned ? "Emergency Check-In" : "Staff Checked In",
         message: `${currentUser.full_name} checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
       }));
-      if (notifs.length) {
-        const { error: notifErr } = await supabase.from("notifications").insert(notifs);
+
+      // ✅ Notify section head of this assignment's section
+      const { data: secHeads } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("role", "sec_head")
+        .eq("section", timeInTarget.section)
+        .eq("is_active", true);
+
+      const secHeadNotifs = (secHeads || []).map((sh) => ({
+        user_id: sh.id, recipient_id: sh.id, recipient_role: "sec_head",
+        request_id: timeInTarget.request.id, type: "time_in_alert",
+        title: "Staff Checked In",
+        message: `${currentUser.full_name} has checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
+      }));
+
+      // ✅ Notify client
+      const clientId = timeInTarget.request?.requester_id;
+      const clientNotifs = clientId ? [{
+        user_id: clientId, recipient_id: clientId, recipient_role: "client",
+        request_id: timeInTarget.request.id, type: "time_in_alert",
+        title: "Coverage Has Started",
+        message: `Coverage for "${timeInTarget.request.title}" has started. Your assigned team is now on the way.`,
+      }] : [];
+
+      const allNotifs = [...adminNotifs, ...secHeadNotifs, ...clientNotifs];
+      if (allNotifs.length) {
+        const { error: notifErr } = await supabase.from("notifications").insert(allNotifs);
         if (notifErr) throw notifErr;
       }
 
@@ -818,11 +875,11 @@ export default function MyAssignment() {
 
       {selectedSem !== "all" && (
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1.5, py: 1.25, mt: 1, mb: 0.5, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.06)", border: `1px solid rgba(245,197,43,0.2)` }}>
-          <SemStat label="Total" value={allFiltered.length} />
+          <SemStat label="Total"     value={allFiltered.length} />
           <Box sx={{ width: 1, height: 24, backgroundColor: "rgba(245,197,43,0.25)" }} />
           <SemStat label="Completed" value={completedFiltered.length} />
           <Box sx={{ width: 1, height: 24, backgroundColor: "rgba(245,197,43,0.25)" }} />
-          <SemStat label="Ongoing" value={allFiltered.filter((a) => a.status === "On Going").length} />
+          <SemStat label="Ongoing"   value={allFiltered.filter((a) => a.status === "On Going").length} />
         </Box>
       )}
 
