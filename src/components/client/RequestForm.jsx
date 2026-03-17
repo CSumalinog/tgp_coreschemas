@@ -129,17 +129,17 @@ export default function CoverageRequestDialog({
     const newErrors = { ...EMPTY_ERRORS };
     let hasError = false;
 
-    if (!title)              { newErrors.title         = "Event title is required.";               hasError = true; }
-    if (!description)        { newErrors.description   = "Description is required.";               hasError = true; }
-    if (!date)               { newErrors.date          = "Event date is required.";                hasError = true; }
-    if (!fromTime)           { newErrors.fromTime      = "Start time is required.";                hasError = true; }
-    if (!toTime)             { newErrors.toTime        = "End time is required.";                  hasError = true; }
-    if (!venue)              { newErrors.venue         = "Venue is required.";                     hasError = true; }
-    if (totalServices === 0) { newErrors.services      = "Please select at least one service.";    hasError = true; }
-    if (!clientType)         { newErrors.clientType    = "Client type is required.";               hasError = true; }
-    if (!entity)             { newErrors.entity        = "Entity name is required.";               hasError = true; }
-    if (!contactPerson)      { newErrors.contactPerson = "Contact person is required.";            hasError = true; }
-    if (!contactInfo)        { newErrors.contactInfo   = "Contact information is required.";       hasError = true; }
+    if (!title)              { newErrors.title         = "Event title is required.";                      hasError = true; }
+    if (!description)        { newErrors.description   = "Description is required.";                      hasError = true; }
+    if (!date)               { newErrors.date          = "Event date is required.";                       hasError = true; }
+    if (!fromTime)           { newErrors.fromTime      = "Start time is required.";                       hasError = true; }
+    if (!toTime)             { newErrors.toTime        = "End time is required.";                         hasError = true; }
+    if (!venue)              { newErrors.venue         = "Venue is required.";                            hasError = true; }
+    if (totalServices === 0) { newErrors.services      = "Please select at least one service.";           hasError = true; }
+    if (!clientType)         { newErrors.clientType    = "Client type is required.";                      hasError = true; }
+    if (!entity)             { newErrors.entity        = "Entity name is required.";                      hasError = true; }
+    if (!contactPerson)      { newErrors.contactPerson = "Contact person is required.";                   hasError = true; }
+    if (!contactInfo)        { newErrors.contactInfo   = "Contact information is required.";              hasError = true; }
     if (!file && !existingRequest?.file_url) { newErrors.file = "Please upload the program flow (PDF)."; hasError = true; }
 
     setErrors(newErrors);
@@ -186,14 +186,14 @@ export default function CoverageRequestDialog({
     "& .MuiOutlinedInput-root": {
       borderRadius: 1.5,
       ...(hasErr && {
-        "& fieldset": { borderColor: "#ef4444" },
-        "&:hover fieldset": { borderColor: "#ef4444" },
+        "& fieldset":             { borderColor: "#ef4444" },
+        "&:hover fieldset":       { borderColor: "#ef4444" },
         "&.Mui-focused fieldset": { borderColor: "#ef4444" },
       }),
     },
     ...(hasErr && {
-      "& .MuiInputLabel-root":           { color: "#ef4444" },
-      "& .MuiInputLabel-root.Mui-focused": { color: "#ef4444" },
+      "& .MuiInputLabel-root":              { color: "#ef4444" },
+      "& .MuiInputLabel-root.Mui-focused":  { color: "#ef4444" },
     }),
   });
 
@@ -252,60 +252,67 @@ export default function CoverageRequestDialog({
 
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                {/* Date */}
+
+                {/* ── Event Date ── */}
                 <Box sx={{ flex: 5, minWidth: 0 }}>
                   <DatePicker
                     label="Event Date"
                     value={date}
                     onChange={(val) => { setDate(val); if (val) setErrors((p) => ({ ...p, date: "" })); }}
                     disabled={loading}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params} fullWidth margin="dense"
-                        error={!!errors.date}
-                        helperText={errors.date}
-                        sx={errorFieldSx(!!errors.date)}
-                        FormHelperTextProps={{ sx: helperSx }}
-                      />
-                    )}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        margin: "dense",
+                        error: !!errors.date,
+                        helperText: errors.date,
+                        sx: errorFieldSx(!!errors.date),
+                        FormHelperTextProps: { sx: helperSx },
+                      },
+                    }}
                   />
                 </Box>
-                {/* From */}
+
+                {/* ── From Time ── */}
                 <Box sx={{ flex: 3, minWidth: 0 }}>
                   <TimePicker
                     label="From"
                     value={fromTime}
                     onChange={(val) => { setFromTime(val); if (val) setErrors((p) => ({ ...p, fromTime: "" })); }}
                     disabled={loading}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params} fullWidth margin="dense"
-                        error={!!errors.fromTime}
-                        helperText={errors.fromTime}
-                        sx={errorFieldSx(!!errors.fromTime)}
-                        FormHelperTextProps={{ sx: helperSx }}
-                      />
-                    )}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        margin: "dense",
+                        error: !!errors.fromTime,
+                        helperText: errors.fromTime,
+                        sx: errorFieldSx(!!errors.fromTime),
+                        FormHelperTextProps: { sx: helperSx },
+                      },
+                    }}
                   />
                 </Box>
-                {/* To */}
+
+                {/* ── To Time ── */}
                 <Box sx={{ flex: 3, minWidth: 0 }}>
                   <TimePicker
                     label="To"
                     value={toTime}
                     onChange={(val) => { setToTime(val); if (val) setErrors((p) => ({ ...p, toTime: "" })); }}
                     disabled={loading}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params} fullWidth margin="dense"
-                        error={!!errors.toTime}
-                        helperText={errors.toTime}
-                        sx={errorFieldSx(!!errors.toTime)}
-                        FormHelperTextProps={{ sx: helperSx }}
-                      />
-                    )}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        margin: "dense",
+                        error: !!errors.toTime,
+                        helperText: errors.toTime,
+                        sx: errorFieldSx(!!errors.toTime),
+                        FormHelperTextProps: { sx: helperSx },
+                      },
+                    }}
                   />
                 </Box>
+
               </Box>
             </LocalizationProvider>
 
