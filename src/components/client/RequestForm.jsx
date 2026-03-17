@@ -105,14 +105,23 @@ export default function CoverageRequestDialog({
     setFile(null); setError("");
   };
 
+  // ── Validate each field individually ──
   const validate = () => {
     const totalServices = Object.values(services).reduce((sum, val) => sum + val, 0);
-    if (!title || !description || !venue || !contactPerson || !contactInfo) return "Please fill in all text fields.";
-    if (!date || !fromTime || !toTime) return "Please select date and time.";
-    if (totalServices === 0) return "Please select at least one service and specify the number of people.";
-    if (!clientType) return "Please select a client type.";
-    if (!entity) return "Please select an entity name.";
+
+    if (!title)              return "Please enter the event title.";
+    if (!description)        return "Please enter the event description.";
+    if (!date)               return "Please select an event date.";
+    if (!fromTime)           return "Please select a start time.";
+    if (!toTime)             return "Please select an end time.";
+    if (!venue)              return "Please enter the venue.";
+    if (totalServices === 0) return "Please select at least one service.";
+    if (!clientType)         return "Please select a client type.";
+    if (!entity)             return "Please select an entity name.";
+    if (!contactPerson)      return "Please enter a contact person.";
+    if (!contactInfo)        return "Please enter contact information.";
     if (!file && !existingRequest?.file_url) return "Please upload the program flow (PDF).";
+
     return null;
   };
 
