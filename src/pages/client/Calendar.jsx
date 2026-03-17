@@ -15,11 +15,9 @@ const DAYS               = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_EVENTS_PER_DAY = 2;
 
 // ── Timezone-safe ISO helper ──────────────────────────────────────────────
-// Always format from LOCAL date parts — never let JS parse YYYY-MM-DD as UTC
 const toISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-// Parse a YYYY-MM-DD string as LOCAL midnight (not UTC midnight)
 const parseLocalDate = (str) => {
   const [y, m, d] = str.split("-").map(Number);
   return new Date(y, m - 1, d);
@@ -61,7 +59,6 @@ function Calendar() {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  // today at LOCAL midnight
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   const [currentDate,    setCurrentDate]    = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -83,35 +80,46 @@ function Calendar() {
 
   const fetchMonthData = async (firstDay, lastDay) => {
     try {
+      // ✅ Only count Approved, On Going, and Completed as taken slots
       const { data: requests, error: reqError } = await supabase
-        .from("coverage_requests").select("event_date")
-        .in("status", ["Pending", "Approved", "Forwarded", "Assigned"])
-        .gte("event_date", firstDay).lte("event_date", lastDay);
+        .from("coverage_requests")
+        .select("event_date")
+        .in("status", ["Approved", "On Going", "Completed"])
+        .gte("event_date", firstDay)
+        .lte("event_date", lastDay);
 
       if (!reqError && requests) {
         const map = {};
-        requests.forEach(({ event_date }) => { map[event_date] = (map[event_date] || 0) + 1; });
+        requests.forEach(({ event_date }) => {
+          map[event_date] = (map[event_date] || 0) + 1;
+        });
         setEventMap(map);
       }
 
+      // ✅ Gold dot — shows client's own requests (any non-draft status)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: myReqs } = await supabase
-          .from("coverage_requests").select("event_date")
+          .from("coverage_requests")
+          .select("event_date")
           .eq("client_id", user.id)
           .not("status", "eq", "Draft")
-          .gte("event_date", firstDay).lte("event_date", lastDay);
+          .gte("event_date", firstDay)
+          .lte("event_date", lastDay);
+
         if (myReqs) setMyRequestDates(new Set(myReqs.map((r) => r.event_date)));
       }
 
+      // ✅ Blocked dates — unchanged
       const { data: blocked, error: blockedError } = await supabase
-        .from("blocked_dates").select("start_date, end_date")
-        .lte("start_date", lastDay).gte("end_date", firstDay);
+        .from("blocked_dates")
+        .select("start_date, end_date")
+        .lte("start_date", lastDay)
+        .gte("end_date", firstDay);
 
       if (!blockedError && blocked) {
         const blockedSet = new Set();
         blocked.forEach(({ start_date, end_date }) => {
-          // ✅ Parse as LOCAL date — not UTC — to avoid off-by-one in UTC+8
           let d   = parseLocalDate(start_date);
           const e = parseLocalDate(end_date);
           while (d <= e) {
@@ -121,7 +129,9 @@ function Calendar() {
         });
         setBlockedDates(blockedSet);
       }
-    } catch (err) { console.error("Calendar fetch error:", err); }
+    } catch (err) {
+      console.error("Calendar fetch error:", err);
+    }
   };
 
   const getEventCount     = (iso) => eventMap[iso] || 0;
@@ -150,7 +160,6 @@ function Calendar() {
       } else {
         cellDate = new Date(year, month, i - firstDayOfMonth + 1);
       }
-      // ✅ Use local date parts for ISO — avoids UTC shift
       calendar.push({
         dayNumber:      cellDate.getDate(),
         isCurrentMonth: cellDate.getMonth() === month,

@@ -25,6 +25,7 @@ import UnfoldMoreIcon                from "@mui/icons-material/UnfoldMore";
 
 import GlobalSearch          from "../../components/common/GlobalSearch";
 import NotificationBell      from "../../components/common/NotificationBell";
+import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase }          from "../../lib/supabaseClient";
 import { useThemeMode }      from "../../context/ThemeContext";
 import { getAvatarUrl }      from "../../components/common/UserAvatar";
@@ -287,13 +288,13 @@ function AdminLayout() {
           )}
           <Box sx={{ flex: 1 }} />
           <GlobalSearch role="admin" userId={currentUser?.id} alwaysExpanded />
-
-          {/* ── Notification Bell ── */}
           <NotificationBell userId={currentUser?.id} />
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>
-          <Outlet />
+          <RealtimeToastProvider>
+            <Outlet />
+          </RealtimeToastProvider>
         </Box>
       </Box>
     </Box>

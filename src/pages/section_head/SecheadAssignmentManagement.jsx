@@ -15,6 +15,7 @@ import FilterListIcon              from "@mui/icons-material/FilterList";
 import WarningAmberOutlinedIcon    from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
 import { supabase }                from "../../lib/supabaseClient";
+import { useRealtimeNotify }       from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl }            from "../../components/common/UserAvatar";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
@@ -253,6 +254,9 @@ export default function SecHeadAssignmentManagement() {
 
   useEffect(() => { if (currentUser) loadAll(); }, [currentUser, loadAll]);
 
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_assignments", loadAll, null, { title: "Assignment" });
+
   useEffect(() => {
     if (!selectedRequest || !currentUser?.section) return;
     async function loadStaffers() {
@@ -334,31 +338,13 @@ export default function SecHeadAssignmentManagement() {
     finally { setAssignLoading(false); }
   };
 
-  // ── UPDATED: handleSubmitForApproval with admin notifications ───────────────
   const handleSubmitForApproval = async (requestId) => {
     setSubmitLoading(true);
     try {
-      // 1. Fetch request title for notification message
-      const { data: req } = await supabase
-        .from("coverage_requests")
-        .select("title")
-        .eq("id", requestId)
-        .single();
-
-      // 2. Update request status to For Approval
-      const { error } = await supabase
-        .from("coverage_requests")
-        .update({ status: "For Approval" })
-        .eq("id", requestId);
+      const { data: req } = await supabase.from("coverage_requests").select("title").eq("id", requestId).single();
+      const { error } = await supabase.from("coverage_requests").update({ status: "For Approval" }).eq("id", requestId);
       if (error) throw error;
-
-      // 3. Notify all admins
-      const { data: admins } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("role", "admin")
-        .eq("is_active", true);
-
+      const { data: admins } = await supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true);
       if (admins && admins.length > 0) {
         await supabase.from("notifications").insert(
           admins.map((admin) => ({
@@ -373,7 +359,6 @@ export default function SecHeadAssignmentManagement() {
           }))
         );
       }
-
       setConfirmRequest(null);
       loadAll();
     } catch (err) {
@@ -382,7 +367,6 @@ export default function SecHeadAssignmentManagement() {
       setSubmitLoading(false);
     }
   };
-  // ── END updated function ────────────────────────────────────────────────────
 
   const selectedSemLabel    = semesters.find((s) => s.id === activeSemesterId)?.label || semesters.find((s) => s.id === activeSemesterId)?.name;
   const selectedStafferName = allStaffers.find((s) => s.id === stafferFilter)?.full_name;

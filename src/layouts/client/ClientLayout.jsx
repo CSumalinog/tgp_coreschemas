@@ -19,12 +19,13 @@ import DarkModeOutlinedIcon          from "@mui/icons-material/DarkModeOutlined"
 import LogoutIcon                    from "@mui/icons-material/Logout";
 import UnfoldMoreIcon                from "@mui/icons-material/UnfoldMore";
 
-import CoverageRequestDialog from "../../components/client/RequestForm";
-import GlobalSearch          from "../../components/common/GlobalSearch";
-import NotificationBell      from "../../components/common/NotificationBell";
-import { supabase }          from "../../lib/supabaseClient";
-import { useThemeMode }      from "../../context/ThemeContext";
-import { getAvatarUrl }      from "../../components/common/UserAvatar";
+import CoverageRequestDialog         from "../../components/client/RequestForm";
+import GlobalSearch                  from "../../components/common/GlobalSearch";
+import NotificationBell              from "../../components/common/NotificationBell";
+import { RealtimeToastProvider }     from "../../components/common/RealtimeToast";
+import { supabase }                  from "../../lib/supabaseClient";
+import { useThemeMode }              from "../../context/ThemeContext";
+import { getAvatarUrl }              from "../../components/common/UserAvatar";
 
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
   const l = document.createElement("link");
@@ -277,7 +278,6 @@ function ClientLayout() {
       )}
 
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#F5F5F7" }}>
-        {/* Topbar */}
         <Box sx={{ display: "flex", alignItems: "center", px: 3, height: 60, flexShrink: 0, backgroundColor: WHITE, borderBottom: `1px solid ${BORDER}`, gap: 2 }}>
           {isMobile && (
             <IconButton onClick={() => setMobileOpen(true)} size="small" sx={{ color: TEXT_SECONDARY, borderRadius: "8px", p: 0.75, mr: 0.5, "&:hover": { backgroundColor: HOVER_BG, color: TEXT_PRIMARY } }}>
@@ -290,13 +290,13 @@ function ClientLayout() {
           </Button>
           <Box sx={{ flex: 1 }} />
           <GlobalSearch role="client" userId={currentUser?.id} alwaysExpanded />
-
-          {/* ── Notification Bell ── */}
           <NotificationBell userId={currentUser?.id} />
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>
-          <Outlet />
+          <RealtimeToastProvider>
+            <Outlet />
+          </RealtimeToastProvider>
         </Box>
       </Box>
 

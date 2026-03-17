@@ -8,6 +8,7 @@ import {
 import { DataGrid }                     from "@mui/x-data-grid";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useAdminRequests }             from "../../hooks/useAdminRequest";
+import { useRealtimeNotify }            from "../../hooks/useRealtimeNotify";
 import RequestDetails                   from "../../components/admin/RequestDetails";
 import { supabase }                     from "../../lib/supabaseClient";
 import FilterListIcon                   from "@mui/icons-material/FilterList";
@@ -122,6 +123,9 @@ export default function AdminRequestManagement() {
   const border   = isDark ? BORDER_DARK : BORDER;
 
   const { requests, pending, forwarded, forApproval, approved, declined, loading, refetch } = useAdminRequests();
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
 
   const [tab, setTab] = useState(() => {
     const incoming = location.state?.tab;

@@ -17,11 +17,12 @@ import DarkModeOutlinedIcon          from "@mui/icons-material/DarkModeOutlined"
 import LogoutIcon                    from "@mui/icons-material/Logout";
 import UnfoldMoreIcon                from "@mui/icons-material/UnfoldMore";
 
-import GlobalSearch     from "../../components/common/GlobalSearch";
-import NotificationBell from "../../components/common/NotificationBell";
-import { supabase }     from "../../lib/supabaseClient";
-import { useThemeMode } from "../../context/ThemeContext";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import GlobalSearch              from "../../components/common/GlobalSearch";
+import NotificationBell          from "../../components/common/NotificationBell";
+import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
+import { supabase }              from "../../lib/supabaseClient";
+import { useThemeMode }          from "../../context/ThemeContext";
+import { getAvatarUrl }          from "../../components/common/UserAvatar";
 
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
   const l = document.createElement("link");
@@ -237,13 +238,13 @@ function SectionHeadLayout() {
           )}
           <Box sx={{ flex: 1 }} />
           <GlobalSearch role="sec_head" userId={currentUser?.id} alwaysExpanded />
-
-          {/* ── Notification Bell ── */}
           <NotificationBell userId={currentUser?.id} />
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>
-          <Outlet />
+          <RealtimeToastProvider>
+            <Outlet />
+          </RealtimeToastProvider>
         </Box>
       </Box>
     </Box>

@@ -42,7 +42,7 @@ function Login() {
       let route = "/login";
       if (profile.role === "admin")         route = "/admin/dashboard";
       else if (profile.role === "sec_head") route = COVERAGE_SECTIONS.includes(profile.section) ? "/sec_head/dashboard" : "/staff/dashboard";
-      else if (profile.role === "staff")    route = "/staff/dashboard";
+      else if (profile.role === "staff")    route = "/staff/my-assignment";
       else if (profile.role === "client")   route = "/client/calendar";
       navigate(route);
     } catch {

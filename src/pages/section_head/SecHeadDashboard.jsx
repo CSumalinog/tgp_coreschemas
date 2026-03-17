@@ -13,6 +13,7 @@ import GroupOutlinedIcon              from "@mui/icons-material/GroupOutlined";
 import OpenInNewOutlinedIcon          from "@mui/icons-material/OpenInNewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import { supabase }                   from "../../lib/supabaseClient";
+import { useRealtimeNotify }          from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl }               from "../../components/common/UserAvatar";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
@@ -122,7 +123,7 @@ export default function SecHeadDashboard() {
   const theme    = useTheme();
   const isDark   = theme.palette.mode === "dark";
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // < 600px
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const border   = isDark ? BRAND.borderDark  : BRAND.borderLight;
   const surf     = isDark ? BRAND.surfDark    : BRAND.surfLight;
@@ -196,6 +197,10 @@ export default function SecHeadDashboard() {
 
   useEffect(() => { if (currentUser && activeSemester) loadData(); }, [currentUser, activeSemester, loadData]);
 
+  // ─── Realtime subscriptions ───────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests",    loadData, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", loadData, null, { title: "Assignment" });
+
   const goToTab     = (tab) => navigate("/sec_head/assignment-management", { state: { tab } });
   const goToRequest = (s)   => goToTab(STATUS_TO_TAB[s] || "for-assignment");
 
@@ -261,7 +266,7 @@ export default function SecHeadDashboard() {
         mb: { xs: 2, md: 2.5 },
       }}>
 
-        {/* Hero card — spans full width on xs/sm */}
+        {/* Hero card */}
         <Box sx={{
           gridColumn: { xs: "1 / -1", md: "1 / 2" },
           borderRadius: 3, overflow: "hidden", position: "relative",
@@ -451,7 +456,7 @@ export default function SecHeadDashboard() {
           )}
         </Card>
 
-        {/* Team Snapshot — stacks below on mobile/tablet */}
+        {/* Team Snapshot */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Card>
             <SectionHeader

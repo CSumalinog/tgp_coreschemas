@@ -13,6 +13,7 @@ import WarningAmberOutlinedIcon    from "@mui/icons-material/WarningAmberOutline
 import { DataGrid }                from "@mui/x-data-grid";
 import { useTheme }                from "@mui/material/styles";
 import { useClientRequests }       from "../../hooks/useClientRequests";
+import { useRealtimeNotify }       from "../../hooks/useRealtimeNotify";
 import { updateDraftRequest, deleteDraftRequest } from "../../services/coverageRequestService";
 import { supabase }                from "../../lib/supabaseClient";
 import CoverageRequestDialog       from "../../components/client/RequestForm";
@@ -39,14 +40,6 @@ const openFile = (filePath) => {
 };
 
 // ── Column menu GlobalStyles ──────────────────────────────────────────────────
-// Confirmed DOM structure from DevTools:
-//   <div class="MuiPaper-root ...">           ← portalled to <body>
-//     <ul class="MuiDataGrid-menuList ...">
-//       <li class="MuiMenuItem-root ...">
-//         <div class="MuiListItemIcon-root">
-//         <div class="MuiListItemText-root">
-//           <span class="MuiListItemText-primary">
-//       <hr class="MuiDivider-root ...">
 function ColumnMenuStyles({ isDark, border }) {
   const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
   const shadow    = isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)";
@@ -115,6 +108,9 @@ export default function Draft() {
   const border = isDark ? BORDER_DARK : BORDER;
 
   const { drafts, loading, refetch } = useClientRequests();
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
 
   const [selectedDraft,     setSelectedDraft]     = useState(null);
   const [editOpen,          setEditOpen]          = useState(false);

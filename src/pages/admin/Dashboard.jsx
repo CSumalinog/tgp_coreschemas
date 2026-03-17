@@ -1,5 +1,5 @@
 // src/pages/admin/Dashboard.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Typography, CircularProgress, Chip, Alert, Divider, Avatar,
   MenuItem, Select, FormControl, Button, Tooltip, useTheme, useMediaQuery,
@@ -22,6 +22,7 @@ import OpenInNewOutlinedIcon          from "@mui/icons-material/OpenInNewOutline
 import RadioButtonCheckedOutlinedIcon from "@mui/icons-material/RadioButtonCheckedOutlined";
 import ChevronRightIcon               from "@mui/icons-material/ChevronRight";
 import { supabase }                   from "../../lib/supabaseClient";
+import { useRealtimeNotify }          from "../../hooks/useRealtimeNotify";
 import ReportGenerator                from "../../components/admin/ReportGenerator";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
@@ -123,9 +124,6 @@ export default function Dashboard() {
   const [recentRequests,   setRecentRequests]   = useState([]);
   const [scheduleStats,    setScheduleStats]    = useState({ total:0,set:0 });
 
-  const channelRef       = useRef(null);
-  const loadDashboardRef = useRef(null);
-
   useEffect(() => {
     async function loadSemesters() {
       const { data } = await supabase.from("semesters")
@@ -211,17 +209,11 @@ export default function Dashboard() {
   },[selectedSemester,isAllTime,activeSemester]);
 
   useEffect(()=>{loadDashboard();},[loadDashboard]);
-  useEffect(()=>{loadDashboardRef.current=loadDashboard;},[loadDashboard]);
 
-  useEffect(()=>{
-    const ch=supabase.channel("dashboard-rt")
-      .on("postgres_changes",{event:"*",schema:"public",table:"coverage_requests"},    ()=>loadDashboardRef.current())
-      .on("postgres_changes",{event:"*",schema:"public",table:"coverage_assignments"}, ()=>loadDashboardRef.current())
-      .on("postgres_changes",{event:"*",schema:"public",table:"duty_schedules"},       ()=>loadDashboardRef.current())
-      .subscribe();
-    channelRef.current=ch;
-    return ()=>supabase.removeChannel(ch);
-  },[]);
+  // ─── Realtime subscriptions (replaces manual channel + refs) ─────────────
+  useRealtimeNotify("coverage_requests",    loadDashboard, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", loadDashboard, null, { title: "Assignment" });
+  useRealtimeNotify("duty_schedules",       loadDashboard, null, { title: "Duty Schedule" });
 
   const goToRequests=(tab)=>navigate("/admin/request-management",{state:{tab}});
   const goToRequest=(id,s)=>{

@@ -1,6 +1,6 @@
 // src/services/adminRequestService.js
 import { supabase }                                                    from "../lib/supabaseClient";
-import { notifyAdmins, notifyClient, notifySecHeads, notifyAssignedStaff } from "./notificationService";
+import { notifyClient, notifySecHeads, notifyAssignedStaff } from "./notificationService";
 
 /**
  * Fetch all coverage requests for Admin (all statuses except Draft)
@@ -113,6 +113,7 @@ export async function declineRequest(requestId, reason) {
 
 /**
  * Approve a request
+ * → Flips all assignments to "Approved" (staff can now see + act on them)
  * → Notifies the client + all assigned staff
  */
 export async function approveRequest(requestId, adminNotes = "") {
@@ -135,6 +136,17 @@ export async function approveRequest(requestId, adminNotes = "") {
 
   if (error) throw new Error(`Failed to approve request: ${error.message}`);
 
+  // ── Flip all assignments to Approved BEFORE notifying staff ───────────────
+  // Staff queries filter out "Pending" — assignments must be flipped first
+  // so that by the time the notification triggers a re-fetch, rows are visible.
+  const { error: assignErr } = await supabase
+    .from("coverage_assignments")
+    .update({ status: "Approved" })
+    .eq("request_id", requestId);
+
+  if (assignErr) throw new Error(`Failed to approve assignments: ${assignErr.message}`);
+
+  // ── Notifications fire only after the flip is confirmed ───────────────────
   const requestTitle = req?.title || "a coverage request";
 
   await notifyClient({

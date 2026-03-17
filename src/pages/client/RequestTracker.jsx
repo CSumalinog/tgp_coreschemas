@@ -12,6 +12,7 @@ import CheckCircleIcon             from "@mui/icons-material/CheckCircle";
 import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
 import { DataGrid }                from "@mui/x-data-grid";
 import { useClientRequests }       from "../../hooks/useClientRequests";
+import { useRealtimeNotify }       from "../../hooks/useRealtimeNotify";
 import { supabase }                from "../../lib/supabaseClient";
 import { getAvatarUrl }            from "../../components/common/UserAvatar";
 import { generateConfirmationPDF } from "../../utils/generateConfirmationPDF";
@@ -198,8 +199,12 @@ export default function RequestTracker() {
 
 // ── Pipeline Tab ──────────────────────────────────────────────────────────────
 function PipelineTab({ isDark, border }) {
-  const { requests, loading } = useClientRequests();
+  const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+
   const active = requests.filter((r) =>
     ["Pending", "Forwarded", "Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(r.status)
   );
@@ -443,8 +448,12 @@ const toRow = (req) => ({
 });
 
 function AllRequestsTab({ isDark, border }) {
-  const { requests, loading } = useClientRequests();
+  const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+
   const columns = useGridColumns(isDark, setSelected);
   const rows    = requests.filter((r) => r.status !== "Draft").map(toRow);
   if (loading) return <Loader />;
@@ -457,8 +466,12 @@ function AllRequestsTab({ isDark, border }) {
 }
 
 function PendingTab({ isDark, border }) {
-  const { pending, loading } = useClientRequests();
+  const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+
   const columns = useGridColumns(isDark, setSelected);
   const rows    = pending.map(toRow);
   if (loading) return <Loader />;
@@ -471,8 +484,12 @@ function PendingTab({ isDark, border }) {
 }
 
 function ApprovedTab({ isDark, border }) {
-  const { requests, loading } = useClientRequests();
+  const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+
   const baseColumns = useGridColumns(isDark, setSelected);
   const columns = [
     ...baseColumns.filter((c) => c.field !== "status" && c.field !== "actions"),
@@ -490,8 +507,12 @@ function ApprovedTab({ isDark, border }) {
 }
 
 function DeclinedTab({ isDark, border }) {
-  const { requests, loading } = useClientRequests();
+  const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+
   const baseColumns = useGridColumns(isDark, setSelected);
   const columns = [
     ...baseColumns.filter((c) => c.field !== "status" && c.field !== "actions"),

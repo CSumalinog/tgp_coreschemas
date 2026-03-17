@@ -8,7 +8,6 @@ import {
 
 import MenuIcon                      from "@mui/icons-material/Menu";
 import CloseIcon                     from "@mui/icons-material/Close";
-import DashboardOutlinedIcon         from "@mui/icons-material/DashboardOutlined";
 import AssignmentIndOutlinedIcon     from "@mui/icons-material/AssignmentIndOutlined";
 import CalendarTodayOutlinedIcon     from "@mui/icons-material/CalendarTodayOutlined";
 import SettingsOutlinedIcon          from "@mui/icons-material/SettingsOutlined";
@@ -17,11 +16,12 @@ import DarkModeOutlinedIcon          from "@mui/icons-material/DarkModeOutlined"
 import LogoutIcon                    from "@mui/icons-material/Logout";
 import UnfoldMoreIcon                from "@mui/icons-material/UnfoldMore";
 
-import GlobalSearch     from "../../components/common/GlobalSearch";
-import NotificationBell from "../../components/common/NotificationBell";
-import { supabase }     from "../../lib/supabaseClient";
-import { useThemeMode } from "../../context/ThemeContext";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import GlobalSearch              from "../../components/common/GlobalSearch";
+import NotificationBell          from "../../components/common/NotificationBell";
+import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
+import { supabase }              from "../../lib/supabaseClient";
+import { useThemeMode }          from "../../context/ThemeContext";
+import { getAvatarUrl }          from "../../components/common/UserAvatar";
 
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
   const l = document.createElement("link");
@@ -51,7 +51,6 @@ const MENU_SECTIONS = [
   {
     group: "MENU",
     items: [
-      { label: "Dashboard",     to: "dashboard",     Icon: DashboardOutlinedIcon     },
       { label: "My Assignment", to: "my-assignment", Icon: AssignmentIndOutlinedIcon },
       { label: "My Schedule",   to: "my-schedule",   Icon: CalendarTodayOutlinedIcon },
     ],
@@ -237,13 +236,13 @@ function RegularStaffLayout() {
           )}
           <Box sx={{ flex: 1 }} />
           <GlobalSearch role="staff" userId={currentUser?.id} alwaysExpanded />
-
-          {/* ── Notification Bell ── */}
           <NotificationBell userId={currentUser?.id} />
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>
-          <Outlet />
+          <RealtimeToastProvider>
+            <Outlet />
+          </RealtimeToastProvider>
         </Box>
       </Box>
     </Box>

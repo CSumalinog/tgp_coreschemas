@@ -1,7 +1,7 @@
 // src/routes/AppRoutes.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "../components/ProtectedRoute";
+import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
 import AdminLayout from "../layouts/admin/AdminLayout";
 import ClientLayout from "../layouts/client/ClientLayout";
 import SectionHeadLayout from "../layouts/section_head/SectionHeadLayout";
@@ -30,7 +30,6 @@ import SecHeadAssignmentManagement from "../pages/section_head/SecHeadAssignment
 import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
 
 // Regular Staff Pages
-import StaffDashboard from "../pages/regular_staff/StaffDashboard";
 import MyAssignment from "../pages/regular_staff/MyAssignment";
 import MySchedule from "../pages/regular_staff/MySchedule";
 
@@ -155,8 +154,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="dashboard" />} />
-        <Route path="dashboard" element={<StaffDashboard />} />
+        <Route index element={<Navigate to="my-assignment" />} />
         <Route path="my-assignment" element={<MyAssignment />} />
         <Route path="my-schedule" element={<MySchedule />} />
         <Route path="profile" element={<ProfilePage />} />

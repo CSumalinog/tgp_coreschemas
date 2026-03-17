@@ -20,8 +20,8 @@ import WarningAmberOutlinedIcon    from "@mui/icons-material/WarningAmberOutline
 import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
 import HowToRegOutlinedIcon        from "@mui/icons-material/HowToRegOutlined";
 import { supabase }                from "../../lib/supabaseClient";
+import { useRealtimeNotify }       from "../../hooks/useRealtimeNotify";
 
-// ── Time In components (extracted) ────────────────────────────────────────────
 import { TimeInModal, OnGoingAlertDialog } from "../../components/regular_staff/TimeIn";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
@@ -36,11 +36,11 @@ const dm          = "'DM Sans', sans-serif";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  Pending:    { dot: "#f97316", color: "#c2410c", bg: "#fff7ed"                },
-  "On Going": { dot: "#3b82f6", color: "#1d4ed8", bg: "rgba(59,130,246,0.08)" },
-  "Timed In": { dot: "#22c55e", color: "#15803d", bg: "rgba(34,197,94,0.08)"  },
-  Completed:  { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4"               },
-  "No Show":  { dot: "#ef4444", color: "#b91c1c", bg: "rgba(239,68,68,0.08)"  },
+  Pending:    { dot: "#f97316", color: "#c2410c", bg: "#fff7ed",               accent: "#f97316" },
+  Approved:   { dot: "#22c55e", color: "#15803d", bg: "rgba(34,197,94,0.08)",  accent: "#22c55e" },
+  "On Going": { dot: "#3b82f6", color: "#1d4ed8", bg: "rgba(59,130,246,0.08)", accent: "#3b82f6" },
+  Completed:  { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4",               accent: "#22c55e" },
+  "No Show":  { dot: "#ef4444", color: "#b91c1c", bg: "rgba(239,68,68,0.08)",  accent: "#ef4444" },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -59,6 +59,19 @@ const isWeekendDate = (dateStr) => {
   return d === 0 || d === 6;
 };
 
+const getTimeInState = (request) => {
+  if (!request?.event_date || !request?.from_time) return "unavailable";
+  const timeStr    = request.from_time.slice(0, 5);
+  const eventStart = new Date(`${request.event_date}T${timeStr}`).getTime();
+  const now        = Date.now();
+  const diff       = eventStart - now;
+  const TEN_MIN    = 10 * 60 * 1000;
+  const TWO_MIN    =  2 * 60 * 1000;
+  if (diff >= -TWO_MIN && diff <= TEN_MIN) return "open";
+  if (diff > TEN_MIN)                      return "early";
+  return "passed";
+};
+
 // ── Status pill ───────────────────────────────────────────────────────────────
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CFG[status] || { dot: "#9ca3af", color: "#6b7280", bg: "#f9fafb" };
@@ -72,7 +85,6 @@ function StatusPill({ status, isDark }) {
   );
 }
 
-// ── Weekend badge ─────────────────────────────────────────────────────────────
 function WeekendBadge({ isDark }) {
   return (
     <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.55, px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.1)", border: `1px solid rgba(245,197,43,0.3)` }}>
@@ -83,7 +95,6 @@ function WeekendBadge({ isDark }) {
   );
 }
 
-// ── Detail section helper ─────────────────────────────────────────────────────
 function DetailSection({ label, icon, children }) {
   return (
     <Box>
@@ -94,6 +105,192 @@ function DetailSection({ label, icon, children }) {
         </Typography>
       </Box>
       {children}
+    </Box>
+  );
+}
+
+// ── Assignment Card ───────────────────────────────────────────────────────────
+function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
+  const cfg   = STATUS_CFG[a.status] || { accent: "#9ca3af" };
+  const req   = a.request;
+  const state = a.status === "Approved" ? getTimeInState(req) : null;
+
+  return (
+    <Box
+      onClick={() => onView(a)}
+      sx={{
+        position: "relative",
+        borderRadius: "12px",
+        border: `1px solid ${border}`,
+        backgroundColor: "background.paper",
+        overflow: "hidden",
+        cursor: "pointer",
+        transition: "box-shadow 0.18s, transform 0.18s",
+        "&:hover": {
+          boxShadow: isDark
+            ? "0 4px 20px rgba(0,0,0,0.35)"
+            : "0 4px 20px rgba(53,53,53,0.10)",
+          transform: "translateY(-1px)",
+        },
+      }}
+    >
+      {/* ── Color accent bar on left ── */}
+      <Box sx={{
+        position: "absolute", left: 0, top: 0, bottom: 0,
+        width: "3px", borderRadius: "12px 0 0 12px",
+        backgroundColor: cfg.accent,
+      }} />
+
+      {/* ── Card body ── */}
+      <Box sx={{ pl: 2.5, pr: 2, pt: 1.75, pb: 1.75, display: "flex", flexDirection: "column", gap: 1.25 }}>
+
+        {/* Top row: status pill + weekend badge */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+          <StatusPill status={a.status} isDark={isDark} />
+          {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
+        </Box>
+
+        {/* Title */}
+        <Typography sx={{
+          fontFamily: dm, fontWeight: 700, fontSize: "0.92rem",
+          color: "text.primary", lineHeight: 1.35,
+        }}>
+          {req?.title || "—"}
+        </Typography>
+
+        {/* Meta grid */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          {req?.event_date && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                {new Date(req.event_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+              </Typography>
+            </Box>
+          )}
+          {req?.from_time && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <AccessTimeOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                {req.from_time.slice(0, 5)}{req.to_time ? ` — ${req.to_time.slice(0, 5)}` : ""}
+              </Typography>
+            </Box>
+          )}
+          {req?.venue && (
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
+              <LocationOnOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0, mt: 0.15 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary", lineHeight: 1.4 }}>
+                {req.venue}
+              </Typography>
+            </Box>
+          )}
+          {req?.entity?.name && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <PersonOutlineOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                {req.entity.name}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {a.assigned_by_profile?.full_name && (
+          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.disabled" }}>
+            Assigned by {a.assigned_by_profile.full_name}
+          </Typography>
+        )}
+
+        {/* ── Divider ── */}
+        <Box sx={{ height: "1px", backgroundColor: border }} />
+
+        {/* ── CTA button ── */}
+        <Box onClick={(e) => e.stopPropagation()}>
+          {a.status === "Pending" && (
+            <Box
+              onClick={() => onComplete(a)}
+              sx={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
+                py: 0.9, borderRadius: "8px", cursor: "pointer",
+                border: `1px solid ${border}`,
+                fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
+                color: "text.secondary",
+                transition: "all 0.15s",
+                "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
+              }}
+            >
+              <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
+              Mark Complete
+            </Box>
+          )}
+
+          {a.status === "Approved" && state === "open" && (
+            <Box
+              onClick={() => onTimeIn(a)}
+              sx={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
+                py: 0.9, borderRadius: "8px", cursor: "pointer",
+                backgroundColor: "#3b82f6",
+                fontFamily: dm, fontSize: "0.8rem", fontWeight: 700,
+                color: "#fff",
+                transition: "background-color 0.15s",
+                "&:hover": { backgroundColor: "#2563eb" },
+              }}
+            >
+              <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
+              Time In
+            </Box>
+          )}
+
+          {a.status === "Approved" && state === "early" && (
+            <Box sx={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              py: 0.9, borderRadius: "8px",
+              border: `1px solid ${border}`,
+              fontFamily: dm, fontSize: "0.76rem", color: "text.disabled",
+            }}>
+              Time In opens 10 mins before event
+            </Box>
+          )}
+
+          {a.status === "Approved" && state === "passed" && (
+            <Box sx={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              py: 0.9, borderRadius: "8px",
+              border: `1px solid rgba(239,68,68,0.25)`,
+              backgroundColor: "rgba(239,68,68,0.04)",
+              fontFamily: dm, fontSize: "0.76rem", color: "#b91c1c",
+            }}>
+              Time In window has passed
+            </Box>
+          )}
+
+          {a.status === "On Going" && (
+            <Box sx={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
+              py: 0.9, borderRadius: "8px",
+              border: `1px solid rgba(59,130,246,0.3)`,
+              backgroundColor: "rgba(59,130,246,0.06)",
+              fontFamily: dm, fontSize: "0.76rem", fontWeight: 600, color: "#1d4ed8",
+            }}>
+              <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
+              Checked In
+            </Box>
+          )}
+
+          {a.status === "Completed" && (
+            <Box sx={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75,
+              py: 0.9, borderRadius: "8px",
+              border: `1px solid rgba(34,197,94,0.25)`,
+              backgroundColor: "rgba(34,197,94,0.05)",
+              fontFamily: dm, fontSize: "0.76rem", fontWeight: 600, color: "#15803d",
+            }}>
+              <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
+              Completed
+            </Box>
+          )}
+        </Box>
+      </Box>
     </Box>
   );
 }
@@ -115,7 +312,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         },
       }}
     >
-      {/* Header */}
       <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.6, flexWrap: "wrap" }}>
@@ -137,7 +333,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         </IconButton>
       </Box>
 
-      {/* Quick info strip */}
       <Box sx={{ px: 3, py: 1.75, display: "flex", flexWrap: "wrap", gap: 2.5, borderBottom: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
         {req?.event_date && (
           <InfoChip icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />} label="Date">
@@ -156,10 +351,8 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         )}
       </Box>
 
-      {/* Body */}
       <DialogContent sx={{ p: 0 }}>
         <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2.5 }}>
-
           {req?.description && (
             <DetailSection label="Description" icon={<DescriptionOutlinedIcon sx={{ fontSize: 13 }} />}>
               <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", lineHeight: 1.65 }}>
@@ -194,13 +387,9 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
                 {Object.entries(req.services).map(([service, pax]) => (
                   <Box key={service} sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.4, borderRadius: "6px", border: `1px solid ${isDark ? BORDER_DARK : BORDER}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", fontWeight: 600, color: "text.primary" }}>
-                      {service}
-                    </Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", fontWeight: 600, color: "text.primary" }}>{service}</Typography>
                     <Box sx={{ width: 1, height: 10, backgroundColor: isDark ? BORDER_DARK : BORDER }} />
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary" }}>
-                      {pax} pax
-                    </Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary" }}>{pax} pax</Typography>
                   </Box>
                 ))}
               </Box>
@@ -209,10 +398,7 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
 
           {req?.file_url && (
             <DetailSection label="Attachment" icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 13 }} />}>
-              <Box
-                onClick={() => openFile(req.file_url)}
-                sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid ${isDark ? BORDER_DARK : BORDER}`, transition: "all 0.15s", "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 } }}
-              >
+              <Box onClick={() => openFile(req.file_url)} sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid ${isDark ? BORDER_DARK : BORDER}`, transition: "all 0.15s", "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 } }}>
                 <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
                 <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>{getFileName(req.file_url)}</Typography>
                 <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
@@ -220,49 +406,46 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </DetailSection>
           )}
 
-          {/* Status-specific notices */}
-          {assignment.status === "Pending" && (
-            <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)", border: `1px solid rgba(245,197,43,0.3)` }}>
-              <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: "#b45309", flexShrink: 0, mt: 0.1 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#b45309", lineHeight: 1.55 }}>
-                Only mark as complete <strong>after</strong> you have finished covering the event. This cannot be undone.
+          {assignment.status === "Approved" && getTimeInState(assignment.request) === "open" && (
+            <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(59,130,246,0.06)", border: `1px solid rgba(59,130,246,0.25)` }}>
+              <HowToRegOutlinedIcon sx={{ fontSize: 14, color: "#1d4ed8", flexShrink: 0, mt: 0.1 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#1d4ed8", lineHeight: 1.55 }}>
+                Coverage is starting soon. Tap <strong>Time In</strong> when you arrive at the venue.
               </Typography>
             </Box>
           )}
           {assignment.status === "On Going" && (
-            <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(59,130,246,0.06)", border: `1px solid rgba(59,130,246,0.25)` }}>
-              <HowToRegOutlinedIcon sx={{ fontSize: 14, color: "#1d4ed8", flexShrink: 0, mt: 0.1 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#1d4ed8", lineHeight: 1.55 }}>
-                Coverage is underway. Tap <strong>Time In</strong> to confirm you've arrived at the venue.
-              </Typography>
-            </Box>
-          )}
-          {assignment.status === "Timed In" && (
             <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.25)` }}>
               <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#15803d", flexShrink: 0, mt: 0.1 }} />
               <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#15803d", lineHeight: 1.55 }}>
-                You've checked in.{assignment.timed_in_at && ` Checked in at ${new Date(assignment.timed_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`} Waiting for QR scan to complete coverage.
+                You've checked in.{assignment.timed_in_at && ` Checked in at ${new Date(assignment.timed_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`} Coverage is underway.
               </Typography>
             </Box>
           )}
         </Box>
       </DialogContent>
 
-      {/* Footer */}
       <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
         <CancelBtn onClick={onClose} border={isDark ? BORDER_DARK : BORDER} />
-        {assignment.status === "Pending" && (
-          <PrimaryBtn onClick={() => { onClose(); onMarkComplete(assignment); }}>
-            <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-            Mark Complete
-          </PrimaryBtn>
-        )}
-        {assignment.status === "On Going" && (
-          <PrimaryBtn onClick={() => { onClose(); onTimeIn(assignment); }}>
-            <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
-            Time In
-          </PrimaryBtn>
-        )}
+        {assignment.status === "Approved" && (() => {
+          const state = getTimeInState(assignment.request);
+          if (state === "open") return (
+            <PrimaryBtn onClick={() => { onClose(); onTimeIn(assignment); }}>
+              <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
+              Time In
+            </PrimaryBtn>
+          );
+          if (state === "early") return (
+            <Box sx={{ px: 1.75, py: 0.65, borderRadius: "8px", border: `1px solid rgba(53,53,53,0.08)`, fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
+              Time In opens 10 mins before event
+            </Box>
+          );
+          return (
+            <Box sx={{ px: 1.75, py: 0.65, borderRadius: "8px", border: `1px solid rgba(239,68,68,0.25)`, fontFamily: dm, fontSize: "0.78rem", color: "#b91c1c", backgroundColor: "rgba(239,68,68,0.05)" }}>
+              Time In window has passed
+            </Box>
+          );
+        })()}
       </Box>
     </Dialog>
   );
@@ -272,16 +455,9 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
 function ConfirmCompleteDialog({ assignment, open, onClose, onConfirm, completing, error, isDark }) {
   if (!assignment) return null;
   const border = isDark ? BORDER_DARK : BORDER;
-
   return (
     <Dialog open={open} onClose={() => !completing && onClose()} maxWidth="xs" fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: "14px", backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)",
-        },
-      }}
+      PaperProps={{ sx: { borderRadius: "14px", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)" } }}
     >
       <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -295,13 +471,10 @@ function ConfirmCompleteDialog({ assignment, open, onClose, onConfirm, completin
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
-
       <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>
         {error && <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
         <Box sx={{ px: 1.75, py: 1.25, borderRadius: "8px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", fontWeight: 600, color: "text.primary" }}>
-            {assignment.request?.title}
-          </Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", fontWeight: 600, color: "text.primary" }}>{assignment.request?.title}</Typography>
           {assignment.request?.event_date && (
             <Typography sx={{ fontFamily: dm, fontSize: "0.73rem", color: "text.secondary", mt: 0.3 }}>
               {new Date(assignment.request.event_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -315,7 +488,6 @@ function ConfirmCompleteDialog({ assignment, open, onClose, onConfirm, completin
           </Typography>
         </Box>
       </Box>
-
       <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
         <CancelBtn onClick={onClose} disabled={completing} border={border} />
         <PrimaryBtn onClick={onConfirm} loading={completing}>
@@ -344,7 +516,6 @@ export default function MyAssignment() {
   const [completing,    setCompleting]    = useState(false);
   const [completeError, setCompleteError] = useState("");
 
-  // Time In state
   const [timeInTarget,  setTimeInTarget]  = useState(null);
   const [timingIn,      setTimingIn]      = useState(false);
   const [timeInError,   setTimeInError]   = useState("");
@@ -386,11 +557,12 @@ export default function MyAssignment() {
         request:request_id (
           id, title, description, event_date, from_time, to_time,
           venue, services, file_url,
-          entity:client_entities ( id, name ),
+          entity:entity_id ( id, name ),
           contact_person, contact_info
         )
       `)
       .eq("assigned_to", currentUser.id)
+      .not("status", "eq", "Pending")
       .order("assigned_at", { ascending: false });
     if (fetchErr) setError(fetchErr.message);
     else setAssignments(data || []);
@@ -399,32 +571,33 @@ export default function MyAssignment() {
 
   useEffect(() => { loadAssignments(); }, [loadAssignments]);
 
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    const ch = supabase.channel("my-assignments-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "coverage_assignments", filter: `assigned_to=eq.${currentUser.id}` }, () => loadAssignments())
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [currentUser?.id, loadAssignments]);
+  useRealtimeNotify(
+    "coverage_assignments",
+    loadAssignments,
+    currentUser?.id ? `assigned_to=eq.${currentUser.id}` : null,
+    { title: "Assignment" }
+  );
 
-  // ── Auto-popup: fires when event is ≤10 mins away ────────────────────────
+  // ── Auto-popup ────────────────────────────────────────────────────────────
   useEffect(() => {
     function checkUpcoming() {
       const now     = Date.now();
       const TEN_MIN = 10 * 60 * 1000;
+      const TWO_MIN =  2 * 60 * 1000;
       const match   = assignments.find((a) => {
-        if (!["Pending", "On Going"].includes(a.status)) return false;
+        if (a.status !== "Approved")                     return false;
         if (dismissedIds.current.has(a.id))              return false;
         const req = a.request;
         if (!req?.event_date || !req?.from_time)         return false;
-        const eventStart = new Date(`${req.event_date}T${req.from_time}`).getTime();
+        const timeStr    = req.from_time.slice(0, 5);
+        const eventStart = new Date(`${req.event_date}T${timeStr}`).getTime();
         const diff       = eventStart - now;
-        return diff >= 0 && diff <= TEN_MIN;
+        return diff >= -TWO_MIN && diff <= TEN_MIN;
       });
       if (match) setOnGoingAlert(match);
     }
     checkUpcoming();
-    const id = setInterval(checkUpcoming, 60_000);
+    const id = setInterval(checkUpcoming, 30_000);
     return () => clearInterval(id);
   }, [assignments]);
 
@@ -459,12 +632,8 @@ export default function MyAssignment() {
 
   const filtered          = useMemo(() => applyFilters(statusFilter === "All" ? assignments : assignments.filter((a) => a.status === statusFilter)), [assignments, statusFilter, applyFilters]);
   const allFiltered       = useMemo(() => applyFilters(assignments),                                                                                   [assignments, applyFilters]);
-  const pendingFiltered   = useMemo(() => applyFilters(assignments.filter((a) => a.status === "Pending")),                                             [assignments, applyFilters]);
-  const onGoingFiltered   = useMemo(() => applyFilters(assignments.filter((a) => a.status === "On Going")),                                            [assignments, applyFilters]);
-  const timedInFiltered   = useMemo(() => applyFilters(assignments.filter((a) => a.status === "Timed In")),                                            [assignments, applyFilters]);
   const completedFiltered = useMemo(() => applyFilters(assignments.filter((a) => a.status === "Completed")),                                           [assignments, applyFilters]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleComplete = async () => {
     if (!confirmTarget) return;
     setCompleting(true); setCompleteError("");
@@ -477,44 +646,39 @@ export default function MyAssignment() {
     setConfirmTarget(null); setCompleting(false); loadAssignments();
   };
 
-  const handleTimeIn = async (selfieFile) => {
+  const handleTimeIn = async ({ selfieFile, gpsData }) => {
     if (!timeInTarget || !selfieFile) return;
     setTimingIn(true); setTimeInError("");
     try {
-      const now = new Date().toISOString();
-
-      // 1. Upload selfie to dedicated selfies bucket
-      const timestamp     = Date.now();
-      const ext           = selfieFile.name.split(".").pop() || "jpg";
-      const filePath      = `${currentUser.id}/${timeInTarget.id}_${timestamp}.${ext}`;
+      const now       = new Date().toISOString();
+      const timestamp = Date.now();
+      const ext       = selfieFile.name.split(".").pop() || "jpg";
+      const filePath  = `${currentUser.id}/${timeInTarget.id}_${timestamp}.${ext}`;
       const { data: uploadData, error: uploadErr } = await supabase.storage
-        .from("login-proof")
-        .upload(filePath, selfieFile, { cacheControl: "3600", upsert: false });
+        .from("login-proof").upload(filePath, selfieFile, { cacheControl: "3600", upsert: false });
       if (uploadErr) throw new Error(`Selfie upload failed: ${uploadErr.message}`);
-      const selfieUrl = uploadData.path;
 
-      // 2. Update assignment with status + selfie_url + timed_in_at
-      const { error: updErr } = await supabase
-        .from("coverage_assignments")
-        .update({ status: "Timed In", timed_in_at: now, selfie_url: selfieUrl })
-        .eq("id", timeInTarget.id);
-      if (updErr) throw updErr;
+      const { error: assignErr } = await supabase.from("coverage_assignments").update({
+        status: "On Going", timed_in_at: now, selfie_url: uploadData.path,
+        gps_lat: gpsData?.lat || null, gps_lng: gpsData?.lng || null, gps_verified: gpsData?.verified ?? false,
+      }).eq("id", timeInTarget.id);
+      if (assignErr) throw assignErr;
 
-      // 3. Get all active admins
-      const { data: admins, error: admErr } = await supabase
-        .from("profiles").select("id").eq("role", "admin").eq("is_active", true);
+      const { error: reqErr } = await supabase.from("coverage_requests")
+        .update({ status: "On Going", ongoing_at: now })
+        .eq("id", timeInTarget.request.id).eq("status", "Approved");
+      if (reqErr) throw reqErr;
+
+      const { data: admins, error: admErr } = await supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true);
       if (admErr) throw admErr;
 
-      // 4. Notify each admin
       const timeLabel = new Date(now).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      const notifs = (admins || []).map((admin) => ({
-        user_id:        admin.id,
-        recipient_id:   admin.id,
-        recipient_role: "admin",
-        request_id:     timeInTarget.request.id,
-        type:           "time_in_alert",
-        title:          "Staff Checked In",
-        message:        `${currentUser.full_name} has checked in for "${timeInTarget.request.title}" at ${timeLabel}.`,
+      const gpsNote   = gpsData?.verified ? " · GPS verified ✓" : gpsData?.lat ? " · GPS unverified" : " · GPS unavailable";
+      const notifs    = (admins || []).map((admin) => ({
+        user_id: admin.id, recipient_id: admin.id, recipient_role: "admin",
+        request_id: timeInTarget.request.id, type: "time_in_alert",
+        title: timeInTarget.is_reassigned ? "Emergency Check-In" : "Staff Checked In",
+        message: `${currentUser.full_name} checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
       }));
       if (notifs.length) {
         const { error: notifErr } = await supabase.from("notifications").insert(notifs);
@@ -541,28 +705,24 @@ export default function MyAssignment() {
 
   const TABS = [
     { label: "All",       count: allFiltered.length       },
-    { label: "On Going",  count: onGoingFiltered.length   },
-    { label: "Timed In",  count: timedInFiltered.length   },
-    { label: "Pending",   count: pendingFiltered.length   },
     { label: "Completed", count: completedFiltered.length },
   ];
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
 
-      {/* ── Header ── */}
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "1.05rem", color: "text.primary", letterSpacing: "-0.02em" }}>
           My Assignments
         </Typography>
         <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.3 }}>
-          All coverage assignments given to you. Click any row to view full details.
+          All coverage assignments given to you.
         </Typography>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
 
-      {/* ── Tabs + filter row ── */}
+      {/* ── Tabs + filter ── */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0, gap: 1 }}>
         <Box sx={{ display: "flex", gap: 0, borderBottom: `1px solid ${border}`, flex: 1 }}>
           {TABS.map((tab) => {
@@ -588,23 +748,19 @@ export default function MyAssignment() {
           })}
         </Box>
 
-        {/* Filter button */}
         <Box ref={filterRef} sx={{ position: "relative", pb: "1px" }}>
           <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
             <Box>
-              <Box
-                onClick={() => setFilterOpen((p) => !p)}
-                sx={{
-                  display: "flex", alignItems: "center", gap: 0.6,
-                  px: 1.25, py: 0.55, borderRadius: "8px", cursor: "pointer",
-                  border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`,
-                  backgroundColor: activeFilterCount > 0 ? GOLD_08 : "transparent",
-                  fontFamily: dm, fontSize: "0.76rem", fontWeight: 500,
-                  color: activeFilterCount > 0 ? "#b45309" : "text.secondary",
-                  transition: "all 0.15s",
-                  "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 },
-                }}
-              >
+              <Box onClick={() => setFilterOpen((p) => !p)} sx={{
+                display: "flex", alignItems: "center", gap: 0.6,
+                px: 1.25, py: 0.55, borderRadius: "8px", cursor: "pointer",
+                border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`,
+                backgroundColor: activeFilterCount > 0 ? GOLD_08 : "transparent",
+                fontFamily: dm, fontSize: "0.76rem", fontWeight: 500,
+                color: activeFilterCount > 0 ? "#b45309" : "text.secondary",
+                transition: "all 0.15s",
+                "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 },
+              }}>
                 <FilterListIcon sx={{ fontSize: 15 }} />
                 Filter
                 {activeFilterCount > 0 && (
@@ -619,16 +775,14 @@ export default function MyAssignment() {
                   <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filter</Typography>
                     {activeFilterCount > 0 && (
-                      <Box onClick={() => { setSelectedSem("all"); setSelectedEntity("all"); }} sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: CHARCOAL } }}>
-                        Clear all
-                      </Box>
+                      <Box onClick={() => { setSelectedSem("all"); setSelectedEntity("all"); }} sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: CHARCOAL } }}>Clear all</Box>
                     )}
                   </Box>
                   <Box sx={{ px: 2, py: 1.75, display: "flex", flexDirection: "column", gap: 1.5 }}>
                     <FilterLabel>Semester</FilterLabel>
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                       {[{ id: "all", name: "All Semesters" }, ...semesters].map((s) => (
-                        <Box key={s.id} onClick={() => setSelectedSem(s.id)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.25, py: 0.6, borderRadius: "7px", cursor: "pointer", backgroundColor: selectedSem === s.id ? GOLD_08 : "transparent", transition: "background-color 0.12s", "&:hover": { backgroundColor: selectedSem === s.id ? GOLD_08 : HOVER_BG } }}>
+                        <Box key={s.id} onClick={() => setSelectedSem(s.id)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.25, py: 0.6, borderRadius: "7px", cursor: "pointer", backgroundColor: selectedSem === s.id ? GOLD_08 : "transparent", "&:hover": { backgroundColor: selectedSem === s.id ? GOLD_08 : HOVER_BG } }}>
                           <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: selectedSem === s.id ? "#b45309" : "text.primary", fontWeight: selectedSem === s.id ? 600 : 400 }}>{s.name}</Typography>
                           {selectedSem === s.id && <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: GOLD }} />}
                         </Box>
@@ -639,7 +793,7 @@ export default function MyAssignment() {
                         <FilterLabel>Client</FilterLabel>
                         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                           {[{ id: "all", name: "All Clients" }, ...entityOptions.map((n) => ({ id: n, name: n }))].map((e) => (
-                            <Box key={e.id} onClick={() => setSelectedEntity(e.id)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.25, py: 0.6, borderRadius: "7px", cursor: "pointer", backgroundColor: selectedEntity === e.id ? GOLD_08 : "transparent", transition: "background-color 0.12s", "&:hover": { backgroundColor: selectedEntity === e.id ? GOLD_08 : HOVER_BG } }}>
+                            <Box key={e.id} onClick={() => setSelectedEntity(e.id)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.25, py: 0.6, borderRadius: "7px", cursor: "pointer", backgroundColor: selectedEntity === e.id ? GOLD_08 : "transparent", "&:hover": { backgroundColor: selectedEntity === e.id ? GOLD_08 : HOVER_BG } }}>
                               <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: selectedEntity === e.id ? "#b45309" : "text.primary", fontWeight: selectedEntity === e.id ? 600 : 400 }}>{e.name}</Typography>
                               {selectedEntity === e.id && <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: GOLD }} />}
                             </Box>
@@ -655,7 +809,6 @@ export default function MyAssignment() {
         </Box>
       </Box>
 
-      {/* ── Active filter chips ── */}
       {activeFilterCount > 0 && (
         <Box sx={{ display: "flex", gap: 0.75, mt: 1.5, mb: 0.5, flexWrap: "wrap" }}>
           {selectedSem !== "all" && <FilterChip label={selectedSemName} onDelete={() => setSelectedSem("all")} />}
@@ -663,85 +816,36 @@ export default function MyAssignment() {
         </Box>
       )}
 
-      {/* ── Assignment list ── */}
-      <Box sx={{ bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden", mt: 2 }}>
+      {selectedSem !== "all" && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1.5, py: 1.25, mt: 1, mb: 0.5, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.06)", border: `1px solid rgba(245,197,43,0.2)` }}>
+          <SemStat label="Total" value={allFiltered.length} />
+          <Box sx={{ width: 1, height: 24, backgroundColor: "rgba(245,197,43,0.25)" }} />
+          <SemStat label="Completed" value={completedFiltered.length} />
+          <Box sx={{ width: 1, height: 24, backgroundColor: "rgba(245,197,43,0.25)" }} />
+          <SemStat label="Ongoing" value={allFiltered.filter((a) => a.status === "On Going").length} />
+        </Box>
+      )}
+
+      {/* ── Assignment cards grid ── */}
+      <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
         {filtered.length === 0 ? (
-          <Box sx={{ p: 5, textAlign: "center" }}>
+          <Box sx={{ p: 5, textAlign: "center", bgcolor: "background.paper", borderRadius: "12px", border: `1px solid ${border}` }}>
             <AssignmentOutlinedIcon sx={{ fontSize: 32, color: isDark ? "#333" : "#e0e0e0", mb: 1 }} />
             <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.disabled" }}>
-              {statusFilter === "All" ? "No assignments found." : `No ${statusFilter.toLowerCase()} assignments.`}
+              {statusFilter === "All" ? "No assignments yet." : `No ${statusFilter.toLowerCase()} assignments.`}
             </Typography>
           </Box>
         ) : (
-          filtered.map((a, idx) => (
-            <Box
+          filtered.map((a) => (
+            <AssignmentCard
               key={a.id}
-              onClick={() => setDetailTarget(a)}
-              sx={{
-                px: 3, py: 2.25,
-                borderBottom: idx < filtered.length - 1 ? `1px solid ${border}` : "none",
-                display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2,
-                cursor: "pointer", transition: "background-color 0.12s",
-                "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
-              }}
-            >
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5, flexWrap: "wrap" }}>
-                  <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.88rem", color: "text.primary" }}>
-                    {a.request?.title || "—"}
-                  </Typography>
-                  <StatusPill status={a.status} isDark={isDark} />
-                  {isWeekendDate(a.request?.event_date) && <WeekendBadge isDark={isDark} />}
-                </Box>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.75, mt: 0.25 }}>
-                  {a.request?.event_date && (
-                    <MetaItem icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 11 }} />}>
-                      {new Date(a.request.event_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                    </MetaItem>
-                  )}
-                  {a.request?.from_time && (
-                    <MetaItem icon={<AccessTimeOutlinedIcon sx={{ fontSize: 11 }} />}>
-                      {a.request.from_time}{a.request.to_time ? ` — ${a.request.to_time}` : ""}
-                    </MetaItem>
-                  )}
-                  {a.request?.venue && (
-                    <MetaItem icon={<LocationOnOutlinedIcon sx={{ fontSize: 11 }} />}>
-                      {a.request.venue}
-                    </MetaItem>
-                  )}
-                  {a.request?.entity?.name && (
-                    <MetaItem icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 11 }} />}>
-                      {a.request.entity.name}
-                    </MetaItem>
-                  )}
-                </Box>
-                {a.assigned_by_profile?.full_name && (
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.disabled", mt: 0.5 }}>
-                    Assigned by {a.assigned_by_profile.full_name}
-                  </Typography>
-                )}
-              </Box>
-
-              {/* Row CTAs */}
-              {a.status === "Pending" && (
-                <Box onClick={(e) => { e.stopPropagation(); setCompleteError(""); setConfirmTarget(a); }} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.74rem", fontWeight: 500, color: "text.secondary", flexShrink: 0, transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 } }}>
-                  <CheckCircleOutlineIcon sx={{ fontSize: 13 }} />
-                  Mark Complete
-                </Box>
-              )}
-              {a.status === "On Going" && (
-                <Box onClick={(e) => { e.stopPropagation(); setTimeInError(""); setTimeInTarget(a); }} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid rgba(59,130,246,0.35)`, fontFamily: dm, fontSize: "0.74rem", fontWeight: 600, color: "#1d4ed8", flexShrink: 0, backgroundColor: "rgba(59,130,246,0.06)", transition: "all 0.15s", "&:hover": { borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.12)" } }}>
-                  <HowToRegOutlinedIcon sx={{ fontSize: 13 }} />
-                  Time In
-                </Box>
-              )}
-              {a.status === "Timed In" && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 0.5, borderRadius: "6px", border: `1px solid rgba(34,197,94,0.3)`, fontFamily: dm, fontSize: "0.73rem", fontWeight: 500, color: "#15803d", flexShrink: 0, backgroundColor: "rgba(34,197,94,0.06)", whiteSpace: "nowrap" }}>
-                  <CheckCircleOutlineIcon sx={{ fontSize: 13 }} />
-                  Checked in
-                </Box>
-              )}
-            </Box>
+              a={a}
+              isDark={isDark}
+              border={border}
+              onView={(assignment) => setDetailTarget(assignment)}
+              onTimeIn={(assignment) => { setTimeInError(""); setTimeInTarget(assignment); }}
+              onComplete={(assignment) => { setCompleteError(""); setConfirmTarget(assignment); }}
+            />
           ))
         )}
       </Box>
@@ -759,13 +863,11 @@ export default function MyAssignment() {
         onClose={() => { setConfirmTarget(null); setCompleteError(""); }}
         onConfirm={handleComplete}
       />
-
-      {/* ── Time In components (imported from TimeInComponents.jsx) ── */}
       <TimeInModal
         open={!!timeInTarget} assignment={timeInTarget} isDark={isDark}
         submitting={timingIn} error={timeInError}
         onClose={() => { setTimeInTarget(null); setTimeInError(""); }}
-        onConfirm={(selfieFile) => handleTimeIn(selfieFile)}
+        onConfirm={({ selfieFile, gpsData }) => handleTimeIn({ selfieFile, gpsData })}
       />
       <OnGoingAlertDialog
         open={!!onGoingAlert} assignment={onGoingAlert} isDark={isDark}
@@ -777,11 +879,11 @@ export default function MyAssignment() {
 }
 
 // ── Shared micro-components ───────────────────────────────────────────────────
-function MetaItem({ icon, children }) {
+function SemStat({ label, value }) {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-      <Box sx={{ color: "text.disabled" }}>{icon}</Box>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>{children}</Typography>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+      <Typography sx={{ fontFamily: dm, fontSize: "1rem", fontWeight: 700, color: "#b45309", lineHeight: 1 }}>{value}</Typography>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "#b45309", opacity: 0.75 }}>{label}</Typography>
     </Box>
   );
 }

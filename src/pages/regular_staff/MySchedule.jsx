@@ -7,6 +7,7 @@ import CheckCircleIcon            from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon           from "@mui/icons-material/LockOutlined";
 import CalendarTodayOutlinedIcon  from "@mui/icons-material/CalendarTodayOutlined";
 import { supabase }               from "../../lib/supabaseClient";
+import { useRealtimeNotify }      from "../../hooks/useRealtimeNotify";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD        = "#F5C52B";
@@ -71,6 +72,9 @@ export default function MySchedule() {
 
   useEffect(() => { loadScheduleData(); }, [loadScheduleData]);
 
+  // ─── Realtime subscription ────────────────────────────────────────────────
+  useRealtimeNotify("duty_schedules", loadScheduleData, null, { title: "Duty Schedule" });
+
   const handleSave = async () => {
     if (selectedDay === null) return;
     setSaving(true); setSaveError(""); setSaveSuccess(false);
@@ -79,15 +83,11 @@ export default function MySchedule() {
       const isChanging  = existingSchedule && existingSchedule.duty_day !== selectedDay;
       const isNew       = !existingSchedule;
 
-      // Slot cap check — skip if they're just re-confirming their current day
       if ((isNew || isChanging) && countForDay >= MAX_SLOTS) {
         setSaveError(`${DAY_LABELS[selectedDay]} is already full (${MAX_SLOTS}/${MAX_SLOTS}). Please pick another day.`);
         setSaving(false); return;
       }
 
-      // ── Upsert instead of delete+insert ──────────────────────────────────
-      // onConflict: "staffer_id,semester_id" → updates duty_day if row exists,
-      // inserts new row if it doesn't. Eliminates the duplicate key error.
       const { error: upsertErr } = await supabase
         .from("duty_schedules")
         .upsert(
@@ -201,7 +201,6 @@ export default function MySchedule() {
             border: `1px solid ${border}`, borderRadius: "10px",
             overflow: "hidden", backgroundColor: "background.paper", mb: 3,
           }}>
-            {/* Day headers */}
             {DAY_SHORT.map((short, i) => (
               <Box key={short} sx={{
                 px: 1.5, py: 1.1, textAlign: "center",
@@ -215,7 +214,6 @@ export default function MySchedule() {
               </Box>
             ))}
 
-            {/* Day cells */}
             {DAY_LABELS.map((day, i) => {
               const count      = slotCounts[i];
               const isFull     = count >= MAX_SLOTS;
@@ -251,7 +249,6 @@ export default function MySchedule() {
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5,
                   }}
                 >
-                  {/* Circle indicator */}
                   <Box sx={{
                     width: 30, height: 30, borderRadius: "50%",
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -276,7 +273,6 @@ export default function MySchedule() {
                     )}
                   </Box>
 
-                  {/* Slot count + labels */}
                   <Box>
                     <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: isFull ? "#dc2626" : "text.secondary", fontWeight: isFull ? 600 : 400 }}>
                       {count}/{MAX_SLOTS}
@@ -289,7 +285,6 @@ export default function MySchedule() {
                     )}
                   </Box>
 
-                  {/* Progress bar */}
                   <Box sx={{ width: "80%", height: 3, borderRadius: "2px", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)" }}>
                     <Box sx={{
                       height: "100%", width: `${pct}%`, borderRadius: "2px",
