@@ -28,10 +28,13 @@ const EMPTY_ERRORS = {
   services:      "",
   clientType:    "",
   entity:        "",
+  otherEntity:   "",
   contactPerson: "",
   contactInfo:   "",
   file:          "",
 };
+
+const OTHER_ID = "__others__";
 
 export default function CoverageRequestDialog({
   open,
@@ -52,6 +55,7 @@ export default function CoverageRequestDialog({
   const [venue,         setVenue]         = useState("");
   const [clientType,    setClientType]    = useState("");
   const [entity,        setEntity]        = useState("");
+  const [otherEntity,   setOtherEntity]   = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [contactInfo,   setContactInfo]   = useState("");
   const [file,          setFile]          = useState(null);
@@ -61,6 +65,8 @@ export default function CoverageRequestDialog({
   const [errors,        setErrors]        = useState(EMPTY_ERRORS);
   const [clientTypes,   setClientTypes]   = useState([]);
   const [entities,      setEntities]      = useState([]);
+
+  const isOthers = entity === OTHER_ID;
 
   useEffect(() => {
     async function loadClientTypes() {
@@ -85,7 +91,14 @@ export default function CoverageRequestDialog({
         setServices(existingRequest.services || SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {}));
         setVenue(existingRequest.venue || "");
         setClientType(existingRequest.client_type?.id || existingRequest.client_type_id || "");
-        setEntity(existingRequest.entity?.id || existingRequest.entity_id || "");
+        // If existing request has other_entity, restore Others selection
+        if (existingRequest.other_entity) {
+          setEntity(OTHER_ID);
+          setOtherEntity(existingRequest.other_entity);
+        } else {
+          setEntity(existingRequest.entity?.id || existingRequest.entity_id || "");
+          setOtherEntity("");
+        }
         setContactPerson(existingRequest.contact_person || "");
         setContactInfo(existingRequest.contact_info || "");
         setFile(null);
@@ -96,11 +109,12 @@ export default function CoverageRequestDialog({
   }, [open, defaultDate, existingRequest]);
 
   useEffect(() => {
-    if (!clientType) { setEntities([]); setEntity(""); return; }
+    if (!clientType) { setEntities([]); setEntity(""); setOtherEntity(""); return; }
     async function loadEntities() {
       const ents = await fetchEntitiesByType(clientType);
       setEntities(ents);
       setEntity("");
+      setOtherEntity("");
     }
     loadEntities();
   }, [clientType]);
@@ -119,7 +133,8 @@ export default function CoverageRequestDialog({
   const resetForm = () => {
     setTitle(""); setDescription(""); setDate(null); setFromTime(null); setToTime(null);
     setServices(SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {}));
-    setVenue(""); setClientType(""); setEntity(""); setContactPerson(""); setContactInfo("");
+    setVenue(""); setClientType(""); setEntity(""); setOtherEntity("");
+    setContactPerson(""); setContactInfo("");
     setFile(null); setErrors(EMPTY_ERRORS); setSubmitError("");
   };
 
@@ -138,6 +153,7 @@ export default function CoverageRequestDialog({
     if (totalServices === 0) { newErrors.services      = "Please select at least one service.";           hasError = true; }
     if (!clientType)         { newErrors.clientType    = "Client type is required.";                      hasError = true; }
     if (!entity)             { newErrors.entity        = "Entity name is required.";                      hasError = true; }
+    if (isOthers && !otherEntity.trim()) { newErrors.otherEntity = "Please specify the entity name.";    hasError = true; }
     if (!contactPerson)      { newErrors.contactPerson = "Contact person is required.";                   hasError = true; }
     if (!contactInfo)        { newErrors.contactInfo   = "Contact information is required.";              hasError = true; }
     if (!file && !existingRequest?.file_url) { newErrors.file = "Please upload the program flow (PDF)."; hasError = true; }
@@ -156,7 +172,18 @@ export default function CoverageRequestDialog({
     }
     setLoading(true);
     try {
-      const requestData = { title, description, date, from_time: fromTime, to_time: toTime, services, venue, client_type: clientType, entity, contact_person: contactPerson, contact_info: contactInfo };
+      const requestData = {
+        title, description, date,
+        from_time:      fromTime,
+        to_time:        toTime,
+        services, venue,
+        client_type:    clientType,
+        // If Others selected, pass null for entity and fill other_entity
+        entity:         isOthers ? null : entity,
+        other_entity:   isOthers ? otherEntity.trim() : null,
+        contact_person: contactPerson,
+        contact_info:   contactInfo,
+      };
       if (existingRequest) {
         await updateDraftRequest(existingRequest.id, requestData, file, !isDraft);
       } else {
@@ -192,8 +219,8 @@ export default function CoverageRequestDialog({
       }),
     },
     ...(hasErr && {
-      "& .MuiInputLabel-root":              { color: "#ef4444" },
-      "& .MuiInputLabel-root.Mui-focused":  { color: "#ef4444" },
+      "& .MuiInputLabel-root":             { color: "#ef4444" },
+      "& .MuiInputLabel-root.Mui-focused": { color: "#ef4444" },
     }),
   });
 
@@ -423,12 +450,12 @@ export default function CoverageRequestDialog({
             />
 
             <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-              {/* Client Type */}
+              {/* ── Client Type ── */}
               <FormControl fullWidth margin="dense" required error={!!errors.clientType} sx={fieldSx}>
                 <InputLabel sx={{ fontSize: "0.85rem", ...(errors.clientType && { color: "#ef4444" }) }}>Client Type</InputLabel>
                 <Select
                   label="Client Type" value={clientType}
-                  onChange={(e) => { setClientType(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, clientType: "", entity: "" })); }}
+                  onChange={(e) => { setClientType(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, clientType: "", entity: "", otherEntity: "" })); }}
                   disabled={loading}
                   sx={{
                     borderRadius: 1.5, fontSize: "0.85rem",
@@ -442,14 +469,25 @@ export default function CoverageRequestDialog({
                 {errors.clientType && <FormHelperText sx={helperSx}>{errors.clientType}</FormHelperText>}
               </FormControl>
 
-              {/* Entity Name */}
+              {/* ── Entity Name ── */}
               {clientType && (
                 <FormControl fullWidth margin="dense" required error={!!errors.entity} sx={fieldSx}>
                   <InputLabel sx={{ fontSize: "0.85rem", ...(errors.entity && { color: "#ef4444" }) }}>Entity Name</InputLabel>
                   <Select
-                    label="Entity Name" value={entity}
-                    onChange={(e) => { setEntity(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, entity: "" })); }}
+                    label="Entity Name"
+                    value={entity}
+                    onChange={(e) => {
+                      setEntity(e.target.value);
+                      setOtherEntity("");
+                      if (e.target.value) setErrors((p) => ({ ...p, entity: "", otherEntity: "" }));
+                    }}
                     disabled={loading}
+                    // ── Fix scrolling: cap dropdown height ──
+                    MenuProps={{
+                      PaperProps: {
+                        style: { maxHeight: 240 },
+                      },
+                    }}
                     sx={{
                       borderRadius: 1.5, fontSize: "0.85rem",
                       ...(errors.entity && { "& fieldset": { borderColor: "#ef4444" } }),
@@ -458,11 +496,40 @@ export default function CoverageRequestDialog({
                     {entities.map((ent) => (
                       <MenuItem key={ent.id} value={ent.id} sx={{ fontSize: "0.85rem" }}>{ent.name}</MenuItem>
                     ))}
+                    {/* ── Others option ── */}
+                    <MenuItem
+                      value={OTHER_ID}
+                      sx={{
+                        fontSize: "0.85rem",
+                        fontStyle: "italic",
+                        borderTop: "1px solid",
+                        borderColor: "divider",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Others (specify below)
+                    </MenuItem>
                   </Select>
                   {errors.entity && <FormHelperText sx={helperSx}>{errors.entity}</FormHelperText>}
                 </FormControl>
               )}
             </Box>
+
+            {/* ── Others text field — shown only when Others is selected ── */}
+            {isOthers && (
+              <TextField
+                label="Specify Entity Name" fullWidth margin="dense"
+                value={otherEntity}
+                onChange={(e) => { setOtherEntity(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, otherEntity: "" })); }}
+                placeholder="e.g. Office of the President, Engineering Department..."
+                disabled={loading}
+                required
+                error={!!errors.otherEntity}
+                helperText={errors.otherEntity}
+                sx={errorFieldSx(!!errors.otherEntity)}
+                FormHelperTextProps={{ sx: helperSx }}
+              />
+            )}
           </FormSection>
 
           {/* ── Section: Attachment ── */}
