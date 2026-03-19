@@ -6,23 +6,26 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { supabase } from "../../lib/supabaseClient";
 
 const RULES = [
-  { test: (p) => p.length >= 8,                                        label: "At least 8 characters" },
-  { test: (p) => /[A-Z]/.test(p),                                      label: "At least 1 uppercase letter" },
-  { test: (p) => /[0-9]/.test(p),                                      label: "At least 1 number" },
-  { test: (p) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),    label: "At least 1 special character" },
+  { test: (p) => p.length >= 8, label: "At least 8 characters" },
+  { test: (p) => /[A-Z]/.test(p), label: "At least 1 uppercase letter" },
+  { test: (p) => /[0-9]/.test(p), label: "At least 1 number" },
+  {
+    test: (p) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
+    label: "At least 1 special character",
+  },
 ];
 
 function Signup() {
-  const [fullName,     setFullName]     = useState("");
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
-  const [confirm,      setConfirm]      = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm,  setShowConfirm]  = useState(false);
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState("");
-  const [success,      setSuccess]      = useState(false);
-  const [ready,        setReady]        = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,19 +36,42 @@ function Signup() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
-    if (!fullName || !email || !password || !confirm) { setError("Please fill in all fields."); return; }
-    if (!RULES[0].test(password)) { setError("Password must be at least 8 characters."); return; }
-    if (!RULES[1].test(password)) { setError("Password must contain at least 1 uppercase letter."); return; }
-    if (!RULES[2].test(password)) { setError("Password must contain at least 1 number."); return; }
-    if (!RULES[3].test(password)) { setError("Password must contain at least 1 special character."); return; }
-    if (password !== confirm)     { setError("Passwords do not match."); return; }
+    if (!fullName || !email || !password || !confirm) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    if (!RULES[0].test(password)) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (!RULES[1].test(password)) {
+      setError("Password must contain at least 1 uppercase letter.");
+      return;
+    }
+    if (!RULES[2].test(password)) {
+      setError("Password must contain at least 1 number.");
+      return;
+    }
+    if (!RULES[3].test(password)) {
+      setError("Password must contain at least 1 special character.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
     setLoading(true);
     try {
       const { error: signUpError } = await supabase.auth.signUp({
-        email, password,
+        email,
+        password,
         options: { data: { full_name: fullName, role: "client" } },
       });
-      if (signUpError) { setError(signUpError.message); setLoading(false); return; }
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
       setSuccess(true);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -59,13 +85,13 @@ function Signup() {
     return (
       <>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           .su-success {
             min-height: 100vh; width: 100vw;
             background: #0d0d0d;
             display: flex; align-items: center; justify-content: center;
-            font-family: 'DM Sans', sans-serif;
+            font-family: 'Inter', sans-serif;
           }
           .su-success-card {
             width: 100%; max-width: 400px; margin: 24px;
@@ -85,7 +111,7 @@ function Signup() {
             font-size: 1.4rem;
           }
           .su-success-title {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Inter', sans-serif;
             font-size: 1.4rem; font-weight: 700;
             color: #ffffff; margin-bottom: 10px;
           }
@@ -98,7 +124,7 @@ function Signup() {
             display: inline-block; padding: 11px 28px;
             background: #f5c52b; color: #0d0d0d;
             border: none; border-radius: 8px;
-            font-family: 'DM Sans', sans-serif;
+            font-family: 'Inter', sans-serif;
             font-size: 0.875rem; font-weight: 600;
             cursor: pointer; transition: background 0.2s;
           }
@@ -124,14 +150,14 @@ function Signup() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .su {
           min-height: 100vh; width: 100vw;
           background: #0d0d0d;
           display: flex; align-items: center; justify-content: center;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           position: relative; overflow: hidden;
         }
 
@@ -185,7 +211,7 @@ function Signup() {
         }
 
         .su-title {
-          font-family: 'Playfair Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 1.5rem; font-weight: 700;
           color: #ffffff; letter-spacing: -0.02em;
           line-height: 1.2; margin-bottom: 5px;
@@ -226,7 +252,7 @@ function Signup() {
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 8px;
           padding: 11px 14px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 0.875rem; font-weight: 400;
           color: #ffffff; outline: none;
           transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
@@ -278,7 +304,7 @@ function Signup() {
           width: 100%; margin-top: 6px; padding: 12px;
           background: #f5c52b; color: #0d0d0d;
           border: none; border-radius: 8px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 0.875rem; font-weight: 600;
           cursor: pointer;
           display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -316,20 +342,29 @@ function Signup() {
         <div className="su-blob su-blob-2" />
 
         <div className={`su-card ${ready ? "ready" : ""}`}>
-
           <div className="su-card-header">
             <div className="su-eyebrow">Client Registration</div>
             <div className="su-title">Create an account</div>
-            <div className="su-sub">Submit and track your coverage requests</div>
+            <div className="su-sub">
+              Submit and track your coverage requests
+            </div>
           </div>
 
           <div className="su-card-body">
             {error && (
               <div className="su-error">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ flexShrink: 0, marginTop: 1 }}>
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  style={{ flexShrink: 0, marginTop: 1 }}
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 {error}
               </div>
@@ -339,31 +374,56 @@ function Signup() {
               <div className="su-field">
                 <label className="su-label">Full Name</label>
                 <div className="su-input-wrap">
-                  <input className="su-input" type="text" placeholder="Juan dela Cruz"
-                    value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    disabled={loading} autoComplete="name" />
+                  <input
+                    className="su-input"
+                    type="text"
+                    placeholder="Juan dela Cruz"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    disabled={loading}
+                    autoComplete="name"
+                  />
                 </div>
               </div>
 
               <div className="su-field">
                 <label className="su-label">Email Address</label>
                 <div className="su-input-wrap">
-                  <input className="su-input" type="email" placeholder="you@example.com"
-                    value={email} onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading} autoComplete="email" />
+                  <input
+                    className="su-input"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    autoComplete="email"
+                  />
                 </div>
               </div>
 
               <div className="su-field">
                 <label className="su-label">Password</label>
                 <div className="su-input-wrap">
-                  <input className={`su-input pw`} type={showPassword ? "text" : "password"}
-                    placeholder="••••••••" value={password}
+                  <input
+                    className={`su-input pw`}
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading} autoComplete="new-password" />
-                  <button type="button" className="su-toggle"
-                    onClick={() => setShowPassword((p) => !p)} tabIndex={-1}>
-                    {showPassword ? <VisibilityOff style={{ fontSize: 17 }} /> : <Visibility style={{ fontSize: 17 }} />}
+                    disabled={loading}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="su-toggle"
+                    onClick={() => setShowPassword((p) => !p)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <VisibilityOff style={{ fontSize: 17 }} />
+                    ) : (
+                      <Visibility style={{ fontSize: 17 }} />
+                    )}
                   </button>
                 </div>
                 {password.length > 0 && (
@@ -372,8 +432,14 @@ function Signup() {
                       const pass = test(password);
                       return (
                         <div className="su-rule" key={label}>
-                          <div className={`su-rule-dot ${pass ? "pass" : "fail"}`} />
-                          <span className={`su-rule-text ${pass ? "pass" : "fail"}`}>{label}</span>
+                          <div
+                            className={`su-rule-dot ${pass ? "pass" : "fail"}`}
+                          />
+                          <span
+                            className={`su-rule-text ${pass ? "pass" : "fail"}`}
+                          >
+                            {label}
+                          </span>
                         </div>
                       );
                     })}
@@ -384,27 +450,41 @@ function Signup() {
               <div className="su-field">
                 <label className="su-label">Confirm Password</label>
                 <div className="su-input-wrap">
-                  <input className={`su-input pw`} type={showConfirm ? "text" : "password"}
-                    placeholder="••••••••" value={confirm}
+                  <input
+                    className={`su-input pw`}
+                    type={showConfirm ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    disabled={loading} autoComplete="new-password" />
-                  <button type="button" className="su-toggle"
-                    onClick={() => setShowConfirm((p) => !p)} tabIndex={-1}>
-                    {showConfirm ? <VisibilityOff style={{ fontSize: 17 }} /> : <Visibility style={{ fontSize: 17 }} />}
+                    disabled={loading}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="su-toggle"
+                    onClick={() => setShowConfirm((p) => !p)}
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? (
+                      <VisibilityOff style={{ fontSize: 17 }} />
+                    ) : (
+                      <Visibility style={{ fontSize: 17 }} />
+                    )}
                   </button>
                 </div>
               </div>
 
               <button className="su-submit" type="submit" disabled={loading}>
-                {loading
-                  ? <CircularProgress size={17} sx={{ color: "#0d0d0d" }} />
-                  : "Create Account"}
+                {loading ? (
+                  <CircularProgress size={17} sx={{ color: "#0d0d0d" }} />
+                ) : (
+                  "Create Account"
+                )}
               </button>
             </form>
 
             <div className="su-footer">
-              Already have an account?{" "}
-              <Link to="/login">Sign in</Link>
+              Already have an account? <Link to="/login">Sign in</Link>
             </div>
           </div>
         </div>

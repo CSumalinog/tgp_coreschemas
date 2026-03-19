@@ -11,7 +11,7 @@ import DarkModeOutlinedIcon       from "@mui/icons-material/DarkModeOutlined";
 import { supabase }               from "../../lib/supabaseClient";
 import { useThemeMode }           from "../../context/ThemeContext";
 
-const dm = "'DM Sans', sans-serif";
+const dm = "'Inter', sans-serif";
 
 export function getAvatarUrl(avatarPath) {
   if (!avatarPath) return undefined;

@@ -26,7 +26,7 @@ import { getAvatarUrl }          from "../../components/common/UserAvatar";
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
   const l = document.createElement("link");
   l.id = "dash-fonts"; l.rel = "stylesheet";
-  l.href = "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap";
+  l.href = "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap";
   document.head.appendChild(l);
 }
 
@@ -45,7 +45,7 @@ const ACTIVE_BG      = GOLD_08;
 const ACTIVE_ICON_BG = GOLD_18;
 const ACTIVE_COLOR   = CHARCOAL;
 const HOVER_BG       = "rgba(53,53,53,0.04)";
-const dm = "'DM Sans', sans-serif";
+const dm = "'Inter', sans-serif";
 
 const MENU_SECTIONS = [
   {

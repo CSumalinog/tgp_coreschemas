@@ -8,12 +8,12 @@ import { supabase } from "../../lib/supabaseClient";
 const COVERAGE_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
 function Login() {
-  const [email, setEmail]               = useState("");
-  const [password, setPassword]         = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState("");
-  const [ready, setReady]               = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,26 +24,46 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    if (!email || !password) { setError("Please enter your email and password."); return; }
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
     setLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) { setError("Invalid email or password."); setLoading(false); return; }
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({ email, password });
+      if (authError) {
+        setError("Invalid email or password.");
+        setLoading(false);
+        return;
+      }
       const { data: profile, error: profileError } = await supabase
-        .from("profiles").select("role, section, is_active").eq("id", authData.user.id).single();
+        .from("profiles")
+        .select("role, section, is_active")
+        .eq("id", authData.user.id)
+        .single();
       if (profileError || !profile) {
         setError("Account profile not found. Contact the administrator.");
-        await supabase.auth.signOut(); setLoading(false); return;
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
       }
       if (!profile.is_active) {
-        setError("Your account has been deactivated. Contact the administrator.");
-        await supabase.auth.signOut(); setLoading(false); return;
+        setError(
+          "Your account has been deactivated. Contact the administrator.",
+        );
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
       }
       let route = "/login";
-      if (profile.role === "admin")         route = "/admin/dashboard";
-      else if (profile.role === "sec_head") route = COVERAGE_SECTIONS.includes(profile.section) ? "/sec_head/dashboard" : "/staff/dashboard";
-      else if (profile.role === "staff")    route = "/staff/my-assignment";
-      else if (profile.role === "client")   route = "/client/calendar";
+      if (profile.role === "admin") route = "/admin/dashboard";
+      else if (profile.role === "sec_head")
+        route = COVERAGE_SECTIONS.includes(profile.section)
+          ? "/sec_head/dashboard"
+          : "/staff/dashboard";
+      else if (profile.role === "staff") route = "/staff/my-assignment";
+      else if (profile.role === "client") route = "/client/calendar";
       navigate(route);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -55,14 +75,14 @@ function Login() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .lr {
           min-height: 100vh;
           width: 100vw;
           display: flex;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           background: #0d0d0d;
           overflow: hidden;
         }
@@ -122,7 +142,7 @@ function Login() {
         }
 
         .lr-issue-text {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 0.65rem;
           font-weight: 600;
           color: rgba(255,255,255,0.25);
@@ -136,7 +156,7 @@ function Login() {
         }
 
         .lr-pub-label {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 0.65rem;
           font-weight: 600;
           letter-spacing: 0.2em;
@@ -146,7 +166,7 @@ function Login() {
         }
 
         .lr-pub-name {
-          font-family: 'Playfair Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: clamp(2.8rem, 4.5vw, 4rem);
           font-weight: 800;
           color: #ffffff;
@@ -223,7 +243,7 @@ function Login() {
           position: absolute;
           bottom: -40px;
           left: -10px;
-          font-family: 'Playfair Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 22rem;
           font-weight: 800;
           color: rgba(255,255,255,0.015);
@@ -269,7 +289,7 @@ function Login() {
         }
 
         .lr-right-title {
-          font-family: 'Playfair Display', serif;
+          font-family: 'Inter', sans-serif;
           font-size: 1.6rem;
           font-weight: 700;
           color: #ffffff;
@@ -319,7 +339,7 @@ function Login() {
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 8px;
           padding: 11px 14px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 0.875rem;
           font-weight: 400;
           color: #ffffff;
@@ -364,7 +384,7 @@ function Login() {
           color: #0d0d0d;
           border: none;
           border-radius: 8px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 0.875rem;
           font-weight: 600;
           cursor: pointer;
@@ -408,7 +428,6 @@ function Login() {
       `}</style>
 
       <div className="lr">
-
         {/* LEFT */}
         <div className="lr-left">
           <div className="lr-bg-text">TGP</div>
@@ -416,17 +435,18 @@ function Login() {
           <div className="lr-left-top">
             <div className="lr-issue-bar">
               <div className="lr-issue-rule" />
-              <span className="lr-issue-text">Official Student Publication of Caraga State University - Main Campus</span>
-
+              <span className="lr-issue-text">
+                Official Student Publication of Caraga State University - Main
+                Campus
+              </span>
             </div>
 
             <div className="lr-masthead">
-              
               <div className="lr-pub-name">
                 <em>The Gold Panicles</em>
               </div>
               <div className="lr-rule" />
-              <p className="lr-tagline" style={{fontSize: "20px" }}>
+              <p className="lr-tagline" style={{ fontSize: "20px" }}>
                 <i>We never flinch in serving you the truth</i>
               </p>
             </div>
@@ -435,7 +455,9 @@ function Login() {
           <div className="lr-left-bottom">
             <div className="lr-system-badge">
               <div className="lr-badge-dot" />
-              <span className="lr-badge-label">Coverage Request & Scheduling Management System — Active</span>
+              <span className="lr-badge-label">
+                Coverage Request & Scheduling Management System — Active
+              </span>
             </div>
             <div className="lr-footer-meta">© 2026 The Gold Panicles</div>
           </div>
@@ -446,15 +468,25 @@ function Login() {
           <div className="lr-right-header">
             <div className="lr-right-eyebrow">User Portal</div>
             <div className="lr-right-title">Sign in</div>
-            <div className="lr-right-sub">Enter your credentials to access the system</div>
+            <div className="lr-right-sub">
+              Enter your credentials to access the system
+            </div>
           </div>
 
           {error && (
             <div className="lr-error">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ flexShrink: 0, marginTop: 1 }}>
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                style={{ flexShrink: 0, marginTop: 1 }}
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
               {error}
             </div>
@@ -494,23 +526,26 @@ function Login() {
                   onClick={() => setShowPassword((p) => !p)}
                   tabIndex={-1}
                 >
-                  {showPassword
-                    ? <VisibilityOff style={{ fontSize: 17 }} />
-                    : <Visibility style={{ fontSize: 17 }} />}
+                  {showPassword ? (
+                    <VisibilityOff style={{ fontSize: 17 }} />
+                  ) : (
+                    <Visibility style={{ fontSize: 17 }} />
+                  )}
                 </button>
               </div>
             </div>
 
             <button className="lr-submit" type="submit" disabled={loading}>
-              {loading
-                ? <CircularProgress size={17} sx={{ color: "#0d0d0d" }} />
-                : "Sign In"}
+              {loading ? (
+                <CircularProgress size={17} sx={{ color: "#0d0d0d" }} />
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
 
           <div className="lr-footer">
-            Don't have an account?{" "}
-            <Link to="/signup">Sign Up</Link>
+            Don't have an account? <Link to="/signup">Sign Up</Link>
           </div>
         </div>
       </div>

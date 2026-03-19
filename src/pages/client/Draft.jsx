@@ -26,7 +26,7 @@ const CHARCOAL    = "#353535";
 const BORDER      = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
 const HOVER_BG    = "rgba(53,53,53,0.03)";
-const dm          = "'DM Sans', sans-serif";
+const dm          = "'Inter', sans-serif";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const getFileName = (filePath) => {

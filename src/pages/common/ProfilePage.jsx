@@ -24,7 +24,7 @@ const GOLD_16     = "rgba(245,197,43,0.16)";
 const CHARCOAL    = "#353535";
 const BORDER      = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
-const dm          = "'DM Sans', sans-serif";
+const dm          = "'Inter', sans-serif";
 
 const BUCKET   = "coverage-files";
 const FOLDER   = "avatars";

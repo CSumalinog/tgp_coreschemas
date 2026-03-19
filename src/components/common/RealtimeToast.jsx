@@ -16,7 +16,7 @@ import { _registerToastSetter }               from "../../hooks/useRealtimeNotif
 
 const GOLD     = "#f5c52b";
 const CHARCOAL = "#353535";
-const dm       = "'DM Sans', sans-serif";
+const dm       = "'Inter', sans-serif";
 
 // ── Single toast item ─────────────────────────────────────────────────────────
 function ToastItem({ toast, onDone }) {
