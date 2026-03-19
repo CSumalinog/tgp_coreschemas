@@ -6,30 +6,14 @@ import { notifyAdmins }    from "./NotificationService";
 const toLocalISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-// ── Upsert "Others" entity into client_entities and return its ID ─────────────
-// If the entity already exists (case-insensitive, same client type), reuse it.
-// Otherwise insert it as a new record.
+// ── Upsert "Others" entity via RPC (SECURITY DEFINER — bypasses RLS) ──────────
 async function resolveEntityId(otherEntityName, clientTypeId) {
-  const trimmed = otherEntityName.trim();
-
-  const { data: existing, error: fetchError } = await supabase
-    .from("client_entities")
-    .select("id")
-    .ilike("name", trimmed)
-    .eq("client_type_id", clientTypeId)
-    .maybeSingle();
-
-  if (fetchError) throw fetchError;
-  if (existing) return existing.id;
-
-  const { data: inserted, error: insertError } = await supabase
-    .from("client_entities")
-    .insert([{ name: trimmed, client_type_id: clientTypeId }])
-    .select()
-    .single();
-
-  if (insertError) throw insertError;
-  return inserted.id;
+  const { data, error } = await supabase.rpc("upsert_client_entity", {
+    p_name:           otherEntityName.trim(),
+    p_client_type_id: clientTypeId,
+  });
+  if (error) throw error;
+  return data;
 }
 
 /**
@@ -39,7 +23,7 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("You must be logged in to submit a request.");
 
-  // ── Resolve "Others" entity before anything else ──
+  // ── Resolve "Others" entity via RPC before anything else ──
   let resolvedEntityId = requestData.entity || null;
   if (requestData.other_entity) {
     resolvedEntityId = await resolveEntityId(requestData.other_entity, requestData.client_type);
@@ -65,8 +49,8 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id:      resolvedEntityId,   // always a real FK now
-    other_entity:   null,               // no longer needed
+    entity_id:      resolvedEntityId,
+    other_entity:   null,
     contact_person: requestData.contact_person,
     contact_info:   requestData.contact_info,
     file_url:       fileUrl,
@@ -86,12 +70,16 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
         .from("client_entities").select("name").eq("id", resolvedEntityId).single();
       if (ent?.name) entityName = ent.name;
     }
-    await notifyAdmins({
-      type:      "new_request",
-      title:     "New Coverage Request",
-      message:   `"${data.title}" was submitted by ${entityName}.`,
-      requestId: data.id,
-    });
+    try {
+      await notifyAdmins({
+        type:      "new_request",
+        title:     "New Coverage Request",
+        message:   `"${data.title}" was submitted by ${entityName}.`,
+        requestId: data.id,
+      });
+    } catch (notifErr) {
+      console.error("notifyAdmins failed:", notifErr);
+    }
   }
 
   return data;
@@ -154,7 +142,7 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("Not authenticated.");
 
-  // ── Resolve "Others" entity before anything else ──
+  // ── Resolve "Others" entity via RPC before anything else ──
   let resolvedEntityId = requestData.entity || null;
   if (requestData.other_entity) {
     resolvedEntityId = await resolveEntityId(requestData.other_entity, requestData.client_type);
@@ -180,8 +168,8 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
-    entity_id:      resolvedEntityId,   // always a real FK now
-    other_entity:   null,               // no longer needed
+    entity_id:      resolvedEntityId,
+    other_entity:   null,
     contact_person: requestData.contact_person,
     contact_info:   requestData.contact_info,
     file_url:       fileUrl,

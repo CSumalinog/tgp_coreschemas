@@ -331,6 +331,52 @@ These functions extend the application's capabilities beyond client-side logic, 
 - Assignment card redesign with status pills
 - Detailed assignment dialog with full coverage information
 
+### 9.4.1 Regular Staff My Assignment (v2.1) — Enhanced Features
+
+**Tabbed Interface and Filtering:**
+
+- Tabbed organization with "All" and "Completed" tabs showing respective counts
+- Semester-based filtering to view assignments by academic period
+- Entity/Client filtering for viewing assignments from specific clients
+- Filter chips for active filters with clear functionality
+- Statistics display (Total, Completed, Ongoing) when semester filter is active
+
+**Auto-Popup Time In Notification:**
+
+- Automatic alert dialog pops up when Time In window opens (10 minutes before event)
+- Checks every 30 seconds for upcoming assignments
+- Dismissible with option to proceed to Time In
+
+**Enhanced Time In System with GPS and Selfie Verification:**
+The [`TimeIn`](src/components/regular_staff/TimeIn.jsx:1) component provides robust staff check-in functionality:
+
+- **GPS Location Verification**: Uses the browser's Geolocation API to verify staff presence within 400m radius of CSU Main Campus (coordinates: 8.955481, 125.597788)
+- **Distance Calculation**: Implements Haversine formula for accurate proximity detection
+- **GPS Status Indicators**: Visual feedback showing verification status (Verified ✓, Outside, Denied, Unavailable)
+- **Hard Block**: Prevents check-in if staff is detected outside campus premises
+- **Soft Warning**: Allows check-in without GPS but flags for admin review when location is denied/unavailable
+
+**Selfie Capture with Timestamp:**
+
+- Front camera capture with baked-in timestamp displaying date and time
+- Timestamp overlay with gold text on dark background for visibility
+- Preview with retake option for normal check-ins
+- Emergency mode (for reassigned assignments) with no retake option and auto-submit
+
+**Notification System:**
+
+- Alerts admins when staff checks in (with GPS verification status)
+- Notifies section heads of the assigned staff member's check-in
+- Informs clients that coverage has started
+- Emergency check-in notifications for reassigned assignments
+
+**Database Enhancements:**
+
+- Stores selfie proof in Supabase Storage (`login-proof` bucket)
+- Records GPS coordinates (lat, lng) and verification status
+- Tracks timed_in_at and completed_at timestamps
+- Supports is_reassigned flag for emergency coverage scenarios
+
 ### 9.5 Admin Request Management (v2.0)
 
 - Enhanced status filtering tabs
@@ -356,6 +402,173 @@ These functions extend the application's capabilities beyond client-side logic, 
   - Video Documentation/Camera Operator → Videojournalism section
   - Only allows forwarding to sections relevant to the client's requested services
 - **Enhanced User Experience**: Prevents accidental forwarding of problematic requests while still allowing admin override when necessary
+
+### 9.7 Request Assistant Hook - Intelligent Request Assessment (v2.2)
+
+The [`RequestAssistant`](src/hooks/RequestAssistant.js:1) hook provides comprehensive AI-like request analysis with four distinct assessment modules:
+
+#### 9.7.1 Late Submission Detection
+
+- Compares event date with submission date
+- Flags same-day submissions as errors
+- Warns when submissions are less than 2 days before the event
+- Provides clear success messages for timely submissions
+
+#### 9.7.2 Incomplete Request Checker
+
+- Validates presence of program flow (PDF) attachment
+- Checks description length (minimum 20 characters)
+- Verifies contact person and contact information
+- Ensures at least one service is requested
+- Returns multi-issue arrays for comprehensive feedback
+
+#### 9.7.3 Newsworthiness Scoring (3-Filter System)
+
+- **Filter 1 - Relevance**: Evaluates public significance (university-wide, department-level, organization-level)
+- **Filter 2 - Newsworthiness Type**: Categorizes events as critical, good stories, or routine
+- **Filter 3 - Resource Justification**: Scores based on service count and expected participation
+- Generates composite score (1-5 scale) with labels (Low, Moderate, High, Very High)
+- Provides actionable recommendations (Decline, Forward with note, Forward immediately)
+
+#### 9.7.4 Scheduling Conflict Detection
+
+- Queries database for overlapping approved/ongoing/forwarded coverage on same date
+- Displays conflict details with titles, times, and statuses
+- Prevents double-booking of staff resources
+
+### 9.8 Enhanced Notification System with Audio/Visual Alerts
+
+The [`useRealtimeNotify`](src/hooks/useRealtimeNotify.js:1) hook has been significantly enhanced with multi-channel notification capabilities:
+
+#### 9.8.1 Audio Notifications
+
+- Web Audio API-based three-tone ascending chime (C5 → E5 → G5)
+- Automatic AudioContext unlocking on first user interaction
+- Respects browser autoplay policies
+- Smooth gain transitions for pleasant audio experience
+
+#### 9.8.2 Visual Notifications
+
+- **Tab Title Flashing**: Browser tab title flashes with notification icon and "New update" message
+- **Toast Notifications**: Slide-in toast messages (max 5 visible) with table and title information
+- Configurable per-use-case (sound, toast, tabFlash can be individually toggled)
+
+#### 9.8.3 Silent Mode
+
+- `SILENT` constant provides no-sound/no-toast/no-flash option for specific scenarios
+- Used in Client Request Tracker for non-intrusive assignment updates
+
+### 9.9 Service Layer Enhancements
+
+#### 9.9.1 Admin Request Service ([`adminRequestService.js`](src/services/adminRequestService.js))
+
+- `fetchAllRequests()`: Comprehensive request fetching with related data (client types, entities, requesters)
+- `forwardRequest()`: Section-based forwarding with notification triggers
+- `declineRequest()`: Request rejection with mandatory reason and client notification
+- `approveRequest()`: Multi-step approval workflow that:
+  - Updates request status to "Approved"
+  - Flips all associated assignments to "Approved" status
+  - Notifies both client and assigned staff members
+
+#### 9.9.2 Coverage Request Service ([`coverageRequestService.js`](src/services/coverageRequestService.js))
+
+- `submitCoverageRequest()`: Handles file uploads with timestamp-based naming
+- `fetchMyRequests()`: Retrieves client requests with coverage assignments and staffer details
+- `updateDraftRequest()`: Supports draft editing and direct submission
+- `deleteDraftRequest()`: Allows deletion of draft requests
+- RPC integration for "Others" entity handling via `upsert_client_entity`
+
+#### 9.9.3 Notification Service ([`NotificationService.js`](src/services/NotificationService.js))
+
+- `notifyAdmins()`: Alerts all active administrators
+- `notifyClient()`: Informs requesters of status changes
+- `notifySecHeads()`: Notifies section heads when requests are forwarded
+- `notifyAssignedStaff()`: Alerts staff of new coverage assignments
+- Comprehensive type-based notification categorization
+
+### 9.10 Real-time Synchronization Improvements
+
+#### 9.10.1 useRealtimeSync Hook
+
+- Subscribes to Supabase Realtime channels for `coverage_requests` and `coverage_assignments`
+- Callback-based change detection with configurable filters
+- Automatic re-fetch on database changes
+
+#### 9.10.2 useRealtimeNotify Hook
+
+- Enhanced real-time capabilities with automatic toast notifications
+- Sound, toast, and tab flash configuration per use case
+- Shared audio context for performance optimization
+
+### 9.11 PDF Generation Enhancements
+
+The [`generateConfirmationPDF.js`](src/utils/generateConfirmationPDF.js) utility provides:
+
+- Professional confirmation documents for approved requests
+- Event details including date, time, venue
+- Client information and contact details
+- Service requirements summary
+- Confirmation status and timestamps
+
+### 9.12 Custom DataGrid Column Menu Styling
+
+All data grids throughout the application feature consistent custom-styled column menus:
+
+- 10px border radius with subtle shadows
+- Light/dark mode adaptive backgrounds
+- Gold hover accent colors (#F5C52B)
+- DM Sans typography throughout
+- Smooth transition animations
+- Icon color coordination
+
+### 9.13 Brand Token Standardization
+
+The system implements consistent design tokens across all components:
+
+- **Primary**: Gold (#F5C52B) with rgba variants (8%, 18%)
+- **Secondary**: Charcoal (#353535)
+- **Borders**: Subtle rgba borders with dark mode variants
+- **Typography**: DM Sans font family
+- **Status Colors**: Distinct color schemes for each workflow status
+
+### 9.14 Client Request Tracker Enhancements (v2.1)
+
+- **Section Color Coding**: Visual indicators for News (blue), Photojournalism (purple), Videojournalism (green)
+- **Friendly Status Mapping**: User-friendly status labels ("Under Review", "Staff Assigned")
+- **File Handling**: Integrated file preview and download from Supabase Storage
+- **Confirmation PDF**: Direct download of approved request confirmations
+- **Staff Avatar Display**: Shows assigned staffer information with avatars
+
+### 9.15 Regular Staff My Assignment Enhancements (v2.2)
+
+#### 9.15.1 Smart Time In System
+
+- Opens 10 minutes before event start time
+- Three states: "early", "open", "passed"
+- Weekend detection with visual badges
+
+#### 9.15.2 GPS & Selfie Verification
+
+- **GPS Location**: Uses Haversine formula for 400m radius verification around CSU Main Campus
+- **Hard Block**: Prevents check-in if staff is outside campus premises
+- **Soft Warning**: Allows check-in without GPS but flags for admin review
+- **Selfie Capture**: Front camera with baked-in timestamp overlay
+
+#### 9.15.3 Database Enhancements
+
+- `selfie_url`: Stores login proof in Supabase Storage
+- `gps_lat`, `gps_lng`: Records geographic coordinates
+- `gps_verified`: Boolean flag for verification status
+- `timed_in_at`, `completed_at`: Timestamp tracking
+- `is_reassigned`: Emergency coverage scenario support
+
+### 9.16 Section Head Assignment Management Enhancements (v2.1)
+
+- **Three-Tab Interface**: For Assignment, Assigned, History
+- **Duty Schedule Integration**: Filters eligible staffers by their duty day
+- **Workload Balancing**: Assignment count display per staffer
+- **Weekend Detection**: Visual badges for weekend events
+- **Real-time Updates**: Live subscription to assignment changes
 
 ---
 

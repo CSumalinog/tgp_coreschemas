@@ -32,12 +32,10 @@ import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
 import MySchedule from "../pages/regular_staff/MySchedule";
+import TimeoutPage from "../pages/regular_staff/TimeoutPage";
 
 // Shared Profile Page
 import ProfilePage from "../pages/common/ProfilePage";
-
-// Public Pages
-import TimeoutPage from "../pages/public/TimeoutPage";
 
 function AppRoutes() {
   return (
@@ -47,8 +45,15 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
-      {/* ── Public timeout page — no auth required ── */}
-      <Route path="/timeout/:requestId" element={<TimeoutPage />} />
+      {/* ── Timeout — staff only, full-page (no layout wrapper) ── */}
+      <Route
+        path="/timeout/:requestId"
+        element={
+          <ProtectedRoute allowedRoles={["staff"]}>
+            <TimeoutPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Admin Routes — only role: "admin" */}
       <Route

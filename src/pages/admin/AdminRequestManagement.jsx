@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box, Typography, CircularProgress, MenuItem,
   Select, FormControl, InputLabel, useTheme, IconButton,
-  Badge, Paper, Divider, ClickAwayListener, GlobalStyles,
+  Badge, Paper, ClickAwayListener, GlobalStyles, Avatar,
 } from "@mui/material";
 import { DataGrid }                     from "@mui/x-data-grid";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -13,7 +13,7 @@ import RequestDetails                   from "../../components/admin/RequestDeta
 import { supabase }                     from "../../lib/supabaseClient";
 import FilterListIcon                   from "@mui/icons-material/FilterList";
 import CloseIcon                        from "@mui/icons-material/Close";
-import ChevronRightIcon                 from "@mui/icons-material/ChevronRight";
+import { getAvatarUrl }                 from "../../components/common/UserAvatar";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD        = "#F5C52B";
@@ -31,6 +31,7 @@ const STATUS_CONFIG = {
   Assigned:       { bg: "#fff7ed", color: "#c2410c", dot: "#f97316" },
   "For Approval": { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
   Approved:       { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
+  "On Going":     { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
   Declined:       { bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
 };
 
@@ -40,6 +41,8 @@ const TABS = [
   { label: "Forwarded",     key: "Forwarded"     },
   { label: "For Approval",  key: "For Approval"  },
   { label: "Approved",      key: "Approved"      },
+  { label: "On Going",      key: "On Going"      },
+  { label: "Completed",     key: "Completed"     },
   { label: "Declined",      key: "Declined"      },
 ];
 
@@ -48,8 +51,33 @@ const TAB_DESCRIPTIONS = {
   Pending:        "Newly submitted requests awaiting your review.",
   Forwarded:      "Requests forwarded to section heads for staff assignment.",
   "For Approval": "Staffers have been assigned. Review and give final approval.",
-  Approved:       "Requests that have been fully approved and confirmed.",
-  Declined:       "Requests that were declined and their reasons.",
+  Approved:       "Requests that have been fully approved and are ready for coverage.",
+  "On Going":     "Coverage currently in progress — staff have timed in and are on-site.",
+  Completed:      "Coverage finished — full time in, time out, and duration records.",
+  Declined:       "Requests that were declined at any stage and their reasons.",
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const getInitials = (name) => {
+  if (!name) return "?";
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+};
+
+// ── Duration + time helpers ───────────────────────────────────────────────────
+const computeDuration = (timedIn, completedAt) => {
+  if (!timedIn || !completedAt) return null;
+  const diffMs = new Date(completedAt) - new Date(timedIn);
+  if (diffMs <= 0) return null;
+  const totalMins = Math.floor(diffMs / 60000);
+  const hrs  = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hrs === 0) return `${mins}m`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}m`;
+};
+const fmtTime = (ts) => {
+  if (!ts) return null;
+  return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 };
 
 // ── Column menu GlobalStyles ──────────────────────────────────────────────────
@@ -122,7 +150,10 @@ export default function AdminRequestManagement() {
   const location = useLocation();
   const border   = isDark ? BORDER_DARK : BORDER;
 
-  const { requests, pending, forwarded, forApproval, approved, declined, loading, refetch } = useAdminRequests();
+  const {
+    requests, pending, forwarded, forApproval,
+    approved, onGoing, completed, declined, loading, refetch,
+  } = useAdminRequests();
 
   // ─── Realtime subscription ────────────────────────────────────────────────
   useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
@@ -191,8 +222,10 @@ export default function AdminRequestManagement() {
         const end   = new Date(sem.end_date);
         end.setHours(23, 59, 59, 999);
         filtered = filtered.filter((r) => {
-          if (!r.submitted_at) return false;
-          const d = new Date(r.submitted_at);
+          // For On Going and Completed use event_date, for others use submitted_at
+          const dateField = ["On Going", "Completed"].includes(r.status) ? r.event_date : r.submitted_at;
+          if (!dateField) return false;
+          const d = new Date(dateField);
           return d >= start && d <= end;
         });
       }
@@ -209,6 +242,8 @@ export default function AdminRequestManagement() {
     if (key === "Forwarded")    return forwarded;
     if (key === "For Approval") return forApproval || requests.filter((r) => r.status === "For Approval");
     if (key === "Approved")     return approved;
+    if (key === "On Going")     return onGoing;
+    if (key === "Completed")    return completed;
     if (key === "Declined")     return declined;
     return [];
   };
@@ -220,50 +255,79 @@ export default function AdminRequestManagement() {
   );
 
   const rows = filteredSource.map((req) => ({
-    id:           req.id,
-    requestTitle: req.title,
-    client:       req.entity?.name || "—",
-    dateReceived: req.submitted_at
+    id:              req.id,
+    requestTitle:    req.title,
+    client:          req.entity?.name || "—",
+    dateReceived:    req.submitted_at
       ? new Date(req.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : "—",
-    eventDate:    req.event_date
+    eventDate:       req.event_date
       ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : "—",
-    forwardedTo:  req.forwarded_sections || [],
-    status:       req.status,
-    _raw:         req,
+    forwardedTo:     req.forwarded_sections || [],
+    forwardedBy:     req.forwarded_by_profile?.full_name || "—",
+    approvedBy:      req.approved_by_profile?.full_name  || "—",
+    declinedBy:      req.declined_by_profile?.full_name  || "—",
+    declinedReason:  req.declined_reason || "—",
+    status:          req.status,
+    assignments:     req.coverage_assignments || [],
+    _raw:            req,
   }));
 
   const getTabCount = (key) => applyFilters(getBaseSource(key)).length;
 
-  // ── Columns ───────────────────────────────────────────────────────────────
-  const baseColumns = [
-    {
-      field: "requestTitle", headerName: "Request Title", flex: 1.4, minWidth: 160,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {p.value}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "client", headerName: "Client", flex: 1, minWidth: 120,
-      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-    },
-    {
-      field: "dateReceived", headerName: "Received", flex: 0.9, minWidth: 110,
-      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-    },
-    {
-      field: "eventDate", headerName: "Event Date", flex: 0.9, minWidth: 110,
-      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-    },
-  ];
+  // ── Shared columns ────────────────────────────────────────────────────────
+  const titleCol = {
+    field: "requestTitle", headerName: "Request Title", flex: 1.4, minWidth: 180,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {p.value}
+        </Typography>
+      </Box>
+    ),
+  };
 
-  const forwardedCol = {
-    field: "forwardedTo", headerName: "Forwarded To", flex: 1.2, minWidth: 140,
+  const clientCol = {
+    field: "client", headerName: "Client", flex: 1, minWidth: 120,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+
+  const receivedCol = {
+    field: "dateReceived", headerName: "Received", flex: 0.9, minWidth: 110,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+
+  const eventDateCol = {
+    field: "eventDate", headerName: "Event Date", flex: 0.9, minWidth: 110,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+
+  const actionCol = {
+    field: "actions", headerName: "", flex: 0.5, minWidth: 80,
+    sortable: false, align: "right", headerAlign: "right",
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+        <Box
+          onClick={() => setSelectedRequest(p.row._raw)}
+          sx={{
+            px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
+            border: `1px solid ${border}`,
+            fontFamily: dm, fontSize: "0.73rem", fontWeight: 500,
+            color: "text.secondary",
+            transition: "all 0.15s",
+            "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
+          }}
+        >
+          View
+        </Box>
+      </Box>
+    ),
+  };
+
+  // ── Tab-specific columns ──────────────────────────────────────────────────
+  const forwardedToCol = {
+    field: "forwardedTo", headerName: "Forwarded To", flex: 1.1, minWidth: 130,
     renderCell: (p) => (
       <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.5, flexWrap: "wrap" }}>
         {p.value?.length > 0
@@ -274,6 +338,69 @@ export default function AdminRequestManagement() {
               </Box>
             ))
           : <MetaCell>—</MetaCell>}
+      </Box>
+    ),
+  };
+
+  const forwardedByCol = {
+    field: "forwardedBy", headerName: "Forwarded By", flex: 1, minWidth: 130,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+        {p.value !== "—" && (
+          <Avatar sx={{ width: 20, height: 20, fontSize: "0.55rem", fontWeight: 700, backgroundColor: "#f5f3ff", color: "#6d28d9" }}>
+            {getInitials(p.value)}
+          </Avatar>
+        )}
+        <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: p.value === "—" ? "text.disabled" : "text.primary" }}>
+          {p.value}
+        </Typography>
+      </Box>
+    ),
+  };
+
+  const approvedByCol = {
+    field: "approvedBy", headerName: "Approved By", flex: 1, minWidth: 130,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+        {p.value !== "—" && (
+          <Avatar sx={{ width: 20, height: 20, fontSize: "0.55rem", fontWeight: 700, backgroundColor: "#f0fdf4", color: "#15803d" }}>
+            {getInitials(p.value)}
+          </Avatar>
+        )}
+        <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: p.value === "—" ? "text.disabled" : "text.primary" }}>
+          {p.value}
+        </Typography>
+      </Box>
+    ),
+  };
+
+  const declinedByCol = {
+    field: "declinedBy", headerName: "Declined By", flex: 1, minWidth: 130,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+        {p.value !== "—" && (
+          <Avatar sx={{ width: 20, height: 20, fontSize: "0.55rem", fontWeight: 700, backgroundColor: "#fef2f2", color: "#dc2626" }}>
+            {getInitials(p.value)}
+          </Avatar>
+        )}
+        <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: p.value === "—" ? "text.disabled" : "text.primary" }}>
+          {p.value}
+        </Typography>
+      </Box>
+    ),
+  };
+
+  const declinedReasonCol = {
+    field: "declinedReason", headerName: "Reason", flex: 1.4, minWidth: 180,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Typography sx={{
+          fontFamily: dm, fontSize: "0.78rem", color: p.value === "—" ? "text.disabled" : "#dc2626",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          fontStyle: p.value === "—" ? "normal" : "italic",
+        }}>
+          {p.value}
+        </Typography>
       </Box>
     ),
   };
@@ -295,33 +422,158 @@ export default function AdminRequestManagement() {
     },
   };
 
-  const actionCol = {
-    field: "actions", headerName: "", flex: 0.5, minWidth: 90, sortable: false,
-    align: "right", headerAlign: "right",
-    renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
-        <Box
-          onClick={() => setSelectedRequest(p.row._raw)}
-          sx={{
-            px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
-            border: `1px solid ${border}`,
-            fontFamily: dm, fontSize: "0.73rem", fontWeight: 500,
-            color: "text.secondary",
-            transition: "all 0.15s",
-            "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
-          }}
-        >
-          View
+  const onGoingStaffersCol = {
+    field: "assignments", headerName: "Staffers On-Site", flex: 1.6, minWidth: 200,
+    sortable: false,
+    renderCell: (p) => {
+      const assignments = p.value || [];
+      if (!assignments.length) return <MetaCell>—</MetaCell>;
+      return (
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.35, height: "100%", py: 0.5 }}>
+          {assignments.map((a) => {
+            const url    = getAvatarUrl(a.staffer?.avatar_url);
+            const timeIn = fmtTime(a.timed_in_at);
+            return (
+              <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
+                <Avatar src={url} sx={{ width: 18, height: 18, fontSize: "0.48rem", fontWeight: 700, backgroundColor: "#eff6ff", color: "#1d4ed8", flexShrink: 0 }}>
+                  {!url && getInitials(a.staffer?.full_name)}
+                </Avatar>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.primary", fontWeight: 500 }}>
+                  {a.staffer?.full_name || "—"}
+                </Typography>
+                {timeIn ? (
+                  <Box sx={{ px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 600, color: "#1d4ed8" }}>{timeIn}</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(245,158,11,0.12)" : "#fffbeb", flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 600, color: "#b45309" }}>Not yet</Typography>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
         </Box>
-      </Box>
+      );
+    },
+  };
+
+  const completedStafferCol = {
+    field: "assignments", headerName: "Staffer", flex: 1.2, minWidth: 150,
+    sortable: false,
+    renderCell: (p) => {
+      const assignments = p.value || [];
+      if (!assignments.length) return <MetaCell>—</MetaCell>;
+      return (
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
+          {assignments.map((a) => {
+            const url = getAvatarUrl(a.staffer?.avatar_url);
+            return (
+              <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                <Avatar src={url} sx={{ width: 22, height: 22, fontSize: "0.52rem", fontWeight: 700, backgroundColor: isDark ? "rgba(34,197,94,0.15)" : "#f0fdf4", color: "#15803d", flexShrink: 0 }}>
+                  {!url && getInitials(a.staffer?.full_name)}
+                </Avatar>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {a.staffer?.full_name || "—"}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      );
+    },
+  };
+
+  const completedTimeInCol = {
+    field: "timeIn", headerName: "In", flex: 0.7, minWidth: 80,
+    sortable: false,
+    renderHeader: () => (
+      <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "#1d4ed8", letterSpacing: "0.07em", textTransform: "uppercase" }}>IN</Typography>
     ),
+    renderCell: (p) => {
+      const assignments = p.row.assignments || [];
+      if (!assignments.length) return <MetaCell>—</MetaCell>;
+      return (
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
+          {assignments.map((a) => {
+            const t = fmtTime(a.timed_in_at);
+            return (
+              <Typography key={a.id} sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: t ? "#1d4ed8" : "text.disabled", fontStyle: t ? "normal" : "italic" }}>
+                {t || "—"}
+              </Typography>
+            );
+          })}
+        </Box>
+      );
+    },
+  };
+
+  const completedTimeOutCol = {
+    field: "timeOut", headerName: "Out", flex: 0.7, minWidth: 80,
+    sortable: false,
+    renderHeader: () => (
+      <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "#15803d", letterSpacing: "0.07em", textTransform: "uppercase" }}>OUT</Typography>
+    ),
+    renderCell: (p) => {
+      const assignments = p.row.assignments || [];
+      if (!assignments.length) return <MetaCell>—</MetaCell>;
+      return (
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
+          {assignments.map((a) => {
+            const t = fmtTime(a.completed_at);
+            return (
+              <Typography key={a.id} sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: t ? "#15803d" : "text.disabled", fontStyle: t ? "normal" : "italic" }}>
+                {t || "—"}
+              </Typography>
+            );
+          })}
+        </Box>
+      );
+    },
+  };
+
+  const completedDurCol = {
+    field: "duration", headerName: "Dur", flex: 0.7, minWidth: 80,
+    sortable: false,
+    renderHeader: () => (
+      <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "#b45309", letterSpacing: "0.07em", textTransform: "uppercase" }}>DUR</Typography>
+    ),
+    renderCell: (p) => {
+      const assignments = p.row.assignments || [];
+      if (!assignments.length) return <MetaCell>—</MetaCell>;
+      return (
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
+          {assignments.map((a) => {
+            const dur = computeDuration(a.timed_in_at, a.completed_at);
+            return dur ? (
+              <Box key={a.id} sx={{ display: "inline-flex" }}>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 700, color: "#b45309", backgroundColor: isDark ? "rgba(245,197,43,0.1)" : "rgba(245,197,43,0.12)", border: `1px solid rgba(245,197,43,0.3)`, px: 0.75, py: 0.15, borderRadius: "4px" }}>
+                  {dur}
+                </Typography>
+              </Box>
+            ) : (
+              <Typography key={a.id} sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled", fontStyle: "italic" }}>—</Typography>
+            );
+          })}
+        </Box>
+      );
+    },
+  };
+
+  const onGoingVenueCol = {
+    field: "venue", headerName: "Venue", flex: 1, minWidth: 120,
+    renderCell: (p) => <MetaCell>{p.row._raw?.venue || "—"}</MetaCell>,
   };
 
   const buildColumns = () => {
     const key = TABS[tab].key;
-    if (key === "all")       return [...baseColumns, statusCol, actionCol];
-    if (key === "Forwarded") return [...baseColumns, forwardedCol, actionCol];
-    return [...baseColumns, actionCol];
+    if (key === "all")          return [titleCol, clientCol, receivedCol, eventDateCol, statusCol, actionCol];
+    if (key === "Forwarded")    return [titleCol, clientCol, eventDateCol, forwardedToCol, forwardedByCol, actionCol];
+    if (key === "Approved")     return [titleCol, clientCol, eventDateCol, approvedByCol, actionCol];
+    if (key === "On Going")     return [titleCol, clientCol, eventDateCol, onGoingVenueCol, onGoingStaffersCol, actionCol];
+    if (key === "Completed")    return [titleCol, clientCol, eventDateCol, onGoingVenueCol, completedStafferCol, completedTimeInCol, completedTimeOutCol, completedDurCol, actionCol];
+    if (key === "Declined")     return [titleCol, clientCol, eventDateCol, declinedByCol, declinedReasonCol, actionCol];
+    return [titleCol, clientCol, receivedCol, eventDateCol, actionCol];
   };
 
   return (
@@ -356,12 +608,22 @@ export default function AdminRequestManagement() {
                   color: isActive ? CHARCOAL : "text.secondary",
                   transition: "color 0.15s",
                   "&:hover": { color: CHARCOAL },
-                  "&::after": isActive ? { content: '""', position: "absolute", bottom: -1, left: 0, right: 0, height: "2px", borderRadius: "2px 2px 0 0", backgroundColor: GOLD } : {},
+                  "&::after": isActive ? {
+                    content: '""', position: "absolute",
+                    bottom: -1, left: 0, right: 0,
+                    height: "2px", borderRadius: "2px 2px 0 0",
+                    backgroundColor: GOLD,
+                  } : {},
                 }}
               >
                 {t.label}
                 {count > 0 && (
-                  <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)", flexShrink: 0 }}>
+                  <Box sx={{
+                    minWidth: 17, height: 17, borderRadius: "9px", px: 0.5,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)",
+                    flexShrink: 0,
+                  }}>
                     <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>
                       {count}
                     </Typography>
@@ -396,6 +658,7 @@ export default function AdminRequestManagement() {
               {filterOpen && (
                 <Paper
                   elevation={0}
+                  onMouseDown={(e) => e.stopPropagation()}
                   sx={{
                     position: "absolute", top: "calc(100% + 8px)", right: 0,
                     width: { xs: "calc(100vw - 48px)", sm: 240 }, maxWidth: 280,
@@ -417,7 +680,13 @@ export default function AdminRequestManagement() {
                   <Box sx={{ px: 2, py: 2, display: "flex", flexDirection: "column", gap: 1.75 }}>
                     <FormControl size="small" fullWidth>
                       <InputLabel sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Semester</InputLabel>
-                      <Select value={selectedSem} label="Semester" onChange={(e) => setSelectedSem(e.target.value)} sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px", "& .MuiOutlinedInput-notchedOutline": { borderColor: border }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD } }}>
+                      <Select
+                        value={selectedSem}
+                        label="Semester"
+                        onChange={(e) => setSelectedSem(e.target.value)}
+                        MenuProps={{ disablePortal: true }}
+                        sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px", "& .MuiOutlinedInput-notchedOutline": { borderColor: border }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD } }}
+                      >
                         <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Semesters</MenuItem>
                         {semesters.map((s) => (
                           <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{s.name}</MenuItem>
@@ -426,7 +695,13 @@ export default function AdminRequestManagement() {
                     </FormControl>
                     <FormControl size="small" fullWidth>
                       <InputLabel sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Client</InputLabel>
-                      <Select value={selectedEntity} label="Client" onChange={(e) => setSelectedEntity(e.target.value)} sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px", "& .MuiOutlinedInput-notchedOutline": { borderColor: border }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD } }}>
+                      <Select
+                        value={selectedEntity}
+                        label="Client"
+                        onChange={(e) => setSelectedEntity(e.target.value)}
+                        MenuProps={{ disablePortal: true }}
+                        sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px", "& .MuiOutlinedInput-notchedOutline": { borderColor: border }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD } }}
+                      >
                         <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Clients</MenuItem>
                         {entityOptions.map((name) => (
                           <MenuItem key={name} value={name} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{name}</MenuItem>
@@ -470,7 +745,8 @@ export default function AdminRequestManagement() {
               pageSize={8}
               rowsPerPageOptions={[8]}
               disableSelectionOnClick
-              rowHeight={52}
+              rowHeight={["On Going", "Completed"].includes(TABS[tab].key) ? 60 : 52}
+              initialState={{ pinnedColumns: { left: ["requestTitle"] } }}
               getRowClassName={(params) =>
                 highlight && params.row.requestTitle?.toLowerCase().includes(highlight) ? "highlighted-row" : ""
               }
@@ -521,20 +797,46 @@ function makeDataGridSx(isDark, border) {
   return {
     border: "none", fontFamily: dm, fontSize: "0.82rem",
     backgroundColor: "background.paper", color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", borderBottom: `1px solid ${border}`, minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important" },
-    "& .MuiDataGrid-columnHeaderTitle": { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+      borderBottom: `1px solid ${border}`,
+      minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important",
+    },
+    "& .MuiDataGrid-columnHeaderTitle": {
+      fontFamily: dm, fontSize: "0.68rem", fontWeight: 700,
+      color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase",
+    },
     "& .MuiDataGrid-columnSeparator": { display: "none" },
     "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
-    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon button": {
+      color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s",
+      "&:hover": { backgroundColor: GOLD_08, color: "#b45309" },
+    },
     "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
     "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
-    "& .MuiDataGrid-row": { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
+    "& .MuiDataGrid-row": {
+      borderBottom: `1px solid ${border}`, transition: "background-color 0.12s",
+      "&:last-child": { borderBottom: "none" },
+    },
     "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
     "& .MuiDataGrid-cell": { border: "none", outline: "none !important", "&:focus, &:focus-within": { outline: "none" } },
     "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px" },
     "& .MuiTablePagination-root": { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
     "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
-    "& .MuiDataGrid-virtualScroller":  { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay":          { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
+    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
+    // ── v8 pinned column styling ──────────────────────────────────────────────
+    "& .MuiDataGrid-pinnedColumns--left": {
+      backgroundColor: "background.paper",
+      boxShadow: isDark
+        ? "4px 0 12px rgba(0,0,0,0.4)"
+        : "4px 0 10px rgba(53,53,53,0.07)",
+    },
+    "& .MuiDataGrid-pinnedColumnHeaders--left": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+      boxShadow: isDark
+        ? "4px 0 12px rgba(0,0,0,0.4)"
+        : "4px 0 10px rgba(53,53,53,0.07)",
+    },
   };
 }

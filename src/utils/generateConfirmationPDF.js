@@ -75,7 +75,7 @@ export async function generateConfirmationPDF(request, teamBySection) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(80, 60, 0);
-  doc.text("THE GOLDEN PANICLES", MARGIN, 10);
+  doc.text("THE GOLD PANICLES", MARGIN, 10);
 
   // Document title
   doc.setFont("helvetica", "bold");
@@ -330,7 +330,7 @@ export async function generateConfirmationPDF(request, teamBySection) {
     MARGIN, PAGE_H - 14
   );
   doc.text(
-    "For inquiries, contact The Golden Panicles. email: thegoldpanicles@gmail.com",
+    "For inquiries, contact The Gold Panicles. email: thegoldpanicles@gmail.com",
     MARGIN, PAGE_H - 9
   );
   doc.setFont("helvetica", "bold");

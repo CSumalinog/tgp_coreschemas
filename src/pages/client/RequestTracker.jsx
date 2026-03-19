@@ -84,6 +84,9 @@ const getStageIndex = (status) => {
 
 const TABS = ["Pipeline", "All Requests", "Pending", "Approved", "Declined"];
 
+// ── Shared silent realtime options (no sound/toast/flash for assignment changes) ──
+const SILENT = { sound: false, toast: false, tabFlash: false };
+
 // ── Column menu GlobalStyles ──────────────────────────────────────────────────
 function ColumnMenuStyles({ isDark, border }) {
   const paperBg   = isDark ? "#1e1e1e" : "#ffffff";
@@ -186,7 +189,10 @@ function PipelineTab({ isDark, border }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
 
-  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+  // Subscribe to both tables — status changes on coverage_requests AND
+  // coverage_assignments (time in / complete) both trigger a refetch
+  useRealtimeNotify("coverage_requests",   refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", refetch, null, { ...SILENT, title: "Coverage Request" });
 
   const active = requests.filter((r) =>
     ["Pending", "Forwarded", "Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(r.status)
@@ -423,7 +429,8 @@ const toRow = (req) => ({
 function AllRequestsTab({ isDark, border }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
-  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_requests",   refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", refetch, null, { ...SILENT, title: "Coverage Request" });
   const columns = useGridColumns(isDark, setSelected);
   const rows    = requests.filter((r) => r.status !== "Draft").map(toRow);
   if (loading) return <Loader />;
@@ -438,7 +445,8 @@ function AllRequestsTab({ isDark, border }) {
 function PendingTab({ isDark, border }) {
   const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
-  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_requests",   refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", refetch, null, { ...SILENT, title: "Coverage Request" });
   const columns = useGridColumns(isDark, setSelected);
   const rows    = pending.map(toRow);
   if (loading) return <Loader />;
@@ -453,7 +461,8 @@ function PendingTab({ isDark, border }) {
 function ApprovedTab({ isDark, border }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
-  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_requests",   refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", refetch, null, { ...SILENT, title: "Coverage Request" });
   const baseColumns = useGridColumns(isDark, setSelected);
   const columns = [
     ...baseColumns.filter((c) => c.field !== "status" && c.field !== "actions"),
@@ -473,7 +482,8 @@ function ApprovedTab({ isDark, border }) {
 function DeclinedTab({ isDark, border }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
-  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_requests",   refetch, null, { title: "Coverage Request" });
+  useRealtimeNotify("coverage_assignments", refetch, null, { ...SILENT, title: "Coverage Request" });
   const baseColumns = useGridColumns(isDark, setSelected);
   const columns = [
     ...baseColumns.filter((c) => c.field !== "status" && c.field !== "actions"),
@@ -498,10 +508,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
   const currentIdx = getStageIndex(request.status);
   const isDeclined = request.status === "Declined";
 
-  // ✅ Show team for all active execution statuses, not just pre-approval ones
   const showTeam = ["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(request.status);
-
-  // ✅ Phase 2 starts at index 5 (On Going)
   const currentPhase = currentIdx >= 5 ? 2 : 1;
 
   const teamBySection = {};
@@ -561,7 +568,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
 
       <DialogContent sx={{ px: 3, py: 2.5, overflowY: "auto" }}>
 
-        {/* ✅ Progress tracker — blue dot for Phase 2 active stage */}
+        {/* Progress tracker */}
         {currentIdx >= 0 && !isDeclined && (
           <Box sx={{ mb: 3, p: 2, borderRadius: "10px", backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", border: `1px solid ${border}` }}>
             <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 1.5 }}>
@@ -571,7 +578,6 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
               {PIPELINE_STAGES.map((stage, idx) => {
                 const done    = idx < currentIdx;
                 const current = idx === currentIdx;
-                // ✅ Phase 2 stages (On Going, Completed) use blue; Phase 1 uses gold
                 const isP2    = stage.phase === 2;
                 const activeColor = isP2 ? "#3b82f6" : GOLD;
                 const activeGlow  = isP2 ? "rgba(59,130,246,0.15)" : GOLD_08;
@@ -603,7 +609,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Box>
         )}
 
-        {/* ✅ Coverage team — now shows for On Going and Completed too */}
+        {/* Coverage team */}
         {showTeam && teamSections.length > 0 && (
           <Section label="Coverage Team" border={border}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -679,7 +685,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           )}
         </Section>
 
-        {/* ✅ On Going status — show coverage underway message */}
+        {/* On Going status */}
         {request.status === "On Going" && (
           <Section label="Coverage Status" border={border}>
             <Box sx={{ px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: isDark ? "rgba(59,130,246,0.06)" : "#eff6ff", borderLeft: "2.5px solid #3b82f6" }}>
@@ -690,7 +696,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Section>
         )}
 
-        {/* ✅ Completed status — show completion message */}
+        {/* Completed status */}
         {request.status === "Completed" && (
           <Section label="Coverage Status" border={border}>
             <Box sx={{ px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: isDark ? "rgba(34,197,94,0.06)" : "#f0fdf4", borderLeft: "2.5px solid #22c55e" }}>
@@ -719,7 +725,7 @@ function RequestDetailDialog({ open, onClose, request, isDark, border }) {
           </Section>
         )}
 
-        {request.status === "Approved" && (
+        {["Approved", "On Going", "Completed"].includes(request.status) && (
           <Section label="Approval" border={border}>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
               <Box>

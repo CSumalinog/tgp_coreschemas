@@ -39,6 +39,7 @@ const STATUS_CFG = {
   Forwarded:           { dot: "#a855f7", color: "#7c3aed", bg: "#f5f3ff" },
   Assigned:            { dot: "#f97316", color: "#c2410c", bg: "#fff7ed" },
   "For Approval":      { dot: "#38bdf8", color: "#0369a1", bg: "#f0f9ff" },
+  "On Going":          { dot: "#3b82f6", color: "#1d4ed8", bg: "#eff6ff" },
   "Coverage Complete": { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
   Approved:            { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
   Declined:            { dot: "#ef4444", color: "#dc2626", bg: "#fef2f2" },
@@ -49,7 +50,8 @@ const STATUS_CFG = {
 const TABS = [
   { label: "For Assignment", key: "for-assignment" },
   { label: "Assigned",       key: "assigned"       },
-  { label: "History",        key: "history"        },
+  { label: "On Going",       key: "on-going"       },
+  { label: "Completed",      key: "completed"      },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -76,6 +78,24 @@ const openFile = (filePath) => {
 const getFileName = (filePath) => {
   if (!filePath) return null;
   return filePath.split("/").pop().replace(/^\d+_/, "");
+};
+
+// ── Duration helper ───────────────────────────────────────────────────────────
+const computeDuration = (timedIn, completedAt) => {
+  if (!timedIn || !completedAt) return null;
+  const diffMs  = new Date(completedAt) - new Date(timedIn);
+  if (diffMs <= 0) return null;
+  const totalMins = Math.floor(diffMs / 60000);
+  const hrs  = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hrs === 0) return `${mins}m`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}m`;
+};
+
+const fmtTime = (ts) => {
+  if (!ts) return null;
+  return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -150,7 +170,8 @@ export default function SecHeadAssignmentManagement() {
   const [currentUser,       setCurrentUser]       = useState(null);
   const [forAssignmentReqs, setForAssignmentReqs] = useState([]);
   const [assignedReqs,      setAssignedReqs]      = useState([]);
-  const [historyReqs,       setHistoryReqs]       = useState([]);
+  const [onGoingReqs,       setOnGoingReqs]       = useState([]);
+  const [completedReqs,     setCompletedReqs]     = useState([]);
   const [loading,           setLoading]           = useState(true);
   const [error,             setError]             = useState("");
 
@@ -216,20 +237,35 @@ export default function SecHeadAssignmentManagement() {
         id, title, description, event_date, from_time, to_time,
         venue, services, status, contact_person, contact_info,
         file_url, forwarded_sections, forwarded_at, submitted_at,
-        client_type:client_type_id ( id, name ),
+        client_type:client_types ( id, name ),
         entity:client_entities ( id, name ),
         coverage_assignments (
-          id, status, assigned_to,
-          staffer:assigned_to ( id, full_name, section, role, avatar_url )
+          id, status, assigned_to, timed_in_at, completed_at,
+          staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
         )
       `;
-      const [allForwarded, assignedAndApproval, history] = await Promise.all([
-        supabase.from("coverage_requests").select(baseSelect).in("status", ["Forwarded", "Assigned", "For Approval"]).contains("forwarded_sections", [currentUser.section]).order("forwarded_at", { ascending: false }),
-        supabase.from("coverage_requests").select(baseSelect).in("status", ["Assigned", "For Approval"]).contains("forwarded_sections", [currentUser.section]).order("event_date", { ascending: true }),
-        supabase.from("coverage_requests").select(baseSelect).in("status", ["Approved", "Coverage Complete", "Completed", "No-show", "Declined"]).contains("forwarded_sections", [currentUser.section]).order("event_date", { ascending: false }),
+
+      const [allForwarded, assignedAndApproval, onGoing, completed] = await Promise.all([
+        supabase.from("coverage_requests").select(baseSelect)
+          .in("status", ["Forwarded", "Assigned", "For Approval"])
+          .contains("forwarded_sections", [currentUser.section])
+          .order("forwarded_at", { ascending: false }),
+        supabase.from("coverage_requests").select(baseSelect)
+          .in("status", ["Assigned", "For Approval"])
+          .contains("forwarded_sections", [currentUser.section])
+          .order("event_date", { ascending: true }),
+        supabase.from("coverage_requests").select(baseSelect)
+          .eq("status", "On Going")
+          .contains("forwarded_sections", [currentUser.section])
+          .order("event_date", { ascending: true }),
+        supabase.from("coverage_requests").select(baseSelect)
+          .in("status", ["Approved", "Coverage Complete", "Completed", "No-show", "Declined"])
+          .contains("forwarded_sections", [currentUser.section])
+          .order("event_date", { ascending: false }),
       ]);
-      if (allForwarded.error || assignedAndApproval.error || history.error)
-        throw allForwarded.error || assignedAndApproval.error || history.error;
+
+      if (allForwarded.error || assignedAndApproval.error || onGoing.error || completed.error)
+        throw allForwarded.error || assignedAndApproval.error || onGoing.error || completed.error;
 
       const mySection     = currentUser.section;
       const forwardedData = allForwarded.data || [];
@@ -247,14 +283,14 @@ export default function SecHeadAssignmentManagement() {
 
       setForAssignmentReqs(forAssignRows);
       setAssignedReqs(assignedRows);
-      setHistoryReqs(history.data || []);
+      setOnGoingReqs(onGoing.data || []);
+      setCompletedReqs(completed.data || []);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }, [currentUser]);
 
   useEffect(() => { if (currentUser) loadAll(); }, [currentUser, loadAll]);
 
-  // ─── Realtime subscription ────────────────────────────────────────────────
   useRealtimeNotify("coverage_assignments", loadAll, null, { title: "Assignment" });
 
   useEffect(() => {
@@ -310,8 +346,9 @@ export default function SecHeadAssignmentManagement() {
   const counts = useMemo(() => ({
     "for-assignment": applyFilters(forAssignmentReqs).length,
     "assigned":       applyFilters(assignedReqs).length,
-    "history":        applyFilters(historyReqs).length,
-  }), [applyFilters, forAssignmentReqs, assignedReqs, historyReqs]);
+    "on-going":       applyFilters(onGoingReqs).length,
+    "completed":      applyFilters(completedReqs).length,
+  }), [applyFilters, forAssignmentReqs, assignedReqs, onGoingReqs, completedReqs]);
 
   const getPaxForSection = (request) => {
     if (!currentUser?.section || !request?.services) return "—";
@@ -390,7 +427,8 @@ export default function SecHeadAssignmentManagement() {
         <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.3 }}>
           {tab === 0 && `Requests forwarded to your section (${currentUser.section}). Assign staffers, then submit for admin approval.`}
           {tab === 1 && `Requests with staffers assigned from your section (${currentUser.section}). Submit ready ones for admin approval.`}
-          {tab === 2 && `Completed and past coverage requests handled by your section (${currentUser.section}).`}
+          {tab === 2 && `Coverage currently in progress — your section's staffers have timed in and are on-site.`}
+          {tab === 3 && `Completed coverage requests handled by your section (${currentUser.section}). Full time in, time out, and duration records.`}
         </Typography>
       </Box>
 
@@ -445,7 +483,7 @@ export default function SecHeadAssignmentManagement() {
             </Box>
 
             {filterOpen && (
-              <Box sx={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 250, zIndex: 1300, borderRadius: "12px", overflow: "hidden", border: `1px solid ${border}`, backgroundColor: "background.paper", boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(53,53,53,0.12)" }}>
+              <Box onMouseDown={(e) => e.stopPropagation()} sx={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 250, zIndex: 1300, borderRadius: "12px", overflow: "hidden", border: `1px solid ${border}`, backgroundColor: "background.paper", boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(53,53,53,0.12)" }}>
                 <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filter</Typography>
                   {activeFilterCount > 0 && (
@@ -503,7 +541,8 @@ export default function SecHeadAssignmentManagement() {
             <>
               {tab === 0 && <ForAssignmentTab rows={applyFilters(forAssignmentReqs)} highlight={highlight} currentUser={currentUser} isDark={isDark} border={border} getPaxForSection={getPaxForSection} onAssign={(req) => { setAssignError(""); setSelectedRequest(req); }} />}
               {tab === 1 && <AssignedTab     rows={applyFilters(assignedReqs)}      highlight={highlight} currentUser={currentUser} isDark={isDark} border={border} submitLoading={submitLoading} onRequestConfirm={(row) => setConfirmRequest(row)} />}
-              {tab === 2 && <HistoryTab      rows={applyFilters(historyReqs)}       highlight={highlight} currentUser={currentUser} isDark={isDark} border={border} />}
+              {tab === 2 && <OnGoingTab      rows={applyFilters(onGoingReqs)}       highlight={highlight} currentUser={currentUser} isDark={isDark} border={border} />}
+              {tab === 3 && <CompletedTab    rows={applyFilters(completedReqs)}     highlight={highlight} currentUser={currentUser} isDark={isDark} border={border} />}
             </>
           )}
         </Box>
@@ -536,7 +575,6 @@ export default function SecHeadAssignmentManagement() {
 function SubmitConfirmDialog({ open, request, isDark, border, loading, onCancel, onConfirm }) {
   if (!request) return null;
   const stafferNames = (request.staffers || []).map((a) => a.staffer?.full_name).filter(Boolean);
-
   return (
     <Dialog open={open} onClose={() => !loading && onCancel()} maxWidth="xs" fullWidth
       PaperProps={{ sx: { borderRadius: "14px", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)" } }}
@@ -553,7 +591,6 @@ function SubmitConfirmDialog({ open, request, isDark, border, loading, onCancel,
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
-
       <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>
         <Box sx={{ px: 1.75, py: 1.25, borderRadius: "8px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
           <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", fontWeight: 600, color: "text.primary" }}>{request.title}</Typography>
@@ -561,7 +598,6 @@ function SubmitConfirmDialog({ open, request, isDark, border, loading, onCancel,
             <Typography sx={{ fontFamily: dm, fontSize: "0.73rem", color: "text.secondary", mt: 0.3 }}>Event date: {request.eventDate}</Typography>
           )}
         </Box>
-
         {stafferNames.length > 0 && (
           <Box>
             <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.09em", mb: 0.75 }}>Staffers being submitted</Typography>
@@ -575,7 +611,6 @@ function SubmitConfirmDialog({ open, request, isDark, border, loading, onCancel,
             </Box>
           </Box>
         )}
-
         <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)", border: `1px solid rgba(245,197,43,0.3)` }}>
           <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: "#b45309", flexShrink: 0, mt: 0.1 }} />
           <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#b45309", lineHeight: 1.55 }}>
@@ -583,7 +618,6 @@ function SubmitConfirmDialog({ open, request, isDark, border, loading, onCancel,
           </Typography>
         </Box>
       </Box>
-
       <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
         <CancelBtn onClick={onCancel} disabled={loading} border={border} />
         <PrimaryBtn onClick={onConfirm} loading={loading}>
@@ -607,9 +641,9 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
   });
 
   const columns = [
-    { field: "requestTitle",  headerName: "Event Title",  flex: 1.4, renderCell: (p) => <CellText>{p.value}</CellText> },
-    { field: "client",        headerName: "Client",       flex: 1,   renderCell: (p) => <CellText secondary>{p.value}</CellText> },
-    { field: "eventDate",     headerName: "Event Date",   flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "requestTitle", headerName: "Event Title", flex: 1.4, renderCell: (p) => <CellText bold>{p.value}</CellText> },
+    { field: "client",       headerName: "Client",      flex: 1,   renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "eventDate",    headerName: "Event Date",  flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
     {
       field: "paxNeeded", headerName: "Pax", flex: 0.6,
       renderCell: (p) => (
@@ -645,12 +679,7 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
     },
   ];
 
-  return (
-    <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52}
-      getRowClassName={(p) => highlight && p.row.requestTitle?.toLowerCase().includes(highlight) ? "highlighted-row" : ""}
-      sx={makeDataGridSx(isDark, border)}
-    />
-  );
+  return <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52} initialState={{ pinnedColumns: { left: ["requestTitle"] } }} getRowClassName={(p) => highlight && p.row.requestTitle?.toLowerCase().includes(highlight) ? "highlighted-row" : ""} sx={makeDataGridSx(isDark, border)} />;
 }
 
 // ── Assigned Tab ──────────────────────────────────────────────────────────────
@@ -661,7 +690,7 @@ function AssignedTab({ rows, highlight, currentUser, isDark, border, submitLoadi
   });
 
   const columns = [
-    { field: "title",     headerName: "Event Title", flex: 1.2, renderCell: (p) => <CellText>{p.value}</CellText> },
+    { field: "title",     headerName: "Event Title", flex: 1.2, renderCell: (p) => <CellText bold>{p.value}</CellText> },
     { field: "client",    headerName: "Client",      flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
     { field: "eventDate", headerName: "Event Date",  flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
     {
@@ -686,14 +715,7 @@ function AssignedTab({ rows, highlight, currentUser, isDark, border, submitLoadi
         </Box>
       ),
     },
-    {
-      field: "status", headerName: "Status", flex: 0.85,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <StatusPill status={p.value} isDark={isDark} />
-        </Box>
-      ),
-    },
+    { field: "status", headerName: "Status", flex: 0.85, renderCell: (p) => <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}><StatusPill status={p.value} isDark={isDark} /></Box> },
     {
       field: "actions", headerName: "", flex: 1.3, sortable: false, align: "right", headerAlign: "right",
       renderCell: (p) => (
@@ -711,38 +733,47 @@ function AssignedTab({ rows, highlight, currentUser, isDark, border, submitLoadi
     },
   ];
 
-  return (
-    <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52}
-      getRowClassName={(p) => highlight && p.row.title?.toLowerCase().includes(highlight) ? "highlighted-row" : ""}
-      sx={makeDataGridSx(isDark, border)}
-    />
-  );
+  return <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52} initialState={{ pinnedColumns: { left: ["title"] } }} getRowClassName={(p) => highlight && p.row.title?.toLowerCase().includes(highlight) ? "highlighted-row" : ""} sx={makeDataGridSx(isDark, border)} />;
 }
 
-// ── History Tab ───────────────────────────────────────────────────────────────
-function HistoryTab({ rows, highlight, currentUser, isDark, border }) {
+// ── On Going Tab ──────────────────────────────────────────────────────────────
+function OnGoingTab({ rows, highlight, currentUser, isDark, border }) {
   const mappedRows = rows.map((req) => {
     const sectionAssignments = (req.coverage_assignments || []).filter((a) => a.staffer?.section === currentUser?.section);
-    return { id: req.id, title: req.title, client: req.entity?.name || "—", eventDate: req.event_date ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—", venue: req.venue || "—", status: req.status, staffers: sectionAssignments };
+    return { id: req.id, title: req.title, client: req.entity?.name || "—", eventDate: req.event_date ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—", venue: req.venue || "—", staffers: sectionAssignments };
   });
 
   const columns = [
-    { field: "title",     headerName: "Event Title", flex: 1.3, renderCell: (p) => <CellText>{p.value}</CellText> },
+    { field: "title",     headerName: "Event Title", flex: 1.2, renderCell: (p) => <CellText bold>{p.value}</CellText> },
     { field: "client",    headerName: "Client",      flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
-    { field: "eventDate", headerName: "Event Date",  flex: 0.9, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
-    { field: "venue",     headerName: "Venue",       flex: 1,   renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "eventDate", headerName: "Event Date",  flex: 0.85, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "venue",     headerName: "Venue",       flex: 0.9,  renderCell: (p) => <CellText secondary>{p.value}</CellText> },
     {
-      field: "staffers", headerName: "Staffers", flex: 1.2, sortable: false,
+      field: "staffers", headerName: "Staffers / Time In", flex: 1.6, sortable: false,
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, height: "100%", flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", gap: 0.4, py: 0.5 }}>
           {p.value.length === 0
             ? <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}>—</Typography>
             : p.value.map((a) => {
-                const url = getAvatarUrl(a.staffer?.avatar_url);
+                const url      = getAvatarUrl(a.staffer?.avatar_url);
+                const timeIn   = fmtTime(a.timed_in_at);
                 return (
-                  <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
-                    <Avatar src={url} sx={{ width: 22, height: 22, fontSize: "0.58rem", fontWeight: 700, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)", color: "text.secondary" }}>{!url && getInitials(a.staffer?.full_name)}</Avatar>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 500, color: "text.primary" }}>{a.staffer?.full_name || "—"}</Typography>
+                  <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Avatar src={url} sx={{ width: 20, height: 20, fontSize: "0.52rem", fontWeight: 700, backgroundColor: isDark ? "rgba(59,130,246,0.2)" : "#eff6ff", color: "#1d4ed8", flexShrink: 0 }}>
+                      {!url && getInitials(a.staffer?.full_name)}
+                    </Avatar>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 500, color: "text.primary" }}>
+                      {a.staffer?.full_name || "—"}
+                    </Typography>
+                    {timeIn ? (
+                      <Box sx={{ px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", flexShrink: 0 }}>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 600, color: "#1d4ed8" }}>{timeIn}</Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(245,158,11,0.12)" : "#fffbeb", flexShrink: 0 }}>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 600, color: "#b45309" }}>Not yet</Typography>
+                      </Box>
+                    )}
                   </Box>
                 );
               })
@@ -750,28 +781,75 @@ function HistoryTab({ rows, highlight, currentUser, isDark, border }) {
         </Box>
       ),
     },
+  ];
+
+  return <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={56} initialState={{ pinnedColumns: { left: ["title"] } }} getRowClassName={(p) => highlight && p.row.title?.toLowerCase().includes(highlight) ? "highlighted-row" : ""} sx={makeDataGridSx(isDark, border)} />;
+}
+
+// ── Completed Tab ─────────────────────────────────────────────────────────────
+function CompletedTab({ rows, highlight, currentUser, isDark, border }) {
+  const mappedRows = rows.map((req) => {
+    const sectionAssignments = (req.coverage_assignments || []).filter((a) => a.staffer?.section === currentUser?.section);
+    return { id: req.id, title: req.title, client: req.entity?.name || "—", eventDate: req.event_date ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—", venue: req.venue || "—", status: req.status, staffers: sectionAssignments };
+  });
+
+  const columns = [
+    { field: "title",     headerName: "Event Title", flex: 1.2, renderCell: (p) => <CellText bold>{p.value}</CellText> },
+    { field: "client",    headerName: "Client",      flex: 0.85, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "eventDate", headerName: "Event Date",  flex: 0.85, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
+    { field: "venue",     headerName: "Venue",       flex: 0.85, renderCell: (p) => <CellText secondary>{p.value}</CellText> },
     {
-      field: "status", headerName: "Status", flex: 0.9,
+      field: "staffers", headerName: "Staffers / Time Record", flex: 2, sortable: false,
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <StatusPill status={p.value} isDark={isDark} />
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", gap: 0.5, py: 0.5 }}>
+          {p.value.length === 0
+            ? <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}>—</Typography>
+            : p.value.map((a) => {
+                const url      = getAvatarUrl(a.staffer?.avatar_url);
+                const timeIn   = fmtTime(a.timed_in_at);
+                const timeOut  = fmtTime(a.completed_at);
+                const duration = computeDuration(a.timed_in_at, a.completed_at);
+                return (
+                  <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+                    <Avatar src={url} sx={{ width: 20, height: 20, fontSize: "0.52rem", fontWeight: 700, backgroundColor: isDark ? "rgba(34,197,94,0.15)" : "#f0fdf4", color: "#15803d", flexShrink: 0 }}>
+                      {!url && getInitials(a.staffer?.full_name)}
+                    </Avatar>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 500, color: "text.primary", minWidth: 80 }}>
+                      {a.staffer?.full_name || "—"}
+                    </Typography>
+                    {timeIn && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.35, px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(59,130,246,0.1)" : "#eff6ff" }}>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", color: "text.disabled" }}>IN</Typography>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 600, color: "#1d4ed8" }}>{timeIn}</Typography>
+                      </Box>
+                    )}
+                    {timeOut && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.35, px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(34,197,94,0.1)" : "#f0fdf4" }}>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", color: "text.disabled" }}>OUT</Typography>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 600, color: "#15803d" }}>{timeOut}</Typography>
+                      </Box>
+                    )}
+                    {duration && (
+                      <Box sx={{ px: 0.8, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? "rgba(245,197,43,0.1)" : "rgba(245,197,43,0.12)", border: `1px solid rgba(245,197,43,0.3)` }}>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 700, color: "#b45309" }}>{duration}</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })
+          }
         </Box>
       ),
     },
+    { field: "status", headerName: "Status", flex: 0.8, renderCell: (p) => <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}><StatusPill status={p.value} isDark={isDark} /></Box> },
   ];
 
-  return (
-    <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52}
-      getRowClassName={(p) => highlight && p.row.title?.toLowerCase().includes(highlight) ? "highlighted-row" : ""}
-      sx={makeDataGridSx(isDark, border)}
-    />
-  );
+  return <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={60} initialState={{ pinnedColumns: { left: ["title"] } }} getRowClassName={(p) => highlight && p.row.title?.toLowerCase().includes(highlight) ? "highlighted-row" : ""} sx={makeDataGridSx(isDark, border)} />;
 }
 
 // ── Assignment Dialog ─────────────────────────────────────────────────────────
 function AssignmentDialog({ open, request, onClose, currentUser, isDark, border, staffers, staffersLoading, selectedStaffers, setSelectedStaffers, alreadyAssigned, isWeekend, assignLoading, assignError, getPaxForSection, onAssign }) {
   if (!request) return null;
-
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md"
       PaperProps={{ sx: { borderRadius: "14px", height: { md: "90vh" }, maxHeight: "95vh", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)" } }}
@@ -788,7 +866,7 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
           <Box sx={{ px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? "rgba(168,85,247,0.1)" : "#f5f3ff" }}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: "#7c3aed", letterSpacing: "0.04em" }}>{currentUser.section}</Typography>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: "#7c3aed" }}>{currentUser.section}</Typography>
           </Box>
           {isWeekend && (
             <Box sx={{ px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.1)", border: `1px solid rgba(245,197,43,0.3)` }}>
@@ -800,17 +878,10 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
           </IconButton>
         </Box>
       </Box>
-
       <DialogContent sx={{ p: 0, display: "flex", flexDirection: { xs: "column", md: "row" }, overflow: { xs: "auto", md: "hidden" }, minHeight: 0 }}>
         <Box sx={{ flex: 1, px: 3, py: 2.5, overflowY: { xs: "visible", md: "auto" }, minWidth: 0 }}>
           <Section label="Event Information" border={border}>
-            <InfoGrid rows={[
-              ["Title",       request.title],
-              ["Description", request.description],
-              ["Date",        request.event_date || "—"],
-              ["Time",        request.from_time && request.to_time ? `${request.from_time} – ${request.to_time}` : "—"],
-              ["Venue",       request.venue || "—"],
-            ]} />
+            <InfoGrid rows={[["Title", request.title], ["Description", request.description], ["Date", request.event_date || "—"], ["Time", request.from_time && request.to_time ? `${request.from_time} – ${request.to_time}` : "—"], ["Venue", request.venue || "—"]]} />
           </Section>
           <Section label="Coverage Requirements" border={border}>
             <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.4, borderRadius: "6px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
@@ -820,11 +891,7 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
             </Box>
           </Section>
           <Section label="Client Details" border={border}>
-            <InfoGrid rows={[
-              ["Organization",   request.entity?.name || "—"],
-              ["Contact Person", request.contact_person || "—"],
-              ["Contact Info",   request.contact_info || "—"],
-            ]} />
+            <InfoGrid rows={[["Organization", request.entity?.name || "—"], ["Contact Person", request.contact_person || "—"], ["Contact Info", request.contact_info || "—"]]} />
           </Section>
           <Section label="Attachment" border={border}>
             {request.file_url ? (
@@ -850,9 +917,7 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
             </Section>
           )}
         </Box>
-
         <Box sx={{ width: "1px", backgroundColor: border, display: { xs: "none", md: "block" } }} />
-
         <Box sx={{ width: { xs: "100%", md: 280 }, flexShrink: 0, px: 2.5, py: 2.5, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)", overflowY: { xs: "visible", md: "auto" }, display: "flex", flexDirection: "column", gap: 1.25 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
             <PersonAddOutlinedIcon sx={{ fontSize: 13, color: GOLD }} />
@@ -861,13 +926,9 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
           <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary", lineHeight: 1.6 }}>
             {isWeekend ? "Weekend event — all staffers shown, sorted by least assignments." : `Showing staffers on duty for ${new Date(request.event_date).toLocaleDateString("en-US", { weekday: "long" })}, sorted by least assignments.`}
           </Typography>
-
           {assignError && <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.76rem" }}>{assignError}</Alert>}
-
           {staffersLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-              <CircularProgress size={18} sx={{ color: GOLD }} />
-            </Box>
+            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><CircularProgress size={18} sx={{ color: GOLD }} /></Box>
           ) : staffers.length === 0 ? (
             <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", textAlign: "center", py: 2 }}>No eligible staffers found for this event day.</Typography>
           ) : (
@@ -876,24 +937,15 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
                 const isSelected = selectedStaffers.includes(staffer.id);
                 const url        = getAvatarUrl(staffer.avatar_url);
                 return (
-                  <Box key={staffer.id}
-                    onClick={() => setSelectedStaffers((prev) => prev.includes(staffer.id) ? prev.filter((id) => id !== staffer.id) : [...prev, staffer.id])}
-                    sx={{
-                      display: "flex", alignItems: "center", gap: 1.25, px: 1.25, py: 1,
-                      borderRadius: "8px", cursor: "pointer",
-                      border: `1px solid ${isSelected ? "rgba(245,197,43,0.5)" : border}`,
-                      backgroundColor: isSelected ? (isDark ? GOLD_08 : "rgba(245,197,43,0.04)") : "transparent",
-                      transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.5)" },
-                    }}
+                  <Box key={staffer.id} onClick={() => setSelectedStaffers((prev) => prev.includes(staffer.id) ? prev.filter((id) => id !== staffer.id) : [...prev, staffer.id])}
+                    sx={{ display: "flex", alignItems: "center", gap: 1.25, px: 1.25, py: 1, borderRadius: "8px", cursor: "pointer", border: `1px solid ${isSelected ? "rgba(245,197,43,0.5)" : border}`, backgroundColor: isSelected ? (isDark ? GOLD_08 : "rgba(245,197,43,0.04)") : "transparent", transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.5)" } }}
                   >
                     <Avatar src={url} sx={{ width: 28, height: 28, fontSize: "0.62rem", fontWeight: 700, backgroundColor: isSelected ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)", color: isSelected ? CHARCOAL : "text.secondary", flexShrink: 0 }}>
                       {!url && getInitials(staffer.full_name)}
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "text.primary" }}>{staffer.full_name}</Typography>
-                      <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary" }}>
-                        {staffer.assignmentCount === 0 ? "No assignments yet" : `${staffer.assignmentCount} assignment${staffer.assignmentCount > 1 ? "s" : ""}`}
-                      </Typography>
+                      <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary" }}>{staffer.assignmentCount === 0 ? "No assignments yet" : `${staffer.assignmentCount} assignment${staffer.assignmentCount > 1 ? "s" : ""}`}</Typography>
                     </Box>
                     <Checkbox checked={isSelected} size="small" sx={{ p: 0, color: border, "&.Mui-checked": { color: GOLD } }} />
                   </Box>
@@ -901,7 +953,6 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
               })}
             </FormGroup>
           )}
-
           {selectedStaffers.length > 0 && (
             <Box sx={{ px: 1.25, py: 0.9, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)", border: `1px solid rgba(245,197,43,0.35)` }}>
               <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 600, color: "#b45309" }}>
@@ -911,7 +962,6 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
           )}
         </Box>
       </DialogContent>
-
       <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
         <CancelBtn onClick={onClose} disabled={assignLoading} border={border} />
         <PrimaryBtn onClick={onAssign} loading={assignLoading}>
@@ -927,9 +977,7 @@ function AssignmentDialog({ open, request, onClose, currentUser, isDark, border,
 function Section({ label, children, border }) {
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 0.75, pb: 0.75, borderBottom: `1px solid ${border}` }}>
-        {label}
-      </Typography>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase", mb: 0.75, pb: 0.75, borderBottom: `1px solid ${border}` }}>{label}</Typography>
       {children}
     </Box>
   );
@@ -948,10 +996,10 @@ function InfoGrid({ rows }) {
   );
 }
 
-function CellText({ children, secondary }) {
+function CellText({ children, secondary, bold }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: secondary ? "text.secondary" : "text.primary" }}>{children}</Typography>
+      <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: bold ? 500 : 400, color: secondary ? "text.secondary" : "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</Typography>
     </Box>
   );
 }
@@ -1000,7 +1048,7 @@ function makeDataGridSx(isDark, border) {
     "& .MuiDataGrid-columnHeaderTitle": { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
     "& .MuiDataGrid-columnSeparator": { display: "none" },
     "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
-    "& .MuiDataGrid-menuIcon button":    { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
+    "& .MuiDataGrid-menuIcon button": { color: "text.disabled", padding: "2px", borderRadius: "6px", transition: "all 0.15s", "&:hover": { backgroundColor: GOLD_08, color: "#b45309" } },
     "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
     "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": { color: "text.secondary" },
     "& .MuiDataGrid-row": { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
@@ -1012,5 +1060,18 @@ function makeDataGridSx(isDark, border) {
     "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
     "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
     "& .highlighted-row": { backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.08)", "&:hover": { backgroundColor: isDark ? GOLD_18 : "rgba(245,197,43,0.14)" } },
+    // ── v8 pinned column styling ──────────────────────────────────────────────
+    "& .MuiDataGrid-pinnedColumns--left": {
+      backgroundColor: "background.paper",
+      boxShadow: isDark
+        ? "4px 0 12px rgba(0,0,0,0.4)"
+        : "4px 0 10px rgba(53,53,53,0.07)",
+    },
+    "& .MuiDataGrid-pinnedColumnHeaders--left": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)",
+      boxShadow: isDark
+        ? "4px 0 12px rgba(0,0,0,0.4)"
+        : "4px 0 10px rgba(53,53,53,0.07)",
+    },
   };
 }

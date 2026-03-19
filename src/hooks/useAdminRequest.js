@@ -7,7 +7,7 @@ import { fetchAllRequests } from "../services/adminRequestService";
  * Fetch once, filter locally.
  *
  * Usage:
- *   const { requests, pending, forwarded, forApproval, approved, declined, loading, refetch } = useAdminRequests();
+ *   const { requests, pending, forwarded, forApproval, approved, onGoing, declined, loading, refetch } = useAdminRequests();
  */
 export function useAdminRequests() {
   const [requests, setRequests] = useState([]);
@@ -31,10 +31,12 @@ export function useAdminRequests() {
   useEffect(() => { fetch(); }, [fetch]);
 
   const pending     = requests.filter((r) => r.status === "Pending");
-  // "With Sections" tab shows both Forwarded and Assigned — admin can see progress but neither requires action
   const forwarded   = requests.filter((r) => r.status === "Forwarded" || r.status === "Assigned");
   const forApproval = requests.filter((r) => r.status === "For Approval");
   const approved    = requests.filter((r) => r.status === "Approved");
+  // Trim + lowercase comparison to guard against any whitespace or case inconsistency
+  const onGoing     = requests.filter((r) => r.status?.trim().toLowerCase() === "on going");
+  const completed   = requests.filter((r) => r.status?.trim().toLowerCase() === "completed");
   const declined    = requests.filter((r) => r.status === "Declined");
 
   return {
@@ -43,6 +45,8 @@ export function useAdminRequests() {
     forwarded,
     forApproval,
     approved,
+    onGoing,
+    completed,
     declined,
     loading,
     error,
