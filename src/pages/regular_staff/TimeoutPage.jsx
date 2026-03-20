@@ -12,7 +12,7 @@ import {
   notifyAdmins,
   notifyClient,
   notifySecHeads,
-} from "../../services/notificationService";
+} from "../../services/NotificationService";
 
 const GOLD = "#F5C52B";
 const DARK = "#212121";

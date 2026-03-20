@@ -48,22 +48,29 @@ if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
 
 const SIDEBAR_W = 228;
 
-const GOLD = "#F5C52B";
-const GOLD_12 = "rgba(245,197,43,0.12)";
-const GOLD_18 = "rgba(245,197,43,0.18)";
-const GOLD_08 = "rgba(245,197,43,0.08)";
-const CHARCOAL = "#353535";
-const WHITE = "#ffffff";
-const SIDEBAR_BG = WHITE;
-const BORDER = "rgba(53,53,53,0.08)";
-const TEXT_PRIMARY = CHARCOAL;
-const TEXT_SECONDARY = "rgba(53,53,53,0.45)";
-const TEXT_LABEL = "rgba(53,53,53,0.30)";
-const ACTIVE_BG = GOLD_08;
-const ACTIVE_ICON_BG = GOLD_18;
-const ACTIVE_COLOR = CHARCOAL;
-const HOVER_BG = "rgba(53,53,53,0.04)";
-const dm = "'Inter', sans-serif";
+// Theme-aware color constants - will be set inside component
+let GOLD, GOLD_12, GOLD_18, GOLD_08, CHARCOAL, WHITE, SIDEBAR_BG, BORDER;
+let TEXT_PRIMARY, TEXT_SECONDARY, TEXT_LABEL, ACTIVE_BG, ACTIVE_ICON_BG;
+let ACTIVE_COLOR, HOVER_BG, dm;
+
+const initializeColors = (isDark) => {
+  GOLD = "#F5C52B";
+  GOLD_12 = isDark ? "rgba(245,197,43,0.12)" : "rgba(245,197,43,0.12)";
+  GOLD_18 = isDark ? "rgba(245,197,43,0.18)" : "rgba(245,197,43,0.18)";
+  GOLD_08 = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.08)";
+  CHARCOAL = isDark ? "#f5f5f5" : "#353535";
+  WHITE = isDark ? "#1e1e1e" : "#ffffff";
+  SIDEBAR_BG = isDark ? "#1e1e1e" : "#ffffff";
+  BORDER = isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)";
+  TEXT_PRIMARY = isDark ? "#f5f5f5" : "#353535";
+  TEXT_SECONDARY = isDark ? "rgba(255,255,255,0.45)" : "rgba(53,53,53,0.45)";
+  TEXT_LABEL = isDark ? "rgba(255,255,255,0.30)" : "rgba(53,53,53,0.30)";
+  ACTIVE_BG = isDark ? "rgba(245,197,43,0.12)" : "rgba(245,197,43,0.08)";
+  ACTIVE_ICON_BG = isDark ? "rgba(245,197,43,0.18)" : "rgba(245,197,43,0.18)";
+  ACTIVE_COLOR = isDark ? "#f5f5f5" : "#353535";
+  HOVER_BG = isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.04)";
+  dm = "'Inter', sans-serif";
+};
 
 const MENU_SECTIONS = [
   {
@@ -607,6 +614,8 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
 function AdminLayout() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  // Initialize theme-aware colors
+  initializeColors(isDark);
   const isMobile = useMediaQuery("(max-width:900px)");
 
   const [mobileOpen, setMobileOpen] = useState(false);

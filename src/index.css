@@ -10,3 +10,26 @@ body,
   padding: 0;
   height: 100%;
 }
+
+/* ── Dark Mode System-wide Styles ───────────────────────────────────────────── */
+/* These styles apply to the entire document when dark mode is active */
+html.dark-mode {
+  color-scheme: dark;
+}
+
+html.dark-mode body,
+html.dark-mode #root {
+  background-color: #121212;
+  color: #f5f5f5;
+}
+
+/* Light mode explicit styles */
+html.light-mode {
+  color-scheme: light;
+}
+
+html.light-mode body,
+html.light-mode #root {
+  background-color: #f9f9f9;
+  color: #212121;
+}

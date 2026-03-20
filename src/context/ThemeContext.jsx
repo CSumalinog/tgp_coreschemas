@@ -22,6 +22,14 @@ export function useThemeMode() {
   return useContext(ThemeContext);
 }
 
+// ── System Preference Detection ─────────────────────────────────────────────
+function getSystemPreference() {
+  if (typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  return false;
+}
+
 // ── Theme Builder ─────────────────────────────────────────────────────────────
 function buildTheme(isDark) {
   return createTheme({
@@ -34,7 +42,7 @@ function buildTheme(isDark) {
       },
       text: {
         primary: isDark ? "#f5f5f5" : "#212121",
-        secondary: isDark ? "#b0b0b0" : "#616161",
+        secondary: isDark ? "#9a9a9a" : "#4a4a4a",
       },
       divider: isDark ? "#2e2e2e" : "#e0e0e0",
     },
@@ -463,18 +471,62 @@ function DataGridStyles({ isDark }) {
 // ── App Theme Provider ────────────────────────────────────────────────────────
 export function AppThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    try {
-      return localStorage.getItem("darkMode") === "true";
-    } catch {
-      return false;
+    // First check localStorage for user preference
+    const stored = localStorage.getItem("darkMode");
+    if (stored !== null) {
+      return stored === "true";
     }
+    // Fall back to system preference
+    return getSystemPreference();
   });
 
+  // Apply dark mode class to document element for system-wide styling
   useEffect(() => {
-    try {
-      localStorage.setItem("darkMode", String(isDark));
-    } catch {}
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add("dark-mode");
+      root.classList.remove("light-mode");
+    } else {
+      root.classList.add("light-mode");
+      root.classList.remove("dark-mode");
+    }
+    // Also set data attribute for CSS selectors
+    root.setAttribute("data-theme", isDark ? "dark" : "light");
   }, [isDark]);
+
+  // Persist user preference to localStorage
+  useEffect(() => {
+    localStorage.setItem("darkMode", String(isDark));
+  }, [isDark]);
+
+  // Listen for system color scheme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handleChange = (e) => {
+      // Only auto-switch if user hasn't set a manual preference
+      const stored = localStorage.getItem("darkMode");
+      if (stored === null) {
+        setIsDark(e.matches);
+      }
+    };
+
+    // Add listener for changes
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleChange);
+    } else {
+      // Fallback for older browsers
+      mediaQuery.addListener(handleChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
 
   const toggleDark = () => setIsDark((prev) => !prev);
   const theme = buildTheme(isDark);
