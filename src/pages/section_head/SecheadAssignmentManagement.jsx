@@ -553,7 +553,7 @@ export default function SecHeadAssignmentManagement() {
               sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.55, borderRadius: "8px", cursor: "pointer", border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`, backgroundColor: activeFilterCount > 0 ? GOLD_08 : "transparent", fontFamily: dm, fontSize: "0.76rem", fontWeight: 500, color: activeFilterCount > 0 ? "#b45309" : "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 } }}
             >
               <FilterListIcon sx={{ fontSize: 15 }} />
-              Filter
+            
               {activeFilterCount > 0 && (
                 <Box sx={{ width: 16, height: 16, borderRadius: "8px", backgroundColor: GOLD, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: CHARCOAL, lineHeight: 1 }}>{activeFilterCount}</Typography>
@@ -566,7 +566,7 @@ export default function SecHeadAssignmentManagement() {
                 sx={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 250, zIndex: 1300, borderRadius: "12px", overflow: "hidden", border: `1px solid ${border}`, backgroundColor: "background.paper", boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(53,53,53,0.12)" }}
               >
                 <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filter</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filters</Typography>
                   {activeFilterCount > 0 && (
                     <Box onClick={() => { setActiveSemesterId("all"); setStafferFilter("all"); }} sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: CHARCOAL } }}>Clear all</Box>
                   )}

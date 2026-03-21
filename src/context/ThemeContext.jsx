@@ -31,7 +31,7 @@ function buildTheme(isDark) {
       },
       text: {
         primary:   isDark ? "#f5f5f5" : "#212121",
-        secondary: isDark ? "#aaaaaa" : "#9e9e9e",
+        secondary: isDark ? "#aaaaaa" : "#757575",
       },
       divider: isDark ? "#2e2e2e" : "#e0e0e0",
     },
