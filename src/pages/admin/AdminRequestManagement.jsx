@@ -26,14 +26,24 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 
+// ── Tab icons ─────────────────────────────────────────────────────────────────
+import ListAltOutlinedIcon        from "@mui/icons-material/ListAltOutlined";
+import HourglassEmptyOutlinedIcon from "@mui/icons-material/HourglassEmptyOutlined";
+import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
+import PendingActionsOutlinedIcon from "@mui/icons-material/PendingActionsOutlined";
+import VerifiedOutlinedIcon       from "@mui/icons-material/VerifiedOutlined";
+import VideocamOutlinedIcon       from "@mui/icons-material/VideocamOutlined";
+import TaskAltOutlinedIcon        from "@mui/icons-material/TaskAltOutlined";
+import CancelOutlinedIcon         from "@mui/icons-material/CancelOutlined";
+
 // ── Brand tokens ──────────────────────────────────────────────────────────────
-const GOLD = "#F5C52B";
-const GOLD_08 = "rgba(245,197,43,0.08)";
-const CHARCOAL = "#353535";
-const BORDER = "rgba(53,53,53,0.08)";
+const GOLD      = "#F5C52B";
+const GOLD_08   = "rgba(245,197,43,0.08)";
+const CHARCOAL  = "#353535";
+const BORDER      = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
-const HOVER_BG = "rgba(53,53,53,0.03)";
-const dm = "'Inter', sans-serif";
+const HOVER_BG  = "rgba(53,53,53,0.03)";
+const dm        = "'Inter', sans-serif";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -46,15 +56,16 @@ const STATUS_CONFIG = {
   Declined:       { bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
 };
 
+// ── Tabs — with icons ─────────────────────────────────────────────────────────
 const TABS = [
-  { label: "All Requests",  key: "all" },
-  { label: "Pending",       key: "Pending" },
-  { label: "Forwarded",     key: "Forwarded" },
-  { label: "For Approval",  key: "For Approval" },
-  { label: "Approved",      key: "Approved" },
-  { label: "On Going",      key: "On Going" },
-  { label: "Completed",     key: "Completed" },
-  { label: "Declined",      key: "Declined" },
+  { label: "All Requests",  key: "all",          Icon: ListAltOutlinedIcon },
+  { label: "Pending",       key: "Pending",       Icon: HourglassEmptyOutlinedIcon },
+  { label: "Forwarded",     key: "Forwarded",     Icon: ForwardToInboxOutlinedIcon },
+  { label: "For Approval",  key: "For Approval",  Icon: PendingActionsOutlinedIcon },
+  { label: "Approved",      key: "Approved",      Icon: VerifiedOutlinedIcon },
+  { label: "On Going",      key: "On Going",      Icon: VideocamOutlinedIcon },
+  { label: "Completed",     key: "Completed",     Icon: TaskAltOutlinedIcon },
+  { label: "Declined",      key: "Declined",      Icon: CancelOutlinedIcon },
 ];
 
 const TAB_DESCRIPTIONS = {
@@ -66,6 +77,13 @@ const TAB_DESCRIPTIONS = {
   "On Going":     "Coverage currently in progress — staff have timed in and are on-site.",
   Completed:      "Coverage finished — full time in, time out, and duration records.",
   Declined:       "Requests that were declined at any stage and their reasons.",
+};
+
+// ── Section color map ─────────────────────────────────────────────────────────
+const SECTION_COLORS = {
+  News:            { bg: "#e3f2fd", color: "#1565c0", dot: "#1976d2" },
+  Photojournalism: { bg: "#f3e5f5", color: "#7b1fa2", dot: "#8b5cf6" },
+  Videojournalism: { bg: "#e8f5e9", color: "#2e7d32", dot: "#22c55e" },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -91,13 +109,11 @@ const fmtTime = (ts) => {
   return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 };
 
-// Format a YYYY-MM-DD string safely (no timezone shift)
 const fmtDateStr = (d, opts = { month: "short", day: "numeric", year: "numeric" }) => {
   if (!d) return "—";
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
 };
 
-// Build event date display string — range for multi-day, single for single-day
 const buildEventDateDisplay = (req) => {
   if (req.is_multiday && req.event_days?.length > 0) {
     const sorted = [...req.event_days].sort((a, b) => a.date.localeCompare(b.date));
@@ -117,21 +133,11 @@ function ColumnMenuStyles({ isDark, border }) {
   const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
   const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
   const hoverBg   = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
-
   return (
     <GlobalStyles styles={{
-      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
-        borderRadius: "10px !important", border: `1px solid ${border} !important`,
-        backgroundColor: `${paperBg} !important`, boxShadow: `${shadow} !important`,
-        minWidth: "180px !important", overflow: "hidden !important",
-      },
+      ".MuiPaper-root:has(> .MuiDataGrid-menuList)": { borderRadius: "10px !important", border: `1px solid ${border} !important`, backgroundColor: `${paperBg} !important`, boxShadow: `${shadow} !important`, minWidth: "180px !important", overflow: "hidden !important" },
       ".MuiDataGrid-menuList": { padding: "4px 0 !important" },
-      ".MuiDataGrid-menuList .MuiMenuItem-root": {
-        fontFamily: `${dm} !important`, fontSize: "0.78rem !important",
-        fontWeight: "500 !important", color: `${textColor} !important`,
-        padding: "7px 14px !important", minHeight: "unset !important",
-        gap: "10px !important", transition: "background-color 0.12s, color 0.12s !important",
-      },
+      ".MuiDataGrid-menuList .MuiMenuItem-root": { fontFamily: `${dm} !important`, fontSize: "0.78rem !important", fontWeight: "500 !important", color: `${textColor} !important`, padding: "7px 14px !important", minHeight: "unset !important", gap: "10px !important", transition: "background-color 0.12s, color 0.12s !important" },
       ".MuiDataGrid-menuList .MuiMenuItem-root:hover": { backgroundColor: `${hoverBg} !important`, color: "#b45309 !important" },
       ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": { minWidth: "unset !important", color: `${iconColor} !important`, transition: "color 0.12s !important" },
       ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": { fontSize: "1rem !important", color: `${iconColor} !important` },
@@ -251,7 +257,6 @@ export default function AdminRequestManagement() {
     [tab, requests, selectedSem, selectedEntity, semesters],
   );
 
-  // ── rows — _raw carries the full request so RequestDetails gets all fields ──
   const rows = filteredSource.map((req) => ({
     id:             req.id,
     requestTitle:   req.title,
@@ -268,19 +273,24 @@ export default function AdminRequestManagement() {
     declinedReason: req.declined_reason || "—",
     status:         req.status,
     assignments:    req.coverage_assignments || [],
-    _raw:           req, // ← full object, is_multiday + event_days included
+    _raw:           req,
   }));
 
   const getTabCount = (key) => applyFilters(getBaseSource(key)).length;
 
-  // ── Shared columns ────────────────────────────────────────────────────────
+  // ── Shared columns ─────────────────────────────────────────────────────────
   const titleCol = {
     field: "requestTitle", headerName: "Request Title", flex: 1.4, minWidth: 180,
     renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
         <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {p.value}
         </Typography>
+        {p.row.is_multiday && (
+          <Box sx={{ px: 0.75, py: 0.15, borderRadius: "20px", flexShrink: 0, backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4", border: "1px solid", borderColor: isDark ? "#166534" : "#86efac" }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.58rem", fontWeight: 700, color: isDark ? "#4ade80" : "#15803d" }}>Multi-day</Typography>
+          </Box>
+        )}
       </Box>
     ),
   };
@@ -295,25 +305,13 @@ export default function AdminRequestManagement() {
     renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
   };
 
-  // ── Event date column — shows range for multi-day + green badge ──
   const eventDateCol = {
     field: "eventDate", headerName: "Event Date", flex: 1.1, minWidth: 150,
     renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
         <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", whiteSpace: "nowrap" }}>
           {p.value}
         </Typography>
-        {p.row.is_multiday && (
-          <Box sx={{
-            px: 0.75, py: 0.15, borderRadius: "20px", flexShrink: 0,
-            backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4",
-            border: "1px solid", borderColor: isDark ? "#166534" : "#86efac",
-          }}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: isDark ? "#4ade80" : "#15803d" }}>
-              Multi-day
-            </Typography>
-          </Box>
-        )}
       </Box>
     ),
   };
@@ -325,12 +323,7 @@ export default function AdminRequestManagement() {
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
         <Box
           onClick={() => setSelectedRequest(p.row._raw)}
-          sx={{
-            px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer",
-            border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.73rem",
-            fontWeight: 500, color: "text.secondary", transition: "all 0.15s",
-            "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
-          }}
+          sx={{ px: 1.25, py: 0.45, borderRadius: "6px", cursor: "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.73rem", fontWeight: 500, color: "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 } }}
         >
           View
         </Box>
@@ -338,19 +331,26 @@ export default function AdminRequestManagement() {
     ),
   };
 
-  // ── Tab-specific columns ──────────────────────────────────────────────────
+  // ── Forwarded To — stacked column, row height auto-adjusts ──────────────
   const forwardedToCol = {
-    field: "forwardedTo", headerName: "Forwarded To", flex: 1.1, minWidth: 130,
-    renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.5, flexWrap: "wrap" }}>
-        {p.value?.length > 0 ? p.value.map((s, i) => (
-          <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1, py: 0.25, borderRadius: "5px", backgroundColor: "#f5f3ff" }}>
-            <Box sx={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#8b5cf6", flexShrink: 0 }} />
-            <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "#6d28d9" }}>{s}</Typography>
-          </Box>
-        )) : <MetaCell>—</MetaCell>}
-      </Box>
-    ),
+    field: "forwardedTo", headerName: "Forwarded To", flex: 1.4, minWidth: 200,
+    renderCell: (p) => {
+      const sections = p.value || [];
+      if (!sections.length) return <MetaCell>—</MetaCell>;
+      return (
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.4, py: 0.75 }}>
+          {sections.map((s, i) => {
+            const clr = SECTION_COLORS[s] || { bg: "#f3f4f6", color: "#6b7280", dot: "#9ca3af" };
+            return (
+              <Box key={i} sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, px: 0.9, py: 0.3, borderRadius: "5px", backgroundColor: clr.bg, width: "fit-content" }}>
+                <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: clr.dot, flexShrink: 0 }} />
+                <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", fontWeight: 600, color: clr.color, whiteSpace: "nowrap" }}>{s}</Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      );
+    },
   };
 
   const forwardedByCol = {
@@ -552,6 +552,8 @@ export default function AdminRequestManagement() {
     return [titleCol, clientCol, receivedCol, eventDateCol, actionCol];
   };
 
+  const isMultiRowTab = ["On Going", "Completed"].includes(TABS[tab].key);
+
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, height: "100%", boxSizing: "border-box", backgroundColor: "background.default", fontFamily: dm }}>
       <ColumnMenuStyles isDark={isDark} border={border} />
@@ -562,27 +564,28 @@ export default function AdminRequestManagement() {
         </Typography>
       </Box>
 
-      {/* ── Tabs row + filter ── */}
+      {/* ── Tabs + filter ── */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0, gap: 1 }}>
         <Box sx={{ display: "flex", gap: 0, flex: 1, borderBottom: `1px solid ${border}`, overflowX: "auto", "&::-webkit-scrollbar": { height: 0 } }}>
-          {TABS.map((t, idx) => {
-            const count    = getTabCount(t.key);
+          {TABS.map(({ label, key, Icon }, idx) => {
+            const count    = getTabCount(key);
             const isActive = tab === idx;
             return (
               <Box
-                key={t.key} onClick={() => setTab(idx)}
+                key={key} onClick={() => setTab(idx)}
                 sx={{
-                  display: "flex", alignItems: "center", gap: 0.75,
-                  px: 2, py: 1.1, cursor: "pointer", position: "relative", flexShrink: 0,
+                  display: "flex", alignItems: "center", gap: 0.6,
+                  px: 1.75, py: 1.1, cursor: "pointer", position: "relative", flexShrink: 0,
                   fontFamily: dm, fontSize: "0.8rem",
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? CHARCOAL : "text.secondary",
+                  color: isActive ? "text.primary" : "text.secondary",
                   transition: "color 0.15s",
-                  "&:hover": { color: CHARCOAL },
+                  "&:hover": { color: "text.primary" },
                   "&::after": isActive ? { content: '""', position: "absolute", bottom: -1, left: 0, right: 0, height: "2px", borderRadius: "2px 2px 0 0", backgroundColor: GOLD } : {},
                 }}
               >
-                {t.label}
+                <Icon sx={{ fontSize: 14, flexShrink: 0 }} />
+                {label}
                 {count > 0 && (
                   <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)", flexShrink: 0 }}>
                     <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>{count}</Typography>
@@ -659,7 +662,7 @@ export default function AdminRequestManagement() {
         </Typography>
       </Box>
 
-      {/* ── Data Grid ── */}
+      {/* ── Data Grid — horizontal scroll wrapper ── */}
       <Box sx={{ width: "100%", overflowX: "auto" }}>
         <Box sx={{ minWidth: 680, bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden" }}>
           {loading ? (
@@ -673,8 +676,17 @@ export default function AdminRequestManagement() {
               pageSize={8}
               rowsPerPageOptions={[8]}
               disableSelectionOnClick
-              rowHeight={["On Going", "Completed"].includes(TABS[tab].key) ? 60 : 52}
-              initialState={{ pinnedColumns: { left: ["requestTitle"] } }}
+              getRowHeight={({ model }) => {
+                const key = TABS[tab].key;
+                if (key === "Forwarded") {
+                  const sections = model.forwardedTo || [];
+                  if (sections.length <= 1) return 52;
+                  if (sections.length === 2) return 68;
+                  return 88;
+                }
+                if (isMultiRowTab) return 60;
+                return 52;
+              }}
               getRowClassName={(params) =>
                 highlight && params.row.requestTitle?.toLowerCase().includes(highlight) ? "highlighted-row" : ""
               }
@@ -740,7 +752,5 @@ function makeDataGridSx(isDark, border) {
     "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
     "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
     "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-pinnedColumns--left": { backgroundColor: "background.paper", boxShadow: isDark ? "4px 0 12px rgba(0,0,0,0.4)" : "4px 0 10px rgba(53,53,53,0.07)" },
-    "& .MuiDataGrid-pinnedColumnHeaders--left": { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", boxShadow: isDark ? "4px 0 12px rgba(0,0,0,0.4)" : "4px 0 10px rgba(53,53,53,0.07)" },
   };
 }

@@ -387,8 +387,28 @@ function PipelineCard({ request, isDark, border, onClick }) {
 // ── Grid Tabs ─────────────────────────────────────────────────────────────────
 function RequestsGrid({ rows, columns, isDark, border }) {
   return (
-    <Box sx={{ width: "100%", bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden" }}>
-      <DataGrid rows={rows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52} sx={makeDataGridSx(isDark, border)} />
+    <Box
+      sx={{
+        width: "100%",
+        bgcolor: "background.paper",
+        borderRadius: "10px",
+        border: `1px solid ${border}`,
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ overflowX: "auto", width: "100%" }}>
+        <Box sx={{ minWidth: 640 }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={8}
+            rowsPerPageOptions={[8]}
+            disableSelectionOnClick
+            rowHeight={52}
+            sx={makeDataGridSx(isDark, border)}
+          />
+        </Box>
+      </Box>
     </Box>
   );
 }
@@ -844,7 +864,6 @@ function Loader() {
 }
 
 function makeDataGridSx(isDark, border) {
-  const pinnedBg = isDark ? "#1e1e1e" : "#ffffff";
   return {
     border: "none", fontFamily: dm, fontSize: "0.82rem",
     backgroundColor: "background.paper", color: "text.primary",
@@ -862,17 +881,5 @@ function makeDataGridSx(isDark, border) {
     "& .MuiTablePagination-root": { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
     "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
     "& .MuiDataGrid-selectedRowCount": { fontFamily: dm, fontSize: "0.75rem" },
-    // ── Sticky first column hack ──────────────────────────────────────────────
-    "& .MuiDataGrid-columnHeader:first-of-type, & .MuiDataGrid-cell:first-of-type": {
-      position: "sticky",
-      left: 0,
-      zIndex: 4,
-      backgroundColor: pinnedBg,
-      borderRight: `1px solid ${border}`,
-    },
-    "& .MuiDataGrid-columnHeader:first-of-type": { zIndex: 5 },
-    "& .MuiDataGrid-row:hover .MuiDataGrid-cell:first-of-type": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
   };
 }
