@@ -385,7 +385,15 @@ export default function CoverageRequestDialog({
       } else {
         setEventDays([]);
       }
-      setServices(existingRequest.services || SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {}));
+      // For multi-day drafts: stored services are totals — divide by numDays to restore per-day values
+      const existingDays = existingRequest.event_days?.length || 1;
+      const isExistingMultiDay = !!(existingRequest.is_multiday && existingRequest.event_days?.length > 1);
+      const rawServices = existingRequest.services || SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {});
+      setServices(
+        isExistingMultiDay
+          ? Object.fromEntries(Object.entries(rawServices).map(([k, v]) => [k, Math.round(v / existingDays)]))
+          : rawServices
+      );
       setVenue(existingRequest.venue || "");
       setClientType(existingRequest.client_type?.id || existingRequest.client_type_id || "");
       setEntity(existingRequest.entity?.id || existingRequest.entity_id || "");
@@ -479,17 +487,21 @@ export default function CoverageRequestDialog({
           }))
         : null;
 
+      // For multi-day: services state holds per-day pax — multiply by numDays before
+      // saving so downstream (section head, admin) always sees the true total pax
+      const savedServices = isMD
+        ? Object.fromEntries(Object.entries(services).map(([k, v]) => [k, v * sorted.length]))
+        : services;
+
       const requestData = {
         title,
         description,
         is_multiday: isMD,
-        // First day values satisfy NOT NULL columns
         date:      hasAnyDay ? parseISO(sorted[0].date)  : null,
         from_time: hasAnyDay ? sorted[0].fromTime         : null,
         to_time:   hasAnyDay ? sorted[0].toTime           : null,
-        // Always send event_days for multi-day; null for single
         event_days: isMD ? eventDaysPayload : null,
-        services,
+        services: savedServices,
         venue,
         client_type:   clientType,
         entity:        isOthers ? null : entity,
@@ -583,28 +595,75 @@ export default function CoverageRequestDialog({
             <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", mb: 1.5 }}>
               Select services and specify the number of staff required for each.
             </Typography>
+
+            {/* Multi-day context bar — shows selected days + per-day framing */}
+            {isMultiDay && eventDays.length > 0 && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", px: 1.25, py: 0.85, borderRadius: 1.5, backgroundColor: isDark ? "rgba(245,197,43,0.06)" : "rgba(245,197,43,0.07)", border: "1px solid rgba(245,197,43,0.3)", mb: 1.5 }}>
+                <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                  {eventDays.map((d) => (
+                    <Box key={d.date} sx={{ px: 0.9, py: 0.2, borderRadius: "20px", backgroundColor: "#F5C52B", fontSize: "0.68rem", fontWeight: 700, color: "#353535" }}>
+                      {format(parseISO(d.date), "MMM d")}
+                    </Box>
+                  ))}
+                </Box>
+                <Typography sx={{ fontSize: "0.75rem", color: "#b45309" }}>
+                  — how many staff do you need <Box component="span" sx={{ fontWeight: 600 }}>each day?</Box>
+                </Typography>
+              </Box>
+            )}
+
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
               {SERVICES.map((service) => {
                 const isChecked = services[service] > 0;
+                // services[service] stores per-day value for multi-day, total for single-day
+                const totalSlots = isMultiDay ? services[service] * eventDays.length : services[service];
                 return (
-                  <Box key={service} onClick={() => { if (loading) return; setServices((prev) => { const updated = { ...prev, [service]: prev[service] > 0 ? 0 : 1 }; if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" })); return updated; }); }}
-                    sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.5, py: 1, borderRadius: 1.5, border: "1px solid", borderColor: isChecked ? "#f5c52b" : errors.services ? "#ef4444" : "divider", backgroundColor: isChecked ? (isDark ? "#1e1800" : "#fffbeb") : (isDark ? "#1a1a1a" : "#fafafa"), cursor: loading ? "default" : "pointer", transition: "border-color 0.15s, background-color 0.15s", "&:hover": !loading ? { borderColor: "#f5c52b" } : {} }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Box sx={{ width: 14, height: 14, borderRadius: "3px", border: "1.5px solid", borderColor: isChecked ? "#f5c52b" : "divider", backgroundColor: isChecked ? "#f5c52b" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {isChecked && <Box sx={{ width: 8, height: 8, borderRadius: "1px", backgroundColor: "#111827" }} />}
+                  <Box key={service}>
+                    <Box
+                      onClick={() => { if (loading) return; setServices((prev) => { const updated = { ...prev, [service]: prev[service] > 0 ? 0 : 1 }; if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" })); return updated; }); }}
+                      sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.5, py: 1, borderRadius: 1.5, border: "1px solid", borderColor: isChecked ? "#f5c52b" : errors.services ? "#ef4444" : "divider", backgroundColor: isChecked ? (isDark ? "#1e1800" : "#fffbeb") : (isDark ? "#1a1a1a" : "#fafafa"), cursor: loading ? "default" : "pointer", transition: "border-color 0.15s, background-color 0.15s", "&:hover": !loading ? { borderColor: "#f5c52b" } : {} }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ width: 14, height: 14, borderRadius: "3px", border: "1.5px solid", borderColor: isChecked ? "#f5c52b" : "divider", backgroundColor: isChecked ? "#f5c52b" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {isChecked && <Box sx={{ width: 8, height: 8, borderRadius: "1px", backgroundColor: "#111827" }} />}
+                        </Box>
+                        <Typography sx={{ fontSize: "0.83rem", color: isChecked ? "text.primary" : "text.secondary" }}>{service}</Typography>
                       </Box>
-                      <Typography sx={{ fontSize: "0.83rem", color: "text.primary" }}>{service}</Typography>
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.25 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                          {isMultiDay && isChecked && (
+                            <Typography sx={{ fontSize: "0.72rem", color: "text.secondary" }}>per day</Typography>
+                          )}
+                          <TextField type="number" size="small" value={services[service]}
+                            onChange={(e) => { e.stopPropagation(); const val = Math.max(0, Number(e.target.value)); setServices((prev) => { const updated = { ...prev, [service]: val }; if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" })); return updated; }); }}
+                            onClick={(e) => e.stopPropagation()}
+                            inputProps={{ min: 0, max: 5 }}
+                            disabled={!isChecked || loading}
+                            sx={{ width: 80, "& .MuiInputBase-input": { fontSize: "0.82rem", textAlign: "center", py: 0.6 }, "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                          />
+                        </Box>
+                        {isMultiDay && isChecked && totalSlots > 0 && (
+                          <Typography sx={{ fontSize: "0.68rem", color: "text.secondary", pr: 0.25 }}>
+                            {totalSlots} total across {eventDays.length} days
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
-                    <TextField type="number" size="small" value={services[service]}
-                      onChange={(e) => { e.stopPropagation(); const val = Math.max(0, Number(e.target.value)); setServices((prev) => { const updated = { ...prev, [service]: val }; if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" })); return updated; }); }}
-                      onClick={(e) => e.stopPropagation()} inputProps={{ min: 0, max: 5 }} disabled={!isChecked || loading}
-                      sx={{ width: 80, "& .MuiInputBase-input": { fontSize: "0.82rem", textAlign: "center", py: 0.6 }, "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
-                    />
                   </Box>
                 );
               })}
             </Box>
+
+            {/* Grand total summary for multi-day */}
+            {isMultiDay && Object.values(services).reduce((s, v) => s + v, 0) > 0 && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mt: 1 }}>
+                <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#16a34a", flexShrink: 0 }} />
+                <Typography sx={{ fontSize: "0.71rem", color: "#15803d" }}>
+                  {Object.values(services).reduce((s, v) => s + v, 0) * eventDays.length} total staff slots across {eventDays.length} days
+                </Typography>
+              </Box>
+            )}
+
             {errors.services && <Typography sx={{ ...helperSx, mt: 0.75 }}>{errors.services}</Typography>}
           </FormSection>
 
