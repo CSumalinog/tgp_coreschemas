@@ -85,7 +85,7 @@ function formatKey(key) {
 }
 
 // ─────────────────────────────────────────────
-// Popup Mini Calendar (date picker, not multi-select)
+// Popup Mini Calendar
 // ─────────────────────────────────────────────
 function PopupCalendar({ onSelect, alreadySelected, isDark }) {
   const [viewDate, setViewDate] = useState(new Date());
@@ -99,17 +99,7 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
   for (let d = 1; d <= totalDays; d++) cells.push(d);
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        p: 1.5,
-        backgroundColor: "background.paper",
-      }}
-    >
-      {/* Nav */}
+    <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5, backgroundColor: "background.paper" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.75 }}>
         <Typography sx={{ fontSize: "0.85rem", fontWeight: 500, color: "text.primary" }}>
           {format(viewDate, "MMMM yyyy")}
@@ -123,17 +113,11 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
           </IconButton>
         </Box>
       </Box>
-
-      {/* DOW */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 0.25 }}>
         {DAYS_OF_WEEK.map((d) => (
-          <Typography key={d} sx={{ fontSize: "0.65rem", textAlign: "center", color: "text.disabled", fontWeight: 500 }}>
-            {d}
-          </Typography>
+          <Typography key={d} sx={{ fontSize: "0.65rem", textAlign: "center", color: "text.disabled", fontWeight: 500 }}>{d}</Typography>
         ))}
       </Box>
-
-      {/* Days */}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "1px" }}>
         {cells.map((day, idx) => {
           if (!day) return <Box key={`e-${idx}`} />;
@@ -142,7 +126,6 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
           const isPast = isBefore(cellDate, today);
           const isAlready = alreadySelected.includes(key);
           const isToday = cellDate.getTime() === today.getTime();
-
           return (
             <Box
               key={key}
@@ -170,7 +153,7 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
 }
 
 // ─────────────────────────────────────────────
-// DateChipInput — the main date picker component
+// DateChipInput
 // ─────────────────────────────────────────────
 function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll, isDark, error, loading }) {
   const [calOpen, setCalOpen] = useState(false);
@@ -179,7 +162,6 @@ function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll
   const isMultiDay = eventDays.length > 1;
   const allFilled = eventDays.length > 0 && eventDays.every((d) => d.fromTime && d.toTime);
 
-  // Close cal on outside click
   useEffect(() => {
     function handler(e) {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setCalOpen(false);
@@ -192,8 +174,7 @@ function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll
     flex: 1, minWidth: 0,
     "& .MuiInputBase-input": { fontSize: "0.82rem", py: 0.55, px: 0.75 },
     "& .MuiOutlinedInput-root": {
-      borderRadius: 1,
-      fontSize: "0.82rem",
+      borderRadius: 1, fontSize: "0.82rem",
       ...(filled && { "& fieldset": { borderColor: "#f5c52b" } }),
     },
     "& .MuiInputAdornment-root": { ml: 0 },
@@ -203,7 +184,6 @@ function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll
 
   return (
     <Box ref={wrapRef}>
-      {/* Input trigger */}
       <Box
         onClick={() => !loading && setCalOpen((v) => !v)}
         sx={{
@@ -212,31 +192,20 @@ function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll
           borderColor: calOpen ? "#f5c52b" : error ? "#ef4444" : "divider",
           borderRadius: 1.5, px: 1.5, py: 1,
           cursor: loading ? "default" : "pointer",
-          backgroundColor: calOpen
-            ? isDark ? "#1e1800" : "#fffbeb"
-            : "background.paper",
+          backgroundColor: calOpen ? (isDark ? "#1e1800" : "#fffbeb") : "background.paper",
           transition: "all 0.15s",
           "&:hover": !loading ? { borderColor: "#f5c52b" } : {},
         }}
       >
         <CalendarTodayOutlinedIcon sx={{ fontSize: 15, color: calOpen ? "#f5c52b" : "text.disabled", flexShrink: 0 }} />
         <Typography sx={{ fontSize: "0.83rem", color: eventDays.length > 0 ? "text.primary" : "text.disabled", flex: 1 }}>
-          {eventDays.length === 0
-            ? "Select date(s)"
-            : eventDays.length === 1
-            ? formatKey(eventDays[0].date)
-            : `${eventDays.length} days selected`}
+          {eventDays.length === 0 ? "Select date(s)" : eventDays.length === 1 ? formatKey(eventDays[0].date) : `${eventDays.length} days selected`}
         </Typography>
         {eventDays.length > 0 && (
-          <Box
-            component="span"
-            onClick={(e) => { e.stopPropagation(); eventDays.forEach((d) => onToggleDay(d.date)); }}
-            sx={{ fontSize: "0.7rem", color: "text.disabled", "&:hover": { color: "text.primary" }, cursor: "pointer" }}
-          >
+          <Box component="span" onClick={(e) => { e.stopPropagation(); eventDays.forEach((d) => onToggleDay(d.date)); }} sx={{ fontSize: "0.7rem", color: "text.disabled", "&:hover": { color: "text.primary" }, cursor: "pointer" }}>
             Clear
           </Box>
         )}
-        {/* Status badge */}
         {eventDays.length > 0 && (
           <Box sx={{
             px: 0.75, py: 0.15, borderRadius: "20px", fontSize: "0.65rem", fontWeight: 500, flexShrink: 0,
@@ -249,21 +218,11 @@ function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll
         )}
       </Box>
 
-      {error && (
-        <Typography sx={{ fontSize: "0.72rem", color: "#ef4444", mt: 0.25, ml: 0.5 }}>{error}</Typography>
-      )}
+      {error && <Typography sx={{ fontSize: "0.72rem", color: "#ef4444", mt: 0.25, ml: 0.5 }}>{error}</Typography>}
 
-      {/* Popup calendar */}
       <Collapse in={calOpen}>
         <Box sx={{ mt: 0.75, mb: 0.5 }}>
-          <PopupCalendar
-            onSelect={(key) => {
-              onToggleDay(key);
-              // Don't close — let user keep picking
-            }}
-            alreadySelected={selectedKeys}
-            isDark={isDark}
-          />
+          <PopupCalendar onSelect={(key) => { onToggleDay(key); }} alreadySelected={selectedKeys} isDark={isDark} />
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 0.75 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <InfoOutlinedIcon sx={{ fontSize: 11, color: "text.disabled" }} />
@@ -271,110 +230,51 @@ function DateChipInput({ eventDays, onToggleDay, onTimeChange, onApplyFirstToAll
                 {selectedKeys.length}/{MAX_DAY_SELECTION} selected · grayed days already added
               </Typography>
             </Box>
-            <Button
-              size="small"
-              onClick={() => setCalOpen(false)}
-              sx={{ textTransform: "none", fontSize: "0.75rem", color: "#f5c52b", minWidth: 0, p: 0.5 }}
-            >
+            <Button size="small" onClick={() => setCalOpen(false)} sx={{ textTransform: "none", fontSize: "0.75rem", color: "#f5c52b", minWidth: 0, p: 0.5 }}>
               Done
             </Button>
           </Box>
         </Box>
       </Collapse>
 
-      {/* Day cards */}
       {eventDays.length > 0 && (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <Box sx={{ mt: calOpen ? 0.5 : 1 }}>
-            {/* Apply first to all */}
             {isMultiDay && (
               <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0.75 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={onApplyFirstToAll}
-                  disabled={!eventDays[0]?.fromTime || loading}
-                  sx={{
-                    textTransform: "none", fontSize: "0.72rem", fontWeight: 500,
-                    borderRadius: 1.5, borderColor: "divider", color: "text.primary",
-                    px: 1, py: 0.3,
-                    "&:hover": { borderColor: "#f5c52b" },
-                  }}
-                >
+                <Button size="small" variant="outlined" onClick={onApplyFirstToAll} disabled={!eventDays[0]?.fromTime || loading}
+                  sx={{ textTransform: "none", fontSize: "0.72rem", fontWeight: 500, borderRadius: 1.5, borderColor: "divider", color: "text.primary", px: 1, py: 0.3, "&:hover": { borderColor: "#f5c52b" } }}>
                   Copy first time to all
                 </Button>
               </Box>
             )}
-
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
               {eventDays.map((dayObj) => {
                 const filled = dayObj.fromTime && dayObj.toTime;
                 return (
-                  <Box
-                    key={dayObj.date}
-                    sx={{
-                      display: "flex", alignItems: "center", gap: 0.75,
-                      px: 1.25, py: 0.75, borderRadius: 1.5,
-                      border: "1px solid",
-                      borderColor: filled ? "#f5c52b" : "divider",
-                      backgroundColor: filled
-                        ? isDark ? "#1e1800" : "#fffbeb"
-                        : isDark ? "#1a1a1a" : "#fafafa",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {/* Date chip */}
-                    <Box sx={{
-                      px: 0.9, py: 0.25, borderRadius: "20px",
-                      backgroundColor: "#f5c52b", color: "#111",
-                      fontSize: "0.72rem", fontWeight: 600,
-                      flexShrink: 0, whiteSpace: "nowrap",
-                    }}>
+                  <Box key={dayObj.date} sx={{
+                    display: "flex", alignItems: "center", gap: 0.75,
+                    px: 1.25, py: 0.75, borderRadius: 1.5, border: "1px solid",
+                    borderColor: filled ? "#f5c52b" : "divider",
+                    backgroundColor: filled ? (isDark ? "#1e1800" : "#fffbeb") : (isDark ? "#1a1a1a" : "#fafafa"),
+                    transition: "all 0.15s",
+                  }}>
+                    <Box sx={{ px: 0.9, py: 0.25, borderRadius: "20px", backgroundColor: "#f5c52b", color: "#111", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap" }}>
                       {formatKey(dayObj.date)}
                     </Box>
-
-                    {/* From */}
                     <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", flexShrink: 0 }}>From</Typography>
-                    <TimePicker
-                      value={dayObj.fromTime}
-                      disabled={loading}
-                      onChange={(val) => onTimeChange(dayObj.date, "fromTime", val)}
-                      slotProps={{ textField: { size: "small", sx: timePickerSx(!!dayObj.fromTime) } }}
-                    />
-
+                    <TimePicker value={dayObj.fromTime} disabled={loading} onChange={(val) => onTimeChange(dayObj.date, "fromTime", val)} slotProps={{ textField: { size: "small", sx: timePickerSx(!!dayObj.fromTime) } }} />
                     <Typography sx={{ fontSize: "0.75rem", color: "text.disabled", flexShrink: 0 }}>—</Typography>
-
-                    {/* To */}
                     <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", flexShrink: 0 }}>To</Typography>
-                    <TimePicker
-                      value={dayObj.toTime}
-                      disabled={loading}
-                      onChange={(val) => onTimeChange(dayObj.date, "toTime", val)}
-                      slotProps={{ textField: { size: "small", sx: timePickerSx(!!dayObj.toTime) } }}
-                    />
-
-                    {/* Remove */}
-                    <Box
-                      component="span"
-                      onClick={() => !loading && onToggleDay(dayObj.date)}
-                      sx={{
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        width: 20, height: 20, borderRadius: 1,
-                        border: "1px solid", borderColor: "divider",
-                        fontSize: "0.8rem", color: "text.disabled",
-                        cursor: "pointer", flexShrink: 0,
-                        transition: "all 0.15s",
-                        "&:hover": { borderColor: "#ef4444", color: "#ef4444", backgroundColor: isDark ? "#1f0000" : "#fef2f2" },
-                      }}
-                    >
+                    <TimePicker value={dayObj.toTime} disabled={loading} onChange={(val) => onTimeChange(dayObj.date, "toTime", val)} slotProps={{ textField: { size: "small", sx: timePickerSx(!!dayObj.toTime) } }} />
+                    <Box component="span" onClick={() => !loading && onToggleDay(dayObj.date)}
+                      sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 1, border: "1px solid", borderColor: "divider", fontSize: "0.8rem", color: "text.disabled", cursor: "pointer", flexShrink: 0, transition: "all 0.15s", "&:hover": { borderColor: "#ef4444", color: "#ef4444", backgroundColor: isDark ? "#1f0000" : "#fef2f2" } }}>
                       ×
                     </Box>
                   </Box>
                 );
               })}
             </Box>
-
-            {/* Summary */}
             {allFilled && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.75 }}>
                 <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#16a34a", flexShrink: 0 }} />
@@ -405,27 +305,26 @@ export default function CoverageRequestDialog({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  // ── eventDays: [{ date: "YYYY-MM-DD", fromTime: Date|null, toTime: Date|null }]
-  const [eventDays, setEventDays] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [services, setServices] = useState(SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {}));
-  const [venue, setVenue] = useState("");
-  const [clientType, setClientType] = useState("");
-  const [entity, setEntity] = useState("");
-  const [otherEntity, setOtherEntity] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [contactInfo, setContactInfo] = useState("");
-  const [file, setFile] = useState(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [errors, setErrors] = useState(EMPTY_ERRORS);
-  const [clientTypes, setClientTypes] = useState([]);
-  const [entities, setEntities] = useState([]);
-  const [entitiesLoading, setEntitiesLoading] = useState(false);
+  const [eventDays,      setEventDays]      = useState([]);
+  const [title,          setTitle]          = useState("");
+  const [description,    setDescription]    = useState("");
+  const [services,       setServices]       = useState(SERVICES.reduce((acc, svc) => ({ ...acc, [svc]: 0 }), {}));
+  const [venue,          setVenue]          = useState("");
+  const [clientType,     setClientType]     = useState("");
+  const [entity,         setEntity]         = useState("");
+  const [otherEntity,    setOtherEntity]    = useState("");
+  const [contactPerson,  setContactPerson]  = useState("");
+  const [contactInfo,    setContactInfo]    = useState("");
+  const [file,           setFile]           = useState(null);
+  const [confirmOpen,    setConfirmOpen]    = useState(false);
+  const [loading,        setLoading]        = useState(false);
+  const [submitError,    setSubmitError]    = useState("");
+  const [errors,         setErrors]         = useState(EMPTY_ERRORS);
+  const [clientTypes,    setClientTypes]    = useState([]);
+  const [entities,       setEntities]       = useState([]);
+  const [entitiesLoading,setEntitiesLoading]= useState(false);
 
-  const isOthers = entity === OTHER_ID;
+  const isOthers   = entity === OTHER_ID;
   const isMultiDay = eventDays.length > 1;
 
   const selectedDaysSummary = (() => {
@@ -435,14 +334,12 @@ export default function CoverageRequestDialog({
     return `${formatKey(sorted[0])} – ${formatKey(sorted[sorted.length - 1])} (${eventDays.length} days)`;
   })();
 
-  // ── Handlers ──
   const handleToggleDay = useCallback((key) => {
     setEventDays((prev) => {
       const exists = prev.find((d) => d.date === key);
       if (exists) return prev.filter((d) => d.date !== key);
       if (prev.length >= MAX_DAY_SELECTION) return prev;
-      return [...prev, { date: key, fromTime: null, toTime: null }]
-        .sort((a, b) => a.date.localeCompare(b.date));
+      return [...prev, { date: key, fromTime: null, toTime: null }].sort((a, b) => a.date.localeCompare(b.date));
     });
     setErrors((p) => ({ ...p, eventDays: "" }));
   }, []);
@@ -459,7 +356,6 @@ export default function CoverageRequestDialog({
     });
   }, []);
 
-  // ── Load on open ──
   useEffect(() => {
     if (!open) return;
     async function load() {
@@ -473,17 +369,18 @@ export default function CoverageRequestDialog({
     if (existingRequest) {
       setTitle(existingRequest.title || "");
       setDescription(existingRequest.description || "");
+      // ── Seed eventDays — prefer event_days array, fall back to single event_date ──
       if (existingRequest.event_days?.length > 0) {
         setEventDays(existingRequest.event_days.map((d) => ({
-          date: d.date || d,
-          fromTime: d.from_time ? new Date(`1970-01-01T${d.from_time}`) : null,
-          toTime: d.to_time ? new Date(`1970-01-01T${d.to_time}`) : null,
+          date:      d.date,
+          fromTime:  d.from_time ? new Date(`1970-01-01T${d.from_time}`) : null,
+          toTime:    d.to_time   ? new Date(`1970-01-01T${d.to_time}`)   : null,
         })));
       } else if (existingRequest.event_date) {
         setEventDays([{
-          date: existingRequest.event_date,
-          fromTime: existingRequest.from_time ? new Date(`1970-01-01T${existingRequest.from_time}`) : null,
-          toTime: existingRequest.to_time ? new Date(`1970-01-01T${existingRequest.to_time}`) : null,
+          date:      existingRequest.event_date,
+          fromTime:  existingRequest.from_time ? new Date(`1970-01-01T${existingRequest.from_time}`) : null,
+          toTime:    existingRequest.to_time   ? new Date(`1970-01-01T${existingRequest.to_time}`)   : null,
         }]);
       } else {
         setEventDays([]);
@@ -538,65 +435,78 @@ export default function CoverageRequestDialog({
     const newErrors = { ...EMPTY_ERRORS };
     let hasError = false;
     const totalServices = Object.values(services).reduce((s, v) => s + v, 0);
-
-    if (!title) { newErrors.title = "Event title is required."; hasError = true; }
-    if (!description) { newErrors.description = "Description is required."; hasError = true; }
+    if (!title)              { newErrors.title = "Event title is required.";                                         hasError = true; }
+    if (!description)        { newErrors.description = "Description is required.";                                   hasError = true; }
     if (eventDays.length === 0) {
-      newErrors.eventDays = "Please select at least one date."; hasError = true;
+      newErrors.eventDays = "Please select at least one date.";                                                      hasError = true;
     } else if (eventDays.some((d) => !d.fromTime || !d.toTime)) {
-      newErrors.eventDays = "Please set From and To times for all selected days."; hasError = true;
+      newErrors.eventDays = "Please set From and To times for all selected days.";                                   hasError = true;
     }
-    if (!venue) { newErrors.venue = "Venue is required."; hasError = true; }
-    if (totalServices === 0) { newErrors.services = "Please select at least one service."; hasError = true; }
-    if (!clientType) { newErrors.clientType = "Client type is required."; hasError = true; }
-    if (!entity) { newErrors.entity = "Entity name is required."; hasError = true; }
-    if (isOthers && !otherEntity.trim()) { newErrors.otherEntity = "Please specify the entity name."; hasError = true; }
-    if (!contactPerson) { newErrors.contactPerson = "Contact person is required."; hasError = true; }
-    if (!contactInfo) { newErrors.contactInfo = "Contact information is required."; hasError = true; }
-    if (!file && !existingRequest?.file_url) { newErrors.file = "Please upload the program flow (PDF)."; hasError = true; }
-
+    if (!venue)              { newErrors.venue = "Venue is required.";                                               hasError = true; }
+    if (totalServices === 0) { newErrors.services = "Please select at least one service.";                           hasError = true; }
+    if (!clientType)         { newErrors.clientType = "Client type is required.";                                    hasError = true; }
+    if (!entity)             { newErrors.entity = "Entity name is required.";                                        hasError = true; }
+    if (isOthers && !otherEntity.trim()) { newErrors.otherEntity = "Please specify the entity name.";               hasError = true; }
+    if (!contactPerson)      { newErrors.contactPerson = "Contact person is required.";                              hasError = true; }
+    if (!contactInfo)        { newErrors.contactInfo = "Contact information is required.";                           hasError = true; }
+    if (!file && !existingRequest?.file_url) { newErrors.file = "Please upload the program flow (PDF).";            hasError = true; }
     setErrors(newErrors);
     return !hasError;
   };
 
+  // ── THE FIXED submitForm ──────────────────────────────────────────────────
   const submitForm = async (isDraft = false) => {
     setSubmitError("");
+
     if (!isDraft && !validate()) return;
     if (isDraft && !title) {
       setErrors((p) => ({ ...p, title: "Please enter at least an event title to save as draft." }));
       return;
     }
+
     setLoading(true);
     try {
       const sorted = [...eventDays].sort((a, b) => a.date.localeCompare(b.date));
-      const isMD = sorted.length > 1;
+      const hasAnyDay = sorted.length > 0;
+      const isMD      = sorted.length > 1;
+
+      // ── Build event_days array with serialized times (always snake_case for service) ──
+      const eventDaysPayload = hasAnyDay
+        ? sorted.map((d) => ({
+            date:      d.date,
+            from_time: d.fromTime ? format(d.fromTime, "HH:mm:ss") : null,
+            to_time:   d.toTime   ? format(d.toTime,   "HH:mm:ss") : null,
+          }))
+        : null;
+
       const requestData = {
-        title, description,
+        title,
+        description,
         is_multiday: isMD,
-        // event_date is NOT NULL — always populate with first day
-        date: parseISO(sorted[0].date),
-        from_time: sorted[0].fromTime,
-        to_time: sorted[0].toTime,
-        event_days: isMD
-          ? sorted.map((d) => ({
-              date: d.date,
-              from_time: d.fromTime ? format(d.fromTime, "HH:mm:ss") : null,
-              to_time: d.toTime ? format(d.toTime, "HH:mm:ss") : null,
-            }))
-          : null,
-        services, venue,
-        client_type: clientType,
-        entity: isOthers ? null : entity,
-        other_entity: isOthers ? otherEntity.trim() : null,
+        // First day values satisfy NOT NULL columns
+        date:      hasAnyDay ? parseISO(sorted[0].date)  : null,
+        from_time: hasAnyDay ? sorted[0].fromTime         : null,
+        to_time:   hasAnyDay ? sorted[0].toTime           : null,
+        // Always send event_days for multi-day; null for single
+        event_days: isMD ? eventDaysPayload : null,
+        services,
+        venue,
+        client_type:   clientType,
+        entity:        isOthers ? null : entity,
+        other_entity:  isOthers ? otherEntity.trim() : null,
         contact_person: contactPerson,
-        contact_info: contactInfo,
+        contact_info:   contactInfo,
       };
+
       if (existingRequest) {
         await updateDraftRequest(existingRequest.id, requestData, file, !isDraft);
       } else {
         await submitCoverageRequest(requestData, file, isDraft);
       }
-      resetForm(); setConfirmOpen(false); handleClose();
+
+      resetForm();
+      setConfirmOpen(false);
+      handleClose();
       if (onSuccess) onSuccess();
     } catch (err) {
       setSubmitError(err.message || "Something went wrong. Please try again.");
@@ -622,15 +532,8 @@ export default function CoverageRequestDialog({
 
   return (
     <>
-      <Dialog
-        fullWidth open={open} onClose={handleClose}
-        PaperProps={{
-          sx: {
-            borderRadius: 2, width: 600, height: "90vh", maxHeight: "90vh",
-            display: "flex", flexDirection: "column", backgroundColor: "background.paper",
-            boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.08)",
-          },
-        }}
+      <Dialog fullWidth open={open} onClose={handleClose}
+        PaperProps={{ sx: { borderRadius: 2, width: 600, height: "90vh", maxHeight: "90vh", display: "flex", flexDirection: "column", backgroundColor: "background.paper", boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.08)" } }}
       >
         {/* Header */}
         <Box sx={{ px: 3, py: 2, flexShrink: 0, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -651,40 +554,27 @@ export default function CoverageRequestDialog({
 
           {/* EVENT DETAILS */}
           <FormSection label="Event Details">
-            <TextField
-              label="Event Title" fullWidth margin="dense" value={title} required disabled={loading}
+            <TextField label="Event Title" fullWidth margin="dense" value={title} required disabled={loading}
               onChange={(e) => { setTitle(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, title: "" })); }}
-              error={!!errors.title} helperText={errors.title}
-              sx={errorFieldSx(!!errors.title)} FormHelperTextProps={{ sx: helperSx }}
+              error={!!errors.title} helperText={errors.title} sx={errorFieldSx(!!errors.title)} FormHelperTextProps={{ sx: helperSx }}
             />
-            <TextField
-              label="Description" fullWidth multiline rows={3} margin="dense" value={description} required disabled={loading}
+            <TextField label="Description" fullWidth multiline rows={3} margin="dense" value={description} required disabled={loading}
               onChange={(e) => { setDescription(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, description: "" })); }}
-              error={!!errors.description} helperText={errors.description}
-              sx={errorFieldSx(!!errors.description)} FormHelperTextProps={{ sx: helperSx }}
+              error={!!errors.description} helperText={errors.description} sx={errorFieldSx(!!errors.description)} FormHelperTextProps={{ sx: helperSx }}
             />
-
-            {/* DATE CHIP INPUT */}
             <Box sx={{ mt: 1.5 }}>
               <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", mb: 0.75 }}>
                 Event date(s) <span style={{ color: "#ef4444" }}>*</span>
               </Typography>
               <DateChipInput
-                eventDays={eventDays}
-                onToggleDay={handleToggleDay}
-                onTimeChange={handleTimeChange}
-                onApplyFirstToAll={handleApplyFirstToAll}
-                isDark={isDark}
-                error={errors.eventDays}
-                loading={loading}
+                eventDays={eventDays} onToggleDay={handleToggleDay}
+                onTimeChange={handleTimeChange} onApplyFirstToAll={handleApplyFirstToAll}
+                isDark={isDark} error={errors.eventDays} loading={loading}
               />
             </Box>
-
-            <TextField
-              label="Venue" fullWidth margin="dense" value={venue} required disabled={loading}
+            <TextField label="Venue" fullWidth margin="dense" value={venue} required disabled={loading}
               onChange={(e) => { setVenue(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, venue: "" })); }}
-              error={!!errors.venue} helperText={errors.venue}
-              sx={{ ...errorFieldSx(!!errors.venue), mt: 1.5 }} FormHelperTextProps={{ sx: helperSx }}
+              error={!!errors.venue} helperText={errors.venue} sx={{ ...errorFieldSx(!!errors.venue), mt: 1.5 }} FormHelperTextProps={{ sx: helperSx }}
             />
           </FormSection>
 
@@ -697,25 +587,8 @@ export default function CoverageRequestDialog({
               {SERVICES.map((service) => {
                 const isChecked = services[service] > 0;
                 return (
-                  <Box
-                    key={service}
-                    onClick={() => {
-                      if (loading) return;
-                      setServices((prev) => {
-                        const updated = { ...prev, [service]: prev[service] > 0 ? 0 : 1 };
-                        if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" }));
-                        return updated;
-                      });
-                    }}
-                    sx={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      px: 1.5, py: 1, borderRadius: 1.5, border: "1px solid",
-                      borderColor: isChecked ? "#f5c52b" : errors.services ? "#ef4444" : "divider",
-                      backgroundColor: isChecked ? (isDark ? "#1e1800" : "#fffbeb") : (isDark ? "#1a1a1a" : "#fafafa"),
-                      cursor: loading ? "default" : "pointer",
-                      transition: "border-color 0.15s, background-color 0.15s",
-                      "&:hover": !loading ? { borderColor: "#f5c52b" } : {},
-                    }}
+                  <Box key={service} onClick={() => { if (loading) return; setServices((prev) => { const updated = { ...prev, [service]: prev[service] > 0 ? 0 : 1 }; if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" })); return updated; }); }}
+                    sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.5, py: 1, borderRadius: 1.5, border: "1px solid", borderColor: isChecked ? "#f5c52b" : errors.services ? "#ef4444" : "divider", backgroundColor: isChecked ? (isDark ? "#1e1800" : "#fffbeb") : (isDark ? "#1a1a1a" : "#fafafa"), cursor: loading ? "default" : "pointer", transition: "border-color 0.15s, background-color 0.15s", "&:hover": !loading ? { borderColor: "#f5c52b" } : {} }}
                   >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Box sx={{ width: 14, height: 14, borderRadius: "3px", border: "1.5px solid", borderColor: isChecked ? "#f5c52b" : "divider", backgroundColor: isChecked ? "#f5c52b" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -723,20 +596,9 @@ export default function CoverageRequestDialog({
                       </Box>
                       <Typography sx={{ fontSize: "0.83rem", color: "text.primary" }}>{service}</Typography>
                     </Box>
-                    <TextField
-                      type="number" size="small" value={services[service]}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        const val = Math.max(0, Number(e.target.value));
-                        setServices((prev) => {
-                          const updated = { ...prev, [service]: val };
-                          if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" }));
-                          return updated;
-                        });
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      inputProps={{ min: 0, max: 5 }}
-                      disabled={!isChecked || loading}
+                    <TextField type="number" size="small" value={services[service]}
+                      onChange={(e) => { e.stopPropagation(); const val = Math.max(0, Number(e.target.value)); setServices((prev) => { const updated = { ...prev, [service]: val }; if (Object.values(updated).reduce((s, v) => s + v, 0) > 0) setErrors((p) => ({ ...p, services: "" })); return updated; }); }}
+                      onClick={(e) => e.stopPropagation()} inputProps={{ min: 0, max: 5 }} disabled={!isChecked || loading}
                       sx={{ width: 80, "& .MuiInputBase-input": { fontSize: "0.82rem", textAlign: "center", py: 0.6 }, "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
                     />
                   </Box>
@@ -748,75 +610,47 @@ export default function CoverageRequestDialog({
 
           {/* CLIENT INFORMATION */}
           <FormSection label="Client Information">
-            <TextField
-              label="Contact Person" fullWidth margin="dense" value={contactPerson} required disabled={loading}
+            <TextField label="Contact Person" fullWidth margin="dense" value={contactPerson} required disabled={loading}
               onChange={(e) => { setContactPerson(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, contactPerson: "" })); }}
-              error={!!errors.contactPerson} helperText={errors.contactPerson}
-              sx={errorFieldSx(!!errors.contactPerson)} FormHelperTextProps={{ sx: helperSx }}
+              error={!!errors.contactPerson} helperText={errors.contactPerson} sx={errorFieldSx(!!errors.contactPerson)} FormHelperTextProps={{ sx: helperSx }}
             />
-            <TextField
-              label="Contact Info (phone / messenger / email)" fullWidth margin="dense" value={contactInfo} required disabled={loading}
+            <TextField label="Contact Info (phone / messenger / email)" fullWidth margin="dense" value={contactInfo} required disabled={loading}
               onChange={(e) => { setContactInfo(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, contactInfo: "" })); }}
-              error={!!errors.contactInfo} helperText={errors.contactInfo}
-              sx={errorFieldSx(!!errors.contactInfo)} FormHelperTextProps={{ sx: helperSx }}
+              error={!!errors.contactInfo} helperText={errors.contactInfo} sx={errorFieldSx(!!errors.contactInfo)} FormHelperTextProps={{ sx: helperSx }}
             />
             <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
               <FormControl fullWidth margin="dense" required error={!!errors.clientType} sx={fieldSx}>
                 <InputLabel sx={{ fontSize: "0.85rem", ...(errors.clientType && { color: "#ef4444" }) }}>Client Type</InputLabel>
-                <Select
-                  label="Client Type" value={clientType} disabled={loading}
-                  onChange={(e) => { setClientType(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, clientType: "" })); }}
-                  sx={{ borderRadius: 1.5, fontSize: "0.85rem", ...(errors.clientType && { "& fieldset": { borderColor: "#ef4444" } }) }}
-                >
-                  {clientTypes.map((type) => (
-                    <MenuItem key={type.id} value={type.id} sx={{ fontSize: "0.85rem" }}>{type.name}</MenuItem>
-                  ))}
+                <Select label="Client Type" value={clientType} disabled={loading} onChange={(e) => { setClientType(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, clientType: "" })); }} sx={{ borderRadius: 1.5, fontSize: "0.85rem", ...(errors.clientType && { "& fieldset": { borderColor: "#ef4444" } }) }}>
+                  {clientTypes.map((type) => <MenuItem key={type.id} value={type.id} sx={{ fontSize: "0.85rem" }}>{type.name}</MenuItem>)}
                 </Select>
                 {errors.clientType && <FormHelperText sx={helperSx}>{errors.clientType}</FormHelperText>}
               </FormControl>
-
               <FormControl fullWidth margin="dense" required error={!!errors.entity} disabled={!clientType || entitiesLoading || loading} sx={fieldSx}>
-                <InputLabel sx={{ fontSize: "0.85rem", ...(errors.entity && { color: "#ef4444" }) }}>
-                  {entitiesLoading ? "Loading…" : "Entity Name"}
-                </InputLabel>
-                <Select
-                  label={entitiesLoading ? "Loading…" : "Entity Name"} value={entity}
+                <InputLabel sx={{ fontSize: "0.85rem", ...(errors.entity && { color: "#ef4444" }) }}>{entitiesLoading ? "Loading…" : "Entity Name"}</InputLabel>
+                <Select label={entitiesLoading ? "Loading…" : "Entity Name"} value={entity}
                   onChange={(e) => { setEntity(e.target.value); setOtherEntity(""); if (e.target.value) setErrors((p) => ({ ...p, entity: "", otherEntity: "" })); }}
-                  MenuProps={{
-                    PaperProps: { sx: { maxHeight: 240, overflowY: "auto" } },
-                    MenuListProps: { style: { maxHeight: 240, overflow: "auto" } },
-                    getContentAnchorEl: null,
-                    anchorOrigin: { vertical: "bottom", horizontal: "left" },
-                    transformOrigin: { vertical: "top", horizontal: "left" },
-                    disablePortal: false,
-                  }}
+                  MenuProps={{ PaperProps: { sx: { maxHeight: 240, overflowY: "auto" } }, MenuListProps: { style: { maxHeight: 240, overflow: "auto" } }, getContentAnchorEl: null, anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" }, disablePortal: false }}
                   sx={{ borderRadius: 1.5, fontSize: "0.85rem", ...(errors.entity && { "& fieldset": { borderColor: "#ef4444" } }) }}
                 >
-                  {entities.map((ent) => (
-                    <MenuItem key={ent.id} value={ent.id} sx={{ fontSize: "0.85rem" }}>{ent.name}</MenuItem>
-                  ))}
-                  <MenuItem value={OTHER_ID} sx={{ fontSize: "0.85rem", fontStyle: "italic", borderTop: "1px solid", borderColor: "divider", color: "text.secondary" }}>
-                    Others (specify below)
-                  </MenuItem>
+                  {entities.map((ent) => <MenuItem key={ent.id} value={ent.id} sx={{ fontSize: "0.85rem" }}>{ent.name}</MenuItem>)}
+                  <MenuItem value={OTHER_ID} sx={{ fontSize: "0.85rem", fontStyle: "italic", borderTop: "1px solid", borderColor: "divider", color: "text.secondary" }}>Others (specify below)</MenuItem>
                 </Select>
                 {errors.entity && <FormHelperText sx={helperSx}>{errors.entity}</FormHelperText>}
               </FormControl>
             </Box>
             {isOthers && (
-              <TextField
-                label="Specify Entity Name" fullWidth margin="dense" value={otherEntity} required disabled={loading}
+              <TextField label="Specify Entity Name" fullWidth margin="dense" value={otherEntity} required disabled={loading}
                 onChange={(e) => { setOtherEntity(e.target.value); if (e.target.value) setErrors((p) => ({ ...p, otherEntity: "" })); }}
                 placeholder="e.g. Office of the President, Engineering Department..."
-                error={!!errors.otherEntity} helperText={errors.otherEntity}
-                sx={errorFieldSx(!!errors.otherEntity)} FormHelperTextProps={{ sx: helperSx }}
+                error={!!errors.otherEntity} helperText={errors.otherEntity} sx={errorFieldSx(!!errors.otherEntity)} FormHelperTextProps={{ sx: helperSx }}
               />
             )}
           </FormSection>
 
           {/* ATTACHMENT */}
           <FormSection label="Attachment">
-            <Button
-              variant="outlined" component="label" disabled={loading} size="small"
+            <Button variant="outlined" component="label" disabled={loading} size="small"
               sx={{ textTransform: "none", fontSize: "0.82rem", borderRadius: 1.5, borderColor: errors.file ? "#ef4444" : "divider", color: errors.file ? "#ef4444" : "text.secondary", "&:hover": { borderColor: "#f5c52b", color: "text.primary" } }}
             >
               {existingRequest ? "Replace Program Flow (PDF)" : "Upload Program Flow (PDF)"}
@@ -835,11 +669,8 @@ export default function CoverageRequestDialog({
 
         {/* Footer */}
         <Box sx={{ px: 3, py: 1.75, flexShrink: 0, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "#161616" : "#fafafa" }}>
-          <Button onClick={handleClose} disabled={loading} size="small" sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained" size="small" disabled={loading}
+          <Button onClick={handleClose} disabled={loading} size="small" sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}>Cancel</Button>
+          <Button variant="contained" size="small" disabled={loading}
             onClick={() => { if (!validate()) return; setErrors(EMPTY_ERRORS); setConfirmOpen(true); }}
             sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#f5c52b", color: "#111827", boxShadow: "none", "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}
           >
@@ -849,9 +680,7 @@ export default function CoverageRequestDialog({
       </Dialog>
 
       {/* Confirm Dialog */}
-      <Dialog
-        open={confirmOpen} onClose={() => !loading && setConfirmOpen(false)}
-        fullWidth maxWidth="xs"
+      <Dialog open={confirmOpen} onClose={() => !loading && setConfirmOpen(false)} fullWidth maxWidth="xs"
         PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper", boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.08)" } }}
       >
         <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -872,19 +701,14 @@ export default function CoverageRequestDialog({
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mt: 1.25, p: 1.25, borderRadius: 1.5, backgroundColor: isDark ? "#1a1a1a" : "#f9fafb", border: "1px solid", borderColor: "divider" }}>
             <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
-            <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.5 }}>
-              Once submitted, the request can no longer be edited.
-            </Typography>
+            <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.5 }}>Once submitted, the request can no longer be edited.</Typography>
           </Box>
           {submitError && <Alert severity="error" sx={{ mt: 2, borderRadius: 1.5, fontSize: "0.82rem" }}>{submitError}</Alert>}
           {loading && <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}><CircularProgress size={20} sx={{ color: "#f5c52b" }} /></Box>}
         </DialogContent>
         <Box sx={{ px: 3, py: 1.75, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "#161616" : "#fafafa" }}>
-          <Button onClick={() => submitForm(true)} disabled={loading} size="small" sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}>
-            Save as Draft
-          </Button>
-          <Button
-            variant="contained" onClick={() => submitForm(false)} disabled={loading} size="small"
+          <Button onClick={() => submitForm(true)} disabled={loading} size="small" sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}>Save as Draft</Button>
+          <Button variant="contained" onClick={() => submitForm(false)} disabled={loading} size="small"
             sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#f5c52b", color: "#111827", boxShadow: "none", "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}
           >
             Submit Now
@@ -895,7 +719,6 @@ export default function CoverageRequestDialog({
   );
 }
 
-// ── Section wrapper ──────────────────────────────────────────────────────────
 function FormSection({ label, children }) {
   return (
     <Box sx={{ mb: 2.5 }}>

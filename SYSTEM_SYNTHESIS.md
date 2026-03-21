@@ -126,7 +126,7 @@ The login flow includes:
 
 The request lifecycle represents the heart of the system:
 
-1. **Creation**: Clients fill out a detailed request form including title, description, event date, start/end times, venue, service requirements (checkboxes for News Article, Photo Documentation, Video Documentation, Camera Operator), client type, entity, contact person, and optional file attachments.
+1. **Creation**: Clients fill out a detailed request form including title, description, event date, start/end times, venue, service requirements (checkboxes for News Article, Photo Documentation, Video Documentation, Camera Operator), client type, entity, contact person, and optional file attachments. The system supports both single-day and multi-day events, where multi-day events can have different schedules for each day.
 2. **Submission**: Requests are submitted as "Pending" status, triggering notifications to administrators.
 3. **Review**: Administrators review submissions and may forward them to one or more sections (News, Photojournalism, Videojournalism) based on the services requested.
 4. **Assignment**: Section Heads assign available staff from their section to cover the request, considering duty schedules and current workload.
@@ -207,7 +207,7 @@ The Section Head Assignment Management integrates with duty schedules to:
 While the full schema is defined in Supabase, the key tables include:
 
 - **profiles**: User accounts with role, section, full_name, avatar_url, is_active
-- **coverage_requests**: Main request records with all event details, status, timestamps
+- **coverage_requests**: Main request records with all event details, status, timestamps, including multi-day event support (`is_multiday`, `event_days`, `end_date`)
 - **coverage_assignments**: Staff assignments linking requests to staff members with status, timed_in_at
 - **client_types**: Categories of clients (e.g., academic department, student organization)
 - **client_entities**: Specific entities within client types
@@ -569,6 +569,21 @@ The system implements consistent design tokens across all components:
 - **Workload Balancing**: Assignment count display per staffer
 - **Weekend Detection**: Visual badges for weekend events
 - **Real-time Updates**: Live subscription to assignment changes
+
+### 9.17 Admin Request Details - Multi-Day Event Support (v2.2)
+
+- **Multi-Day Event Display**: Enhanced RequestDetails component displays events spanning multiple days with individual day schedules
+- **Date/Time Formatting**: Added `fmtTime()` and `fmtDate()` helper functions for consistent time display (12-hour format with AM/PM)
+- **Event Duration Badge**: Visual indicator showing "X-day event" for multi-day requests
+- **Day-by-Day Schedule**: Each day of a multi-day event displays its own date and time range
+- **Multi-Day Aware UI**: The admin request details view adapts to show either single date/time or multiple day schedules based on `is_multiday` flag
+
+### 9.18 Client Request Form - Multi-Day Event Creation
+
+- **Multi-Day Toggle**: Clients can specify whether their event spans multiple days
+- **Dynamic Day Scheduling**: When multi-day is selected, clients can add individual day schedules with specific dates and time ranges
+- **Service Layer Integration**: The `coverageRequestService.js` handles multi-day payloads with `buildDatePayload()` function
+- **Database Schema**: Stores `is_multiday` boolean, `event_days` array, and `end_date` for multi-day event metadata
 
 ---
 
