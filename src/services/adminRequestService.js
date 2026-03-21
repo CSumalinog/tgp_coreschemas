@@ -15,6 +15,9 @@ export async function fetchAllRequests() {
       event_date,
       from_time,
       to_time,
+      end_date,
+      is_multiday,
+      event_days,
       venue,
       services,
       status,
@@ -54,7 +57,6 @@ export async function fetchAllRequests() {
 
   if (!data || data.length === 0) return [];
 
-  // ── Collect all unique profile IDs to batch-fetch names ───────────────────
   const profileIds = new Set();
   data.forEach((r) => {
     if (r.requester_id) profileIds.add(r.requester_id);
@@ -66,7 +68,6 @@ export async function fetchAllRequests() {
     });
   });
 
-  // ── Batch fetch all profiles in one query ─────────────────────────────────
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, full_name, section, avatar_url")
@@ -75,10 +76,9 @@ export async function fetchAllRequests() {
   const profileMap = {};
   (profiles || []).forEach((p) => { profileMap[p.id] = p; });
 
-  // ── Enrich each request with profile data ─────────────────────────────────
   return data.map((r) => ({
     ...r,
-    requester:           profileMap[r.requester_id] ? { id: r.requester_id, full_name: profileMap[r.requester_id].full_name } : null,
+    requester:            profileMap[r.requester_id] ? { id: r.requester_id, full_name: profileMap[r.requester_id].full_name } : null,
     forwarded_by_profile: profileMap[r.forwarded_by] ? { id: r.forwarded_by, full_name: profileMap[r.forwarded_by].full_name } : null,
     approved_by_profile:  profileMap[r.approved_by]  ? { id: r.approved_by,  full_name: profileMap[r.approved_by].full_name  } : null,
     declined_by_profile:  profileMap[r.declined_by]  ? { id: r.declined_by,  full_name: profileMap[r.declined_by].full_name  } : null,
@@ -94,19 +94,11 @@ export async function fetchAllRequests() {
   }));
 }
 
-/**
- * Get the currently authenticated user's ID
- */
 async function getCurrentUserId() {
   const { data: { user } } = await supabase.auth.getUser();
   return user?.id || null;
 }
 
-/**
- * Forward a request to selected sections
- * → Records who forwarded it
- * → Notifies sec heads of the forwarded sections
- */
 export async function forwardRequest(requestId, sections) {
   const [{ data: req }, currentUserId] = await Promise.all([
     supabase.from("coverage_requests").select("title, requester_id").eq("id", requestId).single(),
@@ -138,11 +130,6 @@ export async function forwardRequest(requestId, sections) {
   return data;
 }
 
-/**
- * Decline a request with a reason
- * → Records who declined it
- * → Notifies the client
- */
 export async function declineRequest(requestId, reason) {
   const [{ data: req }, currentUserId] = await Promise.all([
     supabase.from("coverage_requests").select("title, requester_id").eq("id", requestId).single(),
@@ -174,12 +161,6 @@ export async function declineRequest(requestId, reason) {
   return data;
 }
 
-/**
- * Approve a request
- * → Records who approved it
- * → Flips all assignments to "Approved"
- * → Notifies the client + all assigned staff
- */
 export async function approveRequest(requestId, adminNotes = "") {
   const [{ data: req }, currentUserId] = await Promise.all([
     supabase.from("coverage_requests").select("title, requester_id").eq("id", requestId).single(),
@@ -200,7 +181,6 @@ export async function approveRequest(requestId, adminNotes = "") {
 
   if (error) throw new Error(`Failed to approve request: ${error.message}`);
 
-  // ── Flip all assignments to Approved BEFORE notifying staff ───────────────
   const { error: assignErr } = await supabase
     .from("coverage_assignments")
     .update({ status: "Approved" })

@@ -148,9 +148,7 @@ function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
         cursor: "pointer",
         transition: "box-shadow 0.18s, transform 0.18s",
         "&:hover": {
-          boxShadow: isDark
-            ? "0 4px 20px rgba(0,0,0,0.35)"
-            : "0 4px 20px rgba(53,53,53,0.10)",
+          boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.35)" : "0 4px 20px rgba(53,53,53,0.10)",
           transform: "translateY(-1px)",
         },
       }}
@@ -251,13 +249,11 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
   const req    = assignment.request;
   const border = isDark ? BORDER_DARK : BORDER;
 
-  // Co-staffers: all assignments for same request excluding current user
   const coStaffers = useMemo(() => {
     const all = req?.all_assignments || [];
     return all.filter((a) => a.assigned_to !== currentUserId && a.staffer);
   }, [req, currentUserId]);
 
-  // Group co-staffers by section
   const coStaffersBySection = useMemo(() => {
     const grouped = {};
     coStaffers.forEach((a) => {
@@ -283,7 +279,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         },
       }}
     >
-      {/* ── Header ── */}
       <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2, flexShrink: 0 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.6, flexWrap: "wrap" }}>
@@ -305,7 +300,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         </IconButton>
       </Box>
 
-      {/* ── Info chips row ── */}
       <Box sx={{ px: 3, py: 1.75, display: "flex", flexWrap: "wrap", gap: 2.5, borderBottom: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", flexShrink: 0 }}>
         {req?.event_date && (
           <InfoChip icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />} label="Date">
@@ -324,16 +318,8 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         )}
       </Box>
 
-      {/* ── Scrollable content ── */}
-      <DialogContent sx={{
-        p: 0, flex: 1, overflowY: "auto",
-        "&::-webkit-scrollbar": { width: 5 },
-        "&::-webkit-scrollbar-thumb": { background: isDark ? "#333" : "#ddd", borderRadius: 3 },
-        "&::-webkit-scrollbar-thumb:hover": { background: GOLD },
-      }}>
+      <DialogContent sx={{ p: 0, flex: 1, overflowY: "auto", "&::-webkit-scrollbar": { width: 5 }, "&::-webkit-scrollbar-thumb": { background: isDark ? "#333" : "#ddd", borderRadius: 3 }, "&::-webkit-scrollbar-thumb:hover": { background: GOLD } }}>
         <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2.5 }}>
-
-          {/* Description */}
           {req?.description && (
             <DetailSection label="Description" icon={<DescriptionOutlinedIcon sx={{ fontSize: 13 }} />}>
               <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", lineHeight: 1.65 }}>
@@ -342,7 +328,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </DetailSection>
           )}
 
-          {/* Client */}
           <DetailSection label="Client" icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 13 }} />}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4 }}>
               {req?.entity?.name && (
@@ -364,7 +349,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </Box>
           </DetailSection>
 
-          {/* ── Co-Staffers Assigned ── */}
           <DetailSection label="Co-Staffers Assigned" icon={<GroupOutlinedIcon sx={{ fontSize: 13 }} />}>
             {coStaffers.length === 0 ? (
               <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
@@ -400,13 +384,9 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             )}
           </DetailSection>
 
-          {/* ── Attachment — client's program flow PDF ── */}
           {req?.file_url && (
             <DetailSection label="Attachment" icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 13 }} />}>
-              <Box
-                onClick={() => openFile(req.file_url)}
-                sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid ${isDark ? BORDER_DARK : BORDER}`, transition: "all 0.15s", "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 } }}
-              >
+              <Box onClick={() => openFile(req.file_url)} sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid ${isDark ? BORDER_DARK : BORDER}`, transition: "all 0.15s", "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 } }}>
                 <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
                 <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>{getFileName(req.file_url)}</Typography>
                 <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
@@ -414,7 +394,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </DetailSection>
           )}
 
-          {/* Time In hint */}
           {assignment.status === "Approved" && getTimeInState(assignment.request) === "open" && (
             <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(59,130,246,0.06)", border: `1px solid rgba(59,130,246,0.25)` }}>
               <HowToRegOutlinedIcon sx={{ fontSize: 14, color: "#1d4ed8", flexShrink: 0, mt: 0.1 }} />
@@ -424,7 +403,6 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
             </Box>
           )}
 
-          {/* On Going checked-in info */}
           {assignment.status === "On Going" && (
             <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.25)` }}>
               <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#15803d", flexShrink: 0, mt: 0.1 }} />
@@ -436,7 +414,7 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
         </Box>
       </DialogContent>
 
-      {/* ── Footer ── */}
+      {/* ── Footer — PATCH 4: removed "passed" state block ── */}
       <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)", flexShrink: 0 }}>
         <CancelBtn onClick={onClose} border={isDark ? BORDER_DARK : BORDER} />
 
@@ -453,6 +431,7 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
               Time In opens 10 mins before event
             </Box>
           );
+          // "passed" state
           return (
             <Box sx={{ px: 1.75, py: 0.65, borderRadius: "8px", border: `1px solid rgba(239,68,68,0.25)`, fontFamily: dm, fontSize: "0.78rem", color: "#b91c1c", backgroundColor: "rgba(239,68,68,0.05)" }}>
               Time In window has passed
@@ -540,7 +519,7 @@ export default function MyAssignment() {
   const [timingIn,      setTimingIn]      = useState(false);
   const [timeInError,   setTimeInError]   = useState("");
   const [onGoingAlert,  setOnGoingAlert]  = useState(null);
-  const dismissedIds = useRef(new Set());
+  // PATCH 1: dismissedIds removed — staff cannot dismiss the alert
 
   const [semesters,      setSemesters]      = useState([]);
   const [selectedSem,    setSelectedSem]    = useState("all");
@@ -602,15 +581,14 @@ export default function MyAssignment() {
     { title: "Assignment" }
   );
 
-  // ── Auto-popup ────────────────────────────────────────────────────────────
+  // ── Auto-popup — fires when Time In window opens ──────────────────────────
   useEffect(() => {
     function checkUpcoming() {
       const now     = Date.now();
       const TEN_MIN = 10 * 60 * 1000;
       const TWO_MIN =  2 * 60 * 1000;
       const match   = assignments.find((a) => {
-        if (a.status !== "Approved")            return false;
-        if (dismissedIds.current.has(a.id))     return false;
+        if (a.status !== "Approved") return false;
         const req = a.request;
         if (!req?.event_date || !req?.from_time) return false;
         const timeStr    = req.from_time.slice(0, 5);
@@ -707,16 +685,11 @@ export default function MyAssignment() {
       }).eq("id", timeInTarget.id);
       if (assignErr) throw assignErr;
 
-      console.log("request object:", timeInTarget?.request);
-      console.log("request id:", timeInTarget?.request?.id);
-
       const { data: reqData, error: reqErr } = await supabase
         .from("coverage_requests")
         .update({ status: "On Going" })
         .eq("id", timeInTarget.request.id)
         .select();
-      console.log("Request update error:", reqErr);
-      console.log("Request update result:", reqData);
       if (reqErr) throw reqErr;
 
       const { data: admins, error: admErr } = await supabase
@@ -758,7 +731,7 @@ export default function MyAssignment() {
       }
 
       setTimeInTarget(null);
-      dismissedIds.current.delete(timeInTarget.id);
+      setOnGoingAlert(null); // close alert on successful time in
       loadAssignments();
     } catch (err) {
       setTimeInError(err.message || "Something went wrong. Please try again.");
@@ -794,7 +767,6 @@ export default function MyAssignment() {
 
       {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
 
-      {/* ── Tabs + filter ── */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0, gap: 1 }}>
         <Box sx={{ display: "flex", gap: 0, borderBottom: `1px solid ${border}`, flex: 1 }}>
           {TABS.map((tab) => {
@@ -898,7 +870,6 @@ export default function MyAssignment() {
         </Box>
       )}
 
-      {/* ── Assignment cards grid ── */}
       <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
         {filtered.length === 0 ? (
           <Box sx={{ p: 5, textAlign: "center", bgcolor: "background.paper", borderRadius: "12px", border: `1px solid ${border}` }}>
@@ -944,9 +915,10 @@ export default function MyAssignment() {
         onClose={() => { setTimeInTarget(null); setTimeInError(""); }}
         onConfirm={({ selfieFile, gpsData }) => handleTimeIn({ selfieFile, gpsData })}
       />
+      {/* PATCH 3: onClose no longer adds to dismissedIds — alert stays until Time In */}
       <OnGoingAlertDialog
         open={!!onGoingAlert} assignment={onGoingAlert} isDark={isDark}
-        onClose={() => { dismissedIds.current.add(onGoingAlert?.id); setOnGoingAlert(null); }}
+        onClose={() => setOnGoingAlert(null)}
         onTimeIn={(a) => { setOnGoingAlert(null); setTimeInError(""); setTimeInTarget(a); }}
       />
     </Box>

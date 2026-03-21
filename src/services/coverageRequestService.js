@@ -6,6 +6,14 @@ import { notifyAdmins }    from "./NotificationService";
 const toLocalISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+// ── Serialize a Date or string time value → "HH:MM" ──────────────────────────
+const toTimeStr = (t) => {
+  if (!t) return null;
+  if (t instanceof Date) return t.toTimeString().slice(0, 5);
+  // already a string like "08:00" or "08:00:00"
+  return t.slice(0, 5);
+};
+
 // ── Upsert "Others" entity via RPC (SECURITY DEFINER — bypasses RLS) ──────────
 async function resolveEntityId(otherEntityName, clientTypeId) {
   const { data, error } = await supabase.rpc("upsert_client_entity", {
@@ -16,6 +24,44 @@ async function resolveEntityId(otherEntityName, clientTypeId) {
   return data;
 }
 
+// ── Build the multi-day payload fields ───────────────────────────────────────
+// event_days is [{ date, from_time, to_time }] where times are Date objects
+// Returns the fields to merge into the DB payload
+function buildDatePayload(requestData) {
+  const isMultiDay = requestData.is_multiday;
+
+  if (isMultiDay && requestData.event_days?.length > 0) {
+    const sorted = [...requestData.event_days].sort((a, b) => a.date.localeCompare(b.date));
+    const first  = sorted[0];
+
+    return {
+      is_multiday: true,
+      event_days:  sorted.map((d) => ({
+        date:      d.date,
+        from_time: toTimeStr(d.from_time),
+        to_time:   toTimeStr(d.to_time),
+      })),
+      // NOT NULL fallback — use first day's values
+      event_date: first.date,
+      from_time:  toTimeStr(first.from_time) || "00:00",
+      to_time:    toTimeStr(first.to_time)   || "00:00",
+      end_date:   sorted.length > 1 ? sorted[sorted.length - 1].date : null,
+    };
+  }
+
+  // Single day
+  return {
+    is_multiday: false,
+    event_days:  null,
+    event_date:  requestData.date instanceof Date
+      ? toLocalISO(requestData.date)
+      : requestData.date,
+    from_time:   toTimeStr(requestData.from_time) || "00:00",
+    to_time:     toTimeStr(requestData.to_time)   || "00:00",
+    end_date:    null,
+  };
+}
+
 /**
  * Submit or save a coverage request as Draft or Pending
  */
@@ -23,12 +69,13 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("You must be logged in to submit a request.");
 
-  // ── Resolve "Others" entity via RPC before anything else ──
+  // ── Resolve "Others" entity ──
   let resolvedEntityId = requestData.entity || null;
   if (requestData.other_entity) {
     resolvedEntityId = await resolveEntityId(requestData.other_entity, requestData.client_type);
   }
 
+  // ── Upload file ──
   let fileUrl = null;
   if (file) {
     const timestamp     = Date.now();
@@ -43,9 +90,7 @@ export async function submitCoverageRequest(requestData, file, isDraft = false) 
   const payload = {
     title:          requestData.title,
     description:    requestData.description,
-    event_date:     requestData.date instanceof Date ? toLocalISO(requestData.date) : requestData.date,
-    from_time:      requestData.from_time instanceof Date ? requestData.from_time.toTimeString().slice(0, 5) : requestData.from_time,
-    to_time:        requestData.to_time instanceof Date ? requestData.to_time.toTimeString().slice(0, 5) : requestData.to_time,
+    ...buildDatePayload(requestData),
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
@@ -104,6 +149,9 @@ export async function fetchMyRequests() {
       venue,
       services,
       status,
+      is_multiday,
+      event_days,
+      end_date,
       contact_person,
       contact_info,
       file_url,
@@ -142,12 +190,13 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("Not authenticated.");
 
-  // ── Resolve "Others" entity via RPC before anything else ──
+  // ── Resolve "Others" entity ──
   let resolvedEntityId = requestData.entity || null;
   if (requestData.other_entity) {
     resolvedEntityId = await resolveEntityId(requestData.other_entity, requestData.client_type);
   }
 
+  // ── Upload file if new one provided ──
   let fileUrl = requestData.file_url || null;
   if (file) {
     const timestamp     = Date.now();
@@ -162,9 +211,7 @@ export async function updateDraftRequest(requestId, requestData, file, submitNow
   const payload = {
     title:          requestData.title,
     description:    requestData.description,
-    event_date:     requestData.date instanceof Date ? toLocalISO(requestData.date) : requestData.date,
-    from_time:      requestData.from_time instanceof Date ? requestData.from_time.toTimeString().slice(0, 5) : requestData.from_time,
-    to_time:        requestData.to_time instanceof Date ? requestData.to_time.toTimeString().slice(0, 5) : requestData.to_time,
+    ...buildDatePayload(requestData),
     venue:          requestData.venue,
     services:       requestData.services,
     client_type_id: requestData.client_type,
