@@ -30,8 +30,9 @@ function buildTheme(isDark) {
         paper:   isDark ? "#1e1e1e" : "#ffffff",
       },
       text: {
-        primary:   isDark ? "#f5f5f5" : "#212121",
-        secondary: isDark ? "#aaaaaa" : "#757575",
+        primary:   isDark ? "#f5f5f5"                : "#212121",
+        // ── Bumped from #9e9e9e / #aaaaaa — now readable across the whole app ──
+        secondary: isDark ? "rgba(255,255,255,0.75)" : "rgba(33,33,33,0.75)",
       },
       divider: isDark ? "#2e2e2e" : "#e0e0e0",
     },
@@ -147,7 +148,7 @@ function buildTheme(isDark) {
           [style*="color: #212121"]              { color: #f5f5f5 !important; }
 
           [style*="color: rgb(158, 158, 158)"],
-          [style*="color: #9e9e9e"]              { color: #aaaaaa !important; }
+          [style*="color: #9e9e9e"]              { color: rgba(255,255,255,0.75) !important; }
 
           .MuiDataGrid-root          { background-color: #1e1e1e !important; color: #f5f5f5 !important; border-color: #2e2e2e !important; }
           .MuiDataGrid-columnHeaders { background-color: #2a2a2a !important; border-color: #2e2e2e !important; }
@@ -200,7 +201,7 @@ function DataGridStyles({ isDark }) {
   const border    = isDark ? "rgba(255,255,255,0.08)"  : "rgba(53,53,53,0.08)";
   const paperBg   = isDark ? "#1e1e1e"                 : "#ffffff";
   const textColor = isDark ? "rgba(255,255,255,0.85)"  : "#353535";
-  const subColor  = isDark ? "rgba(255,255,255,0.45)"  : "rgba(53,53,53,0.5)";
+  const subColor  = isDark ? "rgba(255,255,255,0.75)"  : "rgba(33,33,33,0.75)";
   const iconColor = isDark ? "rgba(255,255,255,0.35)"  : "rgba(53,53,53,0.4)";
   const inputBg   = isDark ? "rgba(255,255,255,0.03)"  : "rgba(53,53,53,0.02)";
   const shadow    = isDark
@@ -209,6 +210,19 @@ function DataGridStyles({ isDark }) {
 
   return (
     <GlobalStyles styles={{
+
+      // ── DataGrid cell & body font size ──────────────────────────────────────
+      ".MuiDataGrid-root": {
+        fontSize: "0.78rem !important",
+      },
+      ".MuiDataGrid-cell": {
+        fontSize: "0.78rem !important",
+        fontFamily: `${dm} !important`,
+      },
+      ".MuiDataGrid-columnHeaderTitle": {
+        fontSize: "0.65rem !important",
+        fontFamily: `${dm} !important`,
+      },
 
       "body .MuiMenuItem-root": {
         fontFamily:    `${dm} !important`,
@@ -228,6 +242,7 @@ function DataGridStyles({ isDark }) {
       "body .MuiListItemText-secondary": {
         fontFamily: `${dm} !important`,
         fontSize:   "0.7rem !important",
+        color:      `${subColor} !important`,
       },
       "body .MuiInputBase-root": {
         fontFamily: `${dm} !important`,
@@ -436,7 +451,6 @@ export function AppThemeProvider({ children }) {
 
   const toggleDark = () => setIsDark((prev) => !prev);
 
-  // ── Fixed: memoize theme so MUI doesn't remount the entire tree on toggle ─
   const theme = useMemo(() => buildTheme(isDark), [isDark]);
 
   return (

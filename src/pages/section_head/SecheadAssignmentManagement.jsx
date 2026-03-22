@@ -504,41 +504,36 @@ export default function SecHeadAssignmentManagement() {
       <ColumnMenuStyles isDark={isDark} border={border} />
 
       {/* ── Header ── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "1.05rem", color: "text.primary", letterSpacing: "-0.02em" }}>
+      <Box sx={{ mb: 2.5 }}>
+        <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.95rem", color: "text.primary", letterSpacing: "-0.01em" }}>
           Assignment Management
-        </Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.3 }}>
-          {tab === 0 && `Requests forwarded to your section (${currentUser.section}). Assign staffers, then submit for admin approval.`}
-          {tab === 1 && `Requests with staffers assigned from your section (${currentUser.section}). Submit ready ones for admin approval.`}
-          {tab === 2 && `Coverage currently in progress — your section's staffers have timed in and are on-site.`}
-          {tab === 3 && `Completed coverage requests handled by your section (${currentUser.section}). Full time in, time out, and duration records.`}
         </Typography>
       </Box>
 
       {/* ── Tabs + filter ── */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-        <Box sx={{ display: "flex", gap: 0, borderBottom: `1px solid ${border}`, flex: 1, overflowX: "auto", "&::-webkit-scrollbar": { height: 0 } }}>
-          {TABS.map(({ label, key, Icon }, idx) => {
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0 }}>
+        <Box sx={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+          {TABS.map(({ label, key }, idx) => {
             const isActive = tab === idx;
             const count    = counts[key];
             return (
               <Box key={key} onClick={() => setTab(idx)}
                 sx={{
-                  display: "flex", alignItems: "center", gap: 0.6,
-                  px: 1.75, py: 0.9, cursor: "pointer", position: "relative", flexShrink: 0,
+                  display: "inline-flex", alignItems: "center", gap: 0.6,
+                  px: 1.5, py: 0.65, borderRadius: "4px", cursor: "pointer", flexShrink: 0,
                   fontFamily: dm, fontSize: "0.79rem",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "text.primary" : "text.secondary",
-                  transition: "color 0.15s", "&:hover": { color: "text.primary" },
-                  "&::after": isActive ? { content: '""', position: "absolute", bottom: -1, left: 0, right: 0, height: "2px", borderRadius: "2px 2px 0 0", backgroundColor: GOLD } : {},
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? CHARCOAL : "text.secondary",
+                  border: `1px solid ${isActive ? GOLD : border}`,
+                  backgroundColor: isActive ? GOLD_08 : "background.paper",
+                  transition: "all 0.12s",
+                  "&:hover": isActive ? {} : { borderColor: GOLD, color: isDark ? "#f5f5f5" : CHARCOAL },
                 }}
               >
-                <Icon sx={{ fontSize: 14, flexShrink: 0 }} />
                 {label}
                 {count > 0 && (
-                  <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)" }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>{count}</Typography>
+                  <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.08)", flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>{count}</Typography>
                   </Box>
                 )}
               </Box>
@@ -547,13 +542,14 @@ export default function SecHeadAssignmentManagement() {
         </Box>
 
         {/* Filter button */}
+        {/* Filter button */}
         <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
           <Box sx={{ position: "relative", pb: "1px" }}>
             <Box onClick={() => setFilterOpen((p) => !p)}
               sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.55, borderRadius: "8px", cursor: "pointer", border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`, backgroundColor: activeFilterCount > 0 ? GOLD_08 : "transparent", fontFamily: dm, fontSize: "0.76rem", fontWeight: 500, color: activeFilterCount > 0 ? "#b45309" : "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 } }}
             >
               <FilterListIcon sx={{ fontSize: 15 }} />
-            
+              Filter
               {activeFilterCount > 0 && (
                 <Box sx={{ width: 16, height: 16, borderRadius: "8px", backgroundColor: GOLD, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: CHARCOAL, lineHeight: 1 }}>{activeFilterCount}</Typography>
@@ -566,7 +562,7 @@ export default function SecHeadAssignmentManagement() {
                 sx={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 250, zIndex: 1300, borderRadius: "12px", overflow: "hidden", border: `1px solid ${border}`, backgroundColor: "background.paper", boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(53,53,53,0.12)" }}
               >
                 <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filters</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filter</Typography>
                   {activeFilterCount > 0 && (
                     <Box onClick={() => { setActiveSemesterId("all"); setStafferFilter("all"); }} sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: CHARCOAL } }}>Clear all</Box>
                   )}
@@ -617,7 +613,7 @@ export default function SecHeadAssignmentManagement() {
 
       {/* ── Table ── */}
       <Box sx={{ mt: 2, width: "100%", overflowX: "auto" }}>
-        <Box sx={{ minWidth: 700, bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
+        <Box sx={{ minWidth: 700, bgcolor: "background.paper", borderRadius: "4px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
           {loading ? (
             <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <CircularProgress size={26} sx={{ color: GOLD }} />
@@ -752,7 +748,7 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
           <Tooltip title={p.value || ""} arrow disableHoverListener={!p.value || p.value.length < 25}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {p.value}
             </Typography>
           </Tooltip>
@@ -834,7 +830,7 @@ function AssignedTab({ rows, highlight, currentUser, isDark, border, submitLoadi
       renderCell: (p) => (
         <Tooltip title={p.value || ""} arrow disableHoverListener={!p.value || p.value.length < 25}>
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
           </Box>
         </Tooltip>
       ),
@@ -911,7 +907,7 @@ function OnGoingTab({ rows, highlight, currentUser, isDark, border }) {
       renderCell: (p) => (
         <Tooltip title={p.value || ""} arrow disableHoverListener={!p.value || p.value.length < 25}>
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
           </Box>
         </Tooltip>
       ),
@@ -975,7 +971,7 @@ function CompletedTab({ rows, highlight, currentUser, isDark, border }) {
       renderCell: (p) => (
         <Tooltip title={p.value || ""} arrow disableHoverListener={!p.value || p.value.length < 25}>
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
           </Box>
         </Tooltip>
       ),

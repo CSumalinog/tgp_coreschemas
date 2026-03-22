@@ -244,8 +244,8 @@ export default function StaffersManagement() {
               disableHoverListener={!p.value || p.value.length < 22}
             >
               <Typography sx={{
-                fontFamily: dm, fontSize: "0.83rem", fontWeight: 600,
-                color: "text.primary",
+                fontFamily: dm, fontSize: "0.83rem", fontWeight: 400,
+                color: isDark ? "#f5f5f5" : "#1a1a1a",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 lineHeight: 1.3,
               }}>
@@ -335,11 +335,8 @@ export default function StaffersManagement() {
       {/* ── Header ── */}
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3, gap: 2, flexWrap: "wrap" }}>
         <Box>
-          <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "1.05rem", color: "text.primary", letterSpacing: "-0.02em" }}>
+          <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.95rem", color: "text.primary", letterSpacing: "-0.01em" }}>
             Staffers Management
-          </Typography>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.3 }}>
-            Manage TGP member accounts — create, edit, deactivate, or remove members.
           </Typography>
         </Box>
         <Box onClick={handleOpenCreate}
@@ -356,36 +353,39 @@ export default function StaffersManagement() {
         </Alert>
       )}
 
-      {/* ── Tabs ── */}
-      <Box sx={{ mb: 2, borderBottom: `1px solid ${border}`, display: "flex", gap: 0 }}>
+      {/* ── Segmented tab bar ── */}
+      <Box sx={{ mb: 2, display: "flex", gap: "6px", flexWrap: "wrap" }}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab;
+          const count = getCount(tab);
           return (
             <Box key={tab} onClick={() => setActiveTab(tab)}
               sx={{
-                display: "flex", alignItems: "center", gap: 0.75,
-                px: 1.75, py: 0.9, cursor: "pointer", position: "relative",
+                display: "inline-flex", alignItems: "center", gap: 0.6,
+                px: 1.5, py: 0.65, borderRadius: "4px", cursor: "pointer", flexShrink: 0,
                 fontFamily: dm, fontSize: "0.79rem",
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? "text.primary" : "text.secondary",
-                transition: "color 0.15s", "&:hover": { color: "text.primary" },
-                "&::after": isActive ? { content: '""', position: "absolute", bottom: -1, left: 0, right: 0, height: "2px", borderRadius: "2px 2px 0 0", backgroundColor: GOLD } : {},
+                fontWeight: isActive ? 500 : 400,
+                color: isActive ? CHARCOAL : "text.secondary",
+                border: `1px solid ${isActive ? GOLD : border}`,
+                backgroundColor: isActive ? GOLD_08 : "background.paper",
+                transition: "all 0.12s",
+                "&:hover": isActive ? {} : { borderColor: GOLD, color: isDark ? "#f5f5f5" : CHARCOAL },
               }}
             >
               {tab}
-              <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)" }}>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>
-                  {getCount(tab)}
-                </Typography>
-              </Box>
+              {count > 0 && (
+                <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.08)", flexShrink: 0 }}>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>{count}</Typography>
+                </Box>
+              )}
             </Box>
           );
         })}
       </Box>
 
-      {/* ── Table ── */}
+            {/* ── Table ── */}
       <Box sx={{ width: "100%", overflowX: "auto" }}>
-        <Box sx={{ minWidth: 640, bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
+        <Box sx={{ minWidth: 640, bgcolor: "background.paper", borderRadius: "4px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
           {loading ? (
             <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <CircularProgress size={26} sx={{ color: GOLD }} />

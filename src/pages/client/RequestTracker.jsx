@@ -177,38 +177,41 @@ export default function RequestTracker() {
   return (
     <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default", fontFamily: dm }}>
       <ColumnMenuStyles isDark={isDark} border={border} />
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.5 }}>
+
+      {/* ── Header ── */}
+      <Box sx={{ mb: 2.5 }}>
+        <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.95rem", color: "text.primary", letterSpacing: "-0.01em" }}>
+          Request Tracker
+        </Typography>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.3 }}>
           Track the status of your coverage requests from submission to completion.
         </Typography>
       </Box>
 
-      {/* ── Tabs with icons ── */}
-      <Box sx={{ display: "flex", gap: 0, mb: 3, borderBottom: `1px solid ${border}` }}>
-        {TABS.map(({ label, Icon }, idx) => (
-          <Box
-            key={label}
-            onClick={() => setTab(idx)}
-            sx={{
-              display: "flex", alignItems: "center", gap: 0.6,
-              px: 1.75, py: 1.1, cursor: "pointer", position: "relative",
-              fontFamily: dm, fontSize: "0.8rem",
-              fontWeight: tab === idx ? 600 : 400,
-              color: tab === idx ? "text.primary" : "text.secondary",
-              transition: "color 0.15s",
-              "&:hover": { color: "text.primary" },
-              "&::after": tab === idx ? {
-                content: '""', position: "absolute",
-                bottom: -1, left: 0, right: 0,
-                height: "2px", borderRadius: "2px 2px 0 0",
-                backgroundColor: GOLD,
-              } : {},
-            }}
-          >
-            <Icon sx={{ fontSize: 15, flexShrink: 0 }} />
-            {label}
-          </Box>
-        ))}
+      {/* ── Segmented tab bar ── */}
+      <Box sx={{ display: "flex", gap: "6px", mb: 3, flexWrap: "wrap" }}>
+        {TABS.map(({ label, Icon }, idx) => {
+          const isActive = tab === idx;
+          return (
+            <Box
+              key={label}
+              onClick={() => setTab(idx)}
+              sx={{
+                display: "inline-flex", alignItems: "center", gap: 0.6,
+                px: 1.5, py: 0.65, borderRadius: "4px", cursor: "pointer", flexShrink: 0,
+                fontFamily: dm, fontSize: "0.79rem",
+                fontWeight: isActive ? 500 : 400,
+                color: isActive ? CHARCOAL : "text.secondary",
+                border: `1px solid ${isActive ? GOLD : border}`,
+                backgroundColor: isActive ? GOLD_08 : "background.paper",
+                transition: "all 0.12s",
+                "&:hover": isActive ? {} : { borderColor: GOLD, color: isDark ? "#f5f5f5" : CHARCOAL },
+              }}
+            >
+              {label}
+            </Box>
+          );
+        })}
       </Box>
 
       {tab === 0 && <PipelineTab    isDark={isDark} border={border} />}
@@ -391,7 +394,7 @@ function RequestsGrid({ rows, columns, isDark, border }) {
       sx={{
         width: "100%",
         bgcolor: "background.paper",
-        borderRadius: "10px",
+        borderRadius: "4px",
         border: `1px solid ${border}`,
         overflow: "hidden",
       }}
@@ -419,7 +422,7 @@ function useGridColumns(isDark, onView) {
       field: "eventTitle", headerName: "Event Title", flex: 1.5, minWidth: 200,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 500, color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
         </Box>
       ),
     },
