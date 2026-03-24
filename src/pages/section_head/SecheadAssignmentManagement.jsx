@@ -181,7 +181,7 @@ function EventTypePill({ isMultiDay, isDark }) {
   );
 }
 
-// ── Avatar Stack with Portal Popover (Option A) ───────────────────────────────
+// ── Avatar Stack with Portal Popover ─────────────────────────────────────────
 const MAX_VISIBLE = 3;
 
 function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
@@ -294,7 +294,6 @@ function ColumnMenuStyles({ isDark, border }) {
     <GlobalStyles styles={{
       ".MuiPaper-root:has(> .MuiDataGrid-menuList)": { borderRadius: "10px !important", border: `1px solid ${border} !important`, backgroundColor: `${paperBg} !important`, boxShadow: `${shadow} !important`, minWidth: "180px !important", overflow: "hidden !important" },
       ".MuiDataGrid-menuList": { padding: "4px 0 !important" },
-      // FIX: was "0.78rem !important` — backtick replaced with closing double-quote
       ".MuiDataGrid-menuList .MuiMenuItem-root": { fontFamily: `${dm} !important`, fontSize: "0.78rem !important", fontWeight: "500 !important", color: `${textColor} !important`, padding: "7px 14px !important", minHeight: "unset !important", gap: "10px !important", transition: "background-color 0.12s, color 0.12s !important" },
       ".MuiDataGrid-menuList .MuiMenuItem-root:hover": { backgroundColor: `${hoverBg} !important`, color: "#b45309 !important" },
       ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": { minWidth: "unset !important", color: `${iconColor} !important`, transition: "color 0.12s !important" },
@@ -394,11 +393,12 @@ export default function SecHeadAssignmentManagement() {
     if (!currentUser?.section) return;
     setLoading(true); setError("");
     try {
+      // ── submitted_sections added to baseSelect ──
       const baseSelect = `
         id, title, description, event_date, from_time, to_time,
         is_multiday, event_days, end_date,
         venue, services, status, contact_person, contact_info,
-        file_url, forwarded_sections, forwarded_at, submitted_at,
+        file_url, forwarded_sections, submitted_sections, forwarded_at, submitted_at,
         client_type:client_types ( id, name ),
         entity:client_entities ( id, name ),
         coverage_assignments (
@@ -407,6 +407,7 @@ export default function SecHeadAssignmentManagement() {
           staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
         )
       `;
+
       const [allForwarded, assignedAndApproval, onGoing, completed] = await Promise.all([
         supabase.from("coverage_requests").select(baseSelect).in("status", ["Forwarded", "Assigned", "For Approval"]).contains("forwarded_sections", [currentUser.section]).order("forwarded_at", { ascending: false }),
         supabase.from("coverage_requests").select(baseSelect).in("status", ["Assigned", "For Approval"]).contains("forwarded_sections", [currentUser.section]).order("event_date", { ascending: true }),
@@ -588,24 +589,60 @@ export default function SecHeadAssignmentManagement() {
     }
   }, [selectedRequest, currentUser, daySelected, dayAssigned, loadAll]);
 
+  // ── FIXED: Per-section independent submit for approval ────────────────────
   const handleSubmitForApproval = async (requestId) => {
     setSubmitLoading(true);
     try {
-      const { data: req } = await supabase.from("coverage_requests").select("title").eq("id", requestId).single();
-      const { error }     = await supabase.from("coverage_requests").update({ status: "For Approval" }).eq("id", requestId);
+      // Fetch current state of submitted_sections and forwarded_sections
+      const { data: req } = await supabase
+        .from("coverage_requests")
+        .select("title, forwarded_sections, submitted_sections, status")
+        .eq("id", requestId)
+        .single();
+
+      // Add this section to submitted_sections (no duplicates)
+      const alreadySubmitted  = req.submitted_sections || [];
+      const updatedSubmitted  = alreadySubmitted.includes(currentUser.section)
+        ? alreadySubmitted
+        : [...alreadySubmitted, currentUser.section];
+
+      // Only flip global status to "For Approval" when ALL forwarded sections have submitted
+      const forwardedSections  = req.forwarded_sections || [];
+      const allSectionsSubmitted =
+        forwardedSections.length > 0 &&
+        forwardedSections.every((s) => updatedSubmitted.includes(s));
+
+      // Keep current global status unless everyone is done
+      const newStatus = allSectionsSubmitted ? "For Approval" : req.status;
+
+      const { error } = await supabase
+        .from("coverage_requests")
+        .update({ submitted_sections: updatedSubmitted, status: newStatus })
+        .eq("id", requestId);
+
       if (error) throw error;
-      const { data: admins } = await supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true);
-      if (admins && admins.length > 0) {
-        await supabase.from("notifications").insert(
-          admins.map((admin) => ({
-            user_id: admin.id, recipient_id: admin.id, recipient_role: "admin",
-            request_id: requestId, type: "for_approval",
-            title: "Assignment Ready for Approval",
-            message: `${currentUser?.full_name || "A section head"} has submitted the staff assignment for "${req?.title || "a coverage request"}" for your approval.`,
-            is_read: false,
-          }))
-        );
+
+      // Only notify admins once — when ALL sections are done
+      if (allSectionsSubmitted) {
+        const { data: admins } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("role", "admin")
+          .eq("is_active", true);
+
+        if (admins && admins.length > 0) {
+          await supabase.from("notifications").insert(
+            admins.map((admin) => ({
+              user_id: admin.id, recipient_id: admin.id, recipient_role: "admin",
+              request_id: requestId, type: "for_approval",
+              title: "Assignment Ready for Approval",
+              message: `All sections have submitted their staff assignments for "${req?.title || "a coverage request"}" — ready for your approval.`,
+              is_read: false,
+            }))
+          );
+        }
       }
+
       setConfirmRequest(null);
       loadAll();
     } catch (err) {
@@ -868,7 +905,6 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
       eventDate:     isMultiDay && req.event_days?.length > 0
         ? `${fmtDateShort(req.event_days[0].date)} – ${fmtDateShort(req.event_days[req.event_days.length - 1].date)}`
         : req.event_date ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
-      // eventType column value — drives the separate Type column
       eventType:     isMultiDay,
       paxNeeded:     getPaxForSection(req),
       dateForwarded: req.forwarded_at ? new Date(req.forwarded_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
@@ -878,7 +914,6 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
   });
 
   const columns = [
-    // ── Event Title — clean, no badge ──
     {
       field: "requestTitle", headerName: "Event Title", flex: 1.4,
       renderCell: (p) => (
@@ -887,7 +922,6 @@ function ForAssignmentTab({ rows, highlight, currentUser, isDark, border, getPax
         </Box>
       ),
     },
-    // ── NEW: Type column ──
     {
       field: "eventType", headerName: "Type", flex: 0.65, sortable: false,
       renderCell: (p) => (
@@ -952,11 +986,17 @@ function AssignedTab({ rows, highlight, currentUser, isDark, border, submitLoadi
     const uniqueStaffers = sectionAssignments
       .filter((a) => { if (seen.has(a.assigned_to)) return false; seen.add(a.assigned_to); return true; })
       .map((a) => ({ ...a.staffer, id: a.assigned_to }));
+
+    // ── Per-section submit state — independent of global status ──
+    const myHasSubmitted  = (req.submitted_sections || []).includes(currentUser?.section);
+    const myHasAssignments = sectionAssignments.length > 0;
+
     return {
       id: req.id, title: req.title, client: req.entity?.name || "—",
       eventDate: req.event_date ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
       eventType: !!(req.is_multiday && req.event_days?.length > 0),
       status: req.status, staffers: uniqueStaffers,
+      myHasSubmitted, myHasAssignments,
     };
   });
 
@@ -971,12 +1011,24 @@ function AssignedTab({ rows, highlight, currentUser, isDark, border, submitLoadi
       </Box>
     )},
     { field: "status", headerName: "Status", flex: 0.85, renderCell: (p) => <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}><StatusPill status={p.value} isDark={isDark} /></Box> },
-    { field: "actions", headerName: "", flex: 1.3, sortable: false, align: "right", headerAlign: "right", renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
-        {(p.row.status === "Assigned" || p.row.status === "Forwarded") && <ActionChip onClick={() => onRequestConfirm(p.row)} disabled={submitLoading} border={isDark ? BORDER_DARK : BORDER}><CheckCircleOutlinedIcon sx={{ fontSize: 12 }} /> Submit for Approval</ActionChip>}
-        {p.row.status === "For Approval" && <Typography sx={{ fontFamily: dm, fontSize: "0.73rem", color: "#0369a1", fontStyle: "italic" }}>Awaiting admin sign-off</Typography>}
-      </Box>
-    )},
+    {
+      field: "actions", headerName: "", flex: 1.3, sortable: false, align: "right", headerAlign: "right",
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+          {p.row.myHasSubmitted ? (
+            // This sec head already submitted — show their own waiting state only
+            <Typography sx={{ fontFamily: dm, fontSize: "0.73rem", color: "#0369a1", fontStyle: "italic" }}>
+              Submitted — awaiting admin approval
+            </Typography>
+          ) : p.row.myHasAssignments ? (
+            // Has assignments for this section, not yet submitted — show button
+            <ActionChip onClick={() => onRequestConfirm(p.row)} disabled={submitLoading} border={isDark ? BORDER_DARK : BORDER}>
+              <CheckCircleOutlinedIcon sx={{ fontSize: 12 }} /> Submit for Approval
+            </ActionChip>
+          ) : null}
+        </Box>
+      ),
+    },
   ];
 
   return <DataGrid rows={mappedRows} columns={columns} pageSize={8} rowsPerPageOptions={[8]} disableSelectionOnClick rowHeight={52} initialState={{ pinnedColumns: { left: ["title"] } }} getRowClassName={(p) => highlight && p.row.title?.toLowerCase().includes(highlight) ? "highlighted-row" : ""} sx={makeDataGridSx(isDark, border)} />;
