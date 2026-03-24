@@ -1,14 +1,15 @@
 // src/components/admin/RequestDetails.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Box, Typography, IconButton, Button, Chip, Stack,
   Divider, TextField, FormGroup, CircularProgress,
-  Alert, Avatar, useTheme, Checkbox, Tooltip,
+  Alert, Avatar, useTheme, Checkbox, Tooltip, Popover,
 } from "@mui/material";
 import CloseIcon                   from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import AutoAwesomeOutlinedIcon     from "@mui/icons-material/AutoAwesomeOutlined";
+import WarningAmberOutlinedIcon    from "@mui/icons-material/WarningAmberOutlined";
 import { supabase }                from "../../lib/supabaseClient";
 import { getAvatarUrl }           from "../../components/common/UserAvatar";
 import { forwardRequest, declineRequest, approveRequest } from "../../services/adminRequestService";
@@ -17,11 +18,18 @@ import { useRequestAssistant }     from "../../hooks/RequestAssistant";
 const ALL_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
 const SERVICE_SECTION_MAP = {
-  "News Article":                           "News",
-  "Photo Documentation":                    "Photojournalism",
-  "Video Documentation":                    "Videojournalism",
-  "Camera Operator (for live streaming)":   "Videojournalism",
+  "News Article":                         "News",
+  "Photo Documentation":                  "Photojournalism",
+  "Video Documentation":                  "Videojournalism",
+  "Camera Operator (for live streaming)": "Videojournalism",
 };
+
+const SERVICE_COLUMNS = [
+  { key: "News Article",                         label: "News Article", section: "News"            },
+  { key: "Photo Documentation",                  label: "Photo Doc",    section: "Photojournalism" },
+  { key: "Video Documentation",                  label: "Video Doc",    section: "Videojournalism" },
+  { key: "Camera Operator (for live streaming)", label: "Camera Op",    section: "Videojournalism" },
+];
 
 const STATUS_CONFIG = {
   Pending:        { bg: "#fef3c7", color: "#d97706" },
@@ -29,6 +37,8 @@ const STATUS_CONFIG = {
   Assigned:       { bg: "#fff7ed", color: "#c2410c" },
   "For Approval": { bg: "#e0f2fe", color: "#0369a1" },
   Approved:       { bg: "#dcfce7", color: "#15803d" },
+  "On Going":     { bg: "#dbeafe", color: "#1d4ed8" },
+  Completed:      { bg: "#f0fdf4", color: "#15803d" },
   Declined:       { bg: "#fee2e2", color: "#dc2626" },
 };
 
@@ -38,6 +48,9 @@ const SCORE_CONFIG = {
   High:       { color: "#15803d" },
   "Very High":{ color: "#1d4ed8" },
 };
+
+// Statuses where Decline should be available — FIX #4
+const DECLINABLE_STATUSES = ["Pending", "Forwarded", "Assigned", "For Approval"];
 
 const getFileName = (filePath) => {
   if (!filePath) return null;
@@ -55,7 +68,6 @@ const getInitials = (name) => {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 };
 
-// ── Format "HH:MM:SS" → "H:MM AM/PM" ────────────────────────────────────────
 function fmtTime(t) {
   if (!t) return null;
   const [h, m] = t.split(":").map(Number);
@@ -64,28 +76,174 @@ function fmtTime(t) {
   return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-// ── Format "YYYY-MM-DD" → localized string ───────────────────────────────────
 function fmtDate(d, opts = { month: "long", day: "numeric", year: "numeric" }) {
   if (!d) return "—";
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
+}
+
+// ── Service Row with fill bar, inline names, X/Y badge, popover ──────────────
+function ServiceRow({ svcKey, label, section, paxRequested, staffers, requested, isDark }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const colStaffers = staffers.filter((a) => (a.staffer?.section || a.section) === section);
+  const assigned    = colStaffers.length;
+  const total       = paxRequested || 0;
+  const fillPct     = total > 0 ? Math.min(100, Math.round((assigned / total) * 100)) : 0;
+  const isFull      = assigned >= total && total > 0;
+  const isPartial   = assigned > 0 && assigned < total;
+  const hasStaffers = assigned > 0;
+
+  const badgeSx = isFull
+    ? { bg: isDark ? "rgba(34,197,94,0.12)" : "#f0fdf4", border: isDark ? "#166534" : "#86efac", dot: "#22c55e", text: isDark ? "#4ade80" : "#15803d" }
+    : isPartial
+    ? { bg: isDark ? "rgba(245,158,11,0.1)" : "#fffbeb", border: isDark ? "#92400e" : "#fde68a", dot: "#f59e0b", text: isDark ? "#fbbf24" : "#92400e" }
+    : { bg: isDark ? "rgba(255,255,255,0.04)" : "#f9fafb", border: isDark ? "#333" : "#e5e7eb", dot: "#9ca3af", text: "text.secondary" };
+
+  const grouped = {};
+  colStaffers.forEach((a) => {
+    const sec = a.staffer?.section || a.section || "Unknown";
+    if (!grouped[sec]) grouped[sec] = [];
+    if (!grouped[sec].find((x) => x.id === a.id)) grouped[sec].push(a);
+  });
+
+  const MAX_INLINE = 2;
+  const inlineNames = colStaffers.slice(0, MAX_INLINE).map((a) => a.staffer?.full_name?.split(" ")[0]).join(", ");
+  const overflow    = colStaffers.length - MAX_INLINE;
+
+  return (
+    <>
+      <Box
+        onClick={(e) => hasStaffers && setAnchorEl(e.currentTarget)}
+        sx={{
+          display: "grid", gridTemplateColumns: "130px 1fr auto",
+          alignItems: "center", gap: 1.5,
+          px: 1.75, py: 1.25, borderRadius: "8px", border: "1px solid",
+          borderColor: hasStaffers ? (isDark ? "rgba(245,197,43,0.35)" : "rgba(245,197,43,0.4)") : "divider",
+          backgroundColor: hasStaffers
+            ? (isDark ? "rgba(245,197,43,0.04)" : "rgba(245,197,43,0.03)")
+            : (isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.015)"),
+          opacity: requested ? 1 : 0.38,
+          cursor: hasStaffers ? "pointer" : "default",
+          transition: "all 0.15s",
+          "&:hover": hasStaffers ? { borderColor: "#f5c52b", backgroundColor: isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)" } : {},
+        }}
+      >
+        <Box>
+          <Typography sx={{ fontSize: "0.78rem", fontWeight: 500, color: hasStaffers ? "text.primary" : "text.secondary", mb: 0.5 }}>
+            {label}
+          </Typography>
+          <Box sx={{ height: "3px", borderRadius: "2px", backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)", overflow: "hidden" }}>
+            <Box sx={{ height: "100%", width: `${fillPct}%`, borderRadius: "2px", backgroundColor: isFull ? "#22c55e" : isPartial ? "#f59e0b" : "#f5c52b", transition: "width 0.3s" }} />
+          </Box>
+        </Box>
+
+        {hasStaffers ? (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              {colStaffers.slice(0, 3).map((a, i) => {
+                const url = getAvatarUrl(a.staffer?.avatar_url);
+                return (
+                  <Avatar key={a.id} src={url || undefined} sx={{ width: 24, height: 24, fontSize: "0.5rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#111827", border: `2px solid ${isDark ? "#1a1a1a" : "#fff"}`, ml: i > 0 ? "-6px" : 0, zIndex: 3 - i }}>
+                    {!url && getInitials(a.staffer?.full_name)}
+                  </Avatar>
+                );
+              })}
+            </Box>
+            <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {inlineNames}{overflow > 0 ? ` +${overflow}` : ""}
+            </Typography>
+          </Box>
+        ) : (
+          <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", fontStyle: "italic" }}>
+            {requested ? "No staff assigned yet" : "Not requested"}
+          </Typography>
+        )}
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1, py: 0.35, borderRadius: "20px", backgroundColor: badgeSx.bg, border: "1px solid", borderColor: badgeSx.border, flexShrink: 0 }}>
+          <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: badgeSx.dot }} />
+          <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: badgeSx.text, whiteSpace: "nowrap" }}>
+            {requested ? `${assigned} / ${total}` : "— / —"}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Popover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        PaperProps={{
+          sx: {
+            borderRadius: "10px", border: "1px solid",
+            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.1)",
+            boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.55)" : "0 4px 24px rgba(53,53,53,0.12)",
+            backgroundColor: "background.paper", minWidth: 210, mt: 0.75,
+          },
+        }}
+      >
+        <Box sx={{ px: 2, pt: 1.5, pb: 0.75, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            {label} · {assigned} assigned
+          </Typography>
+        </Box>
+        <Box sx={{ py: 0.75 }}>
+          {Object.entries(grouped).map(([sec, list]) => (
+            <Box key={sec}>
+              <Typography sx={{ fontSize: "0.62rem", fontWeight: 600, color: "text.disabled", px: 1.5, py: 0.5, textTransform: "uppercase", letterSpacing: "0.07em" }}>{sec}</Typography>
+              {list.map((a) => {
+                const url = getAvatarUrl(a.staffer?.avatar_url);
+                return (
+                  <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.75, "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.03)" } }}>
+                    <Avatar src={url || undefined} sx={{ width: 28, height: 28, fontSize: "0.6rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#111827", flexShrink: 0 }}>
+                      {!url && getInitials(a.staffer?.full_name)}
+                    </Avatar>
+                    <Box>
+                      <Typography sx={{ fontSize: "0.8rem", fontWeight: 500, color: "text.primary", lineHeight: 1.3 }}>{a.staffer?.full_name || "—"}</Typography>
+                      <Typography sx={{ fontSize: "0.68rem", color: "text.secondary" }}>{sec}</Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          ))}
+          {total > assigned && (
+            <Box sx={{ px: 1.5, pt: 0.5, pb: 0.75, borderTop: "1px solid", borderColor: "divider", mt: 0.5 }}>
+              {Array.from({ length: total - assigned }).map((_, i) => (
+                <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5, opacity: 0.45 }}>
+                  <Box sx={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px dashed", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Typography sx={{ fontSize: "0.65rem", color: "text.disabled" }}>?</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", fontStyle: "italic" }}>Unfilled slot</Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Popover>
+    </>
+  );
 }
 
 export default function RequestDetails({ open, onClose, request, onActionSuccess }) {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  const [actionLoading,     setActionLoading]     = useState(false);
-  const [error,             setError]             = useState("");
-  const [forwardOpen,       setForwardOpen]       = useState(false);
-  const [warningOpen,       setWarningOpen]       = useState(false);
-  const [selectedSections,  setSelectedSections]  = useState([]);
-  const [secHeads,          setSecHeads]          = useState({});
-  const [secHeadsLoading,   setSecHeadsLoading]   = useState(false);
-  const [declineOpen,       setDeclineOpen]       = useState(false);
-  const [declineReason,     setDeclineReason]     = useState("");
-  const [approveOpen,       setApproveOpen]       = useState(false);
-  const [adminNotes,        setAdminNotes]        = useState("");
-  const [assignedStaffers,  setAssignedStaffers]  = useState([]);
+  const [actionLoading,        setActionLoading]        = useState(false);
+  const [error,                setError]                = useState("");
+  const [forwardOpen,          setForwardOpen]          = useState(false);
+  const [warningOpen,          setWarningOpen]          = useState(false);
+  const [selectedSections,     setSelectedSections]     = useState([]);
+  const [secHeads,             setSecHeads]             = useState({});
+  const [secHeadsLoading,      setSecHeadsLoading]      = useState(false);
+  const [declineOpen,          setDeclineOpen]          = useState(false);
+  const [declineReason,        setDeclineReason]        = useState("");
+  const [approveOpen,          setApproveOpen]          = useState(false);
+  // FIX #1 & #2: separate warning dialog for approve flow
+  const [approveWarningOpen,   setApproveWarningOpen]   = useState(false);
+  const [adminNotes,           setAdminNotes]           = useState("");
+  const [assignedStaffers,     setAssignedStaffers]     = useState([]);
 
   const checks = useRequestAssistant(open ? request : null);
 
@@ -101,6 +259,36 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
     return flags;
   }, [checks]);
 
+  // Hard block: requested service has ZERO staff assigned
+  const unfilledSlots = React.useMemo(() => {
+    if (!request?.services) return [];
+    const zeros = [];
+    SERVICE_COLUMNS.forEach((svc) => {
+      const pax = request.services?.[svc.key] || 0;
+      if (pax === 0) return;
+      const filled = assignedStaffers.filter(
+        (a) => (a.staffer?.section || a.section) === svc.section
+      ).length;
+      if (filled === 0) zeros.push({ label: svc.label, pax });
+    });
+    return zeros;
+  }, [request?.services, assignedStaffers]);
+
+  // Soft warning: requested service is partially staffed (at least 1 but under pax)
+  const partialSlots = React.useMemo(() => {
+    if (!request?.services) return [];
+    const partial = [];
+    SERVICE_COLUMNS.forEach((svc) => {
+      const pax = request.services?.[svc.key] || 0;
+      if (pax === 0) return;
+      const filled = assignedStaffers.filter(
+        (a) => (a.staffer?.section || a.section) === svc.section
+      ).length;
+      if (filled > 0 && filled < pax) partial.push({ label: svc.label, filled, pax });
+    });
+    return partial;
+  }, [request?.services, assignedStaffers]);
+
   const allowedSections = request?.services
     ? [...new Set(
         Object.entries(request.services)
@@ -112,7 +300,9 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
 
   useEffect(() => {
     if (!open || !request?.id) { setAssignedStaffers([]); return; }
-    if (!["Assigned", "For Approval", "Approved"].includes(request.status)) { setAssignedStaffers([]); return; }
+    if (!["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(request.status)) {
+      setAssignedStaffers([]); return;
+    }
     async function loadAssignments() {
       const { data } = await supabase
         .from("coverage_assignments")
@@ -151,7 +341,8 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
   }, [forwardOpen]);
 
   const resetState = () => {
-    setError(""); setForwardOpen(false); setWarningOpen(false); setDeclineOpen(false);
+    setError(""); setForwardOpen(false); setWarningOpen(false);
+    setApproveWarningOpen(false); setApproveSoftWarnOpen(false); setDeclineOpen(false);
     setApproveOpen(false); setDeclineReason(""); setAdminNotes("");
     setSelectedSections([]);
   };
@@ -190,14 +381,33 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
     finally { setActionLoading(false); }
   };
 
+  // Hard block (staff not satisfied) takes priority over soft warning (assessment flags).
+  // They are shown in separate dialogs — never mixed.
+  const [approveSoftWarnOpen, setApproveSoftWarnOpen] = useState(false);
+
+  const handleApproveClick = () => {
+    setError("");
+    if (unfilledSlots.length > 0 || partialSlots.length > 0) {
+      setApproveWarningOpen(true);   // hard block dialog — staff issues only
+    } else if (assessmentFlags.length > 0) {
+      setApproveSoftWarnOpen(true);  // soft warning dialog — assessment flags only
+    } else {
+      setApproveOpen(true);
+    }
+  };
+
   if (!request) return null;
 
   const coverageComponents = request.services
     ? Object.entries(request.services).filter(([_, pax]) => pax > 0).map(([name, pax]) => ({ name, pax }))
     : [];
 
-  const statusCfg = STATUS_CONFIG[request.status] || { bg: "#f3f4f6", color: "#6b7280" };
+  const statusCfg  = STATUS_CONFIG[request.status] || { bg: "#f3f4f6", color: "#6b7280" };
   const isMultiDay = !!(request.is_multiday && request.event_days?.length > 0);
+  // FIX #3: show staff panel for more statuses including On Going / Completed
+  const showStaff  = ["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(request.status);
+  // FIX #4: decline available at any pre-completion stage
+  const canDecline = DECLINABLE_STATUSES.includes(request.status);
 
   return (
     <>
@@ -264,9 +474,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
                 ["Description",  request.description],
               ]} isDark={isDark} />
 
-              {/* ── Date / Time — multi-day aware ── */}
               <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", rowGap: 0.75, columnGap: 1, alignItems: "start", mt: 0.75 }}>
-
                 <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", pt: isMultiDay ? 0.3 : 0.2 }}>
                   {isMultiDay ? "Coverage Days" : "Date"}
                 </Typography>
@@ -274,31 +482,14 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
                 {isMultiDay ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                     {request.event_days.map((day, idx) => (
-                      <Box
-                        key={idx}
-                        sx={{
-                          display: "flex", alignItems: "center", gap: 1,
-                          px: 1, py: 0.5, borderRadius: 1.5,
-                          border: "1px solid", borderColor: "divider",
-                          backgroundColor: isDark ? "#1a1a1a" : "#fafafa",
-                        }}
-                      >
-                        <Box sx={{
-                          px: 0.9, py: 0.2, borderRadius: "20px",
-                          backgroundColor: "#f5c52b", color: "#111",
-                          fontSize: "0.7rem", fontWeight: 600,
-                          flexShrink: 0, minWidth: 52, textAlign: "center",
-                        }}>
+                      <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 1, px: 1, py: 0.5, borderRadius: 1.5, border: "1px solid", borderColor: "divider", backgroundColor: isDark ? "#1a1a1a" : "#fafafa" }}>
+                        <Box sx={{ px: 0.9, py: 0.2, borderRadius: "20px", backgroundColor: "#f5c52b", color: "#111", fontSize: "0.7rem", fontWeight: 600, flexShrink: 0, minWidth: 52, textAlign: "center" }}>
                           {fmtDate(day.date, { month: "short", day: "numeric" })}
                         </Box>
                         {day.from_time && day.to_time ? (
-                          <Typography sx={{ fontSize: "0.8rem", color: "text.primary" }}>
-                            {fmtTime(day.from_time)} – {fmtTime(day.to_time)}
-                          </Typography>
+                          <Typography sx={{ fontSize: "0.8rem", color: "text.primary" }}>{fmtTime(day.from_time)} – {fmtTime(day.to_time)}</Typography>
                         ) : (
-                          <Typography sx={{ fontSize: "0.78rem", color: "text.disabled", fontStyle: "italic" }}>
-                            No time set
-                          </Typography>
+                          <Typography sx={{ fontSize: "0.78rem", color: "text.disabled", fontStyle: "italic" }}>No time set</Typography>
                         )}
                       </Box>
                     ))}
@@ -309,22 +500,17 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
                   </Typography>
                 )}
 
-                {/* Time row — single day only */}
                 {!isMultiDay && (
                   <>
                     <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", pt: 0.2 }}>Time</Typography>
                     <Typography sx={{ fontSize: "0.85rem", color: "text.primary", lineHeight: 1.5 }}>
-                      {request.from_time && request.to_time
-                        ? `${fmtTime(request.from_time)} – ${fmtTime(request.to_time)}`
-                        : "—"}
+                      {request.from_time && request.to_time ? `${fmtTime(request.from_time)} – ${fmtTime(request.to_time)}` : "—"}
                     </Typography>
                   </>
                 )}
 
                 <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", pt: 0.2 }}>Venue</Typography>
-                <Typography sx={{ fontSize: "0.85rem", color: "text.primary", lineHeight: 1.5 }}>
-                  {request.venue || "—"}
-                </Typography>
+                <Typography sx={{ fontSize: "0.85rem", color: "text.primary", lineHeight: 1.5 }}>{request.venue || "—"}</Typography>
               </Box>
             </Section>
 
@@ -362,7 +548,8 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               )}
             </Section>
 
-            {request.status === "Forwarded" && request.forwarded_sections?.length > 0 && (
+            {/* FIX #6: show forwarded sections on both Forwarded AND For Approval */}
+            {["Forwarded", "Assigned", "For Approval"].includes(request.status) && request.forwarded_sections?.length > 0 && (
               <Section label="Forwarded To">
                 <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
                   {request.forwarded_sections.map((s, idx) => (
@@ -374,27 +561,30 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Section>
             )}
 
-            {["Assigned", "For Approval", "Approved"].includes(request.status) && assignedStaffers.length > 0 && (
+            {/* ── Assigned Staff — service rows with fill bar ── */}
+            {showStaff && (
               <Section label="Assigned Staff">
-                {["News", "Photojournalism", "Videojournalism"].map((sec) => {
-                  const secStaffers = assignedStaffers.filter((a) => a.staffer?.section === sec);
-                  if (secStaffers.length === 0) return null;
-                  return (
-                    <Box key={sec} sx={{ mb: 1.5 }}>
-                      <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase", mb: 0.75 }}>{sec}</Typography>
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                        {secStaffers.map((a) => (
-                          <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.6, borderRadius: 1.5, border: "1px solid", borderColor: "divider", backgroundColor: isDark ? "#1e1e1e" : "#f9fafb" }}>
-                            <Avatar src={getAvatarUrl(a.staffer?.avatar_url)} sx={{ width: 44, height: 44, fontSize: "0.65rem", fontWeight: 700, backgroundColor: "#f5c52b", color: "#212121" }}>
-                              {!getAvatarUrl(a.staffer?.avatar_url) && getInitials(a.staffer?.full_name)}
-                            </Avatar>
-                            <Typography sx={{ fontSize: "0.8rem", color: "text.primary", fontWeight: 500 }}>{a.staffer?.full_name || "—"}</Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  );
-                })}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                  {SERVICE_COLUMNS.map((svc) => {
+                    const requested    = !!(request.services?.[svc.key] > 0);
+                    const paxRequested = request.services?.[svc.key] || 0;
+                    return (
+                      <ServiceRow
+                        key={svc.key}
+                        svcKey={svc.key}
+                        label={svc.label}
+                        section={svc.section}
+                        paxRequested={paxRequested}
+                        staffers={assignedStaffers}
+                        requested={requested}
+                        isDark={isDark}
+                      />
+                    );
+                  })}
+                </Box>
+                {assignedStaffers.length === 0 && (
+                  <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", mt: 1 }}>No staff assigned yet.</Typography>
+                )}
               </Section>
             )}
 
@@ -406,7 +596,8 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Section>
             )}
 
-            {request.status === "Approved" && request.admin_notes && (
+            {/* FIX #3: show admin_notes for all post-approval statuses */}
+            {["Approved", "On Going", "Completed"].includes(request.status) && request.admin_notes && (
               <Section label="Admin Notes">
                 <Box sx={{ p: 1.5, bgcolor: isDark ? "#0a1a0a" : "#f0fdf4", borderRadius: 1.5, borderLeft: "3px solid #15803d" }}>
                   <Typography sx={{ fontSize: "0.85rem", color: "#15803d" }}>{request.admin_notes}</Typography>
@@ -434,9 +625,9 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
               </Box>
             ) : (
               <>
-                <AssessCard title="Submission Timing"    check={checks.lateSubmission} isDark={isDark} />
-                <AssessCard title="Completeness"         check={checks.incomplete}     isDark={isDark} issues={checks.incomplete?.issues} />
-                <AssessCard title="Scheduling Conflict"  check={checks.conflict}       isDark={isDark} conflicts={checks.conflict?.conflicts} />
+                <AssessCard title="Submission Timing"   check={checks.lateSubmission} isDark={isDark} />
+                <AssessCard title="Completeness"        check={checks.incomplete}     isDark={isDark} issues={checks.incomplete?.issues} />
+                <AssessCard title="Scheduling Conflict" check={checks.conflict}       isDark={isDark} conflicts={checks.conflict?.conflicts} />
                 {checks.newsworthiness && (
                   <Box sx={{ p: 1.5, borderRadius: 1.5, border: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}>
                     <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.08em", textTransform: "uppercase", mb: 1 }}>
@@ -465,23 +656,24 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
           </Box>
         </DialogContent>
 
-        {/* Footer */}
+        {/* Footer — FIX #4: Decline available for all DECLINABLE_STATUSES */}
         <Box sx={{ px: 3, py: 1.75, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "#161616" : "#fafafa" }}>
-          {request.status === "Pending" && (
-            <>
-              <Button variant="outlined" size="small" onClick={() => { setError(""); setDeclineOpen(true); }}
-                sx={{ textTransform: "none", fontSize: "0.82rem", borderColor: "divider", color: "text.secondary", "&:hover": { borderColor: "#dc2626", color: "#dc2626" } }}>
-                Decline
-              </Button>
-              <Button variant="contained" size="small"
-                onClick={() => { setError(""); assessmentFlags.length > 0 ? setWarningOpen(true) : setForwardOpen(true); }}
-                sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#f5c52b", color: "#111827", boxShadow: "none", "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}>
-                Forward to Section
-              </Button>
-            </>
+          {canDecline && (
+            <Button variant="outlined" size="small" onClick={() => { setError(""); setDeclineOpen(true); }}
+              sx={{ textTransform: "none", fontSize: "0.82rem", borderColor: "divider", color: "text.secondary", "&:hover": { borderColor: "#dc2626", color: "#dc2626" } }}>
+              Decline
+            </Button>
           )}
+          {request.status === "Pending" && (
+            <Button variant="contained" size="small"
+              onClick={() => { setError(""); assessmentFlags.length > 0 ? setWarningOpen(true) : setForwardOpen(true); }}
+              sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#f5c52b", color: "#111827", boxShadow: "none", "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}>
+              Forward to Section
+            </Button>
+          )}
+          {/* FIX #2: approve goes through handleApproveClick which checks flags + unfilled slots */}
           {request.status === "For Approval" && (
-            <Button variant="contained" size="small" onClick={() => { setError(""); setApproveOpen(true); }}
+            <Button variant="contained" size="small" onClick={handleApproveClick}
               sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#15803d", color: "white", boxShadow: "none", "&:hover": { backgroundColor: "#166534", boxShadow: "none" } }}>
               Approve Request
             </Button>
@@ -489,7 +681,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
         </Box>
       </Dialog>
 
-      {/* Warning Dialog */}
+      {/* ── Forward Warning Dialog (unchanged) ── */}
       <Dialog open={warningOpen} onClose={() => setWarningOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}>
         <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
           <Box sx={{ width: 3, height: 28, borderRadius: 1, backgroundColor: "#d97706", flexShrink: 0 }} />
@@ -501,10 +693,10 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
         <DialogContent sx={{ pt: 2.5, pb: 1 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
             {assessmentFlags.map((flag, idx) => {
-              const isError = flag.type === "error";
+              const isError   = flag.type === "error";
               const borderClr = isError ? "#dc2626" : "#d97706";
-              const bgClr = isError ? (isDark ? "rgba(220,38,38,0.06)" : "#fef2f2") : (isDark ? "rgba(217,119,6,0.06)" : "#fffbeb");
-              const textClr = isError ? "#dc2626" : "#b45309";
+              const bgClr     = isError ? (isDark ? "rgba(220,38,38,0.06)" : "#fef2f2") : (isDark ? "rgba(217,119,6,0.06)" : "#fffbeb");
+              const textClr   = isError ? "#dc2626" : "#b45309";
               return (
                 <Box key={idx} sx={{ px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: bgClr, borderLeft: `3px solid ${borderClr}` }}>
                   <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: textClr, mb: 0.4 }}>{isError ? "⚠ " : "• "}{flag.title}</Typography>
@@ -530,7 +722,101 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
         </DialogActions>
       </Dialog>
 
-      {/* Forward Dialog */}
+      {/* ── Hard Block Dialog: staff assignment issues only, no escape ── */}
+      <Dialog open={approveWarningOpen} onClose={() => setApproveWarningOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ width: 3, height: 28, borderRadius: 1, backgroundColor: "#dc2626", flexShrink: 0 }} />
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Cannot Approve Yet</Typography>
+            <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}>
+              All requested services must have at least one staff assigned.
+            </Typography>
+          </Box>
+        </Box>
+        <DialogContent sx={{ pt: 2.5, pb: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+            {unfilledSlots.length > 0 && (
+              <Box sx={{ px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: isDark ? "rgba(220,38,38,0.06)" : "#fef2f2", borderLeft: "3px solid #dc2626" }}>
+                <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: "#dc2626", mb: 0.5 }}>
+                  ⚠ No Staff Assigned
+                </Typography>
+                <Typography sx={{ fontSize: "0.73rem", color: "#dc2626", lineHeight: 1.6, mb: 0.5 }}>
+                  The following requested services have no staff assigned yet:
+                </Typography>
+                {unfilledSlots.map((s, i) => (
+                  <Typography key={i} sx={{ fontSize: "0.73rem", color: "#dc2626", lineHeight: 1.6 }}>
+                    · {s.label} (needs {s.pax})
+                  </Typography>
+                ))}
+              </Box>
+            )}
+            {partialSlots.length > 0 && (
+              <Box sx={{ px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: isDark ? "rgba(217,119,6,0.06)" : "#fffbeb", borderLeft: "3px solid #d97706" }}>
+                <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: "#b45309", mb: 0.5 }}>
+                  • Partially Filled Slots
+                </Typography>
+                {partialSlots.map((s, i) => (
+                  <Typography key={i} sx={{ fontSize: "0.73rem", color: "#b45309", lineHeight: 1.6 }}>
+                    · {s.label}: {s.filled} of {s.pax} filled
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5 }}>
+          <Button onClick={() => setApproveWarningOpen(false)} size="small"
+            sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Soft Warning Dialog: assessment flags only, admin can override ── */}
+      <Dialog open={approveSoftWarnOpen} onClose={() => setApproveSoftWarnOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ width: 3, height: 28, borderRadius: 1, backgroundColor: "#d97706", flexShrink: 0 }} />
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Review Before Approving</Typography>
+            <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}>
+              Assessment flags were found. Please review before finalizing.
+            </Typography>
+          </Box>
+        </Box>
+        <DialogContent sx={{ pt: 2.5, pb: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+            {assessmentFlags.map((flag, idx) => {
+              const isError   = flag.type === "error";
+              const borderClr = isError ? "#dc2626" : "#d97706";
+              const bgClr     = isError ? (isDark ? "rgba(220,38,38,0.06)" : "#fef2f2") : (isDark ? "rgba(217,119,6,0.06)" : "#fffbeb");
+              const textClr   = isError ? "#dc2626" : "#b45309";
+              return (
+                <Box key={idx} sx={{ px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: bgClr, borderLeft: `3px solid ${borderClr}` }}>
+                  <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: textClr, mb: 0.4 }}>{isError ? "⚠ " : "• "}{flag.title}</Typography>
+                  {flag.message && <Typography sx={{ fontSize: "0.75rem", color: textClr, lineHeight: 1.55 }}>{flag.message}</Typography>}
+                  {flag.issues?.map((issue, i) => <Typography key={i} sx={{ fontSize: "0.73rem", color: textClr, lineHeight: 1.6 }}>· {issue}</Typography>)}
+                  {flag.conflicts?.map((c, i) => <Typography key={i} sx={{ fontSize: "0.73rem", color: "#d97706", lineHeight: 1.6 }}>· {c.title} ({c.time})</Typography>)}
+                </Box>
+              );
+            })}
+          </Box>
+          <Box sx={{ mt: 2, px: 1.5, py: 1.25, borderRadius: 1.5, backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb", border: "1px solid", borderColor: "divider" }}>
+            <Typography sx={{ fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.6 }}>
+              You may still approve this request, but you are acknowledging that these issues have been reviewed and you are choosing to proceed.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1 }}>
+          <Button onClick={() => setApproveSoftWarnOpen(false)} size="small"
+            sx={{ textTransform: "none", fontSize: "0.82rem", color: "text.secondary" }}>Go Back</Button>
+          <Button variant="contained" size="small" onClick={() => { setApproveSoftWarnOpen(false); setApproveOpen(true); }}
+            sx={{ textTransform: "none", fontSize: "0.82rem", fontWeight: 600, backgroundColor: "#d97706", color: "#fff", boxShadow: "none", "&:hover": { backgroundColor: "#b45309", boxShadow: "none" } }}>
+            I Understand, Proceed
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Forward Dialog ── */}
       <Dialog open={forwardOpen} onClose={() => !actionLoading && setForwardOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}>
         <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Forward to Section</Typography>
@@ -546,9 +832,9 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
           ) : (
             <FormGroup sx={{ gap: 1 }}>
               {ALL_SECTIONS.map((section) => {
-                const secHead = secHeads[section];
-                const isAllowed = allowedSections.includes(section);
-                const isChecked = selectedSections.includes(section);
+                const secHead    = secHeads[section];
+                const isAllowed  = allowedSections.includes(section);
+                const isChecked  = selectedSections.includes(section);
                 const isDisabled = actionLoading || !isAllowed;
                 return (
                   <Tooltip key={section} title={!isAllowed ? "Not required for this request's services" : ""} placement="right" arrow>
@@ -589,7 +875,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
         </DialogActions>
       </Dialog>
 
-      {/* Decline Dialog */}
+      {/* ── Decline Dialog ── */}
       <Dialog open={declineOpen} onClose={() => !actionLoading && setDeclineOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}>
         <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Decline Request</Typography>
@@ -611,7 +897,7 @@ export default function RequestDetails({ open, onClose, request, onActionSuccess
         </DialogActions>
       </Dialog>
 
-      {/* Approve Dialog */}
+      {/* ── Approve Dialog ── */}
       <Dialog open={approveOpen} onClose={() => !actionLoading && setApproveOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2, backgroundColor: "background.paper" } }}>
         <Box sx={{ px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Approve Request</Typography>
@@ -661,10 +947,10 @@ function InfoGrid({ rows, isDark }) {
 }
 
 function AssessCard({ title, check, issues, conflicts, isDark }) {
-  const type = check?.type;
+  const type        = check?.type;
   const borderColor = type === "success" ? "#15803d" : type === "warning" ? "#d97706" : type === "error" ? "#dc2626" : "divider";
-  const dotColor = type === "success" ? "#15803d" : type === "warning" ? "#d97706" : type === "error" ? "#dc2626" : "#9ca3af";
-  const textColor = type === "success" ? "#15803d" : type === "warning" ? "#d97706" : type === "error" ? "#dc2626" : "text.secondary";
+  const dotColor    = type === "success" ? "#15803d" : type === "warning" ? "#d97706" : type === "error" ? "#dc2626" : "#9ca3af";
+  const textColor   = type === "success" ? "#15803d" : type === "warning" ? "#d97706" : type === "error" ? "#dc2626" : "text.secondary";
   return (
     <Box sx={{ p: 1.5, borderRadius: 1.5, border: "1px solid", borderColor: "divider", borderLeft: `3px solid ${borderColor}`, backgroundColor: "background.paper" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.4 }}>

@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 export async function fetchAllStaffers() {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role, division, section, position, is_active, avatar_url, created_at")
+    .select("id, full_name, role, division, section, position, designation, is_active, avatar_url, created_at")
     .in("role", ["admin", "sec_head", "staff"])
     .order("full_name", { ascending: true });
 
@@ -13,13 +13,20 @@ export async function fetchAllStaffers() {
 }
 
 export async function createStafferAccount({
-  full_name, email, password, role, division, section,
+  full_name, email, password, role, division, section, position, designation,
 }) {
+  const { data: { session } } = await supabase.auth.getSession();
+
   const { data, error } = await supabase.functions.invoke("create-staff-account", {
+    headers: {
+      Authorization: `Bearer ${session?.access_token}`,
+    },
     body: {
       full_name, email, password, role,
-      division: division || null,
-      section:  section  || null,
+      division:    division    || null,
+      section:     section     || null,
+      position:    position    || null,
+      designation: designation || null,
     },
   });
 
@@ -28,10 +35,17 @@ export async function createStafferAccount({
   return data?.userId;
 }
 
-export async function updateStafferProfile(userId, { full_name, role, division, section }) {
+export async function updateStafferProfile(userId, { full_name, role, division, section, position, designation }) {
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name, role, division: division || null, section: section || null })
+    .update({
+      full_name,
+      role,
+      division:    division    || null,
+      section:     section     || null,
+      position:    position    || null,
+      designation: designation || null,
+    })
     .eq("id", userId);
 
   if (error) throw new Error(`Failed to update profile: ${error.message}`);

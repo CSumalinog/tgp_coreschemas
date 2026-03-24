@@ -94,3 +94,21 @@ export async function notifyAssignedStaff({ requestId, type, title, message }) {
     }))
   );
 }
+
+// ── Notify specific staff by ID array ────────────────────────────────────────
+export async function notifySpecificStaff({ staffIds, type, title, message, requestId }) {
+  if (!staffIds?.length) return;
+  const uniqueIds = [...new Set(staffIds)];
+  await insertNotifications(
+    uniqueIds.map((id) => ({
+      user_id:        id,
+      recipient_id:   id,
+      recipient_role: "staff",
+      request_id:     requestId || null,
+      type,
+      title,
+      message,
+      is_read:        false,
+    }))
+  );
+}

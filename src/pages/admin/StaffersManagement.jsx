@@ -1,88 +1,80 @@
 // src/pages/admin/StaffersManagement.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Box,
-  Typography,
-  CircularProgress,
-  Dialog,
-  TextField,
-  MenuItem,
-  IconButton,
-  Alert,
-  useTheme,
-  Avatar,
-  InputAdornment,
-  Tooltip,
+  Box, Typography, CircularProgress, Dialog, TextField,
+  MenuItem, IconButton, Alert, useTheme, Avatar, InputAdornment, Tooltip,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import CloseIcon from "@mui/icons-material/Close";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import AddOutlinedIcon            from "@mui/icons-material/AddOutlined";
+import EditOutlinedIcon           from "@mui/icons-material/EditOutlined";
+import BlockOutlinedIcon          from "@mui/icons-material/BlockOutlined";
+import CheckCircleOutlineIcon     from "@mui/icons-material/CheckCircleOutline";
+import DeleteOutlineOutlinedIcon  from "@mui/icons-material/DeleteOutlineOutlined";
+import CloseIcon                  from "@mui/icons-material/Close";
+import VisibilityOutlinedIcon     from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon  from "@mui/icons-material/VisibilityOffOutlined";
 import { useSearchParams } from "react-router-dom";
 import {
-  fetchAllStaffers,
-  createStafferAccount,
-  updateStafferProfile,
-  toggleStafferStatus,
-  deleteStafferAccount,
+  fetchAllStaffers, createStafferAccount, updateStafferProfile,
+  toggleStafferStatus, deleteStafferAccount,
 } from "../../services/StafferService";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 
-// ── Brand tokens ──────────────────────────────────────────────────────────────
-const GOLD      = "#F5C52B";
-const GOLD_08   = "rgba(245,197,43,0.08)";
-const GOLD_18   = "rgba(245,197,43,0.18)";
-const CHARCOAL  = "#353535";
+const GOLD        = "#F5C52B";
+const GOLD_08     = "rgba(245,197,43,0.08)";
+const GOLD_18     = "rgba(245,197,43,0.18)";
+const CHARCOAL    = "#353535";
 const BORDER      = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
-const HOVER_BG  = "rgba(53,53,53,0.03)";
-const dm        = "'Inter', sans-serif";
+const HOVER_BG    = "rgba(53,53,53,0.03)";
+const dm          = "'DM Sans', sans-serif";
 
-// ── Config ────────────────────────────────────────────────────────────────────
 const ROLES = [
-  { value: "admin",    label: "Admin" },
+  { value: "admin",    label: "Admin"        },
   { value: "sec_head", label: "Section Head" },
-  { value: "staff",    label: "Staff" },
+  { value: "staff",    label: "Staff"        },
 ];
 
 const DIVISIONS = [
-  { value: "Executives", label: "Executives" },
-  { value: "Scribes",    label: "Scribes" },
-  { value: "Creatives",  label: "Creatives" },
-  { value: "Managerial", label: "Managerial" },
+  { value: "Scribes",   label: "Scribes"   },
+  { value: "Creatives", label: "Creatives" },
 ];
 
 const SECTIONS_BY_DIVISION = {
-  Executives: ["EIC", "Managing Editor", "Assoc. Managing Editor", "Technical Editor", "Creative Director"],
-  Scribes:    ["News", "Feature", "Sports/Opinion", "Literary"],
-  Creatives:  ["Photojournalism", "Videojournalism", "Illustrations", "Graphics Design", "Newsletter"],
-  Managerial: ["HR", "Circulation", "Online Accounts"],
+  Scribes:   ["News", "Feature", "Sports/Opinion", "Literary"],
+  Creatives: ["Photojournalism", "Videojournalism", "Illustrations", "Graphics Design"],
 };
 
 const POSITIONS_BY_SECTION = {
-  EIC:                     ["EIC"],
-  "Managing Editor":       ["Managing Editor"],
-  "Assoc. Managing Editor":["Assoc. Managing Editor"],
-  "Technical Editor":      ["Technical Editor"],
-  "Creative Director":     ["Creative Director"],
-  News:                    ["News Editor", "News Writer"],
-  Feature:                 ["Feature Editor", "Feature Writer"],
-  "Sports/Opinion":        ["Sports/Opinion Editor", "Opinion Writer"],
-  Literary:                ["Literary Editor", "Literary Writer"],
-  Photojournalism:         ["Photojournalism Director", "Photographer"],
-  Videojournalism:         ["Videojournalism Director", "Videographer"],
-  Illustrations:           ["Illustrator"],
-  "Graphics Design":       ["Graphic Design Director", "Layout Artist"],
-  Newsletter:              ["Newsletter Editor", "Newsletter Writer"],
-  HR:                      ["HR Manager"],
-  Circulation:             ["Circulation Manager", "Assoc. Circulation Manager"],
-  "Online Accounts":       ["Online Accounts Manager"],
+  News:              ["News Editor", "News Writer"],
+  Feature:           ["Feature Editor", "Feature Writer"],
+  "Sports/Opinion":  ["Sports Editor", "Sports Writer", "Opinion Writer"],
+  Literary:          ["Literary Editor", "Literary Writer"],
+  Photojournalism:   ["Photojournalism Director", "Photojournalist"],
+  Videojournalism:   ["Videojournalism Director", "Videojournalist", "Videographer"],
+  Illustrations:     ["Illustrations Director", "Illustrator"],
+  "Graphics Design": ["Graphic Design Director", "Layout Artist"],
 };
+
+const DESIGNATIONS = [
+  "Editor-in-Chief",
+  "Managing Editor",
+  "Technical Editor",
+  "Creative Director",
+  "Associate Managing Editor",
+  "News Editor",
+  "Feature Editor",
+  "Sports Editor",
+  "Literary Editor",
+  "Photojournalism Director",
+  "Videojournalism Director",
+  "Illustrations Director",
+  "Graphic Design Director",
+  "Newsletter Editor",
+  "HR Manager",
+  "Circulations Manager",
+  "Online Accounts Manager",
+];
 
 const ROLE_CFG = {
   admin:    { dot: "#f97316", color: "#c2410c", bg: "#fff7ed" },
@@ -90,11 +82,11 @@ const ROLE_CFG = {
   staff:    { dot: "#3b82f6", color: "#1d4ed8", bg: "#eff6ff" },
 };
 
-const TABS = ["All", "Executives", "Scribes", "Creatives", "Managerial"];
+const TABS = ["All", "Scribes", "Creatives"];
 
 const EMPTY_FORM = {
   full_name: "", email: "", password: "",
-  role: "staff", division: "", section: "", position: "",
+  role: "staff", division: "", section: "", position: "", designation: "",
 };
 
 const getInitials = (name) =>
@@ -154,9 +146,14 @@ export default function StaffersManagement() {
   const handleOpenEdit = (row) => {
     setFormMode("edit"); setSelectedId(row.id);
     setFormData({
-      full_name: row.full_name || "", email: row.email || "", password: "",
-      role: row.role || "staff", division: row.division || "",
-      section: row.section || "", position: row.position || "",
+      full_name:   row.full_name   || "",
+      email:       row.email       || "",
+      password:    "",
+      role:        row.role        || "staff",
+      division:    row.division    || "",
+      section:     row.section     || "",
+      position:    row.position    || "",
+      designation: row.designation || "",
     });
     setFormError(""); setFormOpen(true);
   };
@@ -164,7 +161,7 @@ export default function StaffersManagement() {
   const handleFormChange = (field, value) => {
     setFormData((prev) => {
       const u = { ...prev, [field]: value };
-      if (field === "division") { u.section = ""; u.position = ""; }
+      if (field === "division") { u.section = ""; u.position = ""; u.designation = ""; }
       if (field === "section")  { u.position = ""; }
       return u;
     });
@@ -174,26 +171,25 @@ export default function StaffersManagement() {
     setFormError("");
     if (!formData.full_name.trim()) return setFormError("Full name is required.");
     if (formMode === "create") {
-      if (!formData.email.trim())    return setFormError("Email is required.");
-      if (!formData.password.trim()) return setFormError("Password is required.");
+      if (!formData.email.trim())       return setFormError("Email is required.");
+      if (!formData.password.trim())    return setFormError("Password is required.");
       if (formData.password.length < 8) return setFormError("Password must be at least 8 characters.");
     }
     if (!formData.role) return setFormError("Role is required.");
     setFormLoading(true);
     try {
+      const payload = {
+        full_name:   formData.full_name.trim(),
+        role:        formData.role,
+        division:    formData.division    || null,
+        section:     formData.section     || null,
+        position:    formData.position    || null,
+        designation: formData.designation || null,
+      };
       if (formMode === "create") {
-        await createStafferAccount({
-          full_name: formData.full_name.trim(), email: formData.email.trim(),
-          password: formData.password, role: formData.role,
-          division: formData.division || null, section: formData.section || null,
-          position: formData.position || null,
-        });
+        await createStafferAccount({ ...payload, email: formData.email.trim(), password: formData.password });
       } else {
-        await updateStafferProfile(selectedId, {
-          full_name: formData.full_name.trim(), role: formData.role,
-          division: formData.division || null, section: formData.section || null,
-          position: formData.position || null,
-        });
+        await updateStafferProfile(selectedId, payload);
       }
       setFormOpen(false); loadStaffers();
     } catch (err) { setFormError(err.message); }
@@ -218,8 +214,6 @@ export default function StaffersManagement() {
     finally { setDeleteLoading(false); }
   };
 
-  const availableSections  = formData.division ? SECTIONS_BY_DIVISION[formData.division]  || [] : [];
-  const availablePositions = formData.section  ? POSITIONS_BY_SECTION[formData.section]   || [] : [];
 
   const columns = useMemo(() => [
     {
@@ -228,27 +222,11 @@ export default function StaffersManagement() {
         const url = getAvatarUrl(p.row.avatar_url);
         return (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, height: "100%" }}>
-            {/* ── Avatar: 36px — readable initials + photo ── */}
-            <Avatar
-              src={url}
-              sx={{
-                width: 36, height: 36,
-                backgroundColor: GOLD, color: CHARCOAL,
-                fontSize: "0.7rem", fontWeight: 700, flexShrink: 0,
-              }}
-            >
+            <Avatar src={url} sx={{ width: 36, height: 36, backgroundColor: GOLD, color: CHARCOAL, fontSize: "0.7rem", fontWeight: 700, flexShrink: 0 }}>
               {!url && getInitials(p.value)}
             </Avatar>
-            {/* ── Full name with tooltip for long names ── */}
-            <Tooltip title={p.value || ""} placement="top" arrow
-              disableHoverListener={!p.value || p.value.length < 22}
-            >
-              <Typography sx={{
-                fontFamily: dm, fontSize: "0.83rem", fontWeight: 400,
-                color: isDark ? "#f5f5f5" : "#1a1a1a",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                lineHeight: 1.3,
-              }}>
+            <Tooltip title={p.value || ""} placement="top" arrow disableHoverListener={!p.value || p.value.length < 22}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.83rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>
                 {p.value || "—"}
               </Typography>
             </Tooltip>
@@ -284,6 +262,21 @@ export default function StaffersManagement() {
       renderCell: (p) => <MetaCell>{p.value || "—"}</MetaCell>,
     },
     {
+      field: "designation", headerName: "Designation", flex: 1.1, minWidth: 160,
+      renderCell: (p) => {
+        if (!p.value) return <MetaCell>—</MetaCell>;
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.55, px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? "rgba(245,197,43,0.1)" : "rgba(245,197,43,0.12)" }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? GOLD : "#b45309", letterSpacing: "0.04em" }}>
+                {p.value}
+              </Typography>
+            </Box>
+          </Box>
+        );
+      },
+    },
+    {
       field: "is_active", headerName: "Status", flex: 0.7, minWidth: 90,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
@@ -309,16 +302,14 @@ export default function StaffersManagement() {
             </IconButton>
           </Tooltip>
           <Tooltip title={p.row.is_active ? "Deactivate" : "Reactivate"} arrow>
-            <IconButton size="small"
-              onClick={() => { setToggleTarget(p.row); setToggleOpen(true); }}
+            <IconButton size="small" onClick={() => { setToggleTarget(p.row); setToggleOpen(true); }}
               sx={{ borderRadius: "7px", border: `1px solid ${border}`, p: 0.55, color: "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: p.row.is_active ? "rgba(249,115,22,0.5)" : "rgba(34,197,94,0.5)", color: p.row.is_active ? "#c2410c" : "#15803d", backgroundColor: p.row.is_active ? "rgba(249,115,22,0.06)" : "rgba(34,197,94,0.06)" } }}
             >
               {p.row.is_active ? <BlockOutlinedIcon sx={{ fontSize: 14 }} /> : <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete" arrow>
-            <IconButton size="small"
-              onClick={() => { setDeleteTarget(p.row); setDeleteOpen(true); }}
+            <IconButton size="small" onClick={() => { setDeleteTarget(p.row); setDeleteOpen(true); }}
               sx={{ borderRadius: "7px", border: `1px solid ${border}`, p: 0.55, color: "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: "rgba(239,68,68,0.4)", color: "#dc2626", backgroundColor: "rgba(239,68,68,0.06)" } }}
             >
               <DeleteOutlineOutlinedIcon sx={{ fontSize: 14 }} />
@@ -329,16 +320,17 @@ export default function StaffersManagement() {
     },
   ], [activeTab, border, isDark]);
 
+  const availableSections  = formData.division ? SECTIONS_BY_DIVISION[formData.division] || [] : [];
+  const availablePositions = formData.section  ? POSITIONS_BY_SECTION[formData.section]  || [] : [];
+  const showDesignation    = !!formData.division;
+
+
   return (
     <Box sx={{ p: 3, height: "100%", boxSizing: "border-box", backgroundColor: "background.default", fontFamily: dm }}>
-
-      {/* ── Header ── */}
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3, gap: 2, flexWrap: "wrap" }}>
-        <Box>
-          <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.95rem", color: "text.primary", letterSpacing: "-0.01em" }}>
-            Staffers Management
-          </Typography>
-        </Box>
+        <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.95rem", color: "text.primary", letterSpacing: "-0.01em" }}>
+          Staffers Management
+        </Typography>
         <Box onClick={handleOpenCreate}
           sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.75, py: 0.75, borderRadius: "9px", cursor: "pointer", backgroundColor: GOLD, color: CHARCOAL, fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, transition: "background-color 0.15s", "&:hover": { backgroundColor: "#e6b920" } }}
         >
@@ -353,24 +345,13 @@ export default function StaffersManagement() {
         </Alert>
       )}
 
-      {/* ── Segmented tab bar ── */}
       <Box sx={{ mb: 2, display: "flex", gap: "6px", flexWrap: "wrap" }}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab;
-          const count = getCount(tab);
+          const count    = getCount(tab);
           return (
             <Box key={tab} onClick={() => setActiveTab(tab)}
-              sx={{
-                display: "inline-flex", alignItems: "center", gap: 0.6,
-                px: 1.5, py: 0.65, borderRadius: "4px", cursor: "pointer", flexShrink: 0,
-                fontFamily: dm, fontSize: "0.79rem",
-                fontWeight: isActive ? 500 : 400,
-                color: isActive ? CHARCOAL : "text.secondary",
-                border: `1px solid ${isActive ? GOLD : border}`,
-                backgroundColor: isActive ? GOLD_08 : "background.paper",
-                transition: "all 0.12s",
-                "&:hover": isActive ? {} : { borderColor: GOLD, color: isDark ? "#f5f5f5" : CHARCOAL },
-              }}
+              sx={{ display: "inline-flex", alignItems: "center", gap: 0.6, px: 1.5, py: 0.65, borderRadius: "4px", cursor: "pointer", flexShrink: 0, fontFamily: dm, fontSize: "0.79rem", fontWeight: isActive ? 500 : 400, color: isActive ? CHARCOAL : "text.secondary", border: `1px solid ${isActive ? GOLD : border}`, backgroundColor: isActive ? GOLD_08 : "background.paper", transition: "all 0.12s", "&:hover": isActive ? {} : { borderColor: GOLD, color: isDark ? "#f5f5f5" : CHARCOAL } }}
             >
               {tab}
               {count > 0 && (
@@ -383,9 +364,8 @@ export default function StaffersManagement() {
         })}
       </Box>
 
-            {/* ── Table ── */}
       <Box sx={{ width: "100%", overflowX: "auto" }}>
-        <Box sx={{ minWidth: 640, bgcolor: "background.paper", borderRadius: "4px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
+        <Box sx={{ minWidth: 700, bgcolor: "background.paper", borderRadius: "4px", border: `1px solid ${border}`, overflow: "hidden", height: 500 }}>
           {loading ? (
             <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <CircularProgress size={26} sx={{ color: GOLD }} />
@@ -416,8 +396,7 @@ export default function StaffersManagement() {
 
       {/* ── Create / Edit Dialog ── */}
       <BrandDialog
-        open={formOpen}
-        onClose={() => !formLoading && setFormOpen(false)}
+        open={formOpen} onClose={() => !formLoading && setFormOpen(false)}
         title={formMode === "create" ? "Add New Member" : "Edit Member"}
         isDark={isDark} border={border}
         footer={
@@ -429,30 +408,22 @@ export default function StaffersManagement() {
           </>
         }
       >
-        {formError && (
-          <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem", mb: 0.5 }}>{formError}</Alert>
-        )}
+        {formError && <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem", mb: 0.5 }}>{formError}</Alert>}
         <StyledField label="Full Name" value={formData.full_name} onChange={(e) => handleFormChange("full_name", e.target.value)} disabled={formLoading} border={border} />
         {formMode === "create" && (
           <>
             <StyledField label="Email" type="email" value={formData.email} onChange={(e) => handleFormChange("email", e.target.value)} disabled={formLoading} border={border} />
             <StyledField
-              label="Password"
-              type={showPassword ? "text" : "password"}
-              value={formData.password}
-              onChange={(e) => handleFormChange("password", e.target.value)}
-              disabled={formLoading}
-              helperText="Minimum 8 characters"
-              border={border}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setShowPassword((p) => !p)} edge="end" sx={{ color: "text.secondary" }}>
-                      {showPassword ? <VisibilityOffOutlinedIcon sx={{ fontSize: 16 }} /> : <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
+              label="Password" type={showPassword ? "text" : "password"}
+              value={formData.password} onChange={(e) => handleFormChange("password", e.target.value)}
+              disabled={formLoading} helperText="Minimum 8 characters" border={border}
+              InputProps={{ endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setShowPassword((p) => !p)} edge="end" sx={{ color: "text.secondary" }}>
+                    {showPassword ? <VisibilityOffOutlinedIcon sx={{ fontSize: 16 }} /> : <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />}
+                  </IconButton>
+                </InputAdornment>
+              )}}
             />
           </>
         )}
@@ -471,6 +442,19 @@ export default function StaffersManagement() {
           <MenuItem value="" sx={{ fontFamily: dm, fontSize: "0.82rem" }}>— None —</MenuItem>
           {availablePositions.map((pos) => <MenuItem key={pos} value={pos} sx={{ fontFamily: dm, fontSize: "0.82rem" }}>{pos}</MenuItem>)}
         </StyledField>
+        {showDesignation && (
+          <StyledField
+            label="Designation (optional)" select
+            value={formData.designation}
+            onChange={(e) => handleFormChange("designation", e.target.value)}
+            disabled={formLoading}
+            helperText="e.g. Feature Editor, Photojournalism Director, HR Manager"
+            border={border}
+          >
+            <MenuItem value="" sx={{ fontFamily: dm, fontSize: "0.82rem" }}>— None —</MenuItem>
+            {DESIGNATIONS.map((d) => <MenuItem key={d} value={d} sx={{ fontFamily: dm, fontSize: "0.82rem" }}>{d}</MenuItem>)}
+          </StyledField>
+        )}
       </BrandDialog>
 
       {/* ── Toggle Status Dialog ── */}
@@ -488,11 +472,10 @@ export default function StaffersManagement() {
         }
       >
         <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary", lineHeight: 1.65 }}>
-          {toggleTarget?.is_active ? (
-            <>Are you sure you want to deactivate <strong style={{ color: CHARCOAL }}>{toggleTarget?.full_name}</strong>'s account? They will no longer be able to log in.</>
-          ) : (
-            <>Are you sure you want to reactivate <strong style={{ color: CHARCOAL }}>{toggleTarget?.full_name}</strong>'s account? They will regain access to the system.</>
-          )}
+          {toggleTarget?.is_active
+            ? <>Are you sure you want to deactivate <strong style={{ color: CHARCOAL }}>{toggleTarget?.full_name}</strong>'s account? They will no longer be able to log in.</>
+            : <>Are you sure you want to reactivate <strong style={{ color: CHARCOAL }}>{toggleTarget?.full_name}</strong>'s account? They will regain access to the system.</>
+          }
         </Typography>
       </BrandDialog>
 
@@ -503,8 +486,7 @@ export default function StaffersManagement() {
         footer={
           <>
             <CancelBtn onClick={() => setDeleteOpen(false)} disabled={deleteLoading} border={border} />
-            <Box
-              onClick={!deleteLoading ? handleConfirmDelete : undefined}
+            <Box onClick={!deleteLoading ? handleConfirmDelete : undefined}
               sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.75, py: 0.65, borderRadius: "8px", cursor: deleteLoading ? "default" : "pointer", backgroundColor: "#dc2626", color: "#fff", fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, opacity: deleteLoading ? 0.7 : 1, transition: "background-color 0.15s", "&:hover": { backgroundColor: deleteLoading ? "#dc2626" : "#b91c1c" } }}
             >
               {deleteLoading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
@@ -526,7 +508,6 @@ export default function StaffersManagement() {
   );
 }
 
-// ── Shared components ─────────────────────────────────────────────────────────
 function MetaCell({ children }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
@@ -537,20 +518,37 @@ function MetaCell({ children }) {
 
 function BrandDialog({ open, onClose, title, children, footer, isDark, border }) {
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm"
-      PaperProps={{ sx: { borderRadius: "14px", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)" } }}
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs"
+      PaperProps={{
+        sx: {
+          borderRadius: "14px",
+          backgroundColor: "background.paper",
+          border: `1px solid ${border}`,
+          boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "90vh",
+        }
+      }}
     >
-      <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      {/* ── Header ── */}
+      <Box sx={{ px: 2.5, py: 1.75, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box sx={{ width: 2.5, height: 26, borderRadius: "2px", backgroundColor: GOLD, flexShrink: 0 }} />
+          <Box sx={{ width: 3, height: 22, borderRadius: "2px", backgroundColor: GOLD, flexShrink: 0 }} />
           <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.92rem", color: "text.primary" }}>{title}</Typography>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ borderRadius: "8px", color: "text.secondary", "&:hover": { backgroundColor: HOVER_BG } }}>
+        <IconButton size="small" onClick={onClose} sx={{ borderRadius: "8px", color: "text.secondary", "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG } }}>
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
-      <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>{children}</Box>
-      <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
+
+      {/* ── Scrollable body ── */}
+      <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1.5, overflowY: "auto", flex: 1, "&::-webkit-scrollbar": { width: "4px" }, "&::-webkit-scrollbar-thumb": { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.15)", borderRadius: "4px" } }}>
+        {children}
+      </Box>
+
+      {/* ── Sticky footer ── */}
+      <Box sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, flexShrink: 0, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
         {footer}
       </Box>
     </Dialog>
@@ -560,7 +558,7 @@ function BrandDialog({ open, onClose, title, children, footer, isDark, border })
 function CancelBtn({ onClick, disabled, border }) {
   return (
     <Box onClick={!disabled ? onClick : undefined}
-      sx={{ px: 1.75, py: 0.65, borderRadius: "8px", cursor: disabled ? "default" : "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "text.secondary", opacity: disabled ? 0.5 : 1, transition: "all 0.15s", "&:hover": { borderColor: "rgba(53,53,53,0.2)", color: "text.primary", backgroundColor: HOVER_BG } }}
+      sx={{ px: 1.75, py: 0.65, borderRadius: "8px", cursor: disabled ? "default" : "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "text.secondary", opacity: disabled ? 0.5 : 1, transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: "text.primary", backgroundColor: "rgba(245,197,43,0.06)" } }}
     >
       Cancel
     </Box>

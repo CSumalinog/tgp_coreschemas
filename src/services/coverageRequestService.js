@@ -1,6 +1,6 @@
 // src/services/coverageService.js
-import { supabase }        from "../lib/supabaseClient";
-import { notifyAdmins }    from "./NotificationService";
+import { supabase }                                                        from "../lib/supabaseClient";
+import { notifyAdmins, notifySecHeads, notifySpecificStaff }               from "./NotificationService";
 
 // ── Timezone-safe date serializer ─────────────────────────────────────────────
 const toLocalISO = (d) =>
@@ -163,11 +163,14 @@ export async function fetchMyRequests() {
       declined_at,
       forwarded_at,
       created_at,
+      cancelled_at,
+      cancellation_reason,
       client_type:client_type_id ( id, name ),
       entity:entity_id ( id, name ),
       coverage_assignments (
         id,
         section,
+        status,
         staffer:assigned_to (
           id,
           full_name,
@@ -258,6 +261,282 @@ export async function deleteDraftRequest(requestId) {
     .from("coverage_requests").delete()
     .eq("id", requestId).eq("requester_id", user.id).eq("status", "Draft");
   if (error) throw new Error(`Failed to delete draft: ${error.message}`);
+  return true;
+}
+
+/**
+ * Cancel a coverage request (client-initiated)
+ * Notifies based on pipeline stage at time of cancellation
+ */
+export async function cancelRequest(requestId, reason = "") {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("Not authenticated.");
+
+  // ── Fetch current request (need status + title for notifications) ──
+  const { data: request, error: fetchError } = await supabase
+    .from("coverage_requests")
+    .select(`
+      id,
+      title,
+      status,
+      requester_id,
+      forwarded_sections,
+      coverage_assignments (
+        id,
+        assigned_to,
+        status
+      )
+    `)
+    .eq("id", requestId)
+    .eq("requester_id", user.id)
+    .single();
+
+  if (fetchError || !request) throw new Error("Request not found or access denied.");
+
+  const CANCELLABLE_STATUSES = [
+    "Pending",
+    "Forwarded",
+    "Assigned",
+    "For Approval",
+    "Approved",
+    "On Going",
+  ];
+
+  if (!CANCELLABLE_STATUSES.includes(request.status)) {
+    throw new Error(`Cannot cancel a request with status "${request.status}".`);
+  }
+
+  const now = new Date().toISOString();
+
+  // ── 1. Update request status ──
+  const { error: updateError } = await supabase
+    .from("coverage_requests")
+    .update({
+      status:              "Cancelled",
+      cancelled_at:        now,
+      cancelled_by:        user.id,
+      cancellation_reason: reason || null,
+      updated_at:          now,
+    })
+    .eq("id", requestId)
+    .eq("requester_id", user.id);
+
+  if (updateError) throw new Error(`Failed to cancel request: ${updateError.message}`);
+
+  // ── 2. Soft-cancel all active assignments ──
+  const activeAssignments = (request.coverage_assignments || []).filter(
+    (a) => !["Completed", "No Show", "Cancelled"].includes(a.status)
+  );
+
+  if (activeAssignments.length > 0) {
+    const assignmentIds = activeAssignments.map((a) => a.id);
+    const { error: assignError } = await supabase
+      .from("coverage_assignments")
+      .update({
+        cancelled_at:        now,
+        cancellation_reason: "Request cancelled by client",
+        status:              "Cancelled",
+      })
+      .in("id", assignmentIds);
+
+    if (assignError) console.error("Failed to cancel assignments:", assignError);
+  }
+
+  // ── 3. Notifications based on pipeline stage ──
+  const { status } = request;
+  const requestTitle = `"${request.title}"`;
+
+  // Always notify admins
+  try {
+    await notifyAdmins({
+      type:      "request_cancelled",
+      title:     "Request Cancelled by Client",
+      message:   `${requestTitle} has been cancelled by the client. Reason: ${reason || "No reason provided."}`,
+      requestId: request.id,
+    });
+  } catch (e) {
+    console.error("notifyAdmins failed:", e);
+  }
+
+  // Notify section heads if request was forwarded or beyond
+  if (["Forwarded", "Assigned", "For Approval", "Approved", "On Going"].includes(status)) {
+    try {
+      await notifySecHeads({
+        type:      "request_cancelled",
+        title:     "Request Cancelled",
+        message:   `${requestTitle} has been cancelled by the client.`,
+        requestId: request.id,
+        sections:  request.forwarded_sections || [],
+      });
+    } catch (e) {
+      console.error("notifySecHeads failed:", e);
+    }
+  }
+
+  // Notify assigned staff if Approved or On Going
+  if (["Approved", "On Going"].includes(status) && activeAssignments.length > 0) {
+    const staffIds = activeAssignments.map((a) => a.assigned_to).filter(Boolean);
+    if (staffIds.length > 0) {
+      try {
+        await notifySpecificStaff({
+          staffIds,
+          type:      "assignment_cancelled",
+          title:     "Assignment Cancelled",
+          message:   `Your assignment for ${requestTitle} has been cancelled. The client's event did not push through.`,
+          requestId: request.id,
+        });
+      } catch (e) {
+        console.error("notifySpecificStaff failed:", e);
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Reschedule a coverage request (client-initiated)
+ * - Preserves previous date fields for audit trail
+ * - Soft-cancels all existing assignments
+ * - Kicks status back to Forwarded
+ * - Fires notifications to all relevant parties
+ */
+export async function rescheduleRequest(requestId, newDatePayload, reason = "") {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("Not authenticated.");
+
+  // ── Fetch current request ──
+  const { data: request, error: fetchError } = await supabase
+    .from("coverage_requests")
+    .select(`
+      id,
+      title,
+      status,
+      requester_id,
+      forwarded_sections,
+      event_date,
+      from_time,
+      to_time,
+      is_multiday,
+      event_days,
+      coverage_assignments (
+        id,
+        assigned_to,
+        status
+      )
+    `)
+    .eq("id", requestId)
+    .eq("requester_id", user.id)
+    .single();
+
+  if (fetchError || !request) throw new Error("Request not found or access denied.");
+
+  const RESCHEDULABLE_STATUSES = [
+    "Forwarded",
+    "Assigned",
+    "For Approval",
+    "Approved",
+    "On Going",
+  ];
+
+  if (!RESCHEDULABLE_STATUSES.includes(request.status)) {
+    throw new Error(`Cannot reschedule a request with status "${request.status}".`);
+  }
+
+  const now = new Date().toISOString();
+
+  // ── 1. Update request with new date + preserve previous date ──
+  const { error: updateError } = await supabase
+    .from("coverage_requests")
+    .update({
+      // New date fields
+      ...newDatePayload,
+      // Kick back to Forwarded
+      status:                   "Forwarded",
+      // Reschedule metadata
+      reschedule_requested_at:  now,
+      reschedule_reason:        reason || null,
+      rescheduled_at:           now,
+      rescheduled_by:           user.id,
+      // Preserve previous date for audit trail
+      previous_event_date:      request.event_date      || null,
+      previous_from_time:       request.from_time       || null,
+      previous_to_time:         request.to_time         || null,
+      previous_event_days:      request.event_days      || null,
+      updated_at:               now,
+    })
+    .eq("id", requestId)
+    .eq("requester_id", user.id);
+
+  if (updateError) throw new Error(`Failed to reschedule request: ${updateError.message}`);
+
+  // ── 2. Soft-cancel all active assignments ──
+  const activeAssignments = (request.coverage_assignments || []).filter(
+    (a) => !["Completed", "No Show", "Cancelled"].includes(a.status)
+  );
+
+  if (activeAssignments.length > 0) {
+    const assignmentIds = activeAssignments.map((a) => a.id);
+    const { error: assignError } = await supabase
+      .from("coverage_assignments")
+      .update({
+        cancelled_at:        now,
+        cancellation_reason: "Request rescheduled by client",
+        status:              "Cancelled",
+      })
+      .in("id", assignmentIds);
+
+    if (assignError) console.error("Failed to cancel assignments on reschedule:", assignError);
+  }
+
+  // ── 3. Notifications ──
+  const { status } = request;
+  const requestTitle = `"${request.title}"`;
+  const newDateLabel = newDatePayload.event_date || "a new date";
+
+  // Notify section heads — they need to reassign
+  try {
+    await notifySecHeads({
+      type:      "request_rescheduled",
+      title:     "Request Rescheduled — Reassignment Needed",
+      message:   `${requestTitle} has been rescheduled to ${newDateLabel}. Please reassign staff for the new date.`,
+      requestId: request.id,
+      sections:  request.forwarded_sections || [],
+    });
+  } catch (e) {
+    console.error("notifySecHeads (reschedule) failed:", e);
+  }
+
+  // Notify assigned staff if there were active assignments
+  if (activeAssignments.length > 0) {
+    const staffIds = activeAssignments.map((a) => a.assigned_to).filter(Boolean);
+    if (staffIds.length > 0) {
+      try {
+        await notifySpecificStaff({
+          staffIds,
+          type:      "assignment_cancelled",
+          title:     "Assignment Cancelled — Event Rescheduled",
+          message:   `Your assignment for ${requestTitle} has been cancelled. The client has rescheduled the event to ${newDateLabel}.`,
+          requestId: request.id,
+        });
+      } catch (e) {
+        console.error("notifySpecificStaff (reschedule) failed:", e);
+      }
+    }
+  }
+
+  // Notify admins — FYI
+  try {
+    await notifyAdmins({
+      type:      "request_rescheduled",
+      title:     "Request Rescheduled by Client",
+      message:   `${requestTitle} has been rescheduled to ${newDateLabel}. Status reset to Forwarded.${reason ? ` Reason: ${reason}` : ""}`,
+      requestId: request.id,
+    });
+  } catch (e) {
+    console.error("notifyAdmins (reschedule) failed:", e);
+  }
+
   return true;
 }
 

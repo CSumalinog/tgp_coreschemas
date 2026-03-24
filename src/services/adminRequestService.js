@@ -79,9 +79,9 @@ export async function fetchAllRequests() {
   return data.map((r) => ({
     ...r,
     requester:            profileMap[r.requester_id] ? { id: r.requester_id, full_name: profileMap[r.requester_id].full_name } : null,
-    forwarded_by_profile: profileMap[r.forwarded_by] ? { id: r.forwarded_by, full_name: profileMap[r.forwarded_by].full_name } : null,
-    approved_by_profile:  profileMap[r.approved_by]  ? { id: r.approved_by,  full_name: profileMap[r.approved_by].full_name  } : null,
-    declined_by_profile:  profileMap[r.declined_by]  ? { id: r.declined_by,  full_name: profileMap[r.declined_by].full_name  } : null,
+    forwarded_by_profile: profileMap[r.forwarded_by] ? { id: r.forwarded_by, full_name: profileMap[r.forwarded_by].full_name, avatar_url: profileMap[r.forwarded_by].avatar_url } : null,
+    approved_by_profile:  profileMap[r.approved_by]  ? { id: r.approved_by,  full_name: profileMap[r.approved_by].full_name,  avatar_url: profileMap[r.approved_by].avatar_url  } : null,
+    declined_by_profile:  profileMap[r.declined_by]  ? { id: r.declined_by,  full_name: profileMap[r.declined_by].full_name,  avatar_url: profileMap[r.declined_by].avatar_url  } : null,
     coverage_assignments: (r.coverage_assignments || []).map((a) => ({
       ...a,
       staffer: profileMap[a.assigned_to] ? {

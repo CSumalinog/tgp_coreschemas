@@ -73,9 +73,11 @@ Clients are the requesters—individuals or departments that need coverage servi
 - **Track Request Status**: Monitoring the progress of submitted requests through the pipeline stages with visual progress indicators.
 - **View Calendar**: Accessing a calendar view of scheduled events.
 - **Download Confirmations**: Generating and downloading PDF confirmations for approved requests.
+- **Cancel Requests**: Canceling requests that are still in cancellable stages (Pending through On Going), with optional reason and notifications to relevant parties.
+- **Reschedule Requests**: Rescheduling events that have already been assigned, with date validation, conflict checking, and automatic staff reassignment workflow.
 - **Manage Profile**: Updating their own profile information.
 
-Clients interact primarily with the Request Tracker, which displays their requests in both a pipeline view (showing workflow stages with two-phase visualization) and filtered list views (All Requests, Pending, Approved, Declined). Request statuses progress through: Draft → Pending → Forwarded → Assigned → For Approval → Approved → On Going → Completed (or Declined at any stage).
+Clients interact primarily with the Request Tracker, which displays their requests in both a pipeline view (showing workflow stages with two-phase visualization) and filtered list views (All Requests, Pending, Approved, Declined). Request statuses progress through: Draft → Pending → Forwarded → Assigned → For Approval → Approved → On Going → Completed (or Cancelled/Declined at any stage).
 
 ### 3.3 Section Head (role: "sec_head")
 
@@ -134,6 +136,8 @@ The request lifecycle represents the heart of the system:
 6. **Final Approval**: Administrators provide final approval, at which point assigned staff can view and act on the assignment.
 7. **Execution**: Staff time in to begin coverage, and mark complete when finished.
 8. **Documentation**: Completed requests may have file outputs (photos, videos, articles) associated with them.
+9. **Cancellation**: Clients can cancel requests at any cancellable stage (Pending through On Going), triggering notifications to all relevant parties.
+10. **Rescheduling**: Clients can reschedule events that have already been assigned, with status resetting to Forwarded for staff reassignment.
 
 The system supports draft functionality, allowing clients to save incomplete requests for later completion. Files are stored in Supabase Storage with organized paths (e.g., `program_flows/{user_id}/{timestamp}_{filename}`).
 
@@ -142,9 +146,10 @@ The system supports draft functionality, allowing clients to save incomplete req
 A centralized notification service (`NotificationService.js`) manages multi-channel in-app notifications:
 
 - **notifyAdmins**: Alerts all active administrators when new requests are submitted.
-- **notifyClient**: Informs the requester of status changes (forwarded, approved, declined) and assignment updates.
-- **notifySecHeads**: Notifies section heads when requests are forwarded to their section.
+- **notifyClient**: Informs the requester of status changes (forwarded, approved, declined, cancelled) and assignment updates.
+- **notifySecHeads**: Notifies section heads when requests are forwarded to their section, or when requests are cancelled/rescheduled.
 - **notifyAssignedStaff**: Alerts assigned staff members when they receive new coverage assignments.
+- **notifySpecificStaff**: Notifies specific staff members by ID array (used for targeted notifications like cancellation notices).
 
 Notifications are stored in the `notifications` table with fields for recipient, type, title, message, request association, and read status. The NotificationBell component in the layout provides a visual indicator of unread notifications.
 
@@ -294,6 +299,7 @@ These functions extend the application's capabilities beyond client-side logic, 
 7. **On Going** → Staff member has timed in
 8. **Completed** → Coverage finished
 9. **Declined** → Request denied at any stage
+10. **Cancelled** → Request cancelled by client at any cancellable stage (Pending through On Going)
 
 ## 9. Recent Enhancements
 
@@ -476,6 +482,9 @@ The [`useRealtimeNotify`](src/hooks/useRealtimeNotify.js:1) hook has been signif
 - `fetchMyRequests()`: Retrieves client requests with coverage assignments and staffer details
 - `updateDraftRequest()`: Supports draft editing and direct submission
 - `deleteDraftRequest()`: Allows deletion of draft requests
+- `cancelRequest()`: Client-initiated cancellation with multi-party notifications
+- `rescheduleRequest()`: Client-initiated rescheduling with audit trail and reassignment workflow
+- `getFileUrl()`: Helper function for retrieving public URLs from Supabase Storage
 - RPC integration for "Others" entity handling via `upsert_client_entity`
 
 #### 9.9.3 Notification Service ([`NotificationService.js`](src/services/NotificationService.js))
@@ -484,7 +493,8 @@ The [`useRealtimeNotify`](src/hooks/useRealtimeNotify.js:1) hook has been signif
 - `notifyClient()`: Informs requesters of status changes
 - `notifySecHeads()`: Notifies section heads when requests are forwarded
 - `notifyAssignedStaff()`: Alerts staff of new coverage assignments
-- Comprehensive type-based notification categorization
+- `notifySpecificStaff()`: Notifies specific staff members by ID array (for targeted notifications like cancellations)
+- Comprehensive type-based notification categorization with request_id tracking
 
 ### 9.10 Real-time Synchronization Improvements
 
@@ -538,6 +548,8 @@ The system implements consistent design tokens across all components:
 - **File Handling**: Integrated file preview and download from Supabase Storage
 - **Confirmation PDF**: Direct download of approved request confirmations
 - **Staff Avatar Display**: Shows assigned staffer information with avatars
+- **Request Cancellation**: In-dialog cancellation with confirmation dialog and optional reason
+- **Request Rescheduling**: Date change capability with validation, conflict detection, and reassignment workflow
 
 ### 9.15 Regular Staff My Assignment Enhancements (v2.2)
 
@@ -584,6 +596,127 @@ The system implements consistent design tokens across all components:
 - **Dynamic Day Scheduling**: When multi-day is selected, clients can add individual day schedules with specific dates and time ranges
 - **Service Layer Integration**: The `coverageRequestService.js` handles multi-day payloads with `buildDatePayload()` function
 - **Database Schema**: Stores `is_multiday` boolean, `event_days` array, and `end_date` for multi-day event metadata
+
+### 9.19 Enhanced Staff Onboarding with Automated Welcome Emails (v2.3)
+
+#### 9.19.1 Automated Welcome Email System
+
+The create-staff-account Edge Function now includes a comprehensive sendWelcomeEmail function that delivers branded HTML emails to new staff members when their accounts are created. The email includes:
+
+- **Branded Header**: TGP Core Schemas logo and tagline
+- **Personalized Greeting**: Uses the staff member's first name
+- **Credentials Display**: Shows their email and password in a secure-styled box
+- **Login CTA**: Direct link to the login page
+- **Security Notice**: Warning to change password after first login
+- **Professional Footer**: System branding and contact information
+
+**Email Provider**: Uses Resend API for reliable email delivery
+**Fallback Handling**: Gracefully skips email if RESEND_API_KEY is not configured
+**Error Logging**: Detailed logging for debugging failed deliveries
+
+#### 9.19.2 Enhanced Staff Profile Fields
+
+Staff profiles now support two additional metadata fields:
+
+- **position**: Job title or role within the section (e.g., Senior Photographer, Junior Writer)
+- **designation**: Specific assignment or specialization (e.g., Sports, Events, News)
+
+These fields are captured during account creation and editable via the StaffersManagement interface, enabling more granular staff categorization and assignment matching.
+
+#### 9.19.3 Automatic Email Confirmation
+
+The account creation process now sets email_confirm to true, bypassing Supabase confirmation email flow. New staff can log in immediately using the credentials sent via the welcome email, improving the onboarding experience.
+
+#### 9.19.4 Enhanced AdminRequestService
+
+The fetchAllRequests function now includes avatar_url in the profile data for forwarded_by, approved_by, and declined_by users, enabling avatar display throughout the request management interface. The profiles query selects id, full_name, section, and avatar_url fields for efficient data retrieval.
+
+### 9.20 Client-Initiated Request Cancellation
+
+Clients can now cancel their own requests at any stage before completion through the Request Tracker interface:
+
+#### Cancellation Flow
+
+- **Cancellable Statuses**: Pending, Forwarded, Assigned, For Approval, Approved, On Going
+- **Cancellation Dialog**: Confirmation dialog with optional reason field
+- **Soft-Cancel Assignments**: Active assignments are marked as "Cancelled" rather than deleted
+
+#### Multi-Party Notifications
+
+The cancellation triggers notifications to all relevant stakeholders:
+
+- **Admins**: Always notified of request cancellations
+- **Section Heads**: Notified when request was forwarded or beyond
+- **Assigned Staff**: Notified when staff were already assigned (Approved or On Going status)
+
+#### Database Updates
+
+- `status` → "Cancelled"
+- `cancelled_at`: Timestamp of cancellation
+- `cancelled_by`: Client user ID
+- `cancellation_reason`: Optional reason text
+- Assignment records receive `cancelled_at`, `cancellation_reason`, and status update
+
+### 9.21 Client-Initiated Request Rescheduling
+
+Clients can reschedule their requests when coverage has already been assigned:
+
+#### Rescheduling Flow
+
+- **Reschedulable Statuses**: Forwarded, Assigned, For Approval, Approved, On Going
+- **Date Validation**: Checks that new date is not same-day or past (minimum 2-day lead time)
+- **Conflict Detection**: Validates no scheduling conflicts exist on the new date
+- **Status Reset**: Request status resets to "Forwarded" requiring staff reassignment
+
+#### Audit Trail
+
+Previous event dates are preserved for historical reference:
+
+- `previous_event_date`: Original event date
+- `previous_from_time`: Original start time
+- `previous_to_time`: Original end time
+- `previous_event_days`: Original multi-day schedule
+- `reschedule_requested_at`: Timestamp of reschedule request
+- `reschedule_reason`: Optional reason text
+- `rescheduled_at`: Final reschedule timestamp
+- `rescheduled_by`: Client user ID
+
+#### Notification Workflow
+
+- **Section Heads**: Alerted to reassign staff for the new date
+- **Previously Assigned Staff**: Notified that their assignment was cancelled
+- **Admins**: Informed of the reschedule with status reset confirmation
+
+### 9.22 Enhanced Request Assistant for Reschedule Validation
+
+The [`RequestAssistant`](src/hooks/RequestAssistant.js:1) hook now includes standalone functions for validating reschedule requests:
+
+#### `checkConflictForDate(eventDate, excludeId)`
+
+Checks for scheduling conflicts on a specific date:
+
+- Queries for Approved, Ongoing, or Forwarded requests on the target date
+- Returns conflict details with titles, times, and statuses
+- Excludes the current request from conflict detection
+- Used during the reschedule flow to validate new dates
+
+#### `checkLateSubmissionForDate(eventDate)`
+
+Validates that a new event date meets minimum lead time:
+
+- Same-day or past dates return error
+- Less than 2 days from today returns warning
+- Returns success with days count for valid dates
+- Ensures requests maintain the 2-day minimum lead time requirement
+
+#### Integration with Reschedule Flow
+
+These functions are used by the Request Tracker's reschedule dialog to:
+
+1. Validate the new date is not too soon
+2. Check for scheduling conflicts on the proposed date
+3. Present warnings before allowing submission
+4. Provide clear feedback on why validation failed
 
 ---
 

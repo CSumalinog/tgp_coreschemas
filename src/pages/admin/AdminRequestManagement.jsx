@@ -103,6 +103,21 @@ function FilterChip({ label, onDelete }) {
   );
 }
 
+// ── Event Type pill ───────────────────────────────────────────────────────────
+function EventTypePill({ isMultiDay, isDark }) {
+  return isMultiDay ? (
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, px: 1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? "rgba(74,222,128,0.1)" : "#f0fdf4", border: `1px solid ${isDark ? "rgba(74,222,128,0.25)" : "#86efac"}` }}>
+      <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: isDark ? "#4ade80" : "#22c55e", flexShrink: 0 }} />
+      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? "#4ade80" : "#15803d", letterSpacing: "0.04em" }}>Multi-day</Typography>
+    </Box>
+  ) : (
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, px: 1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? "rgba(148,163,184,0.1)" : "rgba(53,53,53,0.05)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.1)"}` }}>
+      <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(53,53,53,0.3)", flexShrink: 0 }} />
+      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(53,53,53,0.5)", letterSpacing: "0.04em" }}>Single</Typography>
+    </Box>
+  );
+}
+
 function makeDataGridSx(isDark, border) {
   return {
     border: "none", fontFamily: dm, fontSize: "0.78rem",
@@ -254,10 +269,14 @@ export default function AdminRequestManagement() {
     dateReceived: req.submitted_at ? new Date(req.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "\u2014",
     eventDate: buildEventDateDisplay(req),
     is_multiday: !!(req.is_multiday && req.event_days?.length > 0),
+    eventType:   !!(req.is_multiday && req.event_days?.length > 0),
     forwardedTo: req.forwarded_sections || [],
     forwardedBy: req.forwarded_by_profile?.full_name || "\u2014",
+    forwardedByAvatar: req.forwarded_by_profile?.avatar_url || null,
     approvedBy:  req.approved_by_profile?.full_name  || "\u2014",
+    approvedByAvatar: req.approved_by_profile?.avatar_url || null,
     declinedBy:  req.declined_by_profile?.full_name  || "\u2014",
+    declinedByAvatar: req.declined_by_profile?.avatar_url || null,
     declinedReason: req.declined_reason || "\u2014",
     status: req.status, assignments: req.coverage_assignments || [], _raw: req,
   }));
@@ -267,15 +286,18 @@ export default function AdminRequestManagement() {
   const titleCol = {
     field: "requestTitle", headerName: "Request Title", flex: 1.4, minWidth: 180,
     renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
         <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {p.value}
         </Typography>
-        {p.row.is_multiday && (
-          <Box sx={{ px: 0.75, py: 0.15, borderRadius: "4px", flexShrink: 0, backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4", border: "1px solid", borderColor: isDark ? "#166534" : "#86efac" }}>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 600, color: isDark ? "#4ade80" : "#15803d" }}>Multi-day</Typography>
-          </Box>
-        )}
+      </Box>
+    ),
+  };
+  const typeCol = {
+    field: "eventType", headerName: "Type", flex: 0.65, minWidth: 90, sortable: false,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <EventTypePill isMultiDay={p.value} isDark={isDark} />
       </Box>
     ),
   };
@@ -326,18 +348,25 @@ export default function AdminRequestManagement() {
       );
     },
   };
-  const mkPersonCol = (field, header, avatarBg, avatarColor) => ({
-    field, headerName: header, flex: 1, minWidth: 130,
-    renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
-        {p.value !== "\u2014" && <Avatar sx={{ width: 20, height: 20, fontSize: "0.55rem", fontWeight: 600, backgroundColor: avatarBg, color: avatarColor }}>{getInitials(p.value)}</Avatar>}
-        <Typography sx={{ fontFamily: dm, fontSize: "0.81rem", fontWeight: 400, color: p.value === "\u2014" ? "text.disabled" : "text.secondary" }}>{p.value}</Typography>
-      </Box>
-    ),
+  const mkPersonCol = (field, avatarField, header, avatarBg, avatarColor) => ({
+    field, headerName: header, flex: 1, minWidth: 150,
+    renderCell: (p) => {
+      const url = getAvatarUrl(p.row[avatarField]);
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.85 }}>
+          {p.value !== "\u2014" && (
+            <Avatar src={url || undefined} sx={{ width: 28, height: 28, fontSize: "0.62rem", fontWeight: 600, backgroundColor: avatarBg, color: avatarColor, flexShrink: 0 }}>
+              {!url && getInitials(p.value)}
+            </Avatar>
+          )}
+          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 400, color: p.value === "\u2014" ? "text.disabled" : "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.value}</Typography>
+        </Box>
+      );
+    },
   });
-  const forwardedByCol  = mkPersonCol("forwardedBy", "Forwarded By", "#f5f3ff", "#6d28d9");
-  const approvedByCol   = mkPersonCol("approvedBy",  "Approved By",  "#f0fdf4", "#15803d");
-  const declinedByCol   = mkPersonCol("declinedBy",  "Declined By",  "#fef2f2", "#dc2626");
+  const forwardedByCol  = mkPersonCol("forwardedBy", "forwardedByAvatar", "Forwarded By", "#f5f3ff", "#6d28d9");
+  const approvedByCol   = mkPersonCol("approvedBy",  "approvedByAvatar",  "Approved By",  "#f0fdf4", "#15803d");
+  const declinedByCol   = mkPersonCol("declinedBy",  "declinedByAvatar",  "Declined By",  "#fef2f2", "#dc2626");
   const declinedReasonCol = {
     field: "declinedReason", headerName: "Reason", flex: 1.4, minWidth: 180,
     renderCell: (p) => (
@@ -419,13 +448,13 @@ export default function AdminRequestManagement() {
 
   const buildColumns = () => {
     const key = TABS[tab].key;
-    if (key === "all")          return [titleCol, clientCol, receivedCol, eventDateCol, statusCol, actionCol];
-    if (key === "Forwarded")    return [titleCol, clientCol, eventDateCol, forwardedToCol, forwardedByCol, actionCol];
-    if (key === "Approved")     return [titleCol, clientCol, eventDateCol, approvedByCol, actionCol];
-    if (key === "On Going")     return [titleCol, clientCol, eventDateCol, onGoingVenueCol, onGoingStaffersCol, actionCol];
-    if (key === "Completed")    return [titleCol, clientCol, eventDateCol, onGoingVenueCol, completedStafferCol, completedTimeInCol, completedTimeOutCol, completedDurCol, actionCol];
-    if (key === "Declined")     return [titleCol, clientCol, eventDateCol, declinedByCol, declinedReasonCol, actionCol];
-    return [titleCol, clientCol, receivedCol, eventDateCol, actionCol];
+    if (key === "all")          return [titleCol, typeCol, clientCol, receivedCol, eventDateCol, statusCol, actionCol];
+    if (key === "Forwarded")    return [titleCol, typeCol, clientCol, eventDateCol, forwardedToCol, forwardedByCol, actionCol];
+    if (key === "Approved")     return [titleCol, typeCol, clientCol, eventDateCol, approvedByCol, actionCol];
+    if (key === "On Going")     return [titleCol, typeCol, clientCol, eventDateCol, onGoingVenueCol, onGoingStaffersCol, actionCol];
+    if (key === "Completed")    return [titleCol, typeCol, clientCol, eventDateCol, onGoingVenueCol, completedStafferCol, completedTimeInCol, completedTimeOutCol, completedDurCol, actionCol];
+    if (key === "Declined")     return [titleCol, typeCol, clientCol, eventDateCol, declinedByCol, declinedReasonCol, actionCol];
+    return [titleCol, typeCol, clientCol, receivedCol, eventDateCol, actionCol];
   };
 
   return (
@@ -470,7 +499,7 @@ export default function AdminRequestManagement() {
         {/* Filter button */}
         <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
           <Box ref={filterRef} sx={{ position: "relative" }}>
-            <Box onClick={() => setFilterOpen((p) => !p)} sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.6, borderRadius: "20px", cursor: "pointer", border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`, backgroundColor: activeFilterCount > 0 ? GOLD_08 : "background.paper", fontFamily: dm, fontSize: "0.76rem", fontWeight: 400, color: activeFilterCount > 0 ? "#b45309" : "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 } }}>
+            <Box onClick={() => setFilterOpen((p) => !p)} sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.6, borderRadius: "4px", cursor: "pointer", border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`, backgroundColor: activeFilterCount > 0 ? GOLD_08 : "background.paper", fontFamily: dm, fontSize: "0.76rem", fontWeight: 400, color: activeFilterCount > 0 ? "#b45309" : "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 } }}>
               <FilterListIcon sx={{ fontSize: 14 }} />
               Filter
               {activeFilterCount > 0 && (
