@@ -141,17 +141,17 @@ function BlockedDatesPanel({
               width: 36,
               height: 36,
               borderRadius: "10px",
-              backgroundColor: GOLD,
-              color: CHARCOAL,
+              backgroundColor: "#212121",
+              color: "#fff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               transition: "background-color 0.15s",
-              "&:hover": { backgroundColor: "#e6b920" },
+              "&:hover": { backgroundColor: "#333" },
             }}
           >
-            <AddIcon sx={{ fontSize: 16 }} />
+            <AddIcon sx={{ fontSize: 15 }} />
           </Box>
         </Tooltip>
 
@@ -212,7 +212,7 @@ function BlockedDatesPanel({
         sx={{
           px: 1.5,
           py: 1.25,
-          borderRadius: "8px",
+          borderRadius: "10px",
           border: `1px solid ${border}`,
           backgroundColor: isPast
             ? "transparent"
@@ -276,7 +276,7 @@ function BlockedDatesPanel({
                   sx={{
                     width: 22,
                     height: 22,
-                    borderRadius: "6px",
+                    borderRadius: "10px",
                     color: "text.secondary",
                     "&:hover": { color: CHARCOAL, backgroundColor: GOLD_08 },
                   }}
@@ -291,7 +291,7 @@ function BlockedDatesPanel({
                   sx={{
                     width: 22,
                     height: 22,
-                    borderRadius: "6px",
+                    borderRadius: "10px",
                     color: "text.secondary",
                     "&:hover": {
                       color: "#dc2626",
@@ -364,7 +364,7 @@ function BlockedDatesPanel({
     >
       <Box
         sx={{
-          borderRadius: "12px",
+          borderRadius: "10px",
           border: `1px solid ${border}`,
           backgroundColor: "background.paper",
           overflow: "hidden",
@@ -389,7 +389,7 @@ function BlockedDatesPanel({
               sx={{
                 width: 26,
                 height: 26,
-                borderRadius: "7px",
+                borderRadius: "10px",
                 backgroundColor: isDark
                   ? "rgba(255,255,255,0.06)"
                   : "rgba(53,53,53,0.06)",
@@ -435,7 +435,7 @@ function BlockedDatesPanel({
                 sx={{
                   width: 26,
                   height: 26,
-                  borderRadius: "7px",
+                  borderRadius: "10px",
                   border: `1px solid ${border}`,
                   display: "flex",
                   alignItems: "center",
@@ -458,16 +458,16 @@ function BlockedDatesPanel({
                 sx={{
                   width: 26,
                   height: 26,
-                  borderRadius: "7px",
-                  backgroundColor: GOLD,
-                  color: CHARCOAL,
+                  borderRadius: "10px",
+                  backgroundColor: "#212121",
+                  color: "#fff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
                   flexShrink: 0,
                   transition: "background-color 0.15s",
-                  "&:hover": { backgroundColor: "#e6b920" },
+                  "&:hover": { backgroundColor: "#333" },
                 }}
               >
                 <AddIcon sx={{ fontSize: 15 }} />
@@ -487,7 +487,7 @@ function BlockedDatesPanel({
             "&::-webkit-scrollbar-track": { background: "transparent" },
             "&::-webkit-scrollbar-thumb": {
               background: isDark ? "#3a3a3a" : "#e0e0e0",
-              borderRadius: 2,
+              borderRadius: "10px",
             },
           }}
         >
@@ -813,7 +813,7 @@ export default function CalendarManagement() {
           right: 2,
           backgroundColor: isDark ? "rgba(53,53,53,0.85)" : CHARCOAL,
           color: "#fff",
-          borderRadius: "5px",
+          borderRadius: "10px",
           p: 0.5,
           overflow: "hidden",
           zIndex: 1,
@@ -861,7 +861,7 @@ export default function CalendarManagement() {
         right: 2,
         backgroundColor: isDark ? "rgba(53,53,53,0.72)" : CHARCOAL,
         color: "#fff",
-        borderRadius: "5px",
+        borderRadius: "10px",
         overflow: "hidden",
         zIndex: 1,
         border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.7)"}`,
@@ -883,7 +883,7 @@ export default function CalendarManagement() {
           mx: 0.5,
           px: 0.75,
           py: 0.4,
-          borderRadius: "4px",
+          borderRadius: "10px",
           backgroundColor: isDark
             ? "rgba(255,255,255,0.08)"
             : "rgba(255,255,255,0.15)",
@@ -947,7 +947,7 @@ export default function CalendarManagement() {
           size="small"
           sx={{
             border: `1px solid ${border}`,
-            borderRadius: "8px",
+            borderRadius: "10px",
             p: 0.65,
             color: "text.secondary",
             "&:hover": {
@@ -992,7 +992,7 @@ export default function CalendarManagement() {
             sx={{
               px: 1.5,
               py: 0.55,
-              borderRadius: "8px",
+              borderRadius: "10px",
               cursor: "pointer",
               border: `1px solid ${border}`,
               fontFamily: dm,
@@ -1015,7 +1015,7 @@ export default function CalendarManagement() {
             size="small"
             sx={{
               border: `1px solid ${border}`,
-              borderRadius: "8px",
+              borderRadius: "10px",
               p: 0.65,
               color: "text.secondary",
               "&:hover": {
@@ -1036,7 +1036,7 @@ export default function CalendarManagement() {
           severity="error"
           sx={{
             mb: 2.5,
-            borderRadius: "8px",
+            borderRadius: "10px",
             fontFamily: dm,
             fontSize: "0.78rem",
           }}
@@ -1053,7 +1053,7 @@ export default function CalendarManagement() {
             sx={{
               overflowX: "auto",
               overflowY: "auto",
-              borderRadius: "12px",
+              borderRadius: "10px",
               backgroundColor: "background.paper",
               border: `1px solid ${border}`,
               maxHeight: "calc(100vh - 160px)",
@@ -1062,7 +1062,7 @@ export default function CalendarManagement() {
               "&::-webkit-scrollbar-track": { background: "transparent" },
               "&::-webkit-scrollbar-thumb": {
                 background: isDark ? "#3a3a3a" : "#e0e0e0",
-                borderRadius: 2,
+                borderRadius: "10px",
               },
             }}
           >
@@ -1164,7 +1164,7 @@ export default function CalendarManagement() {
                               gap: 0.4,
                               px: 0.75,
                               py: 0.2,
-                              borderRadius: "4px",
+                              borderRadius: "10px",
                               backgroundColor: isDark
                                 ? "rgba(255,255,255,0.06)"
                                 : "rgba(53,53,53,0.06)",

@@ -320,7 +320,7 @@ function Highlight({ text, query }) {
         sx={{
           backgroundColor: "#fff9c4",
           color: "#212121",
-          borderRadius: "2px",
+          borderRadius: "10px",
           px: "1px",
         }}
       >
@@ -621,7 +621,7 @@ export default function GlobalSearch({
             ...dropdownPositionSx,
             backgroundColor: dropdownBg,
             border: `1px solid ${borderColor}`,
-            borderRadius: 2,
+            borderRadius: "10px",
             boxShadow: isDark
               ? "0 8px 32px rgba(0,0,0,0.5)"
               : "0 8px 32px rgba(0,0,0,0.12)",

@@ -189,7 +189,7 @@ function Calendar() {
       {/* ── Month Header ── */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <IconButton onClick={prevMonth} size="small" sx={{
-          borderRadius: "8px", color: "text.secondary",
+          borderRadius: "10px", color: "text.secondary",
           "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
           transition: "all 0.15s",
         }}>
@@ -202,7 +202,7 @@ function Calendar() {
           </Typography>
           <Button onClick={goToToday} size="small" variant="outlined" sx={{
             textTransform: "none", fontSize: "0.72rem", px: 1.5, py: 0.35,
-            borderColor: "divider", color: "text.secondary", borderRadius: "8px", fontWeight: 500,
+            borderColor: "divider", color: "text.secondary", borderRadius: "10px", fontWeight: 500,
             "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
             transition: "all 0.15s",
           }}>
@@ -211,7 +211,7 @@ function Calendar() {
         </Box>
 
         <IconButton onClick={nextMonth} size="small" sx={{
-          borderRadius: "8px", color: "text.secondary",
+          borderRadius: "10px", color: "text.secondary",
           "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
           transition: "all 0.15s",
         }}>
@@ -236,7 +236,7 @@ function Calendar() {
         display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
         border: "1px solid",
         borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.10)",
-        borderRadius: "12px", overflow: "hidden",
+        borderRadius: "10px", overflow: "hidden",
         boxShadow: isDark
           ? "0 2px 16px rgba(0,0,0,0.3)"
           : "0 2px 16px rgba(53,53,53,0.07), 0 1px 4px rgba(53,53,53,0.04)",

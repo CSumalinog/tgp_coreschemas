@@ -127,7 +127,7 @@ export default function UserAvatar({ profileRoute = "profile" }) {
           sx: {
             fontFamily: dm,
             width: 240,                                          // matches sidebar width
-            borderRadius: "14px",
+            borderRadius: "10px",
             backgroundColor: "#1A2820",
             border: "1px solid rgba(255,255,255,0.08)",
             boxShadow: "0 -16px 48px rgba(0,0,0,0.55)",

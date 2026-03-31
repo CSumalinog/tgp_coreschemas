@@ -142,7 +142,7 @@ export default function CalendarEventDialog({
   // ── Shared input sx ───────────────────────────────────────────────────────
   const inputSx = {
     "& .MuiOutlinedInput-root": {
-      borderRadius: "8px",
+      borderRadius: "10px",
       fontSize: "0.85rem",
       fontFamily: dm,
       backgroundColor: isEditable ? subtleBg : "transparent",
@@ -232,7 +232,7 @@ export default function CalendarEventDialog({
         PaperProps={{
           sx: {
             width: 460,
-            borderRadius: "12px",
+            borderRadius: "10px",
             backgroundColor: paperBg,
             backgroundImage: "none",
             border: `1px solid ${border}`,
@@ -265,7 +265,7 @@ export default function CalendarEventDialog({
                 mt: 0.15,
                 width: 34,
                 height: 34,
-                borderRadius: "9px",
+                borderRadius: "10px",
                 backgroundColor: existingEvent
                   ? isDark
                     ? "rgba(220,38,38,0.1)"
@@ -342,7 +342,7 @@ export default function CalendarEventDialog({
                 sx={{
                   width: 28,
                   height: 28,
-                  borderRadius: "7px",
+                  borderRadius: "10px",
                   color: "text.secondary",
                   "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
                 }}
@@ -357,7 +357,7 @@ export default function CalendarEventDialog({
                 sx={{
                   width: 28,
                   height: 28,
-                  borderRadius: "7px",
+                  borderRadius: "10px",
                   color: "text.secondary",
                   "&:hover": {
                     backgroundColor: isDark ? "rgba(220,38,38,0.1)" : "#fef2f2",
@@ -374,7 +374,7 @@ export default function CalendarEventDialog({
               sx={{
                 width: 28,
                 height: 28,
-                borderRadius: "7px",
+                borderRadius: "10px",
                 color: "text.secondary",
                 "&:hover": {
                   backgroundColor: isDark
@@ -407,7 +407,7 @@ export default function CalendarEventDialog({
                 gap: 0.6,
                 px: 1.1,
                 py: 0.35,
-                borderRadius: "20px",
+                borderRadius: "10px",
                 border: `1px solid ${border}`,
                 backgroundColor: subtleBg,
               }}
@@ -468,7 +468,7 @@ export default function CalendarEventDialog({
                       flex: 1,
                       px: 1.5,
                       py: 1.25,
-                      borderRadius: "8px",
+                      borderRadius: "10px",
                       border: `1px solid ${selected ? GOLD : border}`,
                       backgroundColor: selected ? GOLD_08 : subtleBg,
                       cursor: isEditable ? "pointer" : "default",
@@ -610,7 +610,7 @@ export default function CalendarEventDialog({
                 gap: 1,
                 px: 1.5,
                 py: 1,
-                borderRadius: "8px",
+                borderRadius: "10px",
                 backgroundColor: isDark ? "rgba(220,38,38,0.08)" : "#fef2f2",
                 border: `1px solid ${isDark ? "rgba(220,38,38,0.2)" : "rgba(220,38,38,0.2)"}`,
               }}
@@ -648,7 +648,7 @@ export default function CalendarEventDialog({
                 sx={{
                   px: 2,
                   py: 0.65,
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   border: `1px solid ${border}`,
                   fontFamily: dm,
                   fontSize: "0.8rem",
@@ -673,16 +673,16 @@ export default function CalendarEventDialog({
                 sx={{
                   px: 2.5,
                   py: 0.65,
-                  borderRadius: "8px",
-                  backgroundColor: GOLD,
-                  color: CHARCOAL,
+                  borderRadius: "10px",
+                  backgroundColor: "#212121",
+                  color: "#fff",
                   fontFamily: dm,
                   fontSize: "0.8rem",
                   fontWeight: 700,
                   cursor: "pointer",
                   userSelect: "none",
                   transition: "background-color 0.15s",
-                  "&:hover": { backgroundColor: "#e6b920" },
+                  "&:hover": { backgroundColor: "#333" },
                 }}
               >
                 {existingEvent ? "Save Changes" : "Block Date"}
@@ -701,7 +701,7 @@ export default function CalendarEventDialog({
         PaperProps={{
           sx: {
             width: 380,
-            borderRadius: "12px",
+            borderRadius: "10px",
             backgroundColor: paperBg,
             backgroundImage: "none",
             border: `1px solid ${border}`,
@@ -731,7 +731,7 @@ export default function CalendarEventDialog({
             sx={{
               width: 32,
               height: 32,
-              borderRadius: "8px",
+              borderRadius: "10px",
               flexShrink: 0,
               backgroundColor: isDark
                 ? "rgba(220,38,38,0.1)"
@@ -809,7 +809,7 @@ export default function CalendarEventDialog({
             sx={{
               px: 2,
               py: 0.65,
-              borderRadius: "8px",
+              borderRadius: "10px",
               border: `1px solid ${border}`,
               fontFamily: dm,
               fontSize: "0.8rem",
@@ -832,7 +832,7 @@ export default function CalendarEventDialog({
             sx={{
               px: 2,
               py: 0.65,
-              borderRadius: "8px",
+              borderRadius: "10px",
               backgroundColor: "#dc2626",
               color: "#fff",
               fontFamily: dm,

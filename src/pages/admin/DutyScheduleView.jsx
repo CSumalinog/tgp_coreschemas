@@ -8,7 +8,7 @@ import {
   Avatar,
   useTheme,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 
@@ -207,7 +207,7 @@ export default function DutyScheduleView() {
                 gap: 0.6,
                 px: 1.25,
                 py: 0.35,
-                borderRadius: "6px",
+                borderRadius: "10px",
                 backgroundColor: isDark ? `${cfg.dot}15` : cfg.bg,
               }}
             >
@@ -246,7 +246,7 @@ export default function DutyScheduleView() {
             sx={{
               px: 1.25,
               py: 0.35,
-              borderRadius: "6px",
+              borderRadius: "10px",
               backgroundColor: isDark
                 ? "rgba(255,255,255,0.04)"
                 : "rgba(53,53,53,0.04)",
@@ -288,7 +288,7 @@ export default function DutyScheduleView() {
                 gap: 0.6,
                 px: 1.25,
                 py: 0.35,
-                borderRadius: "6px",
+                borderRadius: "10px",
                 backgroundColor: isDark ? cfg.darkBg : cfg.bg,
               }}
             >
@@ -322,7 +322,7 @@ export default function DutyScheduleView() {
   return (
     <Box
       sx={{
-        p: 3,
+        p: { xs: 2, sm: 3 },
         backgroundColor: "background.default",
         minHeight: "100%",
         fontFamily: dm,
@@ -360,7 +360,7 @@ export default function DutyScheduleView() {
           severity="info"
           sx={{
             mb: 3,
-            borderRadius: "8px",
+            borderRadius: "10px",
             fontFamily: dm,
             fontSize: "0.78rem",
           }}
@@ -435,7 +435,7 @@ export default function DutyScheduleView() {
                 <Box
                   sx={{
                     height: 3,
-                    borderRadius: "2px",
+                    borderRadius: "10px",
                     backgroundColor: isDark
                       ? "rgba(255,255,255,0.06)"
                       : "rgba(53,53,53,0.06)",
@@ -447,7 +447,7 @@ export default function DutyScheduleView() {
                       height: "100%",
                       width: `${pct}%`,
                       backgroundColor: isDark ? cfg.darkColor : cfg.dot,
-                      borderRadius: "2px",
+                      borderRadius: "10px",
                       transition: "width 0.4s ease",
                     }}
                   />
@@ -463,7 +463,7 @@ export default function DutyScheduleView() {
           severity="error"
           sx={{
             mb: 2,
-            borderRadius: "8px",
+            borderRadius: "10px",
             fontFamily: dm,
             fontSize: "0.78rem",
           }}
@@ -477,9 +477,9 @@ export default function DutyScheduleView() {
         <Box
           sx={{
             mb: 2,
-            borderBottom: `1px solid ${border}`,
             display: "flex",
-            gap: 0,
+            gap: "6px",
+            flexWrap: "wrap",
           }}
         >
           {["All", ...COVERAGE_SECTIONS].map((sec) => {
@@ -496,28 +496,23 @@ export default function DutyScheduleView() {
                   display: "flex",
                   alignItems: "center",
                   gap: 0.75,
-                  px: 1.75,
-                  py: 0.9,
+                  px: 1.5,
+                  py: 0.65,
+                  borderRadius: "10px",
                   cursor: "pointer",
-                  position: "relative",
                   fontFamily: dm,
                   fontSize: "0.79rem",
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? CHARCOAL : "text.secondary",
-                  transition: "color 0.15s",
-                  "&:hover": { color: CHARCOAL },
-                  "&::after": isActive
-                    ? {
-                        content: '""',
-                        position: "absolute",
-                        bottom: -1,
-                        left: 0,
-                        right: 0,
-                        height: "2px",
-                        borderRadius: "2px 2px 0 0",
-                        backgroundColor: GOLD,
-                      }
-                    : {},
+                  color: isActive ? "#fff" : "text.secondary",
+                  border: `1px solid ${isActive ? "#212121" : border}`,
+                  backgroundColor: isActive ? "#212121" : "background.paper",
+                  transition: "all 0.12s",
+                  "&:hover": isActive
+                    ? {}
+                    : {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: isDark ? "#f5f5f5" : CHARCOAL,
+                      },
                 }}
               >
                 {sec}
@@ -525,13 +520,13 @@ export default function DutyScheduleView() {
                   sx={{
                     minWidth: 17,
                     height: 17,
-                    borderRadius: "9px",
+                    borderRadius: "10px",
                     px: 0.5,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: isActive
-                      ? GOLD
+                      ? "rgba(255,255,255,0.18)"
                       : isDark
                         ? "rgba(255,255,255,0.08)"
                         : "rgba(53,53,53,0.07)",
@@ -543,7 +538,7 @@ export default function DutyScheduleView() {
                       fontSize: "0.62rem",
                       fontWeight: 700,
                       lineHeight: 1,
-                      color: isActive ? CHARCOAL : "text.secondary",
+                      color: isActive ? "#fff" : "text.secondary",
                     }}
                   >
                     {count}

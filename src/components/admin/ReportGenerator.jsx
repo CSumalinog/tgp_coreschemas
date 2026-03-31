@@ -14,8 +14,6 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import CancelOutlinedIcon             from "@mui/icons-material/CancelOutlined";
 import TrendingUpOutlinedIcon         from "@mui/icons-material/TrendingUpOutlined";
 import AccessTimeOutlinedIcon         from "@mui/icons-material/AccessTimeOutlined";
-import jsPDF                          from "jspdf";
-import autoTable                      from "jspdf-autotable";
 import { supabase }                   from "../../lib/supabaseClient";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -148,11 +146,15 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
     }
   }
 
-  // ── Generate & download PDF ── (UNTOUCHED) ────────────────────────────────────
-  function generatePDF() {
+  // ── Generate & download PDF ───────────────────────────────────────────────────
+  async function generatePDF() {
     if (!preview) return;
     setGenerating(true);
     try {
+      // ✅ Dynamically imported — jsPDF is NOT bundled into the main chunk
+      const { default: jsPDF }     = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const W   = doc.internal.pageSize.getWidth();
       let y     = 0;
@@ -308,7 +310,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
           size="small" variant="outlined"
           onClick={fetchReportData}
           disabled={fetching || !canGenerate}
-          sx={{ textTransform: "none", fontSize: "0.78rem", borderRadius: 2, boxShadow: "none", borderColor, color: textPrimary, "&:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5", boxShadow: "none" } }}
+          sx={{ textTransform: "none", fontSize: "0.78rem", borderRadius: "10px", boxShadow: "none", borderColor, color: textPrimary, "&:hover": { backgroundColor: isDark ? "#2a2a2a" : "#f5f5f5", boxShadow: "none" } }}
         >
           {fetching
             ? <><CircularProgress size={12} sx={{ color: "text.primary", mr: 0.8 }} />Loading…</>
@@ -317,11 +319,11 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: "0.8rem" }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: "10px", fontSize: "0.8rem" }}>{error}</Alert>}
 
       {/* ── Empty state ── */}
       {!preview && !fetching && (
-        <Box sx={{ p: 4, textAlign: "center", bgcolor: "background.paper", borderRadius: 2, border: `1px solid ${borderColor}` }}>
+        <Box sx={{ p: 4, textAlign: "center", bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${borderColor}` }}>
           <AssignmentOutlinedIcon sx={{ fontSize: 36, color: isDark ? "#444" : "#e0e0e0", mb: 1 }} />
           <Typography sx={{ fontSize: "0.82rem", color: textSecondary }}>
             Click "Preview Report" to generate a summary for{" "}
@@ -332,7 +334,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
 
       {/* ── Preview card ── */}
       {preview && (
-        <Box sx={{ bgcolor: "background.paper", borderRadius: 2, border: `1px solid ${borderColor}`, overflow: "hidden" }}>
+        <Box sx={{ bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${borderColor}`, overflow: "hidden" }}>
 
           {/* Card header */}
           <Box sx={{ px: 2.5, py: 2, backgroundColor: headerBg, borderBottom: `1px solid ${headerBorder}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -349,7 +351,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
               startIcon={generating ? <CircularProgress size={13} sx={{ color: "#212121" }} /> : <DownloadOutlinedIcon />}
               onClick={generatePDF}
               disabled={generating}
-              sx={{ textTransform: "none", fontSize: "0.78rem", borderRadius: 2, boxShadow: "none", backgroundColor: "#f5c52b", color: "#212121", fontWeight: 500, "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}
+              sx={{ textTransform: "none", fontSize: "0.78rem", borderRadius: "10px", boxShadow: "none", backgroundColor: "#f5c52b", color: "#212121", fontWeight: 500, "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" } }}
             >
               {generating ? "Generating…" : "Download PDF"}
             </Button>
@@ -358,7 +360,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
           {/* Summary stats */}
           <Box sx={{ px: 2.5, pt: 2, pb: 1.5, display: "flex", gap: 1.5, flexWrap: "wrap" }}>
             {statCards.map((s) => (
-              <Box key={s.label} sx={{ flex: "1 1 100px", bgcolor: cardBg, borderRadius: 2, border: `1px solid ${cardBorder}`, p: 1.5 }}>
+              <Box key={s.label} sx={{ flex: "1 1 100px", bgcolor: cardBg, borderRadius: "10px", border: `1px solid ${cardBorder}`, p: 1.5 }}>
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.6 }}>
                   <Typography sx={{ fontSize: "0.7rem", color: labelColor }}>{s.label}</Typography>
                   <Box sx={{ p: 0.5, borderRadius: 1, backgroundColor: s.bg, color: s.color, display: "flex" }}>
@@ -379,7 +381,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
             </Typography>
             <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
               {preview.sectionWorkload.map((s) => (
-                <Box key={s.section} sx={{ flex: "1 1 120px", bgcolor: cardBg, borderRadius: 2, border: `1px solid ${cardBorder}`, p: 1.5 }}>
+                <Box key={s.section} sx={{ flex: "1 1 120px", bgcolor: cardBg, borderRadius: "10px", border: `1px solid ${cardBorder}`, p: 1.5 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 0.5 }}>
                     <Box sx={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: SECTION_COLORS[s.section]?.color }} />
                     <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: textPrimary }}>{s.section}</Typography>
@@ -403,7 +405,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
                 {preview.stafferList.slice(0, 5).map((s, i) => (
-                  <Box key={s.name} sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 1.5, py: 0.8, bgcolor: cardBg, borderRadius: 2, border: `1px solid ${cardBorder}` }}>
+                  <Box key={s.name} sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 1.5, py: 0.8, bgcolor: cardBg, borderRadius: "10px", border: `1px solid ${cardBorder}` }}>
                     <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: isDark ? "#555" : "#bdbdbd", width: 14 }}>#{i + 1}</Typography>
                     <Typography sx={{ fontSize: "0.82rem", fontWeight: 500, flex: 1, color: textPrimary }}>{s.name}</Typography>
                     <Chip label={s.section} size="small" sx={{ fontSize: "0.65rem", height: 18, backgroundColor: SECTION_COLORS[s.section]?.bg, color: SECTION_COLORS[s.section]?.color }} />

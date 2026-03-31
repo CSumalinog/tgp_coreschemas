@@ -173,7 +173,7 @@ export default function QRScanCompleteDialog({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: "16px",
+          borderRadius: "10px",
           backgroundColor: "background.paper",
           border: `1px solid ${border}`,
           boxShadow: isDark
@@ -200,7 +200,7 @@ export default function QRScanCompleteDialog({
             sx={{
               width: 2.5,
               height: 26,
-              borderRadius: "2px",
+              borderRadius: "10px",
               backgroundColor: GOLD,
               flexShrink: 0,
             }}
@@ -233,7 +233,7 @@ export default function QRScanCompleteDialog({
           onClick={handleClose}
           disabled={completing}
           sx={{
-            borderRadius: "8px",
+            borderRadius: "10px",
             color: "text.secondary",
             flexShrink: 0,
             "&:hover": { backgroundColor: HOVER_BG },
@@ -250,7 +250,7 @@ export default function QRScanCompleteDialog({
             sx={{
               px: 1.75,
               py: 1.25,
-              borderRadius: "8px",
+              borderRadius: "10px",
               mb: 2,
               border: `1px solid ${border}`,
               backgroundColor: isDark
@@ -291,7 +291,7 @@ export default function QRScanCompleteDialog({
             sx={{
               position: "relative",
               width: "100%",
-              borderRadius: "12px",
+              borderRadius: "10px",
               overflow: "hidden",
               border: `1px solid ${border}`,
               backgroundColor: "#000",
@@ -307,7 +307,7 @@ export default function QRScanCompleteDialog({
               sx={{
                 width: "100%",
                 "& video": {
-                  borderRadius: "12px !important",
+                  borderRadius: "10px !important",
                   width: "100% !important",
                 },
                 "& img": { display: "none" }, // hide the QR code icon html5-qrcode renders
@@ -402,7 +402,7 @@ export default function QRScanCompleteDialog({
                     mt: 0.5,
                     px: 2,
                     py: 0.75,
-                    borderRadius: "8px",
+                    borderRadius: "10px",
                     cursor: "pointer",
                     backgroundColor: GOLD,
                     color: CHARCOAL,
@@ -541,7 +541,7 @@ export default function QRScanCompleteDialog({
                 px: 1.5,
                 py: 1.25,
                 mt: 1.5,
-                borderRadius: "8px",
+                borderRadius: "10px",
                 backgroundColor: "rgba(239,68,68,0.06)",
                 border: "1px solid rgba(239,68,68,0.25)",
               }}
@@ -571,7 +571,7 @@ export default function QRScanCompleteDialog({
               py: 1.25,
               mt: 1.5,
               mb: 1,
-              borderRadius: "8px",
+              borderRadius: "10px",
               backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)",
               border: "1px solid rgba(245,197,43,0.3)",
             }}
@@ -612,7 +612,7 @@ export default function QRScanCompleteDialog({
           sx={{
             px: 1.75,
             py: 0.65,
-            borderRadius: "8px",
+            borderRadius: "10px",
             cursor: "pointer",
             border: `1px solid ${border}`,
             fontFamily: dm,

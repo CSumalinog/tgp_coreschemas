@@ -111,6 +111,68 @@ Staff assignments follow a lifecycle: Pending → Approved → On Going (Time In
 
 ---
 
+## 3.5 Organizational Structure and Coverage Divisions
+
+The TGP organization consists of **two main divisions** that manage coverage services, each with distinct sections and responsibilities:
+
+### 3.5.1 Scribes Division
+
+**Responsible for:** News coverage
+
+- **Section**: News
+- **Managed by**: News Section Head
+- **Coverage Services**: News Article
+
+The News Section Head manages all News Article coverage assignments from staff members within the Scribes division.
+
+### 3.5.2 Creatives Division
+
+**Responsible for:** Visual media coverage
+
+- **Sections**:
+  - Photojournalism (managed by Photo Section Head)
+  - Videojournalism (managed by Video Section Head)
+- **Coverage Services**:
+  - Photo Documentation (managed by Photo Section Head)
+  - Video Documentation (managed by Video Section Head)
+  - Camera Operator (managed by Video Section Head only)
+
+The Photo and Video Section Heads manage coverage assignments within their respective sections.
+
+### 3.5.3 Division-Based Assignment Rules
+
+All section heads operate within their division scope and must observe the following assignment hierarchy:
+
+| Section Head | Primary Assignment | Secondary Assignment            | Scope              | Special Authority                    |
+| ------------ | ------------------ | ------------------------------- | ------------------ | ------------------------------------ |
+| News Head    | News staff         | Other Scribes staff (if needed) | Scribes Division   | None                                 |
+| Photo Head   | Photo staff        | Video staff (if needed)         | Creatives Division | None                                 |
+| Video Head   | Video staff        | Photo staff (if needed)         | Creatives Division | **Camera Operator (CO) assignments** |
+
+**Key Assignment Rules:**
+
+1. **Primary Section Priority**: All section heads prioritize assigning staff from their own section first
+2. **Within-Division Cross-Assignment**: Section heads can assign staff from other sections **within their division only** if workload or availability requires it:
+   - News head: Can pull from other Scribes staff (though currently only News section is part of coverage workflow)
+   - Photo head: Can pull from Videojournalism staff within Creatives division
+   - Video head: Can pull from Photojournalism staff within Creatives division
+3. **No Cross-Division Assignment**: Section heads **cannot** assign staff from other divisions
+4. **Camera Operator Management**:
+   - Only the Video Section Head can assign Camera Operator staff
+   - Camera Operator is only assigned when explicitly requested in the coverage requirements
+   - Camera Operator is managed as a specialized role within Videojournalism section
+
+### 3.5.4 Multi-Day Event Staffing
+
+For multi-day coverage events:
+
+- Each day requires separate staffing with individual assignments per day
+- Assignment records include an `assignment_date` field to track the specific date of service
+- Section heads assign staffers per day, allowing the same event to have different staff on different days if needed
+- Assignment counts update dynamically as assignments are made per day
+
+---
+
 ## 4. Core Features and Functionality
 
 ### 4.1 Authentication and Authorization
@@ -211,7 +273,7 @@ The Section Head Assignment Management integrates with duty schedules to:
 
 While the full schema is defined in Supabase, the key tables include:
 
-- **profiles**: User accounts with role, section, full_name, avatar_url, is_active
+- **profiles**: User accounts with role, section, full_name, avatar_url, 
 - **coverage_requests**: Main request records with all event details, status, timestamps, including multi-day event support (`is_multiday`, `event_days`, `end_date`)
 - **coverage_assignments**: Staff assignments linking requests to staff members with status, timed_in_at
 - **client_types**: Categories of clients (e.g., academic department, student organization)

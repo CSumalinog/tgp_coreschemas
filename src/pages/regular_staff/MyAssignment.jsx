@@ -1,59 +1,102 @@
 // src/pages/regular_staff/MyAssignment.jsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
-  Box, Typography, CircularProgress, Alert,
-  Dialog, DialogContent, IconButton, useTheme,
-  ClickAwayListener, Avatar,
+  Box,
+  Typography,
+  CircularProgress,
+  Alert,
+  Dialog,
+  DialogContent,
+  IconButton,
+  useTheme,
+  ClickAwayListener,
+  Avatar,
 } from "@mui/material";
-import CalendarTodayOutlinedIcon   from "@mui/icons-material/CalendarTodayOutlined";
-import LocationOnOutlinedIcon      from "@mui/icons-material/LocationOnOutlined";
-import PersonOutlineOutlinedIcon   from "@mui/icons-material/PersonOutlineOutlined";
-import AccessTimeOutlinedIcon      from "@mui/icons-material/AccessTimeOutlined";
-import CheckCircleOutlineIcon      from "@mui/icons-material/CheckCircleOutline";
-import CloseIcon                   from "@mui/icons-material/Close";
-import AssignmentOutlinedIcon      from "@mui/icons-material/AssignmentOutlined";
-import FilterListIcon              from "@mui/icons-material/FilterList";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CloseIcon from "@mui/icons-material/Close";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
-import PhoneOutlinedIcon           from "@mui/icons-material/PhoneOutlined";
-import DescriptionOutlinedIcon     from "@mui/icons-material/DescriptionOutlined";
-import WarningAmberOutlinedIcon    from "@mui/icons-material/WarningAmberOutlined";
-import ChevronRightIcon            from "@mui/icons-material/ChevronRight";
-import HowToRegOutlinedIcon        from "@mui/icons-material/HowToRegOutlined";
-import GroupOutlinedIcon           from "@mui/icons-material/GroupOutlined";
-import { supabase }                from "../../lib/supabaseClient";
-import { useRealtimeNotify }       from "../../hooks/useRealtimeNotify";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import { supabase } from "../../lib/supabaseClient";
+import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 
-import { TimeInModal, OnGoingAlertDialog } from "../../components/regular_staff/TimeIn";
-import QRScanCompleteDialog                from "../../components/regular_staff/QRScanCompleteDialog";
+import {
+  TimeInModal,
+  OnGoingAlertDialog,
+} from "../../components/regular_staff/TimeIn";
+import QRScanCompleteDialog from "../../components/regular_staff/QRScanCompleteDialog";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
-const GOLD        = "#F5C52B";
-const GOLD_08     = "rgba(245,197,43,0.08)";
-const GOLD_18     = "rgba(245,197,43,0.18)";
-const CHARCOAL    = "#353535";
-const BORDER      = "rgba(53,53,53,0.08)";
+const GOLD = "#F5C52B";
+const GOLD_08 = "rgba(245,197,43,0.08)";
+const GOLD_18 = "rgba(245,197,43,0.18)";
+const CHARCOAL = "#353535";
+const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
-const HOVER_BG    = "rgba(53,53,53,0.03)";
-const dm          = "'Inter', sans-serif";
+const HOVER_BG = "rgba(53,53,53,0.03)";
+const dm = "'Inter', sans-serif";
 
 const SECTION_COLORS = {
-  News:            { bg: "#e3f2fd", color: "#1565c0" },
+  News: { bg: "#e3f2fd", color: "#1565c0" },
   Photojournalism: { bg: "#f3e5f5", color: "#7b1fa2" },
   Videojournalism: { bg: "#e8f5e9", color: "#2e7d32" },
 };
 
 const STATUS_CFG = {
-  Pending:    { dot: "#f97316", color: "#c2410c", bg: "#fff7ed",               accent: "#f97316" },
-  Approved:   { dot: "#22c55e", color: "#15803d", bg: "rgba(34,197,94,0.08)",  accent: "#22c55e" },
-  "On Going": { dot: "#3b82f6", color: "#1d4ed8", bg: "rgba(59,130,246,0.08)", accent: "#3b82f6" },
-  Completed:  { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4",               accent: "#22c55e" },
-  "No Show":  { dot: "#ef4444", color: "#b91c1c", bg: "rgba(239,68,68,0.08)",  accent: "#ef4444" },
+  Pending: {
+    dot: "#f97316",
+    color: "#c2410c",
+    bg: "#fff7ed",
+    accent: "#f97316",
+  },
+  Approved: {
+    dot: "#22c55e",
+    color: "#15803d",
+    bg: "rgba(34,197,94,0.08)",
+    accent: "#22c55e",
+  },
+  "On Going": {
+    dot: "#3b82f6",
+    color: "#1d4ed8",
+    bg: "rgba(59,130,246,0.08)",
+    accent: "#3b82f6",
+  },
+  Completed: {
+    dot: "#22c55e",
+    color: "#15803d",
+    bg: "#f0fdf4",
+    accent: "#22c55e",
+  },
+  "No Show": {
+    dot: "#ef4444",
+    color: "#b91c1c",
+    bg: "rgba(239,68,68,0.08)",
+    accent: "#ef4444",
+  },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const openFile = (filePath) => {
   if (!filePath) return;
-  const { data } = supabase.storage.from("coverage-files").getPublicUrl(filePath);
+  const { data } = supabase.storage
+    .from("coverage-files")
+    .getPublicUrl(filePath);
   if (data?.publicUrl) window.open(data.publicUrl, "_blank");
 };
 const getFileName = (filePath) => {
@@ -67,36 +110,71 @@ const isWeekendDate = (dateStr) => {
 };
 const getInitials = (name) => {
   if (!name) return "?";
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 };
 const formatTime = (timeStr) => {
   if (!timeStr) return "";
   const [h, m] = timeStr.slice(0, 5).split(":");
   const hour = parseInt(h, 10);
   const ampm = hour >= 12 ? "PM" : "AM";
-  const h12  = hour % 12 || 12;
+  const h12 = hour % 12 || 12;
   return `${h12}:${m} ${ampm}`;
 };
 const getTimeInState = (request) => {
   if (!request?.event_date || !request?.from_time) return "unavailable";
-  const timeStr    = request.from_time.slice(0, 5);
+  const timeStr = request.from_time.slice(0, 5);
   const eventStart = new Date(`${request.event_date}T${timeStr}`).getTime();
-  const now        = Date.now();
-  const diff       = eventStart - now;
-  const TEN_MIN    = 10 * 60 * 1000;
-  const TWO_MIN    =  2 * 60 * 1000;
+  const now = Date.now();
+  const diff = eventStart - now;
+  const TEN_MIN = 10 * 60 * 1000;
+  const TWO_MIN = 2 * 60 * 1000;
   if (diff >= -TWO_MIN && diff <= TEN_MIN) return "open";
-  if (diff > TEN_MIN)                      return "early";
+  if (diff > TEN_MIN) return "early";
   return "passed";
 };
 
 // ── Status pill ───────────────────────────────────────────────────────────────
 function StatusPill({ status, isDark }) {
-  const cfg = STATUS_CFG[status] || { dot: "#9ca3af", color: "#6b7280", bg: "#f9fafb" };
+  const cfg = STATUS_CFG[status] || {
+    dot: "#9ca3af",
+    color: "#6b7280",
+    bg: "#f9fafb",
+  };
   return (
-    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.55, px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? `${cfg.dot}18` : cfg.bg }}>
-      <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
-      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? cfg.dot : cfg.color, letterSpacing: "0.04em" }}>
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.55,
+        px: 1.1,
+        py: 0.3,
+        borderRadius: "10px",
+        backgroundColor: isDark ? `${cfg.dot}18` : cfg.bg,
+      }}
+    >
+      <Box
+        sx={{
+          width: 5,
+          height: 5,
+          borderRadius: "50%",
+          backgroundColor: cfg.dot,
+          flexShrink: 0,
+        }}
+      />
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.66rem",
+          fontWeight: 700,
+          color: isDark ? cfg.dot : cfg.color,
+          letterSpacing: "0.04em",
+        }}
+      >
         {status}
       </Typography>
     </Box>
@@ -105,8 +183,29 @@ function StatusPill({ status, isDark }) {
 
 function WeekendBadge({ isDark }) {
   return (
-    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.55, px: 1.1, py: 0.3, borderRadius: "6px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.1)", border: `1px solid rgba(245,197,43,0.3)` }}>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: "#b45309", letterSpacing: "0.04em" }}>Weekend</Typography>
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.55,
+        px: 1.1,
+        py: 0.3,
+        borderRadius: "10px",
+        backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.1)",
+        border: `1px solid rgba(245,197,43,0.3)`,
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.66rem",
+          fontWeight: 700,
+          color: "#b45309",
+          letterSpacing: "0.04em",
+        }}
+      >
+        Weekend
+      </Typography>
     </Box>
   );
 }
@@ -116,7 +215,16 @@ function DetailSection({ label, icon, children }) {
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}>
         {icon && <Box sx={{ color: "text.disabled" }}>{icon}</Box>}
-        <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.09em" }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.62rem",
+            fontWeight: 700,
+            color: "text.secondary",
+            textTransform: "uppercase",
+            letterSpacing: "0.09em",
+          }}
+        >
           {label}
         </Typography>
       </Box>
@@ -127,90 +235,259 @@ function DetailSection({ label, icon, children }) {
 
 // ── Assignment Card ───────────────────────────────────────────────────────────
 function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
-  const cfg   = STATUS_CFG[a.status] || { accent: "#9ca3af" };
-  const req   = a.request;
+  const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
+  const req = a.request;
   const state = a.status === "Approved" ? getTimeInState(req) : null;
 
   return (
     <Box
       onClick={() => onView(a)}
       sx={{
-        position: "relative", borderRadius: "12px", border: `1px solid ${border}`,
-        backgroundColor: "background.paper", overflow: "hidden", cursor: "pointer",
+        position: "relative",
+        borderRadius: "10px",
+        border: `1px solid ${border}`,
+        backgroundColor: "background.paper",
+        overflow: "hidden",
+        cursor: "pointer",
         transition: "box-shadow 0.18s, transform 0.18s",
-        "&:hover": { boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.35)" : "0 4px 20px rgba(53,53,53,0.10)", transform: "translateY(-1px)" },
+        "&:hover": {
+          boxShadow: isDark
+            ? "0 4px 20px rgba(0,0,0,0.35)"
+            : "0 4px 20px rgba(53,53,53,0.10)",
+          transform: "translateY(-1px)",
+        },
       }}
     >
-      <Box sx={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", borderRadius: "12px 0 0 12px", backgroundColor: cfg.accent }} />
-      <Box sx={{ pl: 2.5, pr: 2, pt: 1.75, pb: 1.75, display: "flex", flexDirection: "column", gap: 1.25 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+      <Box
+        sx={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: "3px",
+          borderRadius: "10px 0 0 10px",
+          backgroundColor: cfg.accent,
+        }}
+      />
+      <Box
+        sx={{
+          pl: 2.5,
+          pr: 2,
+          pt: 1.75,
+          pb: 1.75,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.25,
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            flexWrap: "wrap",
+          }}
+        >
           <StatusPill status={a.status} isDark={isDark} />
           {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
         </Box>
-        <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.92rem", color: "text.primary", lineHeight: 1.35 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontWeight: 700,
+            fontSize: "0.92rem",
+            color: "text.primary",
+            lineHeight: 1.35,
+          }}
+        >
           {req?.title || "—"}
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
           {req?.event_date && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
-                {new Date(req.event_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+              <CalendarTodayOutlinedIcon
+                sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "text.secondary",
+                }}
+              >
+                {new Date(req.event_date).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </Typography>
             </Box>
           )}
           {req?.from_time && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <AccessTimeOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
-                {formatTime(req.from_time)}{req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
+              <AccessTimeOutlinedIcon
+                sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "text.secondary",
+                }}
+              >
+                {formatTime(req.from_time)}
+                {req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
               </Typography>
             </Box>
           )}
           {req?.venue && (
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
-              <LocationOnOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0, mt: 0.15 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary", lineHeight: 1.4 }}>{req.venue}</Typography>
+              <LocationOnOutlinedIcon
+                sx={{ fontSize: 12, color: GOLD, flexShrink: 0, mt: 0.15 }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "text.secondary",
+                  lineHeight: 1.4,
+                }}
+              >
+                {req.venue}
+              </Typography>
             </Box>
           )}
           {req?.entity?.name && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <PersonOutlineOutlinedIcon sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>{req.entity.name}</Typography>
+              <PersonOutlineOutlinedIcon
+                sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "text.secondary",
+                }}
+              >
+                {req.entity.name}
+              </Typography>
             </Box>
           )}
         </Box>
         {a.assigned_by_profile?.full_name && (
-          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.disabled" }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.disabled" }}
+          >
             Assigned by {a.assigned_by_profile.full_name}
           </Typography>
         )}
         <Box sx={{ height: "1px", backgroundColor: border }} />
         <Box onClick={(e) => e.stopPropagation()}>
           {a.status === "Approved" && state === "open" && (
-            <Box onClick={() => onTimeIn(a)} sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75, py: 0.9, borderRadius: "8px", cursor: "pointer", backgroundColor: "#3b82f6", fontFamily: dm, fontSize: "0.8rem", fontWeight: 700, color: "#fff", transition: "background-color 0.15s", "&:hover": { backgroundColor: "#2563eb" } }}>
+            <Box
+              onClick={() => onTimeIn(a)}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0.75,
+                py: 0.9,
+                borderRadius: "10px",
+                cursor: "pointer",
+                backgroundColor: "#212121",
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "#fff",
+                transition: "background-color 0.15s",
+                "&:hover": { backgroundColor: "#333" },
+              }}
+            >
               <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
               Time In
             </Box>
           )}
           {a.status === "Approved" && state === "early" && (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 0.9, borderRadius: "8px", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.76rem", color: "text.disabled" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 0.9,
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                color: "text.disabled",
+              }}
+            >
               Time In opens 10 mins before event
             </Box>
           )}
           {a.status === "Approved" && state === "passed" && (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 0.9, borderRadius: "8px", border: `1px solid rgba(239,68,68,0.25)`, backgroundColor: "rgba(239,68,68,0.04)", fontFamily: dm, fontSize: "0.76rem", color: "#b91c1c" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 0.9,
+                borderRadius: "10px",
+                border: `1px solid rgba(239,68,68,0.25)`,
+                backgroundColor: "rgba(239,68,68,0.04)",
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                color: "#b91c1c",
+              }}
+            >
               Time In window has passed
             </Box>
           )}
           {a.status === "On Going" && (
-            <Box onClick={() => onComplete(a)} sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75, py: 0.9, borderRadius: "8px", cursor: "pointer", backgroundColor: "rgba(34,197,94,0.08)", border: `1px solid rgba(34,197,94,0.3)`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 700, color: "#15803d", transition: "all 0.15s", "&:hover": { backgroundColor: "rgba(34,197,94,0.15)", borderColor: "#22c55e" } }}>
+            <Box
+              onClick={() => onComplete(a)}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0.75,
+                py: 0.9,
+                borderRadius: "10px",
+                cursor: "pointer",
+                backgroundColor: "#212121",
+                border: `1px solid #212121`,
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "#fff",
+                transition: "all 0.15s",
+                "&:hover": {
+                  backgroundColor: "#333",
+                  borderColor: "#333",
+                },
+              }}
+            >
               <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
               Mark Complete
             </Box>
           )}
           {a.status === "Completed" && (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75, py: 0.9, borderRadius: "8px", border: `1px solid rgba(34,197,94,0.25)`, backgroundColor: "rgba(34,197,94,0.05)", fontFamily: dm, fontSize: "0.76rem", fontWeight: 600, color: "#15803d" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0.75,
+                py: 0.9,
+                borderRadius: "10px",
+                border: `1px solid rgba(34,197,94,0.25)`,
+                backgroundColor: "rgba(34,197,94,0.05)",
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                fontWeight: 600,
+                color: "#15803d",
+              }}
+            >
               <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
               Completed
             </Box>
@@ -222,9 +499,17 @@ function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
 }
 
 // ── Assignment Detail Dialog ──────────────────────────────────────────────────
-function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkComplete, onTimeIn, currentUserId }) {
+function AssignmentDetailDialog({
+  assignment,
+  open,
+  onClose,
+  isDark,
+  onMarkComplete,
+  onTimeIn,
+  currentUserId,
+}) {
   if (!assignment) return null;
-  const req    = assignment.request;
+  const req = assignment.request;
   const border = isDark ? BORDER_DARK : BORDER;
 
   const coStaffers = useMemo(() => {
@@ -243,141 +528,502 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
   }, [coStaffers]);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm"
-      PaperProps={{ sx: { borderRadius: "14px", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)", maxHeight: "90vh", display: "flex", flexDirection: "column" } }}
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: "10px",
+          backgroundColor: "background.paper",
+          border: `1px solid ${border}`,
+          boxShadow: isDark
+            ? "0 24px 64px rgba(0,0,0,0.6)"
+            : "0 8px 40px rgba(53,53,53,0.12)",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
     >
-      <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2, flexShrink: 0 }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: `1px solid ${border}`,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 2,
+          flexShrink: 0,
+        }}
+      >
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.6, flexWrap: "wrap" }}>
-            <Box sx={{ width: 2.5, height: 22, borderRadius: "2px", backgroundColor: GOLD, flexShrink: 0 }} />
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              mb: 0.6,
+              flexWrap: "wrap",
+            }}
+          >
+            <Box
+              sx={{
+                width: 2.5,
+                height: 22,
+                borderRadius: "10px",
+                backgroundColor: GOLD,
+                flexShrink: 0,
+              }}
+            />
             <StatusPill status={assignment.status} isDark={isDark} />
             {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
           </Box>
-          <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.95rem", color: "text.primary", lineHeight: 1.35, pl: 0.5 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.95rem",
+              color: "text.primary",
+              lineHeight: 1.35,
+              pl: 0.5,
+            }}
+          >
             {req?.title || "—"}
           </Typography>
           {assignment.assigned_by_profile?.full_name && (
-            <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.disabled", mt: 0.3, pl: 0.5 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.7rem",
+                color: "text.disabled",
+                mt: 0.3,
+                pl: 0.5,
+              }}
+            >
               Assigned by {assignment.assigned_by_profile.full_name}
             </Typography>
           )}
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ borderRadius: "8px", color: "text.secondary", flexShrink: 0, "&:hover": { backgroundColor: HOVER_BG } }}>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          sx={{
+            borderRadius: "10px",
+            color: "text.secondary",
+            flexShrink: 0,
+            "&:hover": { backgroundColor: HOVER_BG },
+          }}
+        >
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
-      <Box sx={{ px: 3, py: 1.75, display: "flex", flexWrap: "wrap", gap: 2.5, borderBottom: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", flexShrink: 0 }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 1.75,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2.5,
+          borderBottom: `1px solid ${border}`,
+          backgroundColor: isDark
+            ? "rgba(255,255,255,0.02)"
+            : "rgba(53,53,53,0.02)",
+          flexShrink: 0,
+        }}
+      >
         {req?.event_date && (
-          <InfoChip icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />} label="Date">
-            {new Date(req.event_date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+          <InfoChip
+            icon={
+              <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />
+            }
+            label="Date"
+          >
+            {new Date(req.event_date).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
           </InfoChip>
         )}
         {req?.from_time && (
-          <InfoChip icon={<AccessTimeOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />} label="Time">
-            {formatTime(req.from_time)}{req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
+          <InfoChip
+            icon={<AccessTimeOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />}
+            label="Time"
+          >
+            {formatTime(req.from_time)}
+            {req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
           </InfoChip>
         )}
         {req?.venue && (
-          <InfoChip icon={<LocationOnOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />} label="Venue">
+          <InfoChip
+            icon={<LocationOnOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />}
+            label="Venue"
+          >
             {req.venue}
           </InfoChip>
         )}
       </Box>
-      <DialogContent sx={{ p: 0, flex: 1, overflowY: "auto", "&::-webkit-scrollbar": { width: 5 }, "&::-webkit-scrollbar-thumb": { background: isDark ? "#333" : "#ddd", borderRadius: 3 }, "&::-webkit-scrollbar-thumb:hover": { background: GOLD } }}>
-        <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <DialogContent
+        sx={{
+          p: 0,
+          flex: 1,
+          overflowY: "auto",
+          "&::-webkit-scrollbar": { width: 5 },
+          "&::-webkit-scrollbar-thumb": {
+            background: isDark ? "#333" : "#ddd",
+            borderRadius: "10px",
+          },
+          "&::-webkit-scrollbar-thumb:hover": { background: GOLD },
+        }}
+      >
+        <Box
+          sx={{
+            px: 3,
+            py: 2.5,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2.5,
+          }}
+        >
           {req?.description && (
-            <DetailSection label="Description" icon={<DescriptionOutlinedIcon sx={{ fontSize: 13 }} />}>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", lineHeight: 1.65 }}>{req.description}</Typography>
+            <DetailSection
+              label="Description"
+              icon={<DescriptionOutlinedIcon sx={{ fontSize: 13 }} />}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "text.primary",
+                  lineHeight: 1.65,
+                }}
+              >
+                {req.description}
+              </Typography>
             </DetailSection>
           )}
-          <DetailSection label="Client" icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 13 }} />}>
+          <DetailSection
+            label="Client"
+            icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 13 }} />}
+          >
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4 }}>
-              {req?.entity?.name && <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", fontWeight: 500 }}>{req.entity.name}</Typography>}
-              {req?.contact_person && <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>Contact: {req.contact_person}</Typography>}
+              {req?.entity?.name && (
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.82rem",
+                    color: "text.primary",
+                    fontWeight: 500,
+                  }}
+                >
+                  {req.entity.name}
+                </Typography>
+              )}
+              {req?.contact_person && (
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  Contact: {req.contact_person}
+                </Typography>
+              )}
               {req?.contact_info && (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <PhoneOutlinedIcon sx={{ fontSize: 12, color: "text.disabled" }} />
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>{req.contact_info}</Typography>
+                  <PhoneOutlinedIcon
+                    sx={{ fontSize: 12, color: "text.disabled" }}
+                  />
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    {req.contact_info}
+                  </Typography>
                 </Box>
               )}
             </Box>
           </DetailSection>
-          <DetailSection label="Co-Staffers Assigned" icon={<GroupOutlinedIcon sx={{ fontSize: 13 }} />}>
+          <DetailSection
+            label="Co-Staffers Assigned"
+            icon={<GroupOutlinedIcon sx={{ fontSize: 13 }} />}
+          >
             {coStaffers.length === 0 ? (
-              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>No other staffers assigned.</Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  color: "text.disabled",
+                }}
+              >
+                No other staffers assigned.
+              </Typography>
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                {Object.entries(coStaffersBySection).map(([section, staffers]) => {
-                  const colors = SECTION_COLORS[section] || { bg: "#f3f4f6", color: "#6b7280" };
-                  return (
-                    <Box key={section}>
-                      <Box sx={{ display: "inline-flex", px: 1, py: 0.2, borderRadius: "5px", backgroundColor: colors.bg, mb: 0.75 }}>
-                        <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: colors.color, letterSpacing: "0.07em", textTransform: "uppercase" }}>{section}</Typography>
+                {Object.entries(coStaffersBySection).map(
+                  ([section, staffers]) => {
+                    const colors = SECTION_COLORS[section] || {
+                      bg: "#f3f4f6",
+                      color: "#6b7280",
+                    };
+                    return (
+                      <Box key={section}>
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            px: 1,
+                            py: 0.2,
+                            borderRadius: "10px",
+                            backgroundColor: colors.bg,
+                            mb: 0.75,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.62rem",
+                              fontWeight: 700,
+                              color: colors.color,
+                              letterSpacing: "0.07em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {section}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}
+                        >
+                          {staffers.map((staffer) => (
+                            <Box
+                              key={staffer.id}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.75,
+                                px: 1,
+                                py: 0.6,
+                                borderRadius: "10px",
+                                border: `1px solid ${border}`,
+                                backgroundColor: isDark
+                                  ? "rgba(255,255,255,0.02)"
+                                  : "rgba(53,53,53,0.02)",
+                              }}
+                            >
+                              <Avatar
+                                sx={{
+                                  width: 20,
+                                  height: 20,
+                                  fontSize: "0.58rem",
+                                  fontWeight: 700,
+                                  backgroundColor: colors.bg,
+                                  color: colors.color,
+                                }}
+                              >
+                                {getInitials(staffer.full_name)}
+                              </Avatar>
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.78rem",
+                                  fontWeight: 500,
+                                  color: "text.primary",
+                                }}
+                              >
+                                {staffer.full_name}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
                       </Box>
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-                        {staffers.map((staffer) => (
-                          <Box key={staffer.id} sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1, py: 0.6, borderRadius: "8px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
-                            <Avatar sx={{ width: 20, height: 20, fontSize: "0.58rem", fontWeight: 700, backgroundColor: colors.bg, color: colors.color }}>{getInitials(staffer.full_name)}</Avatar>
-                            <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 500, color: "text.primary" }}>{staffer.full_name}</Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  );
-                })}
+                    );
+                  },
+                )}
               </Box>
             )}
           </DetailSection>
           {req?.file_url && (
-            <DetailSection label="Attachment" icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 13 }} />}>
-              <Box onClick={() => openFile(req.file_url)} sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: "6px", cursor: "pointer", border: `1px solid ${isDark ? BORDER_DARK : BORDER}`, transition: "all 0.15s", "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 } }}>
-                <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
-                <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>{getFileName(req.file_url)}</Typography>
-                <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+            <DetailSection
+              label="Attachment"
+              icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 13 }} />}
+            >
+              <Box
+                onClick={() => openFile(req.file_url)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  px: 1.25,
+                  py: 0.5,
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  border: `1px solid ${isDark ? BORDER_DARK : BORDER}`,
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
+                }}
+              >
+                <InsertDriveFileOutlinedIcon
+                  sx={{ fontSize: 13, color: "text.secondary" }}
+                />
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  {getFileName(req.file_url)}
+                </Typography>
+                <ChevronRightIcon
+                  sx={{ fontSize: 13, color: "text.disabled" }}
+                />
               </Box>
             </DetailSection>
           )}
-          {assignment.status === "Approved" && getTimeInState(assignment.request) === "open" && (
-            <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(59,130,246,0.06)", border: `1px solid rgba(59,130,246,0.25)` }}>
-              <HowToRegOutlinedIcon sx={{ fontSize: 14, color: "#1d4ed8", flexShrink: 0, mt: 0.1 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#1d4ed8", lineHeight: 1.55 }}>
-                Coverage is starting soon. Tap <strong>Time In</strong> when you arrive at the venue.
-              </Typography>
-            </Box>
-          )}
+          {assignment.status === "Approved" &&
+            getTimeInState(assignment.request) === "open" && (
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: "10px",
+                  backgroundColor: "rgba(59,130,246,0.06)",
+                  border: `1px solid rgba(59,130,246,0.25)`,
+                }}
+              >
+                <HowToRegOutlinedIcon
+                  sx={{
+                    fontSize: 14,
+                    color: "#1d4ed8",
+                    flexShrink: 0,
+                    mt: 0.1,
+                  }}
+                />
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.76rem",
+                    color: "#1d4ed8",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  Coverage is starting soon. Tap <strong>Time In</strong> when
+                  you arrive at the venue.
+                </Typography>
+              </Box>
+            )}
           {assignment.status === "On Going" && (
-            <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.25)` }}>
-              <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#15803d", flexShrink: 0, mt: 0.1 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#15803d", lineHeight: 1.55 }}>
-                You've checked in.{assignment.timed_in_at && ` Checked in at ${new Date(assignment.timed_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`} Mark complete when coverage is done.
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                px: 1.5,
+                py: 1.25,
+                borderRadius: "10px",
+                backgroundColor: "rgba(34,197,94,0.06)",
+                border: `1px solid rgba(34,197,94,0.25)`,
+              }}
+            >
+              <CheckCircleOutlineIcon
+                sx={{ fontSize: 14, color: "#15803d", flexShrink: 0, mt: 0.1 }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "#15803d",
+                  lineHeight: 1.55,
+                }}
+              >
+                You've checked in.
+                {assignment.timed_in_at &&
+                  ` Checked in at ${new Date(assignment.timed_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`}{" "}
+                Mark complete when coverage is done.
               </Typography>
             </Box>
           )}
         </Box>
       </DialogContent>
-      <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)", flexShrink: 0 }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 1.75,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1,
+          backgroundColor: isDark
+            ? "rgba(255,255,255,0.01)"
+            : "rgba(53,53,53,0.01)",
+          flexShrink: 0,
+        }}
+      >
         <CancelBtn onClick={onClose} border={isDark ? BORDER_DARK : BORDER} />
-        {assignment.status === "Approved" && (() => {
-          const state = getTimeInState(assignment.request);
-          if (state === "open") return (
-            <PrimaryBtn onClick={() => { onClose(); onTimeIn(assignment); }}>
-              <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
-              Time In
-            </PrimaryBtn>
-          );
-          if (state === "early") return (
-            <Box sx={{ px: 1.75, py: 0.65, borderRadius: "8px", border: `1px solid rgba(53,53,53,0.08)`, fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
-              Time In opens 10 mins before event
-            </Box>
-          );
-          return (
-            <Box sx={{ px: 1.75, py: 0.65, borderRadius: "8px", border: `1px solid rgba(239,68,68,0.25)`, fontFamily: dm, fontSize: "0.78rem", color: "#b91c1c", backgroundColor: "rgba(239,68,68,0.05)" }}>
-              Time In window has passed
-            </Box>
-          );
-        })()}
+        {assignment.status === "Approved" &&
+          (() => {
+            const state = getTimeInState(assignment.request);
+            if (state === "open")
+              return (
+                <PrimaryBtn
+                  onClick={() => {
+                    onClose();
+                    onTimeIn(assignment);
+                  }}
+                >
+                  <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
+                  Time In
+                </PrimaryBtn>
+              );
+            if (state === "early")
+              return (
+                <Box
+                  sx={{
+                    px: 1.75,
+                    py: 0.65,
+                    borderRadius: "10px",
+                    border: `1px solid rgba(53,53,53,0.08)`,
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    color: "text.disabled",
+                  }}
+                >
+                  Time In opens 10 mins before event
+                </Box>
+              );
+            return (
+              <Box
+                sx={{
+                  px: 1.75,
+                  py: 0.65,
+                  borderRadius: "10px",
+                  border: `1px solid rgba(239,68,68,0.25)`,
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  color: "#b91c1c",
+                  backgroundColor: "rgba(239,68,68,0.05)",
+                }}
+              >
+                Time In window has passed
+              </Box>
+            );
+          })()}
         {assignment.status === "On Going" && (
-          <PrimaryBtn onClick={() => { onClose(); onMarkComplete(assignment); }}>
+          <PrimaryBtn
+            onClick={() => {
+              onClose();
+              onMarkComplete(assignment);
+            }}
+          >
             <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
             Mark Complete
           </PrimaryBtn>
@@ -388,43 +1034,183 @@ function AssignmentDetailDialog({ assignment, open, onClose, isDark, onMarkCompl
 }
 
 // ── Confirm Complete Dialog ───────────────────────────────────────────────────
-function ConfirmCompleteDialog({ assignment, open, onClose, onConfirm, completing, error, isDark }) {
+function ConfirmCompleteDialog({
+  assignment,
+  open,
+  onClose,
+  onConfirm,
+  completing,
+  error,
+  isDark,
+}) {
   if (!assignment) return null;
   const border = isDark ? BORDER_DARK : BORDER;
   return (
-    <Dialog open={open} onClose={() => !completing && onClose()} maxWidth="xs" fullWidth
-      PaperProps={{ sx: { borderRadius: "14px", backgroundColor: "background.paper", border: `1px solid ${border}`, boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 8px 40px rgba(53,53,53,0.12)" } }}
+    <Dialog
+      open={open}
+      onClose={() => !completing && onClose()}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: "10px",
+          backgroundColor: "background.paper",
+          border: `1px solid ${border}`,
+          boxShadow: isDark
+            ? "0 24px 64px rgba(0,0,0,0.6)"
+            : "0 8px 40px rgba(53,53,53,0.12)",
+        },
+      }}
     >
-      <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: `1px solid ${border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box sx={{ width: 2.5, height: 26, borderRadius: "2px", backgroundColor: GOLD, flexShrink: 0 }} />
+          <Box
+            sx={{
+              width: 2.5,
+              height: 26,
+              borderRadius: "10px",
+              backgroundColor: GOLD,
+              flexShrink: 0,
+            }}
+          />
           <Box>
-            <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}>Mark as Completed</Typography>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}>Confirm you've finished this coverage</Typography>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                color: "text.primary",
+              }}
+            >
+              Mark as Completed
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.7rem",
+                color: "text.secondary",
+              }}
+            >
+              Confirm you've finished this coverage
+            </Typography>
           </Box>
         </Box>
-        <IconButton size="small" onClick={onClose} disabled={completing} sx={{ borderRadius: "8px", color: "text.secondary", "&:hover": { backgroundColor: HOVER_BG } }}>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          disabled={completing}
+          sx={{
+            borderRadius: "10px",
+            color: "text.secondary",
+            "&:hover": { backgroundColor: HOVER_BG },
+          }}
+        >
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
-      <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>
-        {error && <Alert severity="error" sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
-        <Box sx={{ px: 1.75, py: 1.25, borderRadius: "8px", border: `1px solid ${border}`, backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", fontWeight: 600, color: "text.primary" }}>{assignment.request?.title}</Typography>
+      <Box
+        sx={{
+          px: 3,
+          py: 2.5,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.75,
+        }}
+      >
+        {error && (
+          <Alert
+            severity="error"
+            sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}
+          >
+            {error}
+          </Alert>
+        )}
+        <Box
+          sx={{
+            px: 1.75,
+            py: 1.25,
+            borderRadius: "10px",
+            border: `1px solid ${border}`,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.02)"
+              : "rgba(53,53,53,0.02)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.84rem",
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
+            {assignment.request?.title}
+          </Typography>
           {assignment.request?.event_date && (
-            <Typography sx={{ fontFamily: dm, fontSize: "0.73rem", color: "text.secondary", mt: 0.3 }}>
-              {new Date(assignment.request.event_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.73rem",
+                color: "text.secondary",
+                mt: 0.3,
+              }}
+            >
+              {new Date(assignment.request.event_date).toLocaleDateString(
+                "en-US",
+                { month: "long", day: "numeric", year: "numeric" },
+              )}
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: "flex", gap: 1, px: 1.5, py: 1.25, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)", border: `1px solid rgba(245,197,43,0.3)` }}>
-          <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: "#b45309", flexShrink: 0, mt: 0.1 }} />
-          <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "#b45309", lineHeight: 1.55 }}>
-            This confirms you have covered the event. This action cannot be undone.
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            px: 1.5,
+            py: 1.25,
+            borderRadius: "10px",
+            backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)",
+            border: `1px solid rgba(245,197,43,0.3)`,
+          }}
+        >
+          <WarningAmberOutlinedIcon
+            sx={{ fontSize: 14, color: "#b45309", flexShrink: 0, mt: 0.1 }}
+          />
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              color: "#b45309",
+              lineHeight: 1.55,
+            }}
+          >
+            This confirms you have covered the event. This action cannot be
+            undone.
           </Typography>
         </Box>
       </Box>
-      <Box sx={{ px: 3, py: 1.75, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end", gap: 1, backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)" }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 1.75,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1,
+          backgroundColor: isDark
+            ? "rgba(255,255,255,0.01)"
+            : "rgba(53,53,53,0.01)",
+        }}
+      >
         <CancelBtn onClick={onClose} disabled={completing} border={border} />
         <PrimaryBtn onClick={onConfirm} loading={completing}>
           {!completing && <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
@@ -437,37 +1223,44 @@ function ConfirmCompleteDialog({ assignment, open, onClose, onConfirm, completin
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MyAssignment() {
-  const theme  = useTheme();
+  const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
 
-  const [currentUser,   setCurrentUser]   = useState(null);
-  const [assignments,   setAssignments]   = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState("");
-  const [statusFilter,  setStatusFilter]  = useState("All");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
-  const [detailTarget,  setDetailTarget]  = useState(null);
+  const [detailTarget, setDetailTarget] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
-  const [completing,    setCompleting]    = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState("");
 
-  const [timeInTarget,  setTimeInTarget]  = useState(null);
-  const [timingIn,      setTimingIn]      = useState(false);
-  const [timeInError,   setTimeInError]   = useState("");
-  const [onGoingAlert,  setOnGoingAlert]  = useState(null);
+  const [timeInTarget, setTimeInTarget] = useState(null);
+  const [timingIn, setTimingIn] = useState(false);
+  const [timeInError, setTimeInError] = useState("");
+  const [onGoingAlert, setOnGoingAlert] = useState(null);
 
-  const [semesters,      setSemesters]      = useState([]);
-  const [selectedSem,    setSelectedSem]    = useState("all");
+  const [semesters, setSemesters] = useState([]);
+  const [selectedSem, setSelectedSem] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState("all");
-  const [filterOpen,     setFilterOpen]     = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
+  const timeInNotifiedRef = useRef(new Set());
 
   useEffect(() => {
     async function loadUser() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase.from("profiles").select("id, full_name, section, division").eq("id", user.id).single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, full_name, section, division")
+        .eq("id", user.id)
+        .single();
       setCurrentUser(profile);
     }
     loadUser();
@@ -475,7 +1268,10 @@ export default function MyAssignment() {
 
   useEffect(() => {
     async function loadSemesters() {
-      const { data } = await supabase.from("semesters").select("id, name, start_date, end_date").order("start_date", { ascending: false });
+      const { data } = await supabase
+        .from("semesters")
+        .select("id, name, start_date, end_date")
+        .order("start_date", { ascending: false });
       setSemesters(data || []);
     }
     loadSemesters();
@@ -486,7 +1282,8 @@ export default function MyAssignment() {
     setLoading(true);
     const { data, error: fetchErr } = await supabase
       .from("coverage_assignments")
-      .select(`
+      .select(
+        `
         id, status, section, assigned_at, timed_in_at,
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
@@ -499,7 +1296,8 @@ export default function MyAssignment() {
             staffer:assigned_to ( id, full_name, section, avatar_url )
           )
         )
-      `)
+      `,
+      )
       .eq("assigned_to", currentUser.id)
       .not("status", "eq", "Pending")
       .order("assigned_at", { ascending: false });
@@ -508,30 +1306,59 @@ export default function MyAssignment() {
     setLoading(false);
   }, [currentUser]);
 
-  useEffect(() => { loadAssignments(); }, [loadAssignments]);
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
 
   useRealtimeNotify(
     "coverage_assignments",
     loadAssignments,
     currentUser?.id ? `assigned_to=eq.${currentUser.id}` : null,
-    { title: "Assignment" }
+    { title: "Assignment" },
   );
 
   useEffect(() => {
     function checkUpcoming() {
-      const now     = Date.now();
+      const now = Date.now();
       const TEN_MIN = 10 * 60 * 1000;
-      const TWO_MIN =  2 * 60 * 1000;
-      const match   = assignments.find((a) => {
+      const TWO_MIN = 2 * 60 * 1000;
+      const match = assignments.find((a) => {
         if (a.status !== "Approved") return false;
         const req = a.request;
         if (!req?.event_date || !req?.from_time) return false;
-        const timeStr    = req.from_time.slice(0, 5);
+        const timeStr = req.from_time.slice(0, 5);
         const eventStart = new Date(`${req.event_date}T${timeStr}`).getTime();
-        const diff       = eventStart - now;
+        const diff = eventStart - now;
         return diff >= -TWO_MIN && diff <= TEN_MIN;
       });
-      if (match) setOnGoingAlert(match);
+      if (match) {
+        setOnGoingAlert(match);
+        // Browser notification — fires once per assignment
+        if (
+          !timeInNotifiedRef.current.has(match.id) &&
+          "Notification" in window
+        ) {
+          timeInNotifiedRef.current.add(match.id);
+          const fire = () => {
+            try {
+              new Notification("TGP — Time to Check In", {
+                body: `"${match.request?.title || "Your event"}" starts in 10 minutes. Open the app to time in now.`,
+                icon: "/favicon.ico",
+                tag: `timein-${match.id}`,
+              });
+            } catch {
+              /* silently ignore if blocked */
+            }
+          };
+          if (Notification.permission === "granted") {
+            fire();
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then((p) => {
+              if (p === "granted") fire();
+            });
+          }
+        }
+      }
     }
     checkUpcoming();
     const id = setInterval(checkUpcoming, 30_000);
@@ -539,76 +1366,186 @@ export default function MyAssignment() {
   }, [assignments]);
 
   const entityOptions = useMemo(() => {
-    const seen = new Set(), opts = [];
+    const seen = new Set(),
+      opts = [];
     assignments.forEach((a) => {
       const name = a.request?.entity?.name;
-      if (name && !seen.has(name)) { seen.add(name); opts.push(name); }
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        opts.push(name);
+      }
     });
     return opts.sort();
   }, [assignments]);
 
-  const activeFilterCount = (selectedSem !== "all" ? 1 : 0) + (selectedEntity !== "all" ? 1 : 0);
+  const activeFilterCount =
+    (selectedSem !== "all" ? 1 : 0) + (selectedEntity !== "all" ? 1 : 0);
 
-  const applyFilters = useCallback((list) => {
-    let out = list;
-    if (selectedSem !== "all") {
-      const sem = semesters.find((s) => s.id === selectedSem);
-      if (sem) {
-        const start = new Date(sem.start_date);
-        const end   = new Date(sem.end_date); end.setHours(23, 59, 59, 999);
-        out = out.filter((a) => {
-          if (!a.request?.event_date) return false;
-          const d = new Date(a.request.event_date);
-          return d >= start && d <= end;
-        });
+  const applyFilters = useCallback(
+    (list) => {
+      let out = list;
+      if (selectedSem !== "all") {
+        const sem = semesters.find((s) => s.id === selectedSem);
+        if (sem) {
+          const start = new Date(sem.start_date);
+          const end = new Date(sem.end_date);
+          end.setHours(23, 59, 59, 999);
+          out = out.filter((a) => {
+            if (!a.request?.event_date) return false;
+            const d = new Date(a.request.event_date);
+            return d >= start && d <= end;
+          });
+        }
       }
-    }
-    if (selectedEntity !== "all") out = out.filter((a) => a.request?.entity?.name === selectedEntity);
-    return out;
-  }, [selectedSem, selectedEntity, semesters]);
+      if (selectedEntity !== "all")
+        out = out.filter((a) => a.request?.entity?.name === selectedEntity);
+      return out;
+    },
+    [selectedSem, selectedEntity, semesters],
+  );
 
-  const filtered          = useMemo(() => applyFilters(statusFilter === "All" ? assignments : assignments.filter((a) => a.status === statusFilter)), [assignments, statusFilter, applyFilters]);
-  const allFiltered       = useMemo(() => applyFilters(assignments), [assignments, applyFilters]);
-  const completedFiltered = useMemo(() => applyFilters(assignments.filter((a) => a.status === "Completed")), [assignments, applyFilters]);
+  const filtered = useMemo(
+    () =>
+      applyFilters(
+        statusFilter === "All"
+          ? assignments
+          : assignments.filter((a) => a.status === statusFilter),
+      ),
+    [assignments, statusFilter, applyFilters],
+  );
+  const allFiltered = useMemo(
+    () => applyFilters(assignments),
+    [assignments, applyFilters],
+  );
+  const completedFiltered = useMemo(
+    () => applyFilters(assignments.filter((a) => a.status === "Completed")),
+    [assignments, applyFilters],
+  );
 
   const handleComplete = async () => {
     if (!confirmTarget) return;
-    setCompleting(true); setCompleteError("");
+    setCompleting(true);
+    setCompleteError("");
     const now = new Date().toISOString();
-    const { error: updErr } = await supabase.from("coverage_assignments").update({ status: "Completed", completed_at: now }).eq("id", confirmTarget.id);
-    if (updErr) { setCompleteError(updErr.message); setCompleting(false); return; }
-    const { data: allA } = await supabase.from("coverage_assignments").select("status").eq("request_id", confirmTarget.request.id);
-    if ((allA || []).every((a) => a.status === "Completed")) {
-      await supabase.from("coverage_requests").update({ status: "Completed", completed_at: now }).eq("id", confirmTarget.request.id);
+    const { error: updErr } = await supabase
+      .from("coverage_assignments")
+      .update({ status: "Completed", completed_at: now })
+      .eq("id", confirmTarget.id);
+    if (updErr) {
+      setCompleteError(updErr.message);
+      setCompleting(false);
+      return;
     }
-    setConfirmTarget(null); setCompleting(false); loadAssignments();
+    const { data: allA } = await supabase
+      .from("coverage_assignments")
+      .select("status")
+      .eq("request_id", confirmTarget.request.id);
+    if ((allA || []).every((a) => a.status === "Completed")) {
+      await supabase
+        .from("coverage_requests")
+        .update({ status: "Completed", completed_at: now })
+        .eq("id", confirmTarget.request.id);
+    }
+    setConfirmTarget(null);
+    setCompleting(false);
+    loadAssignments();
   };
 
   const handleTimeIn = async ({ selfieFile, gpsData }) => {
     if (!timeInTarget || !selfieFile) return;
-    setTimingIn(true); setTimeInError("");
+    setTimingIn(true);
+    setTimeInError("");
     try {
-      const now       = new Date().toISOString();
+      const now = new Date().toISOString();
       const timestamp = Date.now();
-      const ext       = selfieFile.name.split(".").pop() || "jpg";
-      const filePath  = `${currentUser.id}/${timeInTarget.id}_${timestamp}.${ext}`;
-      const { data: uploadData, error: uploadErr } = await supabase.storage.from("login-proof").upload(filePath, selfieFile, { cacheControl: "3600", upsert: false });
-      if (uploadErr) throw new Error(`Selfie upload failed: ${uploadErr.message}`);
-      const { error: assignErr } = await supabase.from("coverage_assignments").update({ status: "On Going", timed_in_at: now, selfie_url: uploadData.path, gps_lat: gpsData?.lat || null, gps_lng: gpsData?.lng || null, gps_verified: gpsData?.verified ?? false }).eq("id", timeInTarget.id);
+      const ext = selfieFile.name.split(".").pop() || "jpg";
+      const filePath = `${currentUser.id}/${timeInTarget.id}_${timestamp}.${ext}`;
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from("login-proof")
+        .upload(filePath, selfieFile, { cacheControl: "3600", upsert: false });
+      if (uploadErr)
+        throw new Error(`Selfie upload failed: ${uploadErr.message}`);
+      const { error: assignErr } = await supabase
+        .from("coverage_assignments")
+        .update({
+          status: "On Going",
+          timed_in_at: now,
+          selfie_url: uploadData.path,
+          gps_lat: gpsData?.lat || null,
+          gps_lng: gpsData?.lng || null,
+          gps_verified: gpsData?.verified ?? false,
+        })
+        .eq("id", timeInTarget.id);
       if (assignErr) throw assignErr;
-      const { error: reqErr } = await supabase.from("coverage_requests").update({ status: "On Going" }).eq("id", timeInTarget.request.id);
+      const { error: reqErr } = await supabase
+        .from("coverage_requests")
+        .update({ status: "On Going" })
+        .eq("id", timeInTarget.request.id);
       if (reqErr) throw reqErr;
-      const { data: admins } = await supabase.from("profiles").select("id").eq("role", "admin").eq("is_active", true);
-      const timeLabel = new Date(now).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      const gpsNote   = gpsData?.verified ? " · GPS verified ✓" : gpsData?.lat ? " · GPS unverified" : " · GPS unavailable";
-      const adminNotifs = (admins || []).map((admin) => ({ user_id: admin.id, recipient_id: admin.id, recipient_role: "admin", request_id: timeInTarget.request.id, type: "time_in_alert", title: timeInTarget.is_reassigned ? "Emergency Check-In" : "Staff Checked In", message: `${currentUser.full_name} checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.` }));
-      const { data: secHeads } = await supabase.from("profiles").select("id").eq("role", "sec_head").eq("section", timeInTarget.section).eq("is_active", true);
-      const secHeadNotifs = (secHeads || []).map((sh) => ({ user_id: sh.id, recipient_id: sh.id, recipient_role: "sec_head", request_id: timeInTarget.request.id, type: "time_in_alert", title: "Staff Checked In", message: `${currentUser.full_name} has checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.` }));
+      const { data: admins } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("role", "admin")
+        .eq("is_active", true);
+      const timeLabel = new Date(now).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const gpsNote = gpsData?.verified
+        ? " · GPS verified ✓"
+        : gpsData?.lat
+          ? " · GPS unverified"
+          : " · GPS unavailable";
+      const adminNotifs = (admins || []).map((admin) => ({
+        user_id: admin.id,
+        recipient_id: admin.id,
+        recipient_role: "admin",
+        request_id: timeInTarget.request.id,
+        type: "time_in_alert",
+        title: timeInTarget.is_reassigned
+          ? "Emergency Check-In"
+          : "Staff Checked In",
+        message: `${currentUser.full_name} checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
+      }));
+      const { data: secHeads } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("role", "sec_head")
+        .eq("section", timeInTarget.section)
+        .eq("is_active", true);
+      const secHeadNotifs = (secHeads || []).map((sh) => ({
+        user_id: sh.id,
+        recipient_id: sh.id,
+        recipient_role: "sec_head",
+        request_id: timeInTarget.request.id,
+        type: "time_in_alert",
+        title: "Staff Checked In",
+        message: `${currentUser.full_name} has checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
+      }));
       const clientId = timeInTarget.request?.requester_id;
-      const clientNotifs = clientId ? [{ user_id: clientId, recipient_id: clientId, recipient_role: "client", request_id: timeInTarget.request.id, type: "time_in_alert", title: "Coverage Has Started", message: `Coverage for "${timeInTarget.request.title}" has started. Your assigned team is now on the way.` }] : [];
+      const clientNotifs = clientId
+        ? [
+            {
+              user_id: clientId,
+              recipient_id: clientId,
+              recipient_role: "client",
+              request_id: timeInTarget.request.id,
+              type: "time_in_alert",
+              title: "Coverage Has Started",
+              message: `Coverage for "${timeInTarget.request.title}" has started. Your assigned team is now on the way.`,
+            },
+          ]
+        : [];
       const allNotifs = [...adminNotifs, ...secHeadNotifs, ...clientNotifs];
-      if (allNotifs.length) { const { error: notifErr } = await supabase.from("notifications").insert(allNotifs); if (notifErr) throw notifErr; }
-      setTimeInTarget(null); setOnGoingAlert(null); loadAssignments();
+      if (allNotifs.length) {
+        const { error: notifErr } = await supabase
+          .from("notifications")
+          .insert(allNotifs);
+        if (notifErr) throw notifErr;
+      }
+      setTimeInTarget(null);
+      setOnGoingAlert(null);
+      loadAssignments();
     } catch (err) {
       setTimeInError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -618,54 +1555,143 @@ export default function MyAssignment() {
 
   const selectedSemName = semesters.find((s) => s.id === selectedSem)?.name;
 
-  if (!currentUser || loading) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
-      <CircularProgress size={28} sx={{ color: GOLD }} />
-    </Box>
-  );
+  if (!currentUser || loading)
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "60vh",
+        }}
+      >
+        <CircularProgress size={28} sx={{ color: GOLD }} />
+      </Box>
+    );
 
   const TABS = [
-    { label: "All",       count: allFiltered.length },
+    { label: "All", count: allFiltered.length },
     { label: "Completed", count: completedFiltered.length },
   ];
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
-
+    <Box
+      sx={{
+        p: { xs: 2, sm: 3 },
+        backgroundColor: "background.default",
+        minHeight: "100%",
+        fontFamily: dm,
+      }}
+    >
       {/* ── Header — no subtitle ── */}
       <Box sx={{ mb: 2.5 }}>
-        <Typography sx={{ fontFamily: dm, fontWeight: 600, fontSize: "0.95rem", color: "text.primary", letterSpacing: "-0.01em" }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontWeight: 600,
+            fontSize: "0.95rem",
+            color: "text.primary",
+            letterSpacing: "-0.01em",
+          }}
+        >
           My Assignments
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{
+            mb: 2.5,
+            borderRadius: "10px",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+          }}
+        >
+          {error}
+        </Alert>
+      )}
 
       {/* ── Tabs + filter row ── */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0, gap: 1 }}>
-
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          mb: 0,
+          gap: 1,
+        }}
+      >
         {/* ── Segmented tab pills ── */}
-        <Box sx={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: "6px",
+            flexWrap: "wrap",
+            flex: 1,
+            alignItems: "flex-end",
+          }}
+        >
           {TABS.map((tab) => {
             const isActive = statusFilter === tab.label;
             return (
-              <Box key={tab.label} onClick={() => setStatusFilter(tab.label)}
+              <Box
+                key={tab.label}
+                onClick={() => setStatusFilter(tab.label)}
                 sx={{
-                  display: "inline-flex", alignItems: "center", gap: 0.6,
-                  px: 1.5, py: 0.65, borderRadius: "4px", cursor: "pointer", flexShrink: 0,
-                  fontFamily: dm, fontSize: "0.79rem",
-                  fontWeight: isActive ? 500 : 400,
-                  color: isActive ? CHARCOAL : "text.secondary",
-                  border: `1px solid ${isActive ? GOLD : border}`,
-                  backgroundColor: isActive ? GOLD_08 : "background.paper",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.6,
+                  px: 1.5,
+                  py: 0.65,
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  fontFamily: dm,
+                  fontSize: "0.79rem",
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "#fff" : "text.secondary",
+                  border: `1px solid ${isActive ? "#212121" : border}`,
+                  backgroundColor: isActive ? "#212121" : "background.paper",
                   transition: "all 0.12s",
-                  "&:hover": isActive ? {} : { borderColor: GOLD, color: isDark ? "#f5f5f5" : CHARCOAL },
+                  "&:hover": isActive
+                    ? {}
+                    : {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: isDark ? "#f5f5f5" : CHARCOAL,
+                      },
                 }}
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <Box sx={{ minWidth: 17, height: 17, borderRadius: "9px", px: 0.5, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? GOLD : isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.08)", flexShrink: 0 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, lineHeight: 1, color: isActive ? CHARCOAL : "text.secondary" }}>{tab.count}</Typography>
+                  <Box
+                    sx={{
+                      minWidth: 17,
+                      height: 17,
+                      borderRadius: "10px",
+                      px: 0.5,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: isActive
+                        ? "rgba(255,255,255,0.18)"
+                        : isDark
+                          ? "rgba(255,255,255,0.1)"
+                          : "rgba(53,53,53,0.08)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.6rem",
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        color: isActive ? "#fff" : "text.secondary",
+                      }}
+                    >
+                      {tab.count}
+                    </Typography>
                   </Box>
                 )}
               </Box>
@@ -677,39 +1703,240 @@ export default function MyAssignment() {
         <Box ref={filterRef} sx={{ position: "relative" }}>
           <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
             <Box>
-              <Box onClick={() => setFilterOpen((p) => !p)} sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.55, borderRadius: "8px", cursor: "pointer", border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`, backgroundColor: activeFilterCount > 0 ? GOLD_08 : "transparent", fontFamily: dm, fontSize: "0.76rem", fontWeight: 500, color: activeFilterCount > 0 ? "#b45309" : "text.secondary", transition: "all 0.15s", "&:hover": { borderColor: "rgba(245,197,43,0.6)", color: "#b45309", backgroundColor: GOLD_08 } }}>
+              <Box
+                onClick={() => setFilterOpen((p) => !p)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.6,
+                  px: 1.25,
+                  py: 0.55,
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`,
+                  backgroundColor:
+                    activeFilterCount > 0 ? GOLD_08 : "transparent",
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  fontWeight: 500,
+                  color: activeFilterCount > 0 ? "#b45309" : "text.secondary",
+                  transition: "all 0.15s",
+                  "&:hover": {
+                    borderColor: "rgba(245,197,43,0.6)",
+                    color: "#b45309",
+                    backgroundColor: GOLD_08,
+                  },
+                }}
+              >
                 <FilterListIcon sx={{ fontSize: 15 }} />
                 Filter
                 {activeFilterCount > 0 && (
-                  <Box sx={{ width: 16, height: 16, borderRadius: "8px", backgroundColor: GOLD, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: CHARCOAL, lineHeight: 1 }}>{activeFilterCount}</Typography>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: "10px",
+                      backgroundColor: GOLD,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.6rem",
+                        fontWeight: 700,
+                        color: CHARCOAL,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {activeFilterCount}
+                    </Typography>
                   </Box>
                 )}
               </Box>
               {filterOpen && (
-                <Box sx={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 250, zIndex: 1300, borderRadius: "12px", overflow: "hidden", border: `1px solid ${border}`, backgroundColor: "background.paper", boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.5)" : "0 4px 24px rgba(53,53,53,0.12)" }}>
-                  <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", fontWeight: 700, color: "text.primary" }}>Filter</Typography>
-                    {activeFilterCount > 0 && <Box onClick={() => { setSelectedSem("all"); setSelectedEntity("all"); }} sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", cursor: "pointer", "&:hover": { color: CHARCOAL } }}>Clear all</Box>}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    width: 250,
+                    zIndex: 1300,
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    border: `1px solid ${border}`,
+                    backgroundColor: "background.paper",
+                    boxShadow: isDark
+                      ? "0 12px 40px rgba(0,0,0,0.5)"
+                      : "0 4px 24px rgba(53,53,53,0.12)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 1.5,
+                      borderBottom: `1px solid ${border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.76rem",
+                        fontWeight: 700,
+                        color: "text.primary",
+                      }}
+                    >
+                      Filter
+                    </Typography>
+                    {activeFilterCount > 0 && (
+                      <Box
+                        onClick={() => {
+                          setSelectedSem("all");
+                          setSelectedEntity("all");
+                        }}
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.secondary",
+                          cursor: "pointer",
+                          "&:hover": { color: CHARCOAL },
+                        }}
+                      >
+                        Clear all
+                      </Box>
+                    )}
                   </Box>
-                  <Box sx={{ px: 2, py: 1.75, display: "flex", flexDirection: "column", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 1.75,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.5,
+                    }}
+                  >
                     <FilterLabel>Semester</FilterLabel>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                      {[{ id: "all", name: "All Semesters" }, ...semesters].map((s) => (
-                        <Box key={s.id} onClick={() => setSelectedSem(s.id)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.25, py: 0.6, borderRadius: "7px", cursor: "pointer", backgroundColor: selectedSem === s.id ? GOLD_08 : "transparent", "&:hover": { backgroundColor: selectedSem === s.id ? GOLD_08 : HOVER_BG } }}>
-                          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: selectedSem === s.id ? "#b45309" : "text.primary", fontWeight: selectedSem === s.id ? 600 : 400 }}>{s.name}</Typography>
-                          {selectedSem === s.id && <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: GOLD }} />}
-                        </Box>
-                      ))}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.5,
+                      }}
+                    >
+                      {[{ id: "all", name: "All Semesters" }, ...semesters].map(
+                        (s) => (
+                          <Box
+                            key={s.id}
+                            onClick={() => setSelectedSem(s.id)}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              px: 1.25,
+                              py: 0.6,
+                              borderRadius: "10px",
+                              cursor: "pointer",
+                              backgroundColor:
+                                selectedSem === s.id ? GOLD_08 : "transparent",
+                              "&:hover": {
+                                backgroundColor:
+                                  selectedSem === s.id ? GOLD_08 : HOVER_BG,
+                              },
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.78rem",
+                                color:
+                                  selectedSem === s.id
+                                    ? "#b45309"
+                                    : "text.primary",
+                                fontWeight: selectedSem === s.id ? 600 : 400,
+                              }}
+                            >
+                              {s.name}
+                            </Typography>
+                            {selectedSem === s.id && (
+                              <Box
+                                sx={{
+                                  width: 5,
+                                  height: 5,
+                                  borderRadius: "50%",
+                                  backgroundColor: GOLD,
+                                }}
+                              />
+                            )}
+                          </Box>
+                        ),
+                      )}
                     </Box>
                     {entityOptions.length > 0 && (
                       <>
                         <FilterLabel>Client</FilterLabel>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                          {[{ id: "all", name: "All Clients" }, ...entityOptions.map((n) => ({ id: n, name: n }))].map((e) => (
-                            <Box key={e.id} onClick={() => setSelectedEntity(e.id)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 1.25, py: 0.6, borderRadius: "7px", cursor: "pointer", backgroundColor: selectedEntity === e.id ? GOLD_08 : "transparent", "&:hover": { backgroundColor: selectedEntity === e.id ? GOLD_08 : HOVER_BG } }}>
-                              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: selectedEntity === e.id ? "#b45309" : "text.primary", fontWeight: selectedEntity === e.id ? 600 : 400 }}>{e.name}</Typography>
-                              {selectedEntity === e.id && <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: GOLD }} />}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.5,
+                          }}
+                        >
+                          {[
+                            { id: "all", name: "All Clients" },
+                            ...entityOptions.map((n) => ({ id: n, name: n })),
+                          ].map((e) => (
+                            <Box
+                              key={e.id}
+                              onClick={() => setSelectedEntity(e.id)}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                px: 1.25,
+                                py: 0.6,
+                                borderRadius: "10px",
+                                cursor: "pointer",
+                                backgroundColor:
+                                  selectedEntity === e.id
+                                    ? GOLD_08
+                                    : "transparent",
+                                "&:hover": {
+                                  backgroundColor:
+                                    selectedEntity === e.id
+                                      ? GOLD_08
+                                      : HOVER_BG,
+                                },
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.78rem",
+                                  color:
+                                    selectedEntity === e.id
+                                      ? "#b45309"
+                                      : "text.primary",
+                                  fontWeight:
+                                    selectedEntity === e.id ? 600 : 400,
+                                }}
+                              >
+                                {e.name}
+                              </Typography>
+                              {selectedEntity === e.id && (
+                                <Box
+                                  sx={{
+                                    width: 5,
+                                    height: 5,
+                                    borderRadius: "50%",
+                                    backgroundColor: GOLD,
+                                  }}
+                                />
+                              )}
                             </Box>
                           ))}
                         </Box>
@@ -724,64 +1951,166 @@ export default function MyAssignment() {
       </Box>
 
       {activeFilterCount > 0 && (
-        <Box sx={{ display: "flex", gap: 0.75, mt: 1.5, mb: 0.5, flexWrap: "wrap" }}>
-          {selectedSem !== "all" && <FilterChip label={selectedSemName} onDelete={() => setSelectedSem("all")} />}
-          {selectedEntity !== "all" && <FilterChip label={selectedEntity} onDelete={() => setSelectedEntity("all")} />}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.75,
+            mt: 1.5,
+            mb: 0.5,
+            flexWrap: "wrap",
+          }}
+        >
+          {selectedSem !== "all" && (
+            <FilterChip
+              label={selectedSemName}
+              onDelete={() => setSelectedSem("all")}
+            />
+          )}
+          {selectedEntity !== "all" && (
+            <FilterChip
+              label={selectedEntity}
+              onDelete={() => setSelectedEntity("all")}
+            />
+          )}
         </Box>
       )}
 
       {selectedSem !== "all" && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1.5, py: 1.25, mt: 1, mb: 0.5, borderRadius: "8px", backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.06)", border: `1px solid rgba(245,197,43,0.2)` }}>
-          <SemStat label="Total"     value={allFiltered.length} />
-          <Box sx={{ width: 1, height: 24, backgroundColor: "rgba(245,197,43,0.25)" }} />
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            px: 1.5,
+            py: 1.25,
+            mt: 1,
+            mb: 0.5,
+            borderRadius: "10px",
+            backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.06)",
+            border: `1px solid rgba(245,197,43,0.2)`,
+          }}
+        >
+          <SemStat label="Total" value={allFiltered.length} />
+          <Box
+            sx={{
+              width: 1,
+              height: 24,
+              backgroundColor: "rgba(245,197,43,0.25)",
+            }}
+          />
           <SemStat label="Completed" value={completedFiltered.length} />
-          <Box sx={{ width: 1, height: 24, backgroundColor: "rgba(245,197,43,0.25)" }} />
-          <SemStat label="Ongoing"   value={allFiltered.filter((a) => a.status === "On Going").length} />
+          <Box
+            sx={{
+              width: 1,
+              height: 24,
+              backgroundColor: "rgba(245,197,43,0.25)",
+            }}
+          />
+          <SemStat
+            label="Ongoing"
+            value={allFiltered.filter((a) => a.status === "On Going").length}
+          />
         </Box>
       )}
 
       <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
         {filtered.length === 0 ? (
-          <Box sx={{ p: 5, textAlign: "center", bgcolor: "background.paper", borderRadius: "12px", border: `1px solid ${border}` }}>
-            <AssignmentOutlinedIcon sx={{ fontSize: 32, color: isDark ? "#333" : "#e0e0e0", mb: 1 }} />
-            <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.disabled" }}>
-              {statusFilter === "All" ? "No assignments yet." : `No ${statusFilter.toLowerCase()} assignments.`}
+          <Box
+            sx={{
+              p: 5,
+              textAlign: "center",
+              bgcolor: "background.paper",
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+            }}
+          >
+            <AssignmentOutlinedIcon
+              sx={{ fontSize: 32, color: isDark ? "#333" : "#e0e0e0", mb: 1 }}
+            />
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                color: "text.disabled",
+              }}
+            >
+              {statusFilter === "All"
+                ? "No assignments yet."
+                : `No ${statusFilter.toLowerCase()} assignments.`}
             </Typography>
           </Box>
         ) : (
           filtered.map((a) => (
             <AssignmentCard
-              key={a.id} a={a} isDark={isDark} border={border}
+              key={a.id}
+              a={a}
+              isDark={isDark}
+              border={border}
               onView={(assignment) => setDetailTarget(assignment)}
-              onTimeIn={(assignment) => { setTimeInError(""); setTimeInTarget(assignment); }}
-              onComplete={(assignment) => { setCompleteError(""); setConfirmTarget(assignment); }}
+              onTimeIn={(assignment) => {
+                setTimeInError("");
+                setTimeInTarget(assignment);
+              }}
+              onComplete={(assignment) => {
+                setCompleteError("");
+                setConfirmTarget(assignment);
+              }}
             />
           ))
         )}
       </Box>
 
       <AssignmentDetailDialog
-        open={!!detailTarget} assignment={detailTarget} isDark={isDark}
-        currentUserId={currentUser?.id} onClose={() => setDetailTarget(null)}
-        onMarkComplete={(a) => { setCompleteError(""); setConfirmTarget(a); }}
-        onTimeIn={(a) => { setTimeInError(""); setTimeInTarget(a); }}
+        open={!!detailTarget}
+        assignment={detailTarget}
+        isDark={isDark}
+        currentUserId={currentUser?.id}
+        onClose={() => setDetailTarget(null)}
+        onMarkComplete={(a) => {
+          setCompleteError("");
+          setConfirmTarget(a);
+        }}
+        onTimeIn={(a) => {
+          setTimeInError("");
+          setTimeInTarget(a);
+        }}
       />
       <QRScanCompleteDialog
-        open={!!confirmTarget} assignment={confirmTarget} isDark={isDark}
-        completing={completing} error={completeError}
-        onClose={() => { setConfirmTarget(null); setCompleteError(""); }}
+        open={!!confirmTarget}
+        assignment={confirmTarget}
+        isDark={isDark}
+        completing={completing}
+        error={completeError}
+        onClose={() => {
+          setConfirmTarget(null);
+          setCompleteError("");
+        }}
         onConfirm={handleComplete}
       />
       <TimeInModal
-        open={!!timeInTarget} assignment={timeInTarget} isDark={isDark}
-        submitting={timingIn} error={timeInError}
-        onClose={() => { setTimeInTarget(null); setTimeInError(""); }}
-        onConfirm={({ selfieFile, gpsData }) => handleTimeIn({ selfieFile, gpsData })}
+        open={!!timeInTarget}
+        assignment={timeInTarget}
+        isDark={isDark}
+        submitting={timingIn}
+        error={timeInError}
+        onClose={() => {
+          setTimeInTarget(null);
+          setTimeInError("");
+        }}
+        onConfirm={({ selfieFile, gpsData }) =>
+          handleTimeIn({ selfieFile, gpsData })
+        }
       />
       <OnGoingAlertDialog
-        open={!!onGoingAlert} assignment={onGoingAlert} isDark={isDark}
+        open={!!onGoingAlert}
+        assignment={onGoingAlert}
+        isDark={isDark}
         onClose={() => setOnGoingAlert(null)}
-        onTimeIn={(a) => { setOnGoingAlert(null); setTimeInError(""); setTimeInTarget(a); }}
+        onTimeIn={(a) => {
+          setOnGoingAlert(null);
+          setTimeInError("");
+          setTimeInTarget(a);
+        }}
       />
     </Box>
   );
@@ -791,8 +2120,27 @@ export default function MyAssignment() {
 function SemStat({ label, value }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-      <Typography sx={{ fontFamily: dm, fontSize: "1rem", fontWeight: 700, color: "#b45309", lineHeight: 1 }}>{value}</Typography>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "#b45309", opacity: 0.75 }}>{label}</Typography>
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "1rem",
+          fontWeight: 700,
+          color: "#b45309",
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </Typography>
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.72rem",
+          color: "#b45309",
+          opacity: 0.75,
+        }}
+      >
+        {label}
+      </Typography>
     </Box>
   );
 }
@@ -801,24 +2149,83 @@ function InfoChip({ icon, label, children }) {
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
       {icon}
       <Box>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, color: "text.primary" }}>{children}</Typography>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.62rem",
+            color: "text.disabled",
+            textTransform: "uppercase",
+            letterSpacing: "0.07em",
+          }}
+        >
+          {label}
+        </Typography>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            color: "text.primary",
+          }}
+        >
+          {children}
+        </Typography>
       </Box>
     </Box>
   );
 }
 function FilterLabel({ children }) {
   return (
-    <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.09em", px: 0.25 }}>
+    <Typography
+      sx={{
+        fontFamily: dm,
+        fontSize: "0.62rem",
+        fontWeight: 700,
+        color: "text.disabled",
+        textTransform: "uppercase",
+        letterSpacing: "0.09em",
+        px: 0.25,
+      }}
+    >
       {children}
     </Typography>
   );
 }
 function FilterChip({ label, onDelete }) {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.1, py: 0.35, borderRadius: "6px", border: `1px solid rgba(245,197,43,0.45)`, backgroundColor: GOLD_08 }}>
-      <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 500, color: "#b45309" }}>{label}</Typography>
-      <Box onClick={onDelete} sx={{ display: "flex", alignItems: "center", cursor: "pointer", color: "#b45309", opacity: 0.7, "&:hover": { opacity: 1 } }}>
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        px: 1.1,
+        py: 0.35,
+        borderRadius: "10px",
+        border: `1px solid rgba(245,197,43,0.45)`,
+        backgroundColor: GOLD_08,
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.72rem",
+          fontWeight: 500,
+          color: "#b45309",
+        }}
+      >
+        {label}
+      </Typography>
+      <Box
+        onClick={onDelete}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+          color: "#b45309",
+          opacity: 0.7,
+          "&:hover": { opacity: 1 },
+        }}
+      >
         <CloseIcon sx={{ fontSize: 11 }} />
       </Box>
     </Box>
@@ -826,15 +2233,50 @@ function FilterChip({ label, onDelete }) {
 }
 function CancelBtn({ onClick, disabled, border }) {
   return (
-    <Box onClick={!disabled ? onClick : undefined} sx={{ px: 1.75, py: 0.65, borderRadius: "8px", cursor: disabled ? "default" : "pointer", border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "text.secondary", opacity: disabled ? 0.5 : 1, transition: "all 0.15s", "&:hover": { color: "text.primary", backgroundColor: HOVER_BG } }}>
+    <Box
+      onClick={!disabled ? onClick : undefined}
+      sx={{
+        px: 1.75,
+        py: 0.65,
+        borderRadius: "10px",
+        cursor: disabled ? "default" : "pointer",
+        border: `1px solid ${border}`,
+        fontFamily: dm,
+        fontSize: "0.8rem",
+        fontWeight: 500,
+        color: "text.secondary",
+        opacity: disabled ? 0.5 : 1,
+        transition: "all 0.15s",
+        "&:hover": { color: "text.primary", backgroundColor: HOVER_BG },
+      }}
+    >
       Cancel
     </Box>
   );
 }
 function PrimaryBtn({ onClick, loading, children }) {
   return (
-    <Box onClick={!loading ? onClick : undefined} sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.75, py: 0.65, borderRadius: "8px", cursor: loading ? "default" : "pointer", backgroundColor: GOLD, color: CHARCOAL, fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, opacity: loading ? 0.8 : 1, transition: "background-color 0.15s", "&:hover": { backgroundColor: loading ? GOLD : "#e6b920" } }}>
-      {loading && <CircularProgress size={13} sx={{ color: CHARCOAL }} />}
+    <Box
+      onClick={!loading ? onClick : undefined}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.6,
+        px: 1.75,
+        py: 0.65,
+        borderRadius: "10px",
+        cursor: loading ? "default" : "pointer",
+        backgroundColor: "#212121",
+        color: "#fff",
+        fontFamily: dm,
+        fontSize: "0.8rem",
+        fontWeight: 600,
+        opacity: loading ? 0.7 : 1,
+        transition: "background-color 0.15s",
+        "&:hover": { backgroundColor: loading ? "#212121" : "#333" },
+      }}
+    >
+      {loading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
       {children}
     </Box>
   );

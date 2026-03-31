@@ -264,7 +264,7 @@ export default function Dashboard() {
   ];
 
   const cardHeaderSx = { px: 2, py: 1.4, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: isDark ? "rgba(255,255,255,0.015)" : "rgba(53,53,53,0.018)" };
-  const cardAccent   = { width: "3px", height: 14, borderRadius: "2px", backgroundColor: GOLD, flexShrink: 0 };
+  const cardAccent   = { width: "3px", height: 14, borderRadius: "10px", backgroundColor: GOLD, flexShrink: 0 };
   const cardTitleSx  = { fontFamily: dm, fontSize: "0.7rem", fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.09em" };
 
   return (
@@ -280,7 +280,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Hero banner ── */}
-      <Box sx={{ mb: 2, borderRadius: "12px", overflow: "hidden", position: "relative", background: isDark ? "linear-gradient(135deg,#1a1600 0%,#2a2a2a 50%,#111 100%)" : "linear-gradient(135deg,#353535 0%,#1c1c1c 60%,#0f0f0f 100%)", border: `1px solid ${isDark ? "#2a2400" : "#1a1a1a"}` }}>
+      <Box sx={{ mb: 2, borderRadius: "10px", overflow: "hidden", position: "relative", background: isDark ? "linear-gradient(135deg,#1a1600 0%,#2a2a2a 50%,#111 100%)" : "linear-gradient(135deg,#353535 0%,#1c1c1c 60%,#0f0f0f 100%)", border: `1px solid ${isDark ? "#2a2400" : "#1a1a1a"}` }}>
         <Box sx={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", backgroundColor: GOLD }} />
         <Box sx={{ position: "absolute", right: -50, top: -50, width: 200, height: 200, borderRadius: "50%", border: `1px solid ${GOLD_12}`, pointerEvents: "none" }} />
         <Box sx={{ position: "absolute", right: -15, top: -15, width: 110, height: 110, borderRadius: "50%", border: "1px solid rgba(245,197,43,0.05)", pointerEvents: "none" }} />
@@ -334,7 +334,7 @@ export default function Dashboard() {
               { label: "Reports",  active: showReports, onClick: () => setShowReports((p) => !p), icon: <AssessmentOutlinedIcon sx={{ fontSize: 13 }} /> },
               { label: "All Time", active: isAllTime,   onClick: () => setIsAllTime((p) => !p),   icon: null },
             ].map((btn) => (
-              <Box key={btn.label} onClick={btn.onClick} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 0.55, borderRadius: "7px", cursor: "pointer", border: `1px solid ${btn.active ? GOLD : "rgba(255,255,255,0.1)"}`, backgroundColor: btn.active ? GOLD_12 : "transparent", color: btn.active ? GOLD : "rgba(255,255,255,0.45)", fontFamily: dm, fontSize: "0.73rem", fontWeight: 500, transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: GOLD } }}>
+              <Box key={btn.label} onClick={btn.onClick} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 0.55, borderRadius: "10px", cursor: "pointer", border: `1px solid ${btn.active ? GOLD : "rgba(255,255,255,0.1)"}`, backgroundColor: btn.active ? GOLD_12 : "transparent", color: btn.active ? GOLD : "rgba(255,255,255,0.45)", fontFamily: dm, fontSize: "0.73rem", fontWeight: 500, transition: "all 0.15s", "&:hover": { borderColor: GOLD, color: GOLD } }}>
                 {btn.icon}{btn.label}
               </Box>
             ))}
@@ -342,7 +342,7 @@ export default function Dashboard() {
               <Select
                 value={selectedSemester?.id || ""}
                 onChange={(e) => setSelectedSemester(semesters.find((s) => s.id === e.target.value) || null)}
-                sx={{ fontFamily: dm, fontSize: "0.73rem", borderRadius: "7px", color: "rgba(255,255,255,0.6)", "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.35)" }, minWidth: 155 }}
+                sx={{ fontFamily: dm, fontSize: "0.73rem", borderRadius: "10px", color: "rgba(255,255,255,0.6)", "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: GOLD }, "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.35)" }, minWidth: 155 }}
               >
                 {semesters.map((s) => (
                   <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{s.name}{s.is_active ? " ●" : ""}</MenuItem>
@@ -353,7 +353,7 @@ export default function Dashboard() {
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}>{error}</Alert>}
       {showReports && <Box sx={{ mb: 2 }}><ReportGenerator selectedSemester={selectedSemester} isAllTime={isAllTime} /></Box>}
 
       {loading ? (
@@ -371,7 +371,7 @@ export default function Dashboard() {
                 <Box key={k.label} onClick={k.navTab ? () => goToRequests(k.navTab) : undefined}
                   sx={{ bgcolor: "background.paper", borderRadius: "10px", border: `1px solid ${border}`, px: 2, py: 1.5, display: "flex", alignItems: "center", gap: 1.5, ...(k.navTab ? { cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s", "&:hover": { borderColor: GOLD, boxShadow: `0 2px 10px ${GOLD_12}` } } : {}) }}
                 >
-                  <Box sx={{ width: 38, height: 38, borderRadius: "9px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: k.isRed ? (isDark ? RED_15 : RED_L) : isDark ? GOLD_12 : "rgba(245,197,43,0.09)" }}>
+                  <Box sx={{ width: 38, height: 38, borderRadius: "10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: k.isRed ? (isDark ? RED_15 : RED_L) : isDark ? GOLD_12 : "rgba(245,197,43,0.09)" }}>
                     <Icon sx={{ fontSize: 17, color: k.isRed ? RED : GOLD }} />
                   </Box>
                   <Box>
@@ -393,14 +393,14 @@ export default function Dashboard() {
                   <Box sx={cardAccent} />
                   <Typography sx={cardTitleSx}>Needs Attention</Typography>
                   {recentRequests.length > 0 && (
-                    <Box sx={{ px: 0.75, py: 0.1, borderRadius: "5px", backgroundColor: GOLD_12 }}>
+                    <Box sx={{ px: 0.75, py: 0.1, borderRadius: "10px", backgroundColor: GOLD_12 }}>
                       <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: isDark ? GOLD : "#7a5c00" }}>{recentRequests.length}</Typography>
                     </Box>
                   )}
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  {overdueCount > 0 && <Box sx={{ px: 1, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? RED_15 : RED_L }}><Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: isDark ? "#ef5350" : RED }}>{overdueCount} overdue</Typography></Box>}
-                  {criticalCount > 0 && <Box sx={{ px: 1, py: 0.15, borderRadius: "5px", backgroundColor: isDark ? RED_15 : RED_L }}><Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: isDark ? "#ef9a9a" : "#b71c1c" }}>{criticalCount} critical</Typography></Box>}
+                  {overdueCount > 0 && <Box sx={{ px: 1, py: 0.15, borderRadius: "10px", backgroundColor: isDark ? RED_15 : RED_L }}><Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: isDark ? "#ef5350" : RED }}>{overdueCount} overdue</Typography></Box>}
+                  {criticalCount > 0 && <Box sx={{ px: 1, py: 0.15, borderRadius: "10px", backgroundColor: isDark ? RED_15 : RED_L }}><Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: isDark ? "#ef9a9a" : "#b71c1c" }}>{criticalCount} critical</Typography></Box>}
                   <Box onClick={() => goToRequests("all")} sx={{ display: "flex", alignItems: "center", gap: 0.3, cursor: "pointer", color: "text.disabled", "&:hover": { color: GOLD }, transition: "color 0.15s" }}>
                     <OpenInNewOutlinedIcon sx={{ fontSize: 13 }} />
                     <Typography sx={{ fontFamily: dm, fontSize: "0.67rem" }}>View all</Typography>
@@ -454,7 +454,7 @@ export default function Dashboard() {
                             <Typography sx={{ fontFamily: dm, fontSize: "0.63rem", color: urg.color, fontWeight: 600 }}>{urg.label}</Typography>
                           </Box>
                         )}
-                        <Box sx={{ px: 0.9, py: 0.2, borderRadius: "5px", backgroundColor: st.bg }}>
+                        <Box sx={{ px: 0.9, py: 0.2, borderRadius: "10px", backgroundColor: st.bg }}>
                           <Typography sx={{ fontFamily: dm, fontSize: "0.63rem", fontWeight: 600, color: st.color }}>{r.status}</Typography>
                         </Box>
                         <ChevronRightIcon sx={{ fontSize: 14, color: "text.disabled" }} />
@@ -500,9 +500,9 @@ export default function Dashboard() {
                           </Box>
                         )}
                         <Box onClick={isActive ? () => goToRequests(stage.navTab) : undefined}
-                          sx={{ display: "flex", alignItems: "center", gap: 1.25, py: 0.7, px: 0.75, borderRadius: "8px", opacity: isP2 ? 0.5 : 1, ...(isActive ? { cursor: "pointer", transition: "background 0.12s", "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : SURF_L } } : {}) }}
+                          sx={{ display: "flex", alignItems: "center", gap: 1.25, py: 0.7, px: 0.75, borderRadius: "10px", opacity: isP2 ? 0.5 : 1, ...(isActive ? { cursor: "pointer", transition: "background 0.12s", "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : SURF_L } } : {}) }}
                         >
-                          <Box sx={{ width: 24, height: 24, borderRadius: "6px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? (isRed ? (isDark ? RED_15 : RED_L) : isP2 ? "rgba(59,130,246,0.12)" : GOLD_12) : (isDark ? "#1e1e1e" : "#f5f5f5"), color: isActive ? (isRed ? RED : isP2 ? "#3b82f6" : GOLD) : (isDark ? "#3a3a3a" : "#ccc") }}>
+                          <Box sx={{ width: 24, height: 24, borderRadius: "10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isActive ? (isRed ? (isDark ? RED_15 : RED_L) : isP2 ? "rgba(59,130,246,0.12)" : GOLD_12) : (isDark ? "#1e1e1e" : "#f5f5f5"), color: isActive ? (isRed ? RED : isP2 ? "#3b82f6" : GOLD) : (isDark ? "#3a3a3a" : "#ccc") }}>
                             <Icon sx={{ fontSize: 12 }} />
                           </Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -510,8 +510,8 @@ export default function Dashboard() {
                               <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: isActive ? "text.primary" : "text.disabled", fontWeight: isActive ? 600 : 400 }}>{stage.label}</Typography>
                               <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 700, color: isRed && isActive ? RED : isActive ? "text.primary" : "text.disabled" }}>{count}</Typography>
                             </Box>
-                            <Box sx={{ height: 2, borderRadius: 2, backgroundColor: isDark ? "#252525" : "#efefef", overflow: "hidden" }}>
-                              <Box sx={{ height: "100%", borderRadius: 2, backgroundColor: isRed ? RED : isP2 ? "#3b82f6" : GOLD, width: `${pct}%`, transition: "width 0.4s ease" }} />
+                            <Box sx={{ height: 2, borderRadius: "10px", backgroundColor: isDark ? "#252525" : "#efefef", overflow: "hidden" }}>
+                              <Box sx={{ height: "100%", borderRadius: "10px", backgroundColor: isRed ? RED : isP2 ? "#3b82f6" : GOLD, width: `${pct}%`, transition: "width 0.4s ease" }} />
                             </Box>
                           </Box>
                         </Box>
@@ -531,7 +531,7 @@ export default function Dashboard() {
                     <Typography sx={cardTitleSx}>Scheduling</Typography>
                   </Box>
                   {activeSemester && (
-                    <Box sx={{ px: 0.75, py: 0.15, borderRadius: "5px", backgroundColor: activeSemester.scheduling_open ? GOLD_12 : isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)" }}>
+                    <Box sx={{ px: 0.75, py: 0.15, borderRadius: "10px", backgroundColor: activeSemester.scheduling_open ? GOLD_12 : isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)" }}>
                       <Typography sx={{ fontFamily: dm, fontSize: "0.62rem", fontWeight: 700, color: activeSemester.scheduling_open ? (isDark ? GOLD : "#7a5c00") : "text.disabled" }}>
                         {activeSemester.scheduling_open ? "Open" : "Closed"}
                       </Typography>
@@ -553,8 +553,8 @@ export default function Dashboard() {
                           <Typography component="span" sx={{ fontFamily: dm, fontSize: "0.7rem", fontWeight: 400, color: "text.disabled" }}>/{scheduleStats.total}</Typography>
                         </Typography>
                       </Box>
-                      <Box sx={{ height: 4, borderRadius: 3, backgroundColor: isDark ? "#252525" : "#f0f0f0", mb: 1.25, overflow: "hidden" }}>
-                        <Box sx={{ height: "100%", borderRadius: 3, backgroundColor: GOLD, width: `${schedPct}%`, transition: "width 0.4s ease" }} />
+                      <Box sx={{ height: 4, borderRadius: "10px", backgroundColor: isDark ? "#252525" : "#f0f0f0", mb: 1.25, overflow: "hidden" }}>
+                        <Box sx={{ height: "100%", borderRadius: "10px", backgroundColor: GOLD, width: `${schedPct}%`, transition: "width 0.4s ease" }} />
                       </Box>
                       <Typography sx={{ fontFamily: dm, fontSize: "0.67rem", color: "text.disabled" }}>
                         {new Date(activeSemester.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -590,8 +590,8 @@ export default function Dashboard() {
                       </Box>
                       <Typography sx={{ fontFamily: dm, fontSize: "0.67rem", color: "text.disabled" }}>{total > 0 ? `${pct.toFixed(0)}% done` : "No assignments"}</Typography>
                     </Box>
-                    <Box sx={{ height: 3, borderRadius: 3, backgroundColor: isDark ? "#252525" : "#f0f0f0", mb: 1.25, overflow: "hidden" }}>
-                      <Box sx={{ height: "100%", borderRadius: 3, backgroundColor: c.bar, width: `${pct}%`, transition: "width 0.5s ease" }} />
+                    <Box sx={{ height: 3, borderRadius: "10px", backgroundColor: isDark ? "#252525" : "#f0f0f0", mb: 1.25, overflow: "hidden" }}>
+                      <Box sx={{ height: "100%", borderRadius: "10px", backgroundColor: c.bar, width: `${pct}%`, transition: "width 0.5s ease" }} />
                     </Box>
                     <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                       {[{ label: "Completed", value: s.completed, color: c.dot }, { label: "Pending", value: s.pending, color: isDark ? "#3a3a3a" : "#ccc" }].map((item) => (

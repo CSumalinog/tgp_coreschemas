@@ -9,6 +9,7 @@ import {
   ClickAwayListener,
   CircularProgress,
   useTheme,
+  Avatar,
 } from "@mui/material";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import CheckIcon from "@mui/icons-material/Check";
@@ -21,6 +22,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getAvatarUrl } from "./UserAvatar";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -115,21 +117,67 @@ export default function NotificationBell({ userId }) {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
-  const fetchNotifications = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("id, title, message, type, is_read, request_id, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    if (!error) setNotifications(data || []);
-    setLoading(false);
-  }, [userId]);
+  const isInitialLoad = useRef(true);
+
+  const fetchNotifications = useCallback(
+    async (showSpinner = false) => {
+      if (!userId) return;
+      if (showSpinner) setLoading(true);
+
+      // Try with created_by first, fall back to without it if column doesn't exist
+      let { data, error } = await supabase
+        .from("notifications")
+        .select(
+          "id, title, message, type, is_read, request_id, created_at, created_by",
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (error) {
+        // created_by column may not exist yet — retry without it
+        const fallback = await supabase
+          .from("notifications")
+          .select("id, title, message, type, is_read, request_id, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(30);
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (!error && data) {
+        // Resolve creator profiles in a separate query
+        const creatorIds = [
+          ...new Set(data.map((n) => n.created_by).filter(Boolean)),
+        ];
+        let creatorMap = {};
+        if (creatorIds.length) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .in("id", creatorIds);
+          if (profiles) {
+            creatorMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
+          }
+        }
+        setNotifications(
+          data.map((n) => ({
+            ...n,
+            creator: n.created_by ? creatorMap[n.created_by] || null : null,
+          })),
+        );
+      } else if (error) {
+        console.error("Notification fetch failed:", error.message);
+      }
+      if (showSpinner) setLoading(false);
+    },
+    [userId],
+  );
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(true);
+    isInitialLoad.current = false;
   }, [fetchNotifications]);
 
   // ── Realtime ──────────────────────────────────────────────────────────────
@@ -145,7 +193,7 @@ export default function NotificationBell({ userId }) {
           table: "notifications",
           filter: `user_id=eq.${userId}`,
         },
-        () => fetchNotifications(),
+        () => fetchNotifications(false),
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -197,7 +245,7 @@ export default function NotificationBell({ userId }) {
             size="small"
             onClick={() => setOpen((p) => !p)}
             sx={{
-              borderRadius: "9px",
+              borderRadius: "10px",
               p: 0.9,
               border: `1px solid ${open ? GOLD : border}`,
               backgroundColor: open ? GOLD_08 : "transparent",
@@ -240,7 +288,7 @@ export default function NotificationBell({ userId }) {
               maxHeight: "auto",
               minHeight: "auto",
               zIndex: 1400,
-              borderRadius: "12px",
+              borderRadius: "10px",
               border: `1px solid ${border}`,
               backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
               boxShadow: isDark
@@ -273,7 +321,7 @@ export default function NotificationBell({ userId }) {
                   sx={{
                     width: 3,
                     height: 14,
-                    borderRadius: "2px",
+                    borderRadius: "10px",
                     backgroundColor: GOLD,
                   }}
                 />
@@ -294,7 +342,7 @@ export default function NotificationBell({ userId }) {
                     sx={{
                       px: 0.75,
                       py: 0.1,
-                      borderRadius: "6px",
+                      borderRadius: "10px",
                       backgroundColor: GOLD_12,
                     }}
                   >
@@ -321,7 +369,7 @@ export default function NotificationBell({ userId }) {
                     cursor: "pointer",
                     px: 1,
                     py: 0.4,
-                    borderRadius: "6px",
+                    borderRadius: "10px",
                     transition: "background 0.12s",
                     "&:hover": {
                       backgroundColor: isDark
@@ -425,30 +473,28 @@ export default function NotificationBell({ userId }) {
                         },
                       }}
                     >
-                      {/* ── Icon (replaces avatar/dot) ── */}
-                      <Box
+                      {/* ── Avatar (from creator) ── */}
+                      <Avatar
+                        src={
+                          notif.creator?.avatar_url
+                            ? getAvatarUrl(notif.creator.avatar_url)
+                            : ""
+                        }
+                        alt={notif.creator?.full_name || "User"}
                         sx={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: "8px",
+                          width: 32,
+                          height: 32,
                           flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: unread
-                            ? `${cfg.dot}20`
-                            : isDark
-                              ? "rgba(255,255,255,0.05)"
-                              : "rgba(53,53,53,0.05)",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          backgroundColor: unread ? cfg.dot : "text.disabled",
+                          border: unread
+                            ? `2px solid ${cfg.dot}`
+                            : "2px solid transparent",
                         }}
                       >
-                        <Icon
-                          sx={{
-                            fontSize: 15,
-                            color: unread ? cfg.dot : "text.disabled",
-                          }}
-                        />
-                      </Box>
+                        {notif.creator?.full_name?.[0] || "?"}
+                      </Avatar>
 
                       {/* Content */}
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -514,7 +560,7 @@ export default function NotificationBell({ userId }) {
                               gap: 0.4,
                               px: 0.75,
                               py: 0.15,
-                              borderRadius: "4px",
+                              borderRadius: "10px",
                               backgroundColor: `${cfg.dot}18`,
                             }}
                           >

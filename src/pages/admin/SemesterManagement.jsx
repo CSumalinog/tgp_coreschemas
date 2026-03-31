@@ -13,7 +13,7 @@ import {
   useTheme,
   GlobalStyles,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid } from "../../components/common/AppDataGrid";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -252,7 +252,7 @@ export default function SemesterManagement() {
                 gap: 0.5,
                 px: 1,
                 py: 0.25,
-                borderRadius: "5px",
+                borderRadius: "10px",
                 backgroundColor: GOLD_08,
               }}
             >
@@ -307,7 +307,7 @@ export default function SemesterManagement() {
               gap: 0.6,
               px: 1.25,
               py: 0.35,
-              borderRadius: "6px",
+              borderRadius: "10px",
               backgroundColor: p.value
                 ? "#eff6ff"
                 : isDark
@@ -392,7 +392,7 @@ export default function SemesterManagement() {
             size="small"
             onClick={() => openEdit(p.row)}
             sx={{
-              borderRadius: "7px",
+              borderRadius: "10px",
               border: `1px solid ${border}`,
               p: 0.55,
               color: "text.secondary",
@@ -414,7 +414,7 @@ export default function SemesterManagement() {
   return (
     <Box
       sx={{
-        p: 3,
+        p: { xs: 2, sm: 3 },
         backgroundColor: "background.default",
         minHeight: "100%",
         fontFamily: dm,
@@ -465,15 +465,15 @@ export default function SemesterManagement() {
             gap: 0.75,
             px: 1.75,
             py: 0.75,
-            borderRadius: "9px",
+            borderRadius: "10px",
             cursor: "pointer",
-            backgroundColor: GOLD,
-            color: CHARCOAL,
+            backgroundColor: "#212121",
+            color: "#fff",
             fontFamily: dm,
             fontSize: "0.8rem",
             fontWeight: 600,
             transition: "background-color 0.15s",
-            "&:hover": { backgroundColor: "#e6b920" },
+            "&:hover": { backgroundColor: "#333" },
           }}
         >
           <AddIcon sx={{ fontSize: 15 }} />
@@ -565,7 +565,7 @@ export default function SemesterManagement() {
               gap: 0.6,
               px: 1.25,
               py: 0.35,
-              borderRadius: "6px",
+              borderRadius: "10px",
               backgroundColor: activeSemester.scheduling_open
                 ? "#eff6ff"
                 : isDark
@@ -603,7 +603,7 @@ export default function SemesterManagement() {
           severity="error"
           sx={{
             mb: 2,
-            borderRadius: "8px",
+            borderRadius: "10px",
             fontFamily: dm,
             fontSize: "0.78rem",
           }}
@@ -657,7 +657,7 @@ export default function SemesterManagement() {
         maxWidth="sm"
         PaperProps={{
           sx: {
-            borderRadius: "14px",
+            borderRadius: "10px",
             backgroundColor: "background.paper",
             border: `1px solid ${border}`,
             boxShadow: isDark
@@ -681,7 +681,7 @@ export default function SemesterManagement() {
               sx={{
                 width: 2.5,
                 height: 26,
-                borderRadius: "2px",
+                borderRadius: "10px",
                 backgroundColor: GOLD,
                 flexShrink: 0,
               }}
@@ -702,7 +702,7 @@ export default function SemesterManagement() {
             onClick={() => setDialogOpen(false)}
             disabled={saving}
             sx={{
-              borderRadius: "8px",
+              borderRadius: "10px",
               color: "text.secondary",
               "&:hover": { backgroundColor: HOVER_BG },
             }}
@@ -723,7 +723,7 @@ export default function SemesterManagement() {
           {saveError && (
             <Alert
               severity="error"
-              sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.78rem" }}
+              sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}
             >
               {saveError}
             </Alert>
@@ -837,7 +837,7 @@ export default function SemesterManagement() {
                 gap: 1,
                 px: 1.5,
                 py: 1.25,
-                borderRadius: "8px",
+                borderRadius: "10px",
                 backgroundColor: isDark ? GOLD_08 : "#fefce8",
                 border: `1px solid rgba(245,197,43,0.3)`,
               }}
@@ -875,7 +875,7 @@ export default function SemesterManagement() {
             sx={{
               px: 1.75,
               py: 0.65,
-              borderRadius: "8px",
+              borderRadius: "10px",
               cursor: saving ? "default" : "pointer",
               border: `1px solid ${border}`,
               fontFamily: dm,
@@ -901,21 +901,21 @@ export default function SemesterManagement() {
               gap: 0.75,
               px: 1.75,
               py: 0.65,
-              borderRadius: "8px",
+              borderRadius: "10px",
               cursor: saving ? "default" : "pointer",
-              backgroundColor: GOLD,
-              color: CHARCOAL,
+              backgroundColor: "#212121",
+              color: "#fff",
               fontFamily: dm,
               fontSize: "0.8rem",
               fontWeight: 600,
-              opacity: saving ? 0.8 : 1,
+              opacity: saving ? 0.7 : 1,
               transition: "background-color 0.15s",
-              "&:hover": { backgroundColor: saving ? GOLD : "#e6b920" },
+              "&:hover": { backgroundColor: saving ? "#212121" : "#333" },
             }}
           >
             {saving ? (
               <>
-                <CircularProgress size={13} sx={{ color: CHARCOAL }} /> Saving…
+                <CircularProgress size={13} sx={{ color: "#fff" }} /> Saving…
               </>
             ) : editTarget ? (
               "Save Changes"
@@ -960,7 +960,7 @@ function ActionChip({
         gap: 0.5,
         px: 1.25,
         py: 0.45,
-        borderRadius: "6px",
+        borderRadius: "10px",
         cursor: "pointer",
         border: `1px solid ${active ? `${activeColor}30` : border}`,
         backgroundColor: active ? activeBg : "transparent",
@@ -987,7 +987,7 @@ function inputSx(border) {
     "& .MuiOutlinedInput-root": {
       fontFamily: dm,
       fontSize: "0.82rem",
-      borderRadius: "8px",
+      borderRadius: "10px",
       "& fieldset": { borderColor: border },
       "&:hover fieldset": { borderColor: "rgba(245,197,43,0.5)" },
       "&.Mui-focused fieldset": { borderColor: "#F5C52B" },
@@ -1027,7 +1027,7 @@ function makeDataGridSx(isDark, border) {
     "& .MuiDataGrid-menuIcon button": {
       color: "text.disabled",
       padding: "2px",
-      borderRadius: "6px",
+      borderRadius: "10px",
       transition: "all 0.15s",
       "&:hover": { backgroundColor: GOLD_08, color: "#b45309" },
     },
