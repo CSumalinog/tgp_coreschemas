@@ -10,6 +10,7 @@ import {
   useMediaQuery,
   Switch,
   useTheme,
+  Collapse,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
@@ -20,6 +21,10 @@ import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
@@ -62,7 +67,17 @@ const MENU_SECTIONS = [
   },
   {
     group: "GENERAL",
-    items: [{ label: "Settings", to: "settings", Icon: SettingsOutlinedIcon }],
+    items: [
+      {
+        label: "Settings",
+        Icon: SettingsOutlinedIcon,
+        children: [
+          { label: "Archive", to: "archive", Icon: ArchiveOutlinedIcon },
+          { label: "Trash", to: "trash", Icon: DeleteOutlineOutlinedIcon },
+          { label: "Notifications", to: "notification-cleanup", Icon: NotificationsNoneOutlinedIcon },
+        ],
+      },
+    ],
   },
 ];
 
@@ -127,18 +142,17 @@ function ProfileDropdown({
       ref={ref}
       sx={{
         position: "absolute",
-        bottom: "100%",
-        left: 0,
+        top: "calc(100% + 8px)",
         right: 0,
+        width: 240,
         backgroundColor: WHITE,
         border: "1px solid rgba(53,53,53,0.12)",
-        borderBottom: "none",
-        borderRadius: "10px 10px 0 0",
+        borderRadius: "10px",
         zIndex: 1400,
-        boxShadow: "0 -8px 24px rgba(0,0,0,0.3)",
-        animation: "dropup 0.18s cubic-bezier(0.34,1.4,0.64,1)",
-        "@keyframes dropup": {
-          from: { opacity: 0, transform: "translateY(6px)" },
+        boxShadow: "0 8px 32px rgba(53,53,53,0.15)",
+        animation: "dropdown 0.18s cubic-bezier(0.34,1.4,0.64,1)",
+        "@keyframes dropdown": {
+          from: { opacity: 0, transform: "translateY(-6px)" },
           to: { opacity: 1, transform: "translateY(0)" },
         },
       }}
@@ -251,8 +265,11 @@ function SidebarContent({
   onClose,
   isMobile,
 }) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const footerRef = useRef(null);
+  const location = useLocation();
+  const [openGroups, setOpenGroups] = useState({});
+  const toggleGroup = (label) => setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  const isChildActive = (children) => children?.some((c) => location.pathname.includes(c.to));
+
   return (
     <Box
       sx={{
@@ -351,174 +368,132 @@ function SidebarContent({
             >
               {section.group}
             </Typography>
-            {section.items.map((item) => (
-              <NavItem
-                key={item.to}
-                label={item.label}
-                Icon={item.Icon}
-                to={item.to}
-              />
-            ))}
+            {section.items.map((item) => {
+              if (item.children) {
+                const isOpen = openGroups[item.label];
+                const anyActive = isChildActive(item.children);
+                return (
+                  <Box key={item.label}>
+                    <NavItem
+                      label={item.label}
+                      Icon={item.Icon}
+                      onClick={() => toggleGroup(item.label)}
+                      isActive={anyActive && !isOpen}
+                      trailing={
+                        <KeyboardArrowDownIcon
+                          sx={{
+                            fontSize: 15,
+                            color: TEXT_ICON,
+                            transition: "transform 0.22s",
+                            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          }}
+                        />
+                      }
+                    />
+                    <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                      <Box sx={{ pl: 1.5, mt: 0.25 }}>
+                        {item.children.map((child) => (
+                          <NavItem key={child.to} label={child.label} Icon={child.Icon} to={child.to} isChild />
+                        ))}
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              }
+              return (
+                <NavItem
+                  key={item.to}
+                  label={item.label}
+                  Icon={item.Icon}
+                  to={item.to}
+                />
+              );
+            })}
           </Box>
         ))}
-      </Box>
-      <Box sx={{ position: "relative" }}>
-        <ProfileDropdown
-          open={dropdownOpen}
-          currentUser={currentUser}
-          userProfile={userProfile}
-          onClose={() => setDropdownOpen(false)}
-          footerRef={footerRef}
-        />
-        <Box
-          ref={footerRef}
-          onClick={() => setDropdownOpen((p) => !p)}
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderTop: `1px solid ${SIDEBAR_BORDER}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
-            cursor: "pointer",
-            userSelect: "none",
-            transition: "background 0.15s",
-            backgroundColor: dropdownOpen ? HOVER_BG : "transparent",
-            "&:hover": { backgroundColor: HOVER_BG },
-          }}
-        >
-          <Avatar
-            src={avatarUrl || undefined}
-            sx={{
-              width: 30,
-              height: 30,
-              flexShrink: 0,
-              backgroundColor: GOLD,
-              color: CHARCOAL,
-              fontSize: "0.72rem",
-              fontWeight: 700,
-              fontFamily: dm,
-            }}
-          >
-            {!avatarUrl && getInitials(userProfile?.full_name)}
-          </Avatar>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                color: TEXT_PRIMARY,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                lineHeight: 1.3,
-              }}
-            >
-              {userProfile?.full_name || "Staff"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.64rem",
-                color: TEXT_SECONDARY,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                lineHeight: 1.3,
-                mt: 0.1,
-              }}
-            >
-              {currentUser?.email || ""}
-            </Typography>
-          </Box>
-          <UnfoldMoreIcon
-            sx={{
-              fontSize: 15,
-              flexShrink: 0,
-              color: TEXT_SECONDARY,
-              transition: "color 0.15s",
-              ...(dropdownOpen && { color: TEXT_PRIMARY }),
-            }}
-          />
-        </Box>
       </Box>
     </Box>
   );
 }
 
-function NavItem({ label, Icon, to }) {
+function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
   const location = useLocation();
-  const active = location.pathname.includes(to);
-  return (
-    <NavLink to={to} style={{ textDecoration: "none" }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.25,
-          px: 1.25,
-          py: 0.8,
-          borderRadius: "10px",
-          cursor: "pointer",
-          position: "relative",
-          mb: 0.2,
-          backgroundColor: active ? ACTIVE_BG : "transparent",
-          transition: "background 0.15s",
-          "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
-          "&::before": active
-            ? {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                top: "20%",
-                height: "60%",
-                width: "2.5px",
-                borderRadius: "0 2px 2px 0",
-                backgroundColor: GOLD,
-              }
-            : {},
-        }}
-      >
-        {Icon && (
-          <Box
-            sx={{
-              width: 24,
-              height: 24,
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-          >
-            <Icon
-              sx={{
-                fontSize: 15,
-                color: active ? GOLD : TEXT_ICON,
-                transition: "color 0.15s",
-              }}
-            />
-          </Box>
-        )}
-        <Typography
+  const routeActive = to ? location.pathname.includes(to) : false;
+  const active = isActive || routeActive;
+
+  const inner = (
+    <Box
+      onClick={onClick}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1.25,
+        px: 1.25,
+        py: 0.8,
+        borderRadius: "10px",
+        cursor: "pointer",
+        position: "relative",
+        mb: 0.2,
+        backgroundColor: active ? ACTIVE_BG : "transparent",
+        transition: "background 0.15s",
+        "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              left: 0,
+              top: "20%",
+              height: "60%",
+              width: "2.5px",
+              borderRadius: "0 2px 2px 0",
+              backgroundColor: GOLD,
+            }
+          : {},
+      }}
+    >
+      {Icon && (
+        <Box
           sx={{
-            fontFamily: dm,
-            fontSize: "0.81rem",
-            fontWeight: active ? 600 : 400,
-            color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
-            flex: 1,
-            transition: "color 0.15s",
-            lineHeight: 1,
+            width: 24,
+            height: 24,
+            borderRadius: "10px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
+            flexShrink: 0,
+            transition: "background 0.15s",
           }}
         >
-          {label}
-        </Typography>
-      </Box>
-    </NavLink>
+          <Icon
+            sx={{
+              fontSize: isChild ? 13 : 15,
+              color: active ? GOLD : TEXT_ICON,
+              transition: "color 0.15s",
+            }}
+          />
+        </Box>
+      )}
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: isChild ? "0.76rem" : "0.81rem",
+          fontWeight: active ? 600 : 400,
+          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+          flex: 1,
+          transition: "color 0.15s",
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </Typography>
+      {trailing}
+    </Box>
   );
+
+  return to ? (
+    <NavLink to={to} style={{ textDecoration: "none" }}>{inner}</NavLink>
+  ) : inner;
 }
 
 function RegularStaffLayout() {
@@ -526,6 +501,8 @@ function RegularStaffLayout() {
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery("(max-width:900px)");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const avatarRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -644,6 +621,34 @@ function RegularStaffLayout() {
             alwaysExpanded={!isMobile}
           />
           <NotificationBell userId={currentUser?.id} />
+          <Box sx={{ position: "relative" }}>
+            <Avatar
+              ref={avatarRef}
+              src={avatarUrl || undefined}
+              onClick={() => setDropdownOpen((p) => !p)}
+              sx={{
+                width: 36,
+                height: 36,
+                cursor: "pointer",
+                backgroundColor: GOLD,
+                color: CHARCOAL,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                fontFamily: dm,
+                transition: "box-shadow 0.15s",
+                "&:hover": { boxShadow: "0 0 0 2px rgba(53,53,53,0.15)" },
+              }}
+            >
+              {!avatarUrl && getInitials(userProfile?.full_name)}
+            </Avatar>
+            <ProfileDropdown
+              open={dropdownOpen}
+              currentUser={currentUser}
+              userProfile={userProfile}
+              onClose={() => setDropdownOpen(false)}
+              footerRef={avatarRef}
+            />
+          </Box>
         </Box>
         <Box sx={{ flex: 1, overflowY: "auto" }}>
           <RealtimeToastProvider>

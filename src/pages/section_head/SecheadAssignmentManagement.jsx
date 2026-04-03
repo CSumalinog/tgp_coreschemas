@@ -21,6 +21,10 @@ import {
   useTheme,
   ClickAwayListener,
   GlobalStyles,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -34,6 +38,10 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -755,25 +763,31 @@ export default function SecHeadAssignmentManagement() {
         )
       `;
 
-      const [allForwarded, assignedAndApproval, onGoing, completed] =
+      const [allForwarded, assignedAndApproval, onGoing, completed, userState] =
         await Promise.all([
           supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", ["Forwarded", "Assigned", "For Approval"])
             .contains("forwarded_sections", [currentUser.section])
+            .is("archived_at", null)
+            .is("trashed_at", null)
             .order("forwarded_at", { ascending: false }),
           supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", ["Assigned", "For Approval", "Approved"])
             .contains("forwarded_sections", [currentUser.section])
+            .is("archived_at", null)
+            .is("trashed_at", null)
             .order("event_date", { ascending: true }),
           supabase
             .from("coverage_requests")
             .select(baseSelect)
             .eq("status", "On Going")
             .contains("forwarded_sections", [currentUser.section])
+            .is("archived_at", null)
+            .is("trashed_at", null)
             .order("event_date", { ascending: true }),
           supabase
             .from("coverage_requests")
@@ -785,7 +799,13 @@ export default function SecHeadAssignmentManagement() {
               "Declined",
             ])
             .contains("forwarded_sections", [currentUser.section])
+            .is("archived_at", null)
+            .is("trashed_at", null)
             .order("event_date", { ascending: false }),
+          supabase
+            .from("request_user_state")
+            .select("request_id")
+            .eq("user_id", currentUser.id),
         ]);
 
       if (
@@ -801,8 +821,11 @@ export default function SecHeadAssignmentManagement() {
           completed.error
         );
 
+      const hiddenIds = new Set((userState.data || []).map((r) => r.request_id));
+      const exclude = (rows) => (rows || []).filter((r) => !hiddenIds.has(r.id));
+
       const mySection = currentUser.section;
-      const forwardedData = allForwarded.data || [];
+      const forwardedData = exclude(allForwarded.data);
 
       const forAssignRows = forwardedData.filter((req) => {
         if (req.status !== "Forwarded") return false;
@@ -831,7 +854,7 @@ export default function SecHeadAssignmentManagement() {
       });
 
       const assignedMap = new Map();
-      [...forwardedButMySecDone, ...(assignedAndApproval.data || [])].forEach(
+      [...forwardedButMySecDone, ...exclude(assignedAndApproval.data)].forEach(
         (r) => assignedMap.set(r.id, r),
       );
       const assignedRows = Array.from(assignedMap.values()).sort(
@@ -840,8 +863,8 @@ export default function SecHeadAssignmentManagement() {
 
       setForAssignmentReqs(forAssignRows);
       setAssignedReqs(assignedRows);
-      setOnGoingReqs(onGoing.data || []);
-      setCompletedReqs(completed.data || []);
+      setOnGoingReqs(exclude(onGoing.data));
+      setCompletedReqs(exclude(completed.data));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -855,6 +878,29 @@ export default function SecHeadAssignmentManagement() {
   useRealtimeNotify("coverage_assignments", loadAll, null, {
     title: "Assignment",
   });
+
+  const handleArchive = async (id) => {
+    const ts = new Date().toISOString();
+    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: id, archived_at: ts, trashed_at: null, purged_at: null }, { onConflict: "user_id,request_id" });
+    loadAll();
+  };
+  const handleTrash = async (id) => {
+    const ts = new Date().toISOString();
+    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: id, archived_at: null, trashed_at: ts, purged_at: null }, { onConflict: "user_id,request_id" });
+    loadAll();
+  };
+  const handleBulkArchive = async (ids) => {
+    const ts = new Date().toISOString();
+    const rows = ids.map((rid) => ({ user_id: currentUser.id, request_id: rid, archived_at: ts, trashed_at: null, purged_at: null }));
+    await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
+    loadAll();
+  };
+  const handleBulkTrash = async (ids) => {
+    const ts = new Date().toISOString();
+    const rows = ids.map((rid) => ({ user_id: currentUser.id, request_id: rid, archived_at: null, trashed_at: ts, purged_at: null }));
+    await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
+    loadAll();
+  };
 
   // ── Request browser notification permission once on mount ─────────────────
   useEffect(() => {
@@ -2217,6 +2263,10 @@ export default function SecHeadAssignmentManagement() {
                 border={border}
                 getPaxForSection={getPaxForSection}
                 onAssign={openAssignDialog}
+                onBulkArchive={handleBulkArchive}
+                onBulkTrash={handleBulkTrash}
+                onArchive={handleArchive}
+                onTrash={handleTrash}
               />
             )}
             {tab === 1 && (
@@ -2228,6 +2278,10 @@ export default function SecHeadAssignmentManagement() {
                 border={border}
                 submitLoading={submitLoading}
                 onRequestConfirm={(row) => setConfirmRequest(row)}
+                onBulkArchive={handleBulkArchive}
+                onBulkTrash={handleBulkTrash}
+                onArchive={handleArchive}
+                onTrash={handleTrash}
               />
             )}
             {tab === 2 && (
@@ -2237,6 +2291,10 @@ export default function SecHeadAssignmentManagement() {
                 currentUser={currentUser}
                 isDark={isDark}
                 border={border}
+                onBulkArchive={handleBulkArchive}
+                onBulkTrash={handleBulkTrash}
+                onArchive={handleArchive}
+                onTrash={handleTrash}
               />
             )}
             {tab === 3 && (
@@ -2246,6 +2304,10 @@ export default function SecHeadAssignmentManagement() {
                 currentUser={currentUser}
                 isDark={isDark}
                 border={border}
+                onBulkArchive={handleBulkArchive}
+                onBulkTrash={handleBulkTrash}
+                onArchive={handleArchive}
+                onTrash={handleTrash}
               />
             )}
           </Box>
@@ -2860,7 +2922,13 @@ function ForAssignmentTab({
   border,
   getPaxForSection,
   onAssign,
+  onBulkArchive,
+  onBulkTrash,
+  onArchive,
+  onTrash,
 }) {
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
   const mappedRows = rows.map((req) => {
     // Filter assignments by who assigned them (assigner's section head)
     // This correctly includes cross-assigned staff (e.g., Videojournalism staff assigned by Photo head)
@@ -2990,7 +3058,7 @@ function ForAssignmentTab({
     {
       field: "actions",
       headerName: "",
-      flex: 1.4,
+      flex: 1.6,
       sortable: false,
       align: "right",
       headerAlign: "right",
@@ -3001,6 +3069,7 @@ function ForAssignmentTab({
             alignItems: "center",
             justifyContent: "flex-end",
             height: "100%",
+            gap: 0.5,
             pr: 0.5,
           }}
         >
@@ -3053,17 +3122,26 @@ function ForAssignmentTab({
               )}
             </Box>
           )}
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+            <MoreVertIcon sx={{ fontSize: 18 }} />
+          </IconButton>
         </Box>
       ),
     },
   ];
 
   return (
+    <>
     <DataGrid
       rows={mappedRows}
       columns={columns}
       hideFooter
-      disableSelectionOnClick
+      checkboxSelection
+      disableRowSelectionOnClick
+      selectionActions={[
+        { label: "Archive", onClick: onBulkArchive },
+        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+      ]}
       rowHeight={52}
       getRowClassName={(p) =>
         highlight && p.row.requestTitle?.toLowerCase().includes(highlight)
@@ -3072,6 +3150,12 @@ function ForAssignmentTab({
       }
       sx={makeDataGridSx(isDark, border)}
     />
+    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
+      <MenuItem onClick={() => { if (menuRow) onAssign(menuRow._raw); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><VisibilityOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>View / Assign</ListItemText></MenuItem>
+      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
+      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
+    </Menu>
+    </>
   );
 }
 
@@ -3084,7 +3168,13 @@ function AssignedTab({
   border,
   submitLoading,
   onRequestConfirm,
+  onBulkArchive,
+  onBulkTrash,
+  onArchive,
+  onTrash,
 }) {
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
   const mappedRows = rows.map((req) => {
     // Filter assignments by who assigned them (assigner's section head)
     // This correctly includes cross-assigned staff
@@ -3243,17 +3333,26 @@ function AssignedTab({
               Approval
             </ActionChip>
           ) : null}
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+            <MoreVertIcon sx={{ fontSize: 18 }} />
+          </IconButton>
         </Box>
       ),
     },
   ];
 
   return (
+    <>
     <DataGrid
       rows={mappedRows}
       columns={columns}
       hideFooter
-      disableSelectionOnClick
+      checkboxSelection
+      disableRowSelectionOnClick
+      selectionActions={[
+        { label: "Archive", onClick: onBulkArchive },
+        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+      ]}
       rowHeight={52}
       getRowClassName={(p) =>
         highlight && p.row.title?.toLowerCase().includes(highlight)
@@ -3262,11 +3361,18 @@ function AssignedTab({
       }
       sx={makeDataGridSx(isDark, border)}
     />
+    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
+      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
+      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
+    </Menu>
+    </>
   );
 }
 
 // ── On Going Tab ──────────────────────────────────────────────────────────────
-function OnGoingTab({ rows, highlight, currentUser, isDark, border }) {
+function OnGoingTab({ rows, highlight, currentUser, isDark, border, onBulkArchive, onBulkTrash, onArchive, onTrash }) {
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
   const mappedRows = rows.map((req) => {
     // Filter assignments by who assigned them (assigner's section head)
     // This correctly includes cross-assigned staff
@@ -3405,14 +3511,36 @@ function OnGoingTab({ rows, highlight, currentUser, isDark, border }) {
         </Box>
       ),
     },
+    {
+      field: "actions",
+      headerName: "",
+      flex: 0.4,
+      minWidth: 56,
+      sortable: false,
+      align: "right",
+      headerAlign: "right",
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+            <MoreVertIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
+      ),
+    },
   ];
 
   return (
+    <>
     <DataGrid
       rows={mappedRows}
       columns={columns}
       hideFooter
-      disableSelectionOnClick
+      checkboxSelection
+      disableRowSelectionOnClick
+      selectionActions={[
+        { label: "Archive", onClick: onBulkArchive },
+        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+      ]}
       rowHeight={52}
       getRowClassName={(p) =>
         highlight && p.row.title?.toLowerCase().includes(highlight)
@@ -3421,11 +3549,18 @@ function OnGoingTab({ rows, highlight, currentUser, isDark, border }) {
       }
       sx={makeDataGridSx(isDark, border)}
     />
+    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
+      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
+      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
+    </Menu>
+    </>
   );
 }
 
 // ── Completed Tab ─────────────────────────────────────────────────────────────
-function CompletedTab({ rows, highlight, currentUser, isDark, border }) {
+function CompletedTab({ rows, highlight, currentUser, isDark, border, onBulkArchive, onBulkTrash, onArchive, onTrash }) {
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
   const mappedRows = rows.map((req) => {
     // Filter assignments by who assigned them (assigner's section head)
     // This correctly includes cross-assigned staff
@@ -3554,14 +3689,36 @@ function CompletedTab({ rows, highlight, currentUser, isDark, border }) {
         </Box>
       ),
     },
+    {
+      field: "actions",
+      headerName: "",
+      flex: 0.4,
+      minWidth: 56,
+      sortable: false,
+      align: "right",
+      headerAlign: "right",
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+            <MoreVertIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
+      ),
+    },
   ];
 
   return (
+    <>
     <DataGrid
       rows={mappedRows}
       columns={columns}
       hideFooter
-      disableSelectionOnClick
+      checkboxSelection
+      disableRowSelectionOnClick
+      selectionActions={[
+        { label: "Archive", onClick: onBulkArchive },
+        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+      ]}
       rowHeight={52}
       getRowClassName={(p) =>
         highlight && p.row.title?.toLowerCase().includes(highlight)
@@ -3570,6 +3727,11 @@ function CompletedTab({ rows, highlight, currentUser, isDark, border }) {
       }
       sx={makeDataGridSx(isDark, border)}
     />
+    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
+      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
+      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
+    </Menu>
+    </>
   );
 }
 

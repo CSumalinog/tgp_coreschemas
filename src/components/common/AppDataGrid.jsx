@@ -5,6 +5,7 @@ import {
   GridToolbarContainer,
   GridToolbarExport,
   GridToolbarQuickFilter,
+  useGridApiRef,
 } from "@mui/x-data-grid";
 
 function DefaultNoRowsOverlay() {
@@ -50,7 +51,87 @@ function DefaultGridToolbar({
   printOptions,
   quickFilterProps,
   showSearch,
+  selectedCount,
+  selectionActions,
+  onClearSelection,
 }) {
+  if (selectedCount > 0 && selectionActions?.length) {
+    return (
+      <GridToolbarContainer
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+          width: "100%",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography
+            sx={{
+              fontSize: "0.79rem",
+              fontWeight: 600,
+              color: "text.primary",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {selectedCount} {selectedCount === 1 ? "row" : "rows"} selected
+          </Typography>
+          <Box
+            sx={{ width: "1px", height: 14, bgcolor: "divider", flexShrink: 0 }}
+          />
+          {selectionActions.map((action) => (
+            <Box
+              key={action.label}
+              onClick={action.onClick}
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 1.4,
+                py: 0.5,
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "0.77rem",
+                fontWeight: 600,
+                color: action.color === "error" ? "#dc2626" : "text.primary",
+                border:
+                  action.color === "error"
+                    ? "1px solid rgba(239,68,68,0.35)"
+                    : "1px solid rgba(53,53,53,0.12)",
+                backgroundColor:
+                  action.color === "error"
+                    ? "rgba(239,68,68,0.05)"
+                    : "transparent",
+                transition: "all 0.12s",
+                "&:hover":
+                  action.color === "error"
+                    ? {
+                        backgroundColor: "rgba(239,68,68,0.1)",
+                        borderColor: "rgba(239,68,68,0.55)",
+                      }
+                    : { backgroundColor: "rgba(53,53,53,0.05)" },
+              }}
+            >
+              {action.label}
+            </Box>
+          ))}
+        </Box>
+        <Box
+          onClick={onClearSelection}
+          sx={{
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            cursor: "pointer",
+            "&:hover": { color: "text.primary" },
+          }}
+        >
+          Clear
+        </Box>
+      </GridToolbarContainer>
+    );
+  }
+
   return (
     <GridToolbarContainer
       sx={{
@@ -106,6 +187,12 @@ const AppDataGrid = forwardRef(function AppDataGrid(
     persistSearch = true,
     searchStorageKey,
     searchPlaceholder,
+    onRowClick,
+    getRowClassName,
+    selectionActions,
+    checkboxSelection: checkboxSelectionProp,
+    rowSelectionModel: externalSelectionModel,
+    onRowSelectionModelChange,
     ...props
   },
   ref,
@@ -186,6 +273,31 @@ const AppDataGrid = forwardRef(function AppDataGrid(
 
   const resolvedFilterModel = filterModel ?? internalFilterModel;
 
+  const [highlightedRowId, setHighlightedRowId] = useState(null);
+
+  // Selection (uncontrolled — let MUI X manage state internally)
+  const useSelection = !!(selectionActions || checkboxSelectionProp);
+  const internalApiRef = useGridApiRef();
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const handleClearSelection = () => {
+    internalApiRef.current?.setRowSelectionModel(new Set());
+    setSelectedIds([]);
+    onRowSelectionModelChange?.(new Set());
+  };
+
+  const handleRowClick = (params, event, details) => {
+    setHighlightedRowId((prev) => (prev === params.id ? null : params.id));
+    onRowClick?.(params, event, details);
+  };
+
+  const handleGetRowClassName = (params) => {
+    const base = getRowClassName?.(params) || "";
+    return params.id === highlightedRowId
+      ? `${base} row--highlighted`.trim()
+      : base;
+  };
+
   const handleFilterModelChange = (nextModel, details) => {
     if (typeof filterModel === "undefined") {
       setInternalFilterModel(nextModel);
@@ -220,13 +332,33 @@ const AppDataGrid = forwardRef(function AppDataGrid(
 
   const mergedSlotProps = {
     ...slotProps,
-    toolbar: mergedToolbarProps,
+    toolbar: {
+      ...mergedToolbarProps,
+      selectedCount: selectedIds.length,
+      selectionActions: selectionActions?.map((action) => ({
+        ...action,
+        onClick: () => action.onClick(selectedIds),
+      })),
+      onClearSelection: handleClearSelection,
+    },
     loadingOverlay: {
       variant: "skeleton",
       noRowsVariant: "skeleton",
       ...(slotProps?.loadingOverlay || {}),
     },
   };
+
+  const selectionProps = useSelection
+    ? {
+        checkboxSelection: true,
+        disableRowSelectionOnClick: true,
+        apiRef: internalApiRef,
+        onRowSelectionModelChange: (model) => {
+          setSelectedIds([...model]);
+          onRowSelectionModelChange?.(model);
+        },
+      }
+    : {};
 
   return (
     <MuiDataGrid
@@ -235,6 +367,9 @@ const AppDataGrid = forwardRef(function AppDataGrid(
       showToolbar={showToolbar}
       filterModel={resolvedFilterModel}
       onFilterModelChange={handleFilterModelChange}
+      onRowClick={handleRowClick}
+      getRowClassName={handleGetRowClassName}
+      {...selectionProps}
       slots={{
         ...slots,
         toolbar: slots?.toolbar || DefaultGridToolbar,

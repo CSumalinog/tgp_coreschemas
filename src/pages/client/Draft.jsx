@@ -409,7 +409,7 @@ export default function Draft() {
             columns={columns}
             pageSize={8}
             rowsPerPageOptions={[8]}
-            disableSelectionOnClick
+            disableRowSelectionOnClick
             rowHeight={52}
             sx={makeDataGridSx(isDark, border)}
           />

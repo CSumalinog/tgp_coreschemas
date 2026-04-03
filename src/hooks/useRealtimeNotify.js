@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useRealtimeSync } from "./useRealtimeSync";
 
-// ── Shared AudioContext (one instance, resumed on first user gesture) ──────────
+// ── Shared AudioContext (created lazily on first user gesture) ─────────────────
 let _ctx = null;
 
 function getAudioContext() {
@@ -12,7 +12,7 @@ function getAudioContext() {
   return _ctx;
 }
 
-// Resume the context on first user interaction so autoplay policy is satisfied
+// Create + resume the context on first user interaction so autoplay policy is satisfied
 function unlockAudio() {
   try {
     const ctx = getAudioContext();
@@ -22,7 +22,7 @@ function unlockAudio() {
 
 if (typeof window !== "undefined") {
   ["click", "keydown", "touchstart", "pointerdown"].forEach((evt) => {
-    window.addEventListener(evt, unlockAudio, { once: false, passive: true });
+    window.addEventListener(evt, unlockAudio, { once: true, passive: true });
   });
 }
 

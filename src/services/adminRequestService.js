@@ -54,6 +54,8 @@ export async function fetchAllRequests() {
     `,
     )
     .not("status", "eq", "Draft")
+    .is("archived_at", null)
+    .is("trashed_at", null)
     .order("submitted_at", { ascending: false });
 
   if (error) {

@@ -578,7 +578,7 @@ export default function DutyScheduleView() {
               columns={columns}
               pageSize={10}
               rowsPerPageOptions={[10]}
-              disableSelectionOnClick
+              disableRowSelectionOnClick
               rowHeight={52}
               autoHeight
               sx={makeDataGridSx(isDark, border)}

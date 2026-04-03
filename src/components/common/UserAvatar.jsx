@@ -104,7 +104,7 @@ export default function UserAvatar({ profileRoute = "profile" }) {
         src={avatarUrl || undefined}
         onClick={handleAvatarClick}
         sx={{
-          width: 34, height: 34, mr: 2,
+          width: 42, height: 42, mr: 2,
           cursor: "pointer",
           backgroundColor: "#f5c52b", color: "#212121",
           fontSize: "0.8rem", fontWeight: 700, fontFamily: dm,

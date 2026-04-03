@@ -60,7 +60,9 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
     try {
       let reqQuery = supabase
         .from("coverage_requests")
-        .select("id, title, status, event_date, venue, submitted_at, approved_at, entity:entity_id(name)");
+        .select("id, title, status, event_date, venue, submitted_at, approved_at, entity:entity_id(name)")
+        .is("archived_at", null)
+        .is("trashed_at", null);
       if (!isAllTime && selectedSemester) {
         reqQuery = reqQuery
           .gte("submitted_at", selectedSemester.start_date)

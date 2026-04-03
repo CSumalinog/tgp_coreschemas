@@ -241,6 +241,8 @@ function buildTheme(isDark) {
           .MuiDataGrid-columnHeaders { background-color: #2a2a2a !important; border-color: #2e2e2e !important; }
           .MuiDataGrid-cell          { border-color: #2e2e2e !important; color: #f5f5f5 !important; }
           .MuiDataGrid-row:hover     { background-color: #2a2a2a !important; }
+          .MuiDataGrid-row.row--highlighted { background-color: rgba(245,197,43,0.14) !important; }
+          .MuiDataGrid-row.row--highlighted:hover { background-color: rgba(245,197,43,0.2) !important; }
           .MuiDataGrid-footerContainer { background-color: #1e1e1e !important; border-color: #2e2e2e !important; }
 
           nav, aside, header,
@@ -306,6 +308,13 @@ function DataGridStyles({ isDark }) {
         ".MuiDataGrid-cell": {
           fontSize: "0.78rem !important",
           fontFamily: `${dm} !important`,
+        },
+        // ── Row highlight on click ───────────────────────────────────────────────
+        ".MuiDataGrid-row.row--highlighted": {
+          backgroundColor: "rgba(245,197,43,0.10) !important",
+        },
+        ".MuiDataGrid-row.row--highlighted:hover": {
+          backgroundColor: "rgba(245,197,43,0.16) !important",
         },
         // ── DataGrid mobile horizontal scroll ───────────────────────────────────
         ".MuiDataGrid-root .MuiDataGrid-virtualScroller": {

@@ -18,6 +18,10 @@ import {
   Paper,
   ClickAwayListener,
   Avatar,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
 } from "@mui/material";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -28,7 +32,11 @@ import RequestDetails from "../../components/admin/RequestDetails";
 import { supabase } from "../../lib/supabaseClient";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"; // ✅ Fix 1: Added missing import
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 
 const GOLD = "#F5C52B";
@@ -377,6 +385,45 @@ export default function AdminRequestManagement() {
     return idx >= 0 ? idx : 0;
   });
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
+  const [viewedIds, setViewedIds] = useState(new Set());
+
+  // Gmail-style: fetch which requests this user has viewed
+  useEffect(() => {
+    async function loadViewed() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("request_views").select("request_id").eq("user_id", user.id);
+      if (data) setViewedIds(new Set(data.map((r) => r.request_id)));
+    }
+    loadViewed();
+  }, [requests]);
+
+  const markAsViewed = async (requestId) => {
+    if (viewedIds.has(requestId)) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("request_views").upsert({ user_id: user.id, request_id: requestId }, { onConflict: "user_id,request_id" });
+    setViewedIds((prev) => new Set([...prev, requestId]));
+  };
+
+  const handleArchive = async (row) => {
+    const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).eq("id", row.id);
+    if (!error) refetch();
+  };
+  const handleTrash = async (row) => {
+    const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).eq("id", row.id);
+    if (!error) refetch();
+  };
+  const handleBulkArchive = async (ids) => {
+    const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).in("id", ids);
+    if (!error) refetch();
+  };
+  const handleBulkTrash = async (ids) => {
+    const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).in("id", ids);
+    if (!error) refetch();
+  };
 
   useEffect(() => {
     const openId = location.state?.openRequestId;
@@ -523,23 +570,26 @@ export default function AdminRequestManagement() {
     headerName: "Request Title",
     flex: 1.4,
     minWidth: 180,
-    renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 400,
-            color: isDark ? "#f5f5f5" : "#1a1a1a",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {p.value}
-        </Typography>
-      </Box>
-    ),
+    renderCell: (p) => {
+      const isUnread = !viewedIds.has(p.row.id);
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              fontWeight: isUnread ? 600 : 400,
+              color: isDark ? "#f5f5f5" : "#1a1a1a",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {p.value}
+          </Typography>
+        </Box>
+      );
+    },
   };
   const typeCol = {
     field: "eventType",
@@ -577,22 +627,16 @@ export default function AdminRequestManagement() {
   const actionCol = {
     field: "actions",
     headerName: "",
-    flex: 0.5,
-    minWidth: 110,
+    flex: 0.4,
+    minWidth: 56,
     sortable: false,
     align: "right",
     headerAlign: "right",
     renderCell: (p) => (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          height: "100%",
-          pr: 0.5,
-        }}
-      >
-        <ViewActionButton onClick={() => setSelectedRequest(p.row._raw)} />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+        <IconButton size="small" onClick={(e) => { setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+          <MoreVertIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </Box>
     ),
   };
@@ -1535,7 +1579,12 @@ export default function AdminRequestManagement() {
               columns={buildColumns()}
               pageSize={8}
               rowsPerPageOptions={[8]}
-              disableSelectionOnClick
+              checkboxSelection
+              disableRowSelectionOnClick
+              selectionActions={[
+                { label: "Archive", onClick: handleBulkArchive },
+                { label: "Move to Trash", onClick: handleBulkTrash, color: "error" },
+              ]}
               rowHeight={
                 ["On Going", "Completed"].includes(TABS[tab].key) ? 60 : 52
               }
@@ -1570,6 +1619,29 @@ export default function AdminRequestManagement() {
           refetch();
         }}
       />
+
+      {/* 3-dot menu */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => { setMenuAnchor(null); setMenuRow(null); }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}
+      >
+        <MenuItem onClick={() => { if (menuRow?.id) markAsViewed(menuRow.id); setSelectedRequest(menuRow?._raw); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}>
+          <ListItemIcon><VisibilityOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>View</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => { handleArchive(menuRow); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}>
+          <ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => { handleTrash(menuRow); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}>
+          <ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText>
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }

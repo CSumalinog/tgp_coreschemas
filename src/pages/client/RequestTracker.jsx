@@ -437,8 +437,9 @@ export default function RequestTracker() {
         sx={{
           display: "flex",
           gap: "6px",
-          mb: 3,
+          mb: 2,
           flexWrap: "wrap",
+          alignItems: "center",
         }}
       >
         {TABS.map(({ label }, idx) => {
@@ -450,7 +451,6 @@ export default function RequestTracker() {
               sx={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 0.6,
                 px: 1.5,
                 py: 0.65,
                 borderRadius: "10px",
@@ -994,7 +994,7 @@ function RequestsGrid({ rows, columns, isDark, border }) {
             columns={columns}
             pageSize={8}
             rowsPerPageOptions={[8]}
-            disableSelectionOnClick
+            disableRowSelectionOnClick
             rowHeight={52}
             sx={makeDataGridSx(isDark, border)}
           />

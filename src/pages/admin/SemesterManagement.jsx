@@ -641,7 +641,7 @@ export default function SemesterManagement() {
               pageSize={8}
               rowsPerPageOptions={[8]}
               rowHeight={52}
-              disableSelectionOnClick
+              disableRowSelectionOnClick
               autoHeight
               sx={makeDataGridSx(isDark, border)}
             />

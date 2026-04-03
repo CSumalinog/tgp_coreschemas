@@ -226,6 +226,8 @@ async function fetchResults(role, query, userId) {
             .select("id, title, status")
             .ilike("title", `%${query}%`)
             .neq("status", "Draft")
+            .is("archived_at", null)
+            .is("trashed_at", null)
             .limit(4),
           supabase
             .from("semesters")
@@ -250,6 +252,8 @@ async function fetchResults(role, query, userId) {
             .from("coverage_requests")
             .select("id, title")
             .ilike("title", `%${query}%`)
+            .is("archived_at", null)
+            .is("trashed_at", null)
             .limit(8),
         ]);
         results.staffers = stafferRes.data || [];
@@ -271,6 +275,8 @@ async function fetchResults(role, query, userId) {
           .from("coverage_requests")
           .select("id, title")
           .ilike("title", `%${query}%`)
+          .is("archived_at", null)
+          .is("trashed_at", null)
           .limit(8);
 
         const matchedRequestIds = (requestData || []).map((r) => r.id);
@@ -292,6 +298,8 @@ async function fetchResults(role, query, userId) {
           .select("id, title, status")
           .eq("created_by", userId)
           .ilike("title", `%${query}%`)
+          .is("archived_at", null)
+          .is("trashed_at", null)
           .limit(4);
         results.requests = data || [];
         break;

@@ -674,7 +674,7 @@ export default function MyStaffers() {
               columns={columns}
               pageSize={10}
               rowsPerPageOptions={[10]}
-              disableSelectionOnClick
+              disableRowSelectionOnClick
               rowHeight={52}
               sx={dataGridSx}
             />

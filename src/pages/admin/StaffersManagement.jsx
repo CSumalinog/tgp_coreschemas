@@ -13,6 +13,9 @@ import {
   Avatar,
   InputAdornment,
   Tooltip,
+  Menu,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
@@ -23,6 +26,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import CloseIcon from "@mui/icons-material/Close";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useSearchParams } from "react-router-dom";
 import {
   fetchAllStaffers,
@@ -152,6 +156,10 @@ export default function StaffersManagement() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState([]);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   const loadStaffers = useCallback(async () => {
     setLoading(true);
@@ -285,6 +293,20 @@ export default function StaffersManagement() {
       setError(err.message);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setBulkDeleteLoading(true);
+    try {
+      await Promise.all(bulkDeleteIds.map((id) => deleteStafferAccount(id)));
+      setBulkDeleteOpen(false);
+      setBulkDeleteIds([]);
+      loadStaffers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -504,101 +526,58 @@ export default function StaffersManagement() {
       {
         field: "actions",
         headerName: "",
-        flex: 0.85,
-        minWidth: 110,
+        width: 50,
         sortable: false,
-        align: "right",
-        headerAlign: "right",
-        renderCell: (p) => (
-          <Box
-            sx={{
-              display: "flex",
-              gap: 0.5,
-              alignItems: "center",
-              justifyContent: "flex-end",
-              height: "100%",
-              pr: 0.5,
-            }}
-          >
-            <Tooltip title="Edit" arrow>
+        align: "center",
+        headerAlign: "center",
+        renderCell: (p) => {
+          const [anchorEl, setAnchorEl] = React.useState(null);
+          const open = Boolean(anchorEl);
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
               <IconButton
                 size="small"
-                onClick={() => handleOpenEdit(p.row)}
+                onClick={(e) => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}
                 sx={{
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  p: 0.55,
+                  borderRadius: "4px",
+                  p: 0.4,
                   color: "text.secondary",
                   transition: "all 0.15s",
-                  "&:hover": {
-                    borderColor: GOLD,
-                    color: CHARCOAL,
-                    backgroundColor: GOLD_08,
-                  },
+                  "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)" },
                 }}
               >
-                <EditOutlinedIcon sx={{ fontSize: 14 }} />
+                <MoreVertIcon sx={{ fontSize: 16 }} />
               </IconButton>
-            </Tooltip>
-            <Tooltip
-              title={p.row.is_active ? "Deactivate" : "Reactivate"}
-              arrow
-            >
-              <IconButton
-                size="small"
-                onClick={() => {
-                  setToggleTarget(p.row);
-                  setToggleOpen(true);
-                }}
-                sx={{
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  p: 0.55,
-                  color: "text.secondary",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    borderColor: p.row.is_active
-                      ? "rgba(249,115,22,0.5)"
-                      : "rgba(34,197,94,0.5)",
-                    color: p.row.is_active ? "#c2410c" : "#15803d",
-                    backgroundColor: p.row.is_active
-                      ? "rgba(249,115,22,0.06)"
-                      : "rgba(34,197,94,0.06)",
-                  },
-                }}
+              <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={() => setAnchorEl(null)}
+                onClick={() => setAnchorEl(null)}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+                slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", fontFamily: dm, mt: 0.5, boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.08)" } } }}
               >
-                {p.row.is_active ? (
-                  <BlockOutlinedIcon sx={{ fontSize: 14 }} />
-                ) : (
-                  <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-                )}
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete" arrow>
-              <IconButton
-                size="small"
-                onClick={() => {
-                  setDeleteTarget(p.row);
-                  setDeleteOpen(true);
-                }}
-                sx={{
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  p: 0.55,
-                  color: "text.secondary",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    borderColor: "rgba(239,68,68,0.4)",
-                    color: "#dc2626",
-                    backgroundColor: "rgba(239,68,68,0.06)",
-                  },
-                }}
-              >
-                <DeleteOutlineOutlinedIcon sx={{ fontSize: 14 }} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+                <MenuItem onClick={() => handleOpenEdit(p.row)} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}>
+                  <ListItemIcon sx={{ minWidth: "auto !important" }}><EditOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} /></ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem" }}>Edit</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={() => { setToggleTarget(p.row); setToggleOpen(true); }} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}>
+                  <ListItemIcon sx={{ minWidth: "auto !important" }}>
+                    {p.row.is_active
+                      ? <BlockOutlinedIcon sx={{ fontSize: 15, color: "#f97316" }} />
+                      : <CheckCircleOutlineIcon sx={{ fontSize: 15, color: "#22c55e" }} />
+                    }
+                  </ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem" }}>{p.row.is_active ? "Deactivate" : "Reactivate"}</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={() => { setDeleteTarget(p.row); setDeleteOpen(true); }} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75, color: "#dc2626" }}>
+                  <ListItemIcon sx={{ minWidth: "auto !important" }}><DeleteOutlineOutlinedIcon sx={{ fontSize: 15, color: "#dc2626" }} /></ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem", color: "#dc2626" }}>Delete</ListItemText>
+                </MenuItem>
+              </Menu>
+            </Box>
+          );
+        },
       },
     ],
     [activeTab, border, isDark],
@@ -790,8 +769,18 @@ export default function StaffersManagement() {
               columnVisibilityModel={{ division: activeTab === "All" }}
               pageSize={8}
               rowsPerPageOptions={[8]}
-              disableSelectionOnClick
+              disableRowSelectionOnClick
               rowHeight={56}
+              selectionActions={[
+                {
+                  label: `Delete selected`,
+                  color: "error",
+                  onClick: (ids) => {
+                    setBulkDeleteIds(ids);
+                    setBulkDeleteOpen(true);
+                  },
+                },
+              ]}
               getRowClassName={(params) =>
                 highlight &&
                 params.row.full_name?.toLowerCase().includes(highlight)
@@ -1106,6 +1095,92 @@ export default function StaffersManagement() {
           Are you sure you want to permanently delete{" "}
           <strong style={{ color: CHARCOAL }}>{deleteTarget?.full_name}</strong>
           's account? This action cannot be undone.
+        </Typography>
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1.25,
+            borderRadius: "10px",
+            backgroundColor: isDark
+              ? "rgba(239,68,68,0.06)"
+              : "rgba(239,68,68,0.05)",
+            border: "1px solid rgba(239,68,68,0.2)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              color: "#dc2626",
+              lineHeight: 1.6,
+            }}
+          >
+            Use this only for graduates or members who have permanently left
+            TGP. For temporary deactivation, use the deactivate option instead.
+          </Typography>
+        </Box>
+      </BrandDialog>
+
+      {/* ── Bulk Delete Dialog ── */}
+      <BrandDialog
+        open={bulkDeleteOpen}
+        onClose={() => !bulkDeleteLoading && setBulkDeleteOpen(false)}
+        title="Delete Accounts"
+        isDark={isDark}
+        border={border}
+        footer={
+          <>
+            <CancelBtn
+              onClick={() => setBulkDeleteOpen(false)}
+              disabled={bulkDeleteLoading}
+              border={border}
+            />
+            <Box
+              onClick={!bulkDeleteLoading ? handleBulkDeleteConfirm : undefined}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                px: 1.75,
+                py: 0.65,
+                borderRadius: "10px",
+                cursor: bulkDeleteLoading ? "default" : "pointer",
+                backgroundColor: "#dc2626",
+                color: "#fff",
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                opacity: bulkDeleteLoading ? 0.7 : 1,
+                transition: "background-color 0.15s",
+                "&:hover": {
+                  backgroundColor: bulkDeleteLoading ? "#dc2626" : "#b91c1c",
+                },
+              }}
+            >
+              {bulkDeleteLoading && (
+                <CircularProgress size={13} sx={{ color: "#fff" }} />
+              )}
+              Delete {bulkDeleteIds.length} Account
+              {bulkDeleteIds.length !== 1 ? "s" : ""}
+            </Box>
+          </>
+        }
+      >
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.82rem",
+            color: "text.secondary",
+            lineHeight: 1.65,
+            mb: 1.5,
+          }}
+        >
+          You are about to permanently delete{" "}
+          <strong style={{ color: CHARCOAL }}>
+            {bulkDeleteIds.length} account
+            {bulkDeleteIds.length !== 1 ? "s" : ""}
+          </strong>
+          . This action cannot be undone.
         </Typography>
         <Box
           sx={{

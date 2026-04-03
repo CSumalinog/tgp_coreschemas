@@ -17,6 +17,10 @@ import {
   useTheme,
   ClickAwayListener,
   Avatar,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
@@ -33,6 +37,9 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 
@@ -234,10 +241,11 @@ function DetailSection({ label, icon, children }) {
 }
 
 // ── Assignment Card ───────────────────────────────────────────────────────────
-function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
+function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete, onArchive, onTrash }) {
   const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
   const req = a.request;
   const state = a.status === "Approved" ? getTimeInState(req) : null;
+  const [menuAnchor, setMenuAnchor] = useState(null);
 
   return (
     <Box
@@ -290,6 +298,14 @@ function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete }) {
         >
           <StatusPill status={a.status} isDark={isDark} />
           {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
+          <Box sx={{ flex: 1 }} />
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); }} sx={{ mr: -0.5 }}>
+            <MoreVertIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+          <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={(e) => { e.stopPropagation(); setMenuAnchor(null); }} onClick={(e) => e.stopPropagation()} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
+            <MenuItem onClick={() => { onArchive(req?.id); setMenuAnchor(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
+            <MenuItem onClick={() => { onTrash(req?.id); setMenuAnchor(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
+          </Menu>
         </Box>
         <Typography
           sx={{
@@ -1280,10 +1296,11 @@ export default function MyAssignment() {
   const loadAssignments = useCallback(async () => {
     if (!currentUser?.id) return;
     setLoading(true);
-    const { data, error: fetchErr } = await supabase
-      .from("coverage_assignments")
-      .select(
-        `
+    const [assignResult, usResult] = await Promise.all([
+      supabase
+        .from("coverage_assignments")
+        .select(
+          `
         id, status, section, assigned_at, timed_in_at,
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
@@ -1297,12 +1314,20 @@ export default function MyAssignment() {
           )
         )
       `,
-      )
-      .eq("assigned_to", currentUser.id)
-      .not("status", "eq", "Pending")
-      .order("assigned_at", { ascending: false });
-    if (fetchErr) setError(fetchErr.message);
-    else setAssignments(data || []);
+        )
+        .eq("assigned_to", currentUser.id)
+        .not("status", "eq", "Pending")
+        .order("assigned_at", { ascending: false }),
+      supabase
+        .from("request_user_state")
+        .select("request_id")
+        .eq("user_id", currentUser.id),
+    ]);
+    if (assignResult.error) setError(assignResult.error.message);
+    else {
+      const hiddenIds = new Set((usResult.data || []).map((r) => r.request_id));
+      setAssignments((assignResult.data || []).filter((a) => !hiddenIds.has(a.request?.id)));
+    }
     setLoading(false);
   }, [currentUser]);
 
@@ -1316,6 +1341,19 @@ export default function MyAssignment() {
     currentUser?.id ? `assigned_to=eq.${currentUser.id}` : null,
     { title: "Assignment" },
   );
+
+  const handleArchive = async (requestId) => {
+    if (!requestId || !currentUser?.id) return;
+    const ts = new Date().toISOString();
+    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: requestId, archived_at: ts, trashed_at: null, purged_at: null }, { onConflict: "user_id,request_id" });
+    loadAssignments();
+  };
+  const handleTrash = async (requestId) => {
+    if (!requestId || !currentUser?.id) return;
+    const ts = new Date().toISOString();
+    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: requestId, archived_at: null, trashed_at: ts, purged_at: null }, { onConflict: "user_id,request_id" });
+    loadAssignments();
+  };
 
   useEffect(() => {
     function checkUpcoming() {
@@ -2055,6 +2093,8 @@ export default function MyAssignment() {
                 setCompleteError("");
                 setConfirmTarget(assignment);
               }}
+              onArchive={handleArchive}
+              onTrash={handleTrash}
             />
           ))
         )}

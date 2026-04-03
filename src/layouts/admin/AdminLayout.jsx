@@ -24,6 +24,9 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -89,7 +92,17 @@ const MENU_SECTIONS = [
   },
   {
     group: "GENERAL",
-    items: [{ label: "Settings", to: "settings", Icon: SettingsOutlinedIcon }],
+    items: [
+      {
+        label: "Settings",
+        Icon: SettingsOutlinedIcon,
+        children: [
+          { label: "Archive", to: "archive", Icon: ArchiveOutlinedIcon },
+          { label: "Trash", to: "trash", Icon: DeleteOutlineOutlinedIcon },
+          { label: "Notifications", to: "notification-cleanup", Icon: NotificationsNoneOutlinedIcon },
+        ],
+      },
+    ],
   },
 ];
 
@@ -159,18 +172,17 @@ function ProfileDropdown({
       ref={ref}
       sx={{
         position: "absolute",
-        bottom: "100%",
-        left: 0,
+        top: "calc(100% + 8px)",
         right: 0,
+        width: 240,
         backgroundColor: WHITE,
         border: "1px solid rgba(53,53,53,0.12)",
-        borderBottom: "none",
-        borderRadius: "10px 10px 0 0",
+        borderRadius: "10px",
         zIndex: 1400,
-        boxShadow: "0 -8px 24px rgba(0,0,0,0.3)",
-        animation: "dropup 0.18s cubic-bezier(0.34,1.4,0.64,1)",
-        "@keyframes dropup": {
-          from: { opacity: 0, transform: "translateY(6px)" },
+        boxShadow: "0 8px 32px rgba(53,53,53,0.15)",
+        animation: "dropdown 0.18s cubic-bezier(0.34,1.4,0.64,1)",
+        "@keyframes dropdown": {
+          from: { opacity: 0, transform: "translateY(-6px)" },
           to: { opacity: 1, transform: "translateY(0)" },
         },
       }}
@@ -286,8 +298,6 @@ function SidebarContent({
 }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({ Scheduling: true });
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const footerRef = useRef(null);
 
   const toggleGroup = (label) =>
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -447,89 +457,6 @@ function SidebarContent({
           </Box>
         ))}
       </Box>
-
-      {/* Footer */}
-      <Box sx={{ position: "relative" }}>
-        <ProfileDropdown
-          open={dropdownOpen}
-          currentUser={currentUser}
-          userProfile={userProfile}
-          onClose={() => setDropdownOpen(false)}
-          footerRef={footerRef}
-        />
-        <Box
-          ref={footerRef}
-          onClick={() => setDropdownOpen((p) => !p)}
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderTop: `1px solid ${SIDEBAR_BORDER}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
-            cursor: "pointer",
-            userSelect: "none",
-            transition: "background 0.15s",
-            backgroundColor: dropdownOpen ? HOVER_BG : "transparent",
-            "&:hover": { backgroundColor: HOVER_BG },
-          }}
-        >
-          <Avatar
-            src={avatarUrl || undefined}
-            sx={{
-              width: 30,
-              height: 30,
-              flexShrink: 0,
-              backgroundColor: GOLD,
-              color: CHARCOAL,
-              fontSize: "0.72rem",
-              fontWeight: 700,
-              fontFamily: dm,
-            }}
-          >
-            {!avatarUrl && getInitials(userProfile?.full_name)}
-          </Avatar>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                color: TEXT_PRIMARY,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                lineHeight: 1.3,
-              }}
-            >
-              {userProfile?.full_name || "Admin"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.64rem",
-                color: TEXT_SECONDARY,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                lineHeight: 1.3,
-                mt: 0.1,
-              }}
-            >
-              {currentUser?.email || ""}
-            </Typography>
-          </Box>
-          <UnfoldMoreIcon
-            sx={{
-              fontSize: 15,
-              flexShrink: 0,
-              color: TEXT_SECONDARY,
-              transition: "color 0.15s",
-              ...(dropdownOpen && { color: TEXT_PRIMARY }),
-            }}
-          />
-        </Box>
-      </Box>
     </Box>
   );
 }
@@ -626,6 +553,8 @@ function AdminLayout() {
   const isMobile = useMediaQuery("(max-width:900px)");
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const avatarRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -753,6 +682,34 @@ function AdminLayout() {
             alwaysExpanded={!isMobile}
           />
           <NotificationBell userId={currentUser?.id} />
+          <Box sx={{ position: "relative" }}>
+            <Avatar
+              ref={avatarRef}
+              src={avatarUrl || undefined}
+              onClick={() => setDropdownOpen((p) => !p)}
+              sx={{
+                width: 36,
+                height: 36,
+                cursor: "pointer",
+                backgroundColor: GOLD,
+                color: CHARCOAL,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                fontFamily: dm,
+                transition: "box-shadow 0.15s",
+                "&:hover": { boxShadow: "0 0 0 2px rgba(53,53,53,0.15)" },
+              }}
+            >
+              {!avatarUrl && getInitials(userProfile?.full_name)}
+            </Avatar>
+            <ProfileDropdown
+              open={dropdownOpen}
+              currentUser={currentUser}
+              userProfile={userProfile}
+              onClose={() => setDropdownOpen(false)}
+              footerRef={avatarRef}
+            />
+          </Box>
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>

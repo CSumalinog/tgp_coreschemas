@@ -172,7 +172,7 @@ export default function Dashboard() {
     let isCurrent = true;
     setLoading(true); setError("");
     try {
-      let q = supabase.from("coverage_requests").select("id,title,status,event_date,venue,submitted_at,approved_at,entity:entity_id(name)");
+      let q = supabase.from("coverage_requests").select("id,title,status,event_date,venue,submitted_at,approved_at,entity:entity_id(name)").is("archived_at", null).is("trashed_at", null);
       if (!isAllTime && selectedSemester)
         q = q.gte("submitted_at", selectedSemester.start_date).lte("submitted_at", toEndOfDay(selectedSemester.end_date));
       const { data: requests, error: reqErr } = await q.order("submitted_at", { ascending: false });

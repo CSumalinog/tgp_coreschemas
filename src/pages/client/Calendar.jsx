@@ -85,6 +85,8 @@ function Calendar() {
         .from("coverage_requests")
         .select("event_date")
         .in("status", ["Approved", "On Going", "Completed"])
+        .is("archived_at", null)
+        .is("trashed_at", null)
         .gte("event_date", firstDay)
         .lte("event_date", lastDay);
 
@@ -104,6 +106,8 @@ function Calendar() {
           .select("event_date")
           .eq("client_id", user.id)
           .not("status", "eq", "Draft")
+          .is("archived_at", null)
+          .is("trashed_at", null)
           .gte("event_date", firstDay)
           .lte("event_date", lastDay);
 

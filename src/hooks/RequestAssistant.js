@@ -83,6 +83,8 @@ async function checkConflict(request) {
       .select("id, title, from_time, to_time, status")
       .eq("event_date", request.event_date)
       .in("status", ["Approved", "Ongoing", "Forwarded"])
+      .is("archived_at", null)
+      .is("trashed_at", null)
       .neq("id", request.id);
 
     if (error) return null;
@@ -234,6 +236,8 @@ export async function checkConflictForDate(eventDate, excludeId) {
       .select("id, title, from_time, to_time, status")
       .eq("event_date", eventDate)
       .in("status", ["Approved", "Ongoing", "Forwarded"])
+      .is("archived_at", null)
+      .is("trashed_at", null)
       .neq("id", excludeId);
 
     if (error) return null;
