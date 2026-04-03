@@ -16,15 +16,11 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import AssignmentIndOutlinedIcon from "@mui/icons-material/AssignmentIndOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
@@ -62,20 +58,6 @@ const MENU_SECTIONS = [
         label: "My Schedule",
         to: "my-schedule",
         Icon: CalendarTodayOutlinedIcon,
-      },
-    ],
-  },
-  {
-    group: "GENERAL",
-    items: [
-      {
-        label: "Settings",
-        Icon: SettingsOutlinedIcon,
-        children: [
-          { label: "Archive", to: "archive", Icon: ArchiveOutlinedIcon },
-          { label: "Trash", to: "trash", Icon: DeleteOutlineOutlinedIcon },
-          { label: "Notifications", to: "notification-cleanup", Icon: NotificationsNoneOutlinedIcon },
-        ],
       },
     ],
   },

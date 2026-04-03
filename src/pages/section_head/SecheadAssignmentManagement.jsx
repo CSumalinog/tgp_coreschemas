@@ -25,10 +25,15 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Drawer,
+  Tooltip,
 } from "@mui/material";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import ArchiveManagement from "./ArchiveManagement";
+import TrashManagement from "./TrashManagement";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
@@ -664,6 +669,8 @@ export default function SecHeadAssignmentManagement() {
   const [allStaffers, setAllStaffers] = useState([]);
   const [stafferFilter, setStafferFilter] = useState("all");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState(0);
   const [semRange, setSemRange] = useState(null);
 
   const [searchParams] = useSearchParams();
@@ -1686,6 +1693,7 @@ export default function SecHeadAssignmentManagement() {
           justifyContent: "space-between",
           gap: 1,
           flexShrink: 0,
+          mb: 2.5,
         }}
       >
         <Box
@@ -2029,6 +2037,29 @@ export default function SecHeadAssignmentManagement() {
             )}
           </Box>
         </ClickAwayListener>
+
+        {/* ── Settings gear ── */}
+        <Tooltip title="Archive & Trash" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setSettingsOpen(true)}
+            sx={{
+              borderRadius: "10px",
+              p: 0.7,
+              border: `1px solid ${border}`,
+              color: "text.secondary",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
+              },
+            }}
+          >
+            <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Filter chips — static */}
@@ -2358,6 +2389,63 @@ export default function SecHeadAssignmentManagement() {
         onClose={() => !reassignLoading && setReassignOpen(false)}
         onConfirm={handleReassign}
       />
+
+      {/* ── Settings Drawer (Archive / Trash) ── */}
+      <Drawer
+        anchor="right"
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 520, md: 600 },
+            backgroundColor: "background.default",
+            backgroundImage: "none",
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2.5, pb: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.88rem", color: "text.primary", letterSpacing: "-0.01em" }}>
+                Request Settings
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setSettingsOpen(false)} sx={{ color: "text.secondary" }}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+          <Box sx={{ display: "flex", gap: "6px", px: 2.5, pb: 2 }}>
+            {[
+              { label: "Archive", icon: <ArchiveOutlinedIcon sx={{ fontSize: 13 }} /> },
+              { label: "Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} /> },
+            ].map((t, idx) => {
+              const active = settingsTab === idx;
+              return (
+                <Box
+                  key={t.label}
+                  onClick={() => setSettingsTab(idx)}
+                  sx={{
+                    display: "inline-flex", alignItems: "center", gap: 0.5, px: 1.5, py: 0.55, borderRadius: "10px", cursor: "pointer",
+                    fontFamily: dm, fontSize: "0.78rem", fontWeight: active ? 600 : 400,
+                    color: active ? "#fff" : "text.secondary",
+                    border: `1px solid ${active ? "#212121" : border}`,
+                    backgroundColor: active ? "#212121" : "transparent",
+                    transition: "all 0.12s",
+                    "&:hover": active ? {} : { borderColor: "rgba(53,53,53,0.3)", color: isDark ? "#f5f5f5" : CHARCOAL },
+                  }}
+                >
+                  {t.icon} {t.label}
+                </Box>
+              );
+            })}
+          </Box>
+          <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pb: 2.5 }}>
+            {settingsTab === 0 && <ArchiveManagement embedded />}
+            {settingsTab === 1 && <TrashManagement embedded />}
+          </Box>
+        </Box>
+      </Drawer>
     </Box>
   );
 }
@@ -3676,16 +3764,6 @@ function CompletedTab({ rows, highlight, currentUser, isDark, border, onBulkArch
               ) : null;
             }}
           />
-        </Box>
-      ),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      flex: 0.8,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <StatusPill status={p.value} isDark={isDark} />
         </Box>
       ),
     },

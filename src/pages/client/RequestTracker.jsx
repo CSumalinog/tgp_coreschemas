@@ -12,7 +12,12 @@ import {
   GlobalStyles,
   TextField,
   Button,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -102,6 +107,7 @@ function fmtDate(d, opts = { month: "long", day: "numeric", year: "numeric" }) {
 }
 
 function buildEventDateDisplay(req) {
+  if (!req) return "—";
   if (req.is_multiday && req.event_days?.length > 0) {
     const sorted = [...req.event_days].sort((a, b) =>
       a.date.localeCompare(b.date),
@@ -1004,8 +1010,129 @@ function RequestsGrid({ rows, columns, isDark, border }) {
   );
 }
 
+// ── Row-level action menu cell ────────────────────────────────────────────────
+function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
+  const [anchor, setAnchor] = useState(null);
+  const border = isDark ? BORDER_DARK : BORDER;
+  const status = row._raw?.status;
+  const canReschedule = onReschedule && RESCHEDULABLE_STATUSES.includes(status);
+  const canCancel = onCancel && CANCELLABLE_STATUSES.includes(status);
+
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={(e) => {
+          e.stopPropagation();
+          setAnchor(e.currentTarget);
+        }}
+        sx={{
+          color: "text.secondary",
+          borderRadius: "10px",
+          "&:hover": {
+            backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+          },
+        }}
+      >
+        <MoreVertIcon sx={{ fontSize: 18 }} />
+      </IconButton>
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 0.5,
+              borderRadius: "10px",
+              minWidth: 170,
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 8px 24px rgba(0,0,0,0.5)"
+                : "0 4px 20px rgba(53,53,53,0.10)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setAnchor(null);
+            onView(row._raw);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.8rem", py: 1, gap: 0.5 }}
+        >
+          <ListItemIcon sx={{ minWidth: 28 }}>
+            <ChevronRightIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="View Details"
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 500,
+            }}
+          />
+        </MenuItem>
+        {canReschedule && (
+          <MenuItem
+            onClick={() => {
+              setAnchor(null);
+              onReschedule(row._raw);
+            }}
+            sx={{ fontFamily: dm, fontSize: "0.8rem", py: 1, gap: 0.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 28 }}>
+              <EventRepeatOutlinedIcon
+                sx={{ fontSize: 16, color: "text.secondary" }}
+              />
+            </ListItemIcon>
+            <ListItemText
+              primary="Reschedule"
+              primaryTypographyProps={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 500,
+              }}
+            />
+          </MenuItem>
+        )}
+        {canCancel && (
+          <MenuItem
+            onClick={() => {
+              setAnchor(null);
+              onCancel(row._raw);
+            }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              py: 1,
+              gap: 0.5,
+              color: "#ef4444",
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 28 }}>
+              <CancelOutlinedIcon sx={{ fontSize: 16, color: "#ef4444" }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Cancel Request"
+              primaryTypographyProps={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 500,
+                color: "#ef4444",
+              }}
+            />
+          </MenuItem>
+        )}
+      </Menu>
+    </>
+  );
+}
+
 // ── Shared grid columns hook ──────────────────────────────────────────────────
-function useGridColumns(isDark, onView) {
+function useGridColumns(isDark, { onView, onReschedule, onCancel } = {}) {
   const border = isDark ? BORDER_DARK : BORDER;
 
   const titleCol = {
@@ -1108,7 +1235,7 @@ function useGridColumns(isDark, onView) {
   const actionCol = {
     field: "actions",
     headerName: "",
-    width: 110,
+    width: 56,
     sortable: false,
     align: "right",
     headerAlign: "right",
@@ -1119,10 +1246,16 @@ function useGridColumns(isDark, onView) {
           alignItems: "center",
           justifyContent: "flex-end",
           height: "100%",
-          pr: 0.75,
+          pr: 0.5,
         }}
       >
-        <ViewActionButton onClick={() => onView(p.row._raw)} />
+        <RowActionMenu
+          row={p.row}
+          isDark={isDark}
+          onView={onView}
+          onReschedule={onReschedule}
+          onCancel={onCancel}
+        />
       </Box>
     ),
   };
@@ -1186,6 +1319,10 @@ const toRow = (req) => ({
 function AllRequestsTab({ isDark, border }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
   useRealtimeNotify("coverage_requests", refetch, null, {
     title: "Coverage Request",
   });
@@ -1200,7 +1337,11 @@ function AllRequestsTab({ isDark, border }) {
     eventDateCol,
     statusCol,
     actionCol,
-  } = useGridColumns(isDark, setSelected);
+  } = useGridColumns(isDark, {
+    onView: setSelected,
+    onReschedule: setRescheduleTarget,
+    onCancel: setCancelTarget,
+  });
   const columns = [
     titleCol,
     typeCol,
@@ -1210,6 +1351,37 @@ function AllRequestsTab({ isDark, border }) {
     actionCol,
   ];
   const rows = requests.filter((r) => r.status !== "Draft").map(toRow);
+
+  const handleCancelConfirm = async (reason) => {
+    setCancelLoading(true);
+    try {
+      await cancelRequest(cancelTarget.id, reason);
+      setCancelTarget(null);
+      refetch();
+    } catch (err) {
+      console.error("Cancel failed:", err);
+      alert(err.message || "Failed to cancel the request. Please try again.");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleRescheduleConfirm = async (newDatePayload, reason) => {
+    setRescheduleLoading(true);
+    try {
+      await rescheduleRequest(rescheduleTarget.id, newDatePayload, reason);
+      setRescheduleTarget(null);
+      refetch();
+    } catch (err) {
+      console.error("Reschedule failed:", err);
+      alert(
+        err.message || "Failed to reschedule the request. Please try again.",
+      );
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
   if (loading) return <Loader />;
   return (
     <>
@@ -1234,6 +1406,23 @@ function AllRequestsTab({ isDark, border }) {
           refetch();
         }}
       />
+      <CancelConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelConfirm}
+        loading={cancelLoading}
+        isDark={isDark}
+        border={border}
+      />
+      <RescheduleDialog
+        open={!!rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onConfirm={handleRescheduleConfirm}
+        loading={rescheduleLoading}
+        isDark={isDark}
+        border={border}
+        request={rescheduleTarget}
+      />
     </>
   );
 }
@@ -1241,6 +1430,10 @@ function AllRequestsTab({ isDark, border }) {
 function PendingTab({ isDark, border }) {
   const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
   useRealtimeNotify("coverage_requests", refetch, null, {
     title: "Coverage Request",
   });
@@ -1253,18 +1446,51 @@ function PendingTab({ isDark, border }) {
     typeCol,
     submissionCol,
     eventDateCol,
-    statusCol,
     actionCol,
-  } = useGridColumns(isDark, setSelected);
+  } = useGridColumns(isDark, {
+    onView: setSelected,
+    onReschedule: setRescheduleTarget,
+    onCancel: setCancelTarget,
+  });
   const columns = [
     titleCol,
     typeCol,
     submissionCol,
     eventDateCol,
-    statusCol,
     actionCol,
   ];
   const rows = pending.map(toRow);
+
+  const handleCancelConfirm = async (reason) => {
+    setCancelLoading(true);
+    try {
+      await cancelRequest(cancelTarget.id, reason);
+      setCancelTarget(null);
+      refetch();
+    } catch (err) {
+      console.error("Cancel failed:", err);
+      alert(err.message || "Failed to cancel the request. Please try again.");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleRescheduleConfirm = async (newDatePayload, reason) => {
+    setRescheduleLoading(true);
+    try {
+      await rescheduleRequest(rescheduleTarget.id, newDatePayload, reason);
+      setRescheduleTarget(null);
+      refetch();
+    } catch (err) {
+      console.error("Reschedule failed:", err);
+      alert(
+        err.message || "Failed to reschedule the request. Please try again.",
+      );
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
   if (loading) return <Loader />;
   return (
     <>
@@ -1288,6 +1514,23 @@ function PendingTab({ isDark, border }) {
           setSelected(null);
           refetch();
         }}
+      />
+      <CancelConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelConfirm}
+        loading={cancelLoading}
+        isDark={isDark}
+        border={border}
+      />
+      <RescheduleDialog
+        open={!!rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onConfirm={handleRescheduleConfirm}
+        loading={rescheduleLoading}
+        isDark={isDark}
+        border={border}
+        request={rescheduleTarget}
       />
     </>
   );
@@ -1296,6 +1539,10 @@ function PendingTab({ isDark, border }) {
 function ApprovedTab({ isDark, border }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
   useRealtimeNotify("coverage_requests", refetch, null, {
     title: "Coverage Request",
   });
@@ -1304,9 +1551,44 @@ function ApprovedTab({ isDark, border }) {
     title: "Coverage Request",
   });
   const { titleCol, typeCol, eventDateCol, actionCol, dateApprovedCol } =
-    useGridColumns(isDark, setSelected);
+    useGridColumns(isDark, {
+      onView: setSelected,
+      onReschedule: setRescheduleTarget,
+      onCancel: setCancelTarget,
+    });
   const columns = [titleCol, typeCol, eventDateCol, dateApprovedCol, actionCol];
   const rows = requests.filter((r) => r.status === "Approved").map(toRow);
+
+  const handleCancelConfirm = async (reason) => {
+    setCancelLoading(true);
+    try {
+      await cancelRequest(cancelTarget.id, reason);
+      setCancelTarget(null);
+      refetch();
+    } catch (err) {
+      console.error("Cancel failed:", err);
+      alert(err.message || "Failed to cancel the request. Please try again.");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleRescheduleConfirm = async (newDatePayload, reason) => {
+    setRescheduleLoading(true);
+    try {
+      await rescheduleRequest(rescheduleTarget.id, newDatePayload, reason);
+      setRescheduleTarget(null);
+      refetch();
+    } catch (err) {
+      console.error("Reschedule failed:", err);
+      alert(
+        err.message || "Failed to reschedule the request. Please try again.",
+      );
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
   if (loading) return <Loader />;
   return (
     <>
@@ -1330,6 +1612,23 @@ function ApprovedTab({ isDark, border }) {
           setSelected(null);
           refetch();
         }}
+      />
+      <CancelConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelConfirm}
+        loading={cancelLoading}
+        isDark={isDark}
+        border={border}
+      />
+      <RescheduleDialog
+        open={!!rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onConfirm={handleRescheduleConfirm}
+        loading={rescheduleLoading}
+        isDark={isDark}
+        border={border}
+        request={rescheduleTarget}
       />
     </>
   );
@@ -1346,7 +1645,7 @@ function DeclinedTab({ isDark, border }) {
     title: "Coverage Request",
   });
   const { titleCol, typeCol, eventDateCol, actionCol, dateDeclinedCol } =
-    useGridColumns(isDark, setSelected);
+    useGridColumns(isDark, { onView: setSelected });
   const columns = [titleCol, typeCol, eventDateCol, dateDeclinedCol, actionCol];
   const rows = requests.filter((r) => r.status === "Declined").map(toRow);
   if (loading) return <Loader />;
@@ -2315,6 +2614,7 @@ function RequestDetailDialog({
   const [cancelLoading, setCancelLoading] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
 
   if (!request) return null;
 
@@ -2429,23 +2729,20 @@ function RequestDetailDialog({
               }}
             />
             <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontWeight: 700,
-                    fontSize: "0.92rem",
-                    color: "text.primary",
-                    lineHeight: 1.3,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {request.title}
-                </Typography>
-                <EventTypePill isMultiDay={isMultiDay} isDark={isDark} />
-              </Box>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontWeight: 700,
+                  fontSize: "0.92rem",
+                  color: "text.primary",
+                  lineHeight: 1.3,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {request.title}
+              </Typography>
               <Typography
                 sx={{
                   fontFamily: dm,
@@ -2469,37 +2766,104 @@ function RequestDetailDialog({
               flexShrink: 0,
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.6,
-                px: 1.25,
-                py: 0.4,
-                borderRadius: "10px",
-                backgroundColor: statusCfg.bg,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  backgroundColor: statusCfg.dot,
-                }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.68rem",
-                  fontWeight: 600,
-                  color: statusCfg.color,
-                  letterSpacing: "0.04em",
-                }}
-              >
-                {getFriendlyStatus(request.status)}
-              </Typography>
-            </Box>
+            {(canReschedule || canCancel) && (
+              <>
+                <IconButton
+                  onClick={(e) => setMenuAnchor(e.currentTarget)}
+                  size="small"
+                  sx={{
+                    color: "text.secondary",
+                    borderRadius: "10px",
+                    "&:hover": {
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : HOVER_BG,
+                    },
+                  }}
+                >
+                  <MoreVertIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchor}
+                  open={Boolean(menuAnchor)}
+                  onClose={() => setMenuAnchor(null)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        mt: 0.5,
+                        borderRadius: "10px",
+                        minWidth: 180,
+                        border: `1px solid ${border}`,
+                        boxShadow: isDark
+                          ? "0 8px 24px rgba(0,0,0,0.5)"
+                          : "0 4px 20px rgba(53,53,53,0.10)",
+                      },
+                    },
+                  }}
+                >
+                  {canReschedule && (
+                    <MenuItem
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        setRescheduleOpen(true);
+                      }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.8rem",
+                        py: 1,
+                        gap: 0.5,
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 28 }}>
+                        <EventRepeatOutlinedIcon
+                          sx={{ fontSize: 16, color: "text.secondary" }}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Reschedule"
+                        primaryTypographyProps={{
+                          fontFamily: dm,
+                          fontSize: "0.8rem",
+                          fontWeight: 500,
+                        }}
+                      />
+                    </MenuItem>
+                  )}
+                  {canCancel && (
+                    <MenuItem
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        setCancelOpen(true);
+                      }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.8rem",
+                        py: 1,
+                        gap: 0.5,
+                        color: "#ef4444",
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 28 }}>
+                        <CancelOutlinedIcon
+                          sx={{ fontSize: 16, color: "#ef4444" }}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Cancel Request"
+                        primaryTypographyProps={{
+                          fontFamily: dm,
+                          fontSize: "0.8rem",
+                          fontWeight: 500,
+                          color: "#ef4444",
+                        }}
+                      />
+                    </MenuItem>
+                  )}
+                </Menu>
+              </>
+            )}
             <IconButton
               onClick={onClose}
               size="small"
@@ -3213,94 +3577,6 @@ function RequestDetailDialog({
             </Section>
           )}
 
-          {(canReschedule || canCancel) && (
-            <Box
-              sx={{
-                mt: 1,
-                pt: 2,
-                borderTop: `1px solid ${border}`,
-                display: "flex",
-                gap: 1,
-              }}
-            >
-              {canReschedule && (
-                <Box
-                  onClick={() => setRescheduleOpen(true)}
-                  sx={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 0.75,
-                    px: 2,
-                    py: 1,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    border: "1px solid #212121",
-                    backgroundColor: "#212121",
-                    transition: "all 0.15s",
-                    "&:hover": {
-                      backgroundColor: "#333",
-                      borderColor: "#333",
-                    },
-                  }}
-                >
-                  <EventRepeatOutlinedIcon
-                    sx={{ fontSize: 15, color: "#fff" }}
-                  />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.8rem",
-                      fontWeight: 500,
-                      color: "#fff",
-                    }}
-                  >
-                    Reschedule
-                  </Typography>
-                </Box>
-              )}
-              {canCancel && (
-                <Box
-                  onClick={() => setCancelOpen(true)}
-                  sx={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 0.75,
-                    px: 2,
-                    py: 1,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    border: `1px solid ${isDark ? "rgba(239,68,68,0.25)" : "rgba(239,68,68,0.2)"}`,
-                    backgroundColor: isDark
-                      ? "rgba(239,68,68,0.06)"
-                      : "rgba(239,68,68,0.03)",
-                    transition: "all 0.15s",
-                    "&:hover": {
-                      backgroundColor: isDark
-                        ? "rgba(239,68,68,0.1)"
-                        : "rgba(239,68,68,0.06)",
-                      borderColor: "#ef4444",
-                    },
-                  }}
-                >
-                  <CancelOutlinedIcon sx={{ fontSize: 15, color: "#ef4444" }} />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.8rem",
-                      fontWeight: 500,
-                      color: "#ef4444",
-                    }}
-                  >
-                    Cancel Request
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          )}
         </DialogContent>
       </Dialog>
 

@@ -18,9 +18,6 @@ import CalendarManagement from "../pages/admin/CalendarManagement";
 import StaffersManagement from "../pages/admin/StaffersManagement";
 import SemesterManagement from "../pages/admin/SemesterManagement";
 import DutyScheduleView from "../pages/admin/DutyScheduleView";
-import ArchiveManagement from "../pages/admin/ArchiveManagement";
-import TrashManagement from "../pages/admin/TrashManagement";
-import NotificationCleanup from "../pages/admin/NotificationCleanup";
 
 // Client Pages
 import Calendar from "../pages/client/Calendar";
@@ -31,17 +28,11 @@ import RequestTracker from "../pages/client/RequestTracker";
 import SecHeadDashboard from "../pages/section_head/SecHeadDashboard";
 import SecHeadAssignmentManagement from "../pages/section_head/SecheadAssignmentManagement";
 import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
-import SecHeadArchiveManagement from "../pages/section_head/ArchiveManagement";
-import SecHeadTrashManagement from "../pages/section_head/TrashManagement";
-import SecHeadNotificationCleanup from "../pages/section_head/NotificationCleanup";
 
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
 import MySchedule from "../pages/regular_staff/MySchedule";
 import TimeoutPage from "../pages/regular_staff/TimeoutPage";
-import StaffArchiveManagement from "../pages/regular_staff/ArchiveManagement";
-import StaffTrashManagement from "../pages/regular_staff/TrashManagement";
-import StaffNotificationCleanup from "../pages/regular_staff/NotificationCleanup";
 
 // Shared Profile Page
 import ProfilePage from "../pages/common/ProfilePage";
@@ -80,10 +71,10 @@ function AppRoutes() {
         <Route path="staffers-management" element={<StaffersManagement />} />
         <Route path="semester-management" element={<SemesterManagement />} />
         <Route path="duty-schedule-view" element={<DutyScheduleView />} />
-        <Route path="archive" element={<ArchiveManagement />} />
-        <Route path="trash" element={<TrashManagement />} />
-        <Route path="notification-cleanup" element={<NotificationCleanup />} />
-        <Route path="settings" element={<Navigate to="/admin/archive" replace />} />
+        <Route path="archive" element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="trash" element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="notification-cleanup" element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="settings" element={<Navigate to="/admin/request-management" replace />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
         <Route path="approved-requests"  element={<Navigate to="/admin/request-management" replace />} />
@@ -126,10 +117,10 @@ function AppRoutes() {
         <Route path="dashboard" element={<SecHeadDashboard />} />
         <Route path="coverage-assignment" element={<SecHeadAssignmentManagement />} />
         <Route path="my-staffers" element={<SecHeadMyStaffers />} />
-        <Route path="archive" element={<SecHeadArchiveManagement />} />
-        <Route path="trash" element={<SecHeadTrashManagement />} />
-        <Route path="notification-cleanup" element={<SecHeadNotificationCleanup />} />
-        <Route path="settings" element={<Navigate to="/sec_head/archive" replace />} />
+        <Route path="archive" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="trash" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="notification-cleanup" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="settings" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
         <Route path="assignment-management" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
@@ -150,10 +141,10 @@ function AppRoutes() {
         <Route index element={<Navigate to="my-assignment" />} />
         <Route path="my-assignment" element={<MyAssignment />} />
         <Route path="my-schedule" element={<MySchedule />} />
-        <Route path="archive" element={<StaffArchiveManagement />} />
-        <Route path="trash" element={<StaffTrashManagement />} />
-        <Route path="notification-cleanup" element={<StaffNotificationCleanup />} />
-        <Route path="settings" element={<Navigate to="/staff/archive" replace />} />
+        <Route path="archive" element={<Navigate to="/staff/my-assignment" replace />} />
+        <Route path="trash" element={<Navigate to="/staff/my-assignment" replace />} />
+        <Route path="notification-cleanup" element={<Navigate to="/staff/my-assignment" replace />} />
+        <Route path="settings" element={<Navigate to="/staff/my-assignment" replace />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 

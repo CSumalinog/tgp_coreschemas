@@ -22,6 +22,8 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
+  Drawer,
+  Tooltip,
 } from "@mui/material";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -37,7 +39,10 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import ArchiveManagement from "./ArchiveManagement";
+import TrashManagement from "./TrashManagement";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -388,6 +393,8 @@ export default function AdminRequestManagement() {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const [viewedIds, setViewedIds] = useState(new Set());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState(0); // 0 = Archive, 1 = Trash
 
   // Gmail-style: fetch which requests this user has viewed
   useEffect(() => {
@@ -1235,7 +1242,7 @@ export default function AdminRequestManagement() {
       }}
     >
       {/* ── Header ── */}
-      <Box sx={{ mb: 2.5 }}>
+      <Box sx={{ mb: 2.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Typography
           sx={{
             fontFamily: dm,
@@ -1270,7 +1277,7 @@ export default function AdminRequestManagement() {
       {/* ── Segmented tab bar + filter ── */}
       <Box
         sx={{
-          mb: 2,
+          mb: 2.5,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -1549,6 +1556,29 @@ export default function AdminRequestManagement() {
             )}
           </Box>
         </ClickAwayListener>
+
+        {/* ── Settings gear ── */}
+        <Tooltip title="Archive & Trash" arrow>
+          <IconButton
+            size="small"
+            onClick={() => setSettingsOpen(true)}
+            sx={{
+              borderRadius: "10px",
+              p: 0.7,
+              border: `1px solid ${border}`,
+              color: "text.secondary",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
+              },
+            }}
+          >
+            <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* ── Table ── */}
@@ -1642,6 +1672,116 @@ export default function AdminRequestManagement() {
           <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText>
         </MenuItem>
       </Menu>
+
+      {/* ── Settings Drawer (Archive & Trash) ── */}
+      <Drawer
+        anchor="right"
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 520, md: 600 },
+            backgroundColor: "background.default",
+            borderLeft: `1px solid ${border}`,
+          },
+        }}
+      >
+        {/* Drawer header */}
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "text.primary",
+              }}
+            >
+              Request Settings
+            </Typography>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => setSettingsOpen(false)}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        {/* Drawer tabs */}
+        <Box
+          sx={{
+            px: 2.5,
+            pt: 2,
+            pb: 2,
+            display: "flex",
+            gap: "6px",
+            flexShrink: 0,
+          }}
+        >
+          {[
+            { label: "Archive", Icon: ArchiveOutlinedIcon },
+            { label: "Trash", Icon: DeleteOutlineOutlinedIcon },
+          ].map((t, idx) => {
+            const active = settingsTab === idx;
+            return (
+              <Box
+                key={t.label}
+                onClick={() => setSettingsTab(idx)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.6,
+                  px: 1.5,
+                  py: 0.65,
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  fontFamily: dm,
+                  fontSize: "0.79rem",
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "#fff" : "text.secondary",
+                  border: `1px solid ${active ? "#212121" : border}`,
+                  backgroundColor: active ? "#212121" : "background.paper",
+                  transition: "all 0.12s",
+                  "&:hover": active
+                    ? {}
+                    : {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: isDark ? "#f5f5f5" : CHARCOAL,
+                      },
+                }}
+              >
+                <t.Icon sx={{ fontSize: 14 }} />
+                {t.label}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Drawer content */}
+        <Box sx={{ flex: 1, overflow: "auto" }}>
+          {settingsTab === 0 && <ArchiveManagement embedded />}
+          {settingsTab === 1 && <TrashManagement embedded />}
+        </Box>
+      </Drawer>
     </Box>
   );
 }

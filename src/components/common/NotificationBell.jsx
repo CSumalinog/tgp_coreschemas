@@ -9,7 +9,6 @@ import {
   ClickAwayListener,
   CircularProgress,
   useTheme,
-  Avatar,
 } from "@mui/material";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import CheckIcon from "@mui/icons-material/Check";
@@ -22,7 +21,6 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { getAvatarUrl } from "./UserAvatar";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -124,49 +122,15 @@ export default function NotificationBell({ userId }) {
       if (!userId) return;
       if (showSpinner) setLoading(true);
 
-      // Try with created_by first, fall back to without it if column doesn't exist
       let { data, error } = await supabase
         .from("notifications")
-        .select(
-          "id, title, message, type, is_read, request_id, created_at, created_by",
-        )
+        .select("id, title, message, type, is_read, request_id, created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(30);
 
-      if (error) {
-        // created_by column may not exist yet — retry without it
-        const fallback = await supabase
-          .from("notifications")
-          .select("id, title, message, type, is_read, request_id, created_at")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(30);
-        data = fallback.data;
-        error = fallback.error;
-      }
-
       if (!error && data) {
-        // Resolve creator profiles in a separate query
-        const creatorIds = [
-          ...new Set(data.map((n) => n.created_by).filter(Boolean)),
-        ];
-        let creatorMap = {};
-        if (creatorIds.length) {
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("id, full_name, avatar_url")
-            .in("id", creatorIds);
-          if (profiles) {
-            creatorMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
-          }
-        }
-        setNotifications(
-          data.map((n) => ({
-            ...n,
-            creator: n.created_by ? creatorMap[n.created_by] || null : null,
-          })),
-        );
+        setNotifications(data);
       } else if (error) {
         console.error("Notification fetch failed:", error.message);
       }
@@ -473,28 +437,31 @@ export default function NotificationBell({ userId }) {
                         },
                       }}
                     >
-                      {/* ── Avatar (from creator) ── */}
-                      <Avatar
-                        src={
-                          notif.creator?.avatar_url
-                            ? getAvatarUrl(notif.creator.avatar_url)
-                            : ""
-                        }
-                        alt={notif.creator?.full_name || "User"}
+                      {/* ── Type icon ── */}
+                      <Box
                         sx={{
                           width: 32,
                           height: 32,
+                          borderRadius: "10px",
                           flexShrink: 0,
-                          fontSize: "0.85rem",
-                          fontWeight: 600,
-                          backgroundColor: unread ? cfg.dot : "text.disabled",
-                          border: unread
-                            ? `2px solid ${cfg.dot}`
-                            : "2px solid transparent",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: unread
+                            ? `${cfg.dot}18`
+                            : isDark
+                              ? "rgba(255,255,255,0.05)"
+                              : "rgba(53,53,53,0.05)",
+                          border: `1.5px solid ${unread ? `${cfg.dot}30` : "transparent"}`,
                         }}
                       >
-                        {notif.creator?.full_name?.[0] || "?"}
-                      </Avatar>
+                        <Icon
+                          sx={{
+                            fontSize: 17,
+                            color: unread ? cfg.dot : "text.disabled",
+                          }}
+                        />
+                      </Box>
 
                       {/* Content */}
                       <Box sx={{ flex: 1, minWidth: 0 }}>

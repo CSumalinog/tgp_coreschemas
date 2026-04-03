@@ -119,7 +119,7 @@ function ConfirmDialog({ open, onClose, onConfirm, title, message, loading, dest
   );
 }
 
-export default function TrashManagement() {
+export default function TrashManagement({ embedded = false }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
@@ -289,15 +289,17 @@ export default function TrashManagement() {
   );
 
   if (loading) {
-    return (<Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}><CircularProgress size={28} sx={{ color: GOLD }} /></Box>);
+    return (<Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: embedded ? "40vh" : "60vh" }}><CircularProgress size={28} sx={{ color: GOLD }} /></Box>);
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, fontFamily: dm }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "1rem", color: "text.primary", letterSpacing: "-0.02em" }}>Trash</Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", mt: 0.3 }}>Restore or permanently delete trashed assignments.</Typography>
-      </Box>
+    <Box sx={{ p: embedded ? 0 : { xs: 2, sm: 3 }, fontFamily: dm }}>
+      {!embedded && (
+        <Box sx={{ mb: 3 }}>
+          <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "1rem", color: "text.primary", letterSpacing: "-0.02em" }}>Trash</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", mt: 0.3 }}>Restore or permanently delete trashed assignments.</Typography>
+        </Box>
+      )}
 
       {msg && (
         <Alert severity={msg.type} onClose={() => setMsg(null)} sx={{ mb: 2, borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem", py: 0.75 }}>{msg.text}</Alert>

@@ -283,47 +283,6 @@ export default function Draft() {
       ),
     },
     {
-      field: "status",
-      headerName: "Status",
-      flex: 0.7,
-      renderCell: () => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.6,
-              px: 1.25,
-              py: 0.35,
-              borderRadius: "10px",
-              backgroundColor: isDark ? "rgba(245,197,43,0.08)" : "#fef9ec",
-            }}
-          >
-            <Box
-              sx={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                backgroundColor: "#f59e0b",
-                flexShrink: 0,
-              }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                fontWeight: 600,
-                color: "#b45309",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Draft
-            </Typography>
-          </Box>
-        </Box>
-      ),
-    },
-    {
       field: "actions",
       headerName: "",
       width: 110,

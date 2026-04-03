@@ -23,10 +23,6 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -88,20 +84,6 @@ const MENU_SECTIONS = [
       },
       { label: "Calendar", to: "calendar-management", Icon: EventOutlinedIcon },
       { label: "Staffers", to: "staffers-management", Icon: GroupOutlinedIcon },
-    ],
-  },
-  {
-    group: "GENERAL",
-    items: [
-      {
-        label: "Settings",
-        Icon: SettingsOutlinedIcon,
-        children: [
-          { label: "Archive", to: "archive", Icon: ArchiveOutlinedIcon },
-          { label: "Trash", to: "trash", Icon: DeleteOutlineOutlinedIcon },
-          { label: "Notifications", to: "notification-cleanup", Icon: NotificationsNoneOutlinedIcon },
-        ],
-      },
     ],
   },
 ];
