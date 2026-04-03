@@ -1,5 +1,5 @@
 // src/pages/admin/DutyScheduleView.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -7,10 +7,18 @@ import {
   Alert,
   Avatar,
   useTheme,
+  FormControl,
+  Select,
+  MenuItem,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
-import { DataGrid } from "../../components/common/AppDataGrid";
+import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -90,6 +98,8 @@ export default function DutyScheduleView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sectionFilter, setSectionFilter] = useState("All");
+  const [searchText, setSearchText] = useState("");
+  const gridApiRef = useGridApiRef();
 
   useEffect(() => {
     async function loadSemester() {
@@ -133,6 +143,21 @@ export default function DutyScheduleView() {
   const dayCounts = DAY_LABELS.map(
     (_, i) => schedules.filter((s) => s.duty_day === i).length,
   );
+
+  const externalFilterModel = useMemo(() => {
+    const tokens = searchText
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return { items: [], quickFilterValues: tokens };
+  }, [searchText]);
+
+  const handleExportCsv = () => {
+    gridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "duty-schedule-export",
+    });
+  };
 
   const rows = filtered.map((s) => ({
     id: s.id,
@@ -323,13 +348,17 @@ export default function DutyScheduleView() {
     <Box
       sx={{
         p: { xs: 2, sm: 3 },
-        backgroundColor: "background.default",
-        minHeight: "100%",
+        backgroundColor: "#ffffff",
+        height: "100%",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
         fontFamily: dm,
       }}
     >
       {/* ── Header ── */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 3, flexShrink: 0 }}>
         <Typography
           sx={{
             fontFamily: dm,
@@ -371,7 +400,15 @@ export default function DutyScheduleView() {
 
       {/* ── Day slot summary cards ── */}
       {activeSemester && (
-        <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mb: 3,
+            flexWrap: "wrap",
+            flexShrink: 0,
+          }}
+        >
           {DAY_LABELS.map((day, i) => {
             const cfg = DAY_CFG[i];
             const pct = Math.min((dayCounts[i] / 10) * 100, 100);
@@ -472,90 +509,171 @@ export default function DutyScheduleView() {
         </Alert>
       )}
 
-      {/* ── Section filter (underline tabs) ── */}
+      {/* ── Filter row: Search | Section | Export ── */}
       {activeSemester && (
         <Box
           sx={{
             mb: 2,
             display: "flex",
-            gap: "6px",
-            flexWrap: "wrap",
+            alignItems: "flex-end",
+            gap: 1.5,
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            flexShrink: 0,
           }}
         >
-          {["All", ...COVERAGE_SECTIONS].map((sec) => {
-            const isActive = sectionFilter === sec;
-            const count =
-              sec === "All"
-                ? schedules.length
-                : schedules.filter((s) => s.staffer?.section === sec).length;
-            return (
-              <Box
-                key={sec}
-                onClick={() => setSectionFilter(sec)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  px: 1.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  fontFamily: dm,
-                  fontSize: "0.79rem",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#fff" : "text.secondary",
-                  border: `1px solid ${isActive ? "#212121" : border}`,
-                  backgroundColor: isActive ? "#212121" : "background.paper",
-                  transition: "all 0.12s",
-                  "&:hover": isActive
-                    ? {}
-                    : {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: isDark ? "#f5f5f5" : CHARCOAL,
-                      },
-                }}
-              >
-                {sec}
-                <Box
-                  sx={{
-                    minWidth: 17,
-                    height: 17,
-                    borderRadius: "10px",
-                    px: 0.5,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: isActive
-                      ? "rgba(255,255,255,0.18)"
-                      : isDark
-                        ? "rgba(255,255,255,0.08)"
-                        : "rgba(53,53,53,0.07)",
-                  }}
-                >
-                  <Typography
+          {/* Search */}
+          <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.68rem",
+                fontWeight: 600,
+                color: "text.secondary",
+                mb: 0.5,
+                letterSpacing: "0.03em",
+              }}
+            >
+              Search for schedule
+            </Typography>
+            <OutlinedInput
+              placeholder="Search"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              startAdornment={
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                </InputAdornment>
+              }
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                borderRadius: "10px",
+                backgroundColor: "#f7f7f8",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(0,0,0,0.12)",
+                },
+              }}
+            />
+          </FormControl>
+
+          {/* Section */}
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.68rem",
+                fontWeight: 600,
+                color: "text.secondary",
+                mb: 0.5,
+                letterSpacing: "0.03em",
+              }}
+            >
+              Section
+            </Typography>
+            <Select
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
+              IconComponent={UnfoldMoreIcon}
+              displayEmpty
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                borderRadius: "10px",
+                backgroundColor: "#f7f7f8",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(0,0,0,0.12)",
+                },
+                "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+              }}
+            >
+              {["All", ...COVERAGE_SECTIONS].map((sec) => {
+                const count =
+                  sec === "All"
+                    ? schedules.length
+                    : schedules.filter((s) => s.staffer?.section === sec)
+                        .length;
+                return (
+                  <MenuItem
+                    key={sec}
+                    value={sec}
                     sx={{
                       fontFamily: dm,
-                      fontSize: "0.62rem",
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      color: isActive ? "#fff" : "text.secondary",
+                      fontSize: "0.78rem",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 2,
                     }}
                   >
-                    {count}
-                  </Typography>
-                </Box>
-              </Box>
-            );
-          })}
+                    {sec}
+                    {count > 0 && (
+                      <Box
+                        component="span"
+                        sx={{
+                          minWidth: 18,
+                          height: 18,
+                          borderRadius: "10px",
+                          px: 0.6,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#f5c52b",
+                          fontSize: "0.62rem",
+                          fontWeight: 500,
+                          lineHeight: 1,
+                          color: "#000000",
+                        }}
+                      >
+                        {count}
+                      </Box>
+                    )}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          <Box sx={{ flex: 1 }} />
+
+          {/* Export */}
+          <Box
+            onClick={handleExportCsv}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 1.5,
+              height: 40,
+              borderRadius: "10px",
+              cursor: "pointer",
+              border: "1px solid rgba(0,0,0,0.12)",
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              backgroundColor: "#f7f7f8",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+            Export
+          </Box>
         </Box>
       )}
 
       {/* ── Table ── */}
-      <Box sx={{ width: "100%", overflowX: "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
         <Box
           sx={{
             minWidth: 600,
-            bgcolor: "background.paper",
+            height: "100%",
+            bgcolor: "#f7f7f8",
             borderRadius: "10px",
             border: `1px solid ${border}`,
             overflow: "hidden",
@@ -580,8 +698,15 @@ export default function DutyScheduleView() {
               rowsPerPageOptions={[10]}
               disableRowSelectionOnClick
               rowHeight={52}
-              autoHeight
-              sx={makeDataGridSx(isDark, border)}
+              enableSearch={false}
+              apiRef={gridApiRef}
+              filterModel={externalFilterModel}
+              slotProps={{
+                toolbar: {
+                  csvOptions: { disableToolbarButton: true },
+                  printOptions: { disableToolbarButton: true },
+                },
+              }}
             />
           )}
         </Box>
@@ -601,67 +726,4 @@ function MetaCell({ children }) {
       </Typography>
     </Box>
   );
-}
-
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-  };
 }

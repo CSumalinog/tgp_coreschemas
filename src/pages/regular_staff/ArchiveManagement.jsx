@@ -63,24 +63,6 @@ const buildEventDateDisplay = (req) => {
   return fmtDateStr(req.event_date);
 };
 
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none", fontFamily: dm, fontSize: "0.78rem", backgroundColor: "background.paper", color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(53,53,53,0.02)", borderBottom: `1px solid ${border}`, minHeight: "40px !important", maxHeight: "40px !important", lineHeight: "40px !important" },
-    "& .MuiDataGrid-columnHeaderTitle": { fontFamily: dm, fontSize: "0.68rem", fontWeight: 700, color: "text.secondary", letterSpacing: "0.07em", textTransform: "uppercase" },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
-    "& .MuiDataGrid-row": { borderBottom: `1px solid ${border}`, transition: "background-color 0.12s", "&:last-child": { borderBottom: "none" } },
-    "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG },
-    "& .MuiDataGrid-cell": { border: "none", outline: "none !important", "&:focus, &:focus-within": { outline: "none" } },
-    "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${border}`, backgroundColor: "transparent", minHeight: "44px" },
-    "& .MuiTablePagination-root": { fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontFamily: dm, fontSize: "0.75rem" },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-  };
-}
-
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CONFIG[status] || { bg: "rgba(53,53,53,0.05)", color: "text.secondary", dot: "text.disabled" };
   return (
@@ -218,7 +200,7 @@ export default function ArchiveManagement({ embedded = false }) {
     try {
       const { error } = await supabase.from("request_user_state").delete().eq("user_id", userId).in("request_id", ids);
       if (error) throw error;
-      setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
+      setMsg({ type: "success", text: `${ids.length} request(s) unarchived.` });
       setSelected([]);
       await Promise.all([fetchArchived(), fetchArchivable()]);
     } catch (err) { setMsg({ type: "error", text: err.message }); }
@@ -284,7 +266,7 @@ export default function ArchiveManagement({ embedded = false }) {
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} onClick={() => setAnchorEl(null)} transformOrigin={{ horizontal: "right", vertical: "top" }} anchorOrigin={{ horizontal: "right", vertical: "bottom" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", fontFamily: dm, mt: 0.5, boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.08)" } } }}>
               <MenuItem onClick={() => restoreFromArchive([row.id])} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}>
                 <ListItemIcon sx={{ minWidth: "auto !important" }}><UnarchiveOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} /></ListItemIcon>
-                <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem" }}>Restore</ListItemText>
+                <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem" }}>Unarchive</ListItemText>
               </MenuItem>
               <MenuItem onClick={() => openConfirm("Move to Trash", `Move "${row.title}" to trash?`, () => moveToTrash([row.id]))} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75, color: RED }}>
                 <ListItemIcon sx={{ minWidth: "auto !important" }}><DeleteOutlineOutlinedIcon sx={{ fontSize: 15, color: RED }} /></ListItemIcon>
@@ -382,7 +364,7 @@ export default function ArchiveManagement({ embedded = false }) {
             <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled", mb: 1.5 }}>
               {archivableRequests.length} assignment(s) ready to be archived.
             </Typography>
-            <DataGrid rows={archivableRequests} columns={archivableColumns} density="compact" autoHeight pageSize={10} rowsPerPageOptions={[10, 25, 50]} disableSelectionOnClick sx={makeDataGridSx(isDark, border)} />
+            <DataGrid rows={archivableRequests} columns={archivableColumns} density="compact" autoHeight pageSize={10} rowsPerPageOptions={[10, 25, 50]} disableSelectionOnClick />
           </Card>
         )}
 
@@ -398,11 +380,11 @@ export default function ArchiveManagement({ embedded = false }) {
               <BulkBar
                 count={selected.length}
                 actions={[
-                  { label: "Restore", icon: <UnarchiveOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => restoreFromArchive(selected) },
+                  { label: "Unarchive", icon: <UnarchiveOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => restoreFromArchive(selected) },
                   { label: "Move to Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => openConfirm("Move to Trash", `Move ${selected.length} request(s) to trash?`, () => moveToTrash(selected)), destructive: true },
                 ]}
               />
-              <DataGrid rows={archivedRequests} columns={archiveColumns} density="compact" autoHeight pageSize={10} rowsPerPageOptions={[10, 25, 50]} checkboxSelection onSelectionModelChange={(ids) => setSelected(ids)} selectionModel={selected} sx={makeDataGridSx(isDark, border)} />
+              <DataGrid rows={archivedRequests} columns={archiveColumns} density="compact" autoHeight pageSize={10} rowsPerPageOptions={[10, 25, 50]} checkboxSelection onSelectionModelChange={(ids) => setSelected(ids)} selectionModel={selected} />
             </>
           )}
         </Card>

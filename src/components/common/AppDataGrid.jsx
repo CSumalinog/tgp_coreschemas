@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useMemo, useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, IconButton, Tooltip, Typography, useTheme } from "@mui/material";
 import {
   DataGrid as MuiDataGrid,
   GridToolbarContainer,
@@ -7,6 +7,109 @@ import {
   GridToolbarQuickFilter,
   useGridApiRef,
 } from "@mui/x-data-grid";
+
+const GRID_FONT = "'Inter', sans-serif";
+
+function buildGridBaseSx(isDark) {
+  const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const borderLight = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  return {
+    border: "none",
+    fontFamily: GRID_FONT,
+    fontSize: "0.78rem",
+    backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
+    color: "text.primary",
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#ededee",
+      borderBottom: `1px solid ${border}`,
+      minHeight: "44px !important",
+      maxHeight: "44px !important",
+      lineHeight: "44px !important",
+    },
+    "& .MuiDataGrid-columnHeaderTitle": {
+      fontFamily: GRID_FONT,
+      fontSize: "0.68rem",
+      fontWeight: 700,
+      color: "text.secondary",
+      letterSpacing: "0.07em",
+      textTransform: "uppercase",
+    },
+    "& .MuiDataGrid-columnSeparator": { display: "none" },
+    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
+      { outline: "none" },
+    "& .MuiDataGrid-menuIcon button": {
+      color: "text.disabled",
+      padding: "2px",
+      borderRadius: "10px",
+      transition: "all 0.15s",
+      "&:hover": { backgroundColor: "rgba(245,197,43,0.08)", color: "#b45309" },
+    },
+    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
+    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": {
+      color: "text.secondary",
+    },
+    "& .MuiDataGrid-row": {
+      borderBottom: `1px solid ${borderLight}`,
+      backgroundColor: isDark ? "#1a1a1d" : "#ffffff",
+      transition: "background-color 0.12s",
+      "&:last-child": { borderBottom: "none" },
+    },
+    "& .MuiDataGrid-row:hover": {
+      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#f9f9f9",
+    },
+    "& .MuiDataGrid-cell": {
+      border: "none",
+      outline: "none !important",
+      "&:focus, &:focus-within": { outline: "none" },
+    },
+    "& .MuiCheckbox-root": {
+      color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)",
+      "& .MuiSvgIcon-root": { fontSize: 18 },
+    },
+    "& .MuiCheckbox-root.Mui-checked, & .MuiCheckbox-root.MuiCheckbox-indeterminate":
+      { color: isDark ? "#e0e0e0" : "#353535" },
+    "& .MuiDataGrid-footerContainer": {
+      borderTop: `1px solid ${border}`,
+      backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
+      minHeight: "44px",
+    },
+    "& .MuiTablePagination-root": {
+      fontFamily: GRID_FONT,
+      fontSize: "0.75rem",
+      color: "text.secondary",
+    },
+    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
+      fontFamily: GRID_FONT,
+      fontSize: "0.75rem",
+    },
+    "& .MuiDataGrid-virtualScroller": {
+      backgroundColor: isDark ? "#1a1a1d" : "#ffffff",
+    },
+    "& .MuiDataGrid-overlay": {
+      backgroundColor: isDark ? "#1a1a1d" : "#ffffff",
+    },
+    "& .highlighted-row": {
+      backgroundColor: isDark
+        ? "rgba(245,197,43,0.08)"
+        : "rgba(245,197,43,0.10)",
+      "&:hover": {
+        backgroundColor: isDark
+          ? "rgba(245,197,43,0.13)"
+          : "rgba(245,197,43,0.15)",
+      },
+    },
+    "& .row--highlighted": {
+      backgroundColor: isDark
+        ? "rgba(245,197,43,0.08)"
+        : "rgba(245,197,43,0.10)",
+      "&:hover": {
+        backgroundColor: isDark
+          ? "rgba(245,197,43,0.13)"
+          : "rgba(245,197,43,0.15)",
+      },
+    },
+  };
+}
 
 function DefaultNoRowsOverlay() {
   return (
@@ -61,76 +164,58 @@ function DefaultGridToolbar({
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: 1,
+          py: 0.75,
+          pl: 2,
+          pr: 1,
           width: "100%",
+          bgcolor: "#ededee",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography
-            sx={{
-              fontSize: "0.79rem",
-              fontWeight: 600,
-              color: "text.primary",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {selectedCount} {selectedCount === 1 ? "row" : "rows"} selected
-          </Typography>
-          <Box
-            sx={{ width: "1px", height: 14, bgcolor: "divider", flexShrink: 0 }}
-          />
-          {selectionActions.map((action) => (
-            <Box
-              key={action.label}
-              onClick={action.onClick}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 0.5,
-                px: 1.4,
-                py: 0.5,
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "0.77rem",
-                fontWeight: 600,
-                color: action.color === "error" ? "#dc2626" : "text.primary",
-                border:
-                  action.color === "error"
-                    ? "1px solid rgba(239,68,68,0.35)"
-                    : "1px solid rgba(53,53,53,0.12)",
-                backgroundColor:
-                  action.color === "error"
-                    ? "rgba(239,68,68,0.05)"
-                    : "transparent",
-                transition: "all 0.12s",
-                "&:hover":
-                  action.color === "error"
-                    ? {
-                        backgroundColor: "rgba(239,68,68,0.1)",
-                        borderColor: "rgba(239,68,68,0.55)",
-                      }
-                    : { backgroundColor: "rgba(53,53,53,0.05)" },
-              }}
-            >
-              {action.label}
-            </Box>
-          ))}
-        </Box>
-        <Box
-          onClick={onClearSelection}
+        <Typography
           sx={{
-            fontSize: "0.75rem",
-            color: "text.secondary",
-            cursor: "pointer",
-            "&:hover": { color: "text.primary" },
+            flex: "1 1 100%",
+            fontSize: "0.82rem",
+            fontWeight: 500,
+            color: "text.primary",
           }}
         >
-          Clear
+          {selectedCount} selected
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          {selectionActions.map((action) => (
+            <Tooltip key={action.label} title={action.label} arrow>
+              <IconButton
+                size="small"
+                onClick={action.onClick}
+                sx={{
+                  color:
+                    action.color === "error" ? "#dc2626" : "text.secondary",
+                  borderRadius: "10px",
+                  "&:hover":
+                    action.color === "error"
+                      ? {
+                          backgroundColor: "rgba(239,68,68,0.1)",
+                          color: "#b91c1c",
+                        }
+                      : { backgroundColor: "action.hover" },
+                }}
+              >
+                {action.icon || action.label}
+              </IconButton>
+            </Tooltip>
+          ))}
         </Box>
       </GridToolbarContainer>
     );
   }
+
+  // No selection active — check if there's anything to show
+  const hasSearch = showSearch;
+  const hasExport = !csvOptions?.disableToolbarButton || !printOptions?.disableToolbarButton;
+
+  // If both search and export are hidden, don't render the toolbar at all
+  if (!hasSearch && !hasExport) return null;
 
   return (
     <GridToolbarContainer
@@ -193,10 +278,20 @@ const AppDataGrid = forwardRef(function AppDataGrid(
     checkboxSelection: checkboxSelectionProp,
     rowSelectionModel: externalSelectionModel,
     onRowSelectionModelChange,
+    apiRef: externalApiRef,
+    sx: userSx,
     ...props
   },
   ref,
 ) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const baseSx = useMemo(() => buildGridBaseSx(isDark), [isDark]);
+  const mergedSx = useMemo(() => {
+    if (!userSx) return baseSx;
+    return [baseSx, ...(Array.isArray(userSx) ? userSx : [userSx])];
+  }, [baseSx, userSx]);
+
   const effectiveSearchStorageKey = useMemo(() => {
     if (!persistSearch || !enableSearch) return null;
     if (searchStorageKey) return searchStorageKey;
@@ -275,15 +370,23 @@ const AppDataGrid = forwardRef(function AppDataGrid(
 
   const [highlightedRowId, setHighlightedRowId] = useState(null);
 
-  // Selection (uncontrolled — let MUI X manage state internally)
+  // Selection (uncontrolled — MUI X v8 model is { ids: Set, type: 'include' })
   const useSelection = !!(selectionActions || checkboxSelectionProp);
-  const internalApiRef = useGridApiRef();
+  const _internalApiRef = useGridApiRef();
+  const internalApiRef = externalApiRef || _internalApiRef;
   const [selectedIds, setSelectedIds] = useState([]);
 
+  const handleSelectionChange = (model) => {
+    const ids = model?.ids instanceof Set ? [...model.ids] : [];
+    setSelectedIds(ids);
+    onRowSelectionModelChange?.(model);
+  };
+
   const handleClearSelection = () => {
-    internalApiRef.current?.setRowSelectionModel(new Set());
+    const empty = { type: 'include', ids: new Set() };
+    internalApiRef.current?.setRowSelectionModel(empty);
     setSelectedIds([]);
-    onRowSelectionModelChange?.(new Set());
+    onRowSelectionModelChange?.(empty);
   };
 
   const handleRowClick = (params, event, details) => {
@@ -352,11 +455,9 @@ const AppDataGrid = forwardRef(function AppDataGrid(
     ? {
         checkboxSelection: true,
         disableRowSelectionOnClick: true,
+        disableRowSelectionExcludeModel: true,
         apiRef: internalApiRef,
-        onRowSelectionModelChange: (model) => {
-          setSelectedIds([...model]);
-          onRowSelectionModelChange?.(model);
-        },
+        onRowSelectionModelChange: handleSelectionChange,
       }
     : {};
 
@@ -378,6 +479,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
       }}
       slotProps={mergedSlotProps}
       {...props}
+      sx={mergedSx}
     />
   );
 });

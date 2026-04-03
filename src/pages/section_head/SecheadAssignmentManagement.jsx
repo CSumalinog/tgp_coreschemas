@@ -19,7 +19,6 @@ import {
   Checkbox,
   FormGroup,
   useTheme,
-  ClickAwayListener,
   GlobalStyles,
   Menu,
   MenuItem,
@@ -27,8 +26,12 @@ import {
   ListItemText,
   Drawer,
   Tooltip,
+  FormControl,
+  Select,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
-import { DataGrid } from "../../components/common/AppDataGrid";
+import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -38,7 +41,9 @@ import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutl
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -668,10 +673,12 @@ export default function SecHeadAssignmentManagement() {
   const [activeSemesterId, setActiveSemesterId] = useState("all");
   const [allStaffers, setAllStaffers] = useState([]);
   const [stafferFilter, setStafferFilter] = useState("all");
-  const [filterOpen, setFilterOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
   const [semRange, setSemRange] = useState(null);
+  const [searchText, setSearchText] = useState("");
+
+  const gridApiRef = useGridApiRef();
 
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
@@ -828,8 +835,11 @@ export default function SecHeadAssignmentManagement() {
           completed.error
         );
 
-      const hiddenIds = new Set((userState.data || []).map((r) => r.request_id));
-      const exclude = (rows) => (rows || []).filter((r) => !hiddenIds.has(r.id));
+      const hiddenIds = new Set(
+        (userState.data || []).map((r) => r.request_id),
+      );
+      const exclude = (rows) =>
+        (rows || []).filter((r) => !hiddenIds.has(r.id));
 
       const mySection = currentUser.section;
       const forwardedData = exclude(allForwarded.data);
@@ -888,24 +898,62 @@ export default function SecHeadAssignmentManagement() {
 
   const handleArchive = async (id) => {
     const ts = new Date().toISOString();
-    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: id, archived_at: ts, trashed_at: null, purged_at: null }, { onConflict: "user_id,request_id" });
+    await supabase
+      .from("request_user_state")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          request_id: id,
+          archived_at: ts,
+          trashed_at: null,
+          purged_at: null,
+        },
+        { onConflict: "user_id,request_id" },
+      );
     loadAll();
   };
   const handleTrash = async (id) => {
     const ts = new Date().toISOString();
-    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: id, archived_at: null, trashed_at: ts, purged_at: null }, { onConflict: "user_id,request_id" });
+    await supabase
+      .from("request_user_state")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          request_id: id,
+          archived_at: null,
+          trashed_at: ts,
+          purged_at: null,
+        },
+        { onConflict: "user_id,request_id" },
+      );
     loadAll();
   };
   const handleBulkArchive = async (ids) => {
     const ts = new Date().toISOString();
-    const rows = ids.map((rid) => ({ user_id: currentUser.id, request_id: rid, archived_at: ts, trashed_at: null, purged_at: null }));
-    await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
+    const rows = ids.map((rid) => ({
+      user_id: currentUser.id,
+      request_id: rid,
+      archived_at: ts,
+      trashed_at: null,
+      purged_at: null,
+    }));
+    await supabase
+      .from("request_user_state")
+      .upsert(rows, { onConflict: "user_id,request_id" });
     loadAll();
   };
   const handleBulkTrash = async (ids) => {
     const ts = new Date().toISOString();
-    const rows = ids.map((rid) => ({ user_id: currentUser.id, request_id: rid, archived_at: null, trashed_at: ts, purged_at: null }));
-    await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
+    const rows = ids.map((rid) => ({
+      user_id: currentUser.id,
+      request_id: rid,
+      archived_at: null,
+      trashed_at: ts,
+      purged_at: null,
+    }));
+    await supabase
+      .from("request_user_state")
+      .upsert(rows, { onConflict: "user_id,request_id" });
     loadAll();
   };
 
@@ -1591,8 +1639,20 @@ export default function SecHeadAssignmentManagement() {
     [semRange, stafferFilter, currentUser],
   );
 
-  const activeFilterCount =
-    (activeSemesterId !== "all" ? 1 : 0) + (stafferFilter !== "all" ? 1 : 0);
+  const externalFilterModel = useMemo(() => {
+    const tokens = searchText
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return { items: [], quickFilterValues: tokens };
+  }, [searchText]);
+
+  const handleExportCsv = () => {
+    gridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "assignment-management-export",
+    });
+  };
 
   const counts = useMemo(
     () => ({
@@ -1615,13 +1675,6 @@ export default function SecHeadAssignmentManagement() {
     return request.services[SECTION_SERVICE_MAP[currentUser.section]] || "—";
   };
 
-  const selectedSemLabel =
-    semesters.find((s) => s.id === activeSemesterId)?.label ||
-    semesters.find((s) => s.id === activeSemesterId)?.name;
-  const selectedStafferName = allStaffers.find(
-    (s) => s.id === stafferFilter,
-  )?.full_name;
-
   if (!currentUser)
     return (
       <Box
@@ -1642,12 +1695,12 @@ export default function SecHeadAssignmentManagement() {
     <Box
       sx={{
         p: { xs: 1.5, sm: 3 },
-        height: "100vh",
+        height: "100%",
         overflow: "hidden",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "background.default",
+        backgroundColor: "#ffffff",
         fontFamily: dm,
       }}
     >
@@ -1674,371 +1727,257 @@ export default function SecHeadAssignmentManagement() {
             mt: 0.3,
           }}
         >
-          {tab === 0 &&
-            `Requests forwarded to your section (${currentUser.section}). Assign staffers, then submit for admin approval.`}
-          {tab === 1 &&
-            `Requests with staffers assigned from your section (${currentUser.section}). Submit ready ones for admin approval.`}
-          {tab === 2 &&
-            `Coverage currently in progress — your section's staffers have timed in and are on-site.`}
-          {tab === 3 &&
-            `Completed coverage requests handled by your section (${currentUser.section}). Full time in, time out, and duration records.`}
+          Requests forwarded to your section ({currentUser.section}). Assign
+          staffers, then submit for admin approval.
         </Typography>
       </Box>
 
-      {/* Tabs + filter — static */}
+      {/* ── Filter row: Search | View | Semester | Staffer | Export + Settings ── */}
       <Box
         sx={{
+          mb: 2,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 1,
+          alignItems: "flex-end",
+          gap: 1.5,
+          flexWrap: "nowrap",
+          overflowX: "auto",
           flexShrink: 0,
-          mb: 2.5,
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            gap: "6px",
-            flexWrap: "wrap",
-            flex: 1,
-          }}
-        >
-          {TABS.map((t, idx) => {
-            const isActive = tab === idx;
-            return (
-              <Box
-                key={t.key}
-                onClick={() => setTab(idx)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  px: 1.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  fontFamily: dm,
-                  fontSize: "0.79rem",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#fff" : "text.secondary",
-                  border: `1px solid ${isActive ? "#212121" : border}`,
-                  backgroundColor: isActive ? "#212121" : "background.paper",
-                  transition: "all 0.12s",
-                  "&:hover": isActive
-                    ? {}
-                    : {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: isDark ? "#f5f5f5" : CHARCOAL,
-                      },
-                }}
-              >
-                {t.label}
-                {counts[t.key] > 0 && (
-                  <Box
-                    sx={{
-                      minWidth: 17,
-                      height: 17,
-                      borderRadius: "10px",
-                      px: 0.5,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isActive
-                        ? "rgba(255,255,255,0.18)"
-                        : isDark
-                          ? "rgba(255,255,255,0.08)"
-                          : "rgba(53,53,53,0.07)",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.62rem",
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        color: isActive ? "#fff" : "text.secondary",
-                      }}
-                    >
-                      {counts[t.key]}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            );
-          })}
-        </Box>
+        {/* Search */}
+        <FormControl size="small" sx={{ flex: 3, minWidth: 260 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Search for request
+          </Typography>
+          <OutlinedInput
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          />
+        </FormControl>
 
-        <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
-          <Box sx={{ position: "relative", pb: "1px", flexShrink: 0 }}>
-            <Box
-              onClick={() => setFilterOpen((p) => !p)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.6,
-                px: 1.25,
-                py: 0.55,
-                borderRadius: "10px",
-                cursor: "pointer",
-                border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`,
-                backgroundColor:
-                  activeFilterCount > 0 ? GOLD_08 : "transparent",
-                fontFamily: dm,
-                fontSize: "0.76rem",
-                fontWeight: 500,
-                color: activeFilterCount > 0 ? "#b45309" : "text.secondary",
-                transition: "all 0.15s",
-                "&:hover": {
-                  borderColor: "rgba(245,197,43,0.6)",
-                  color: "#b45309",
-                  backgroundColor: GOLD_08,
-                },
-              }}
-            >
-              <FilterListIcon sx={{ fontSize: 15 }} />
-              Filter
-              {activeFilterCount > 0 && (
-                <Box
+        {/* View (tab selector) */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            View
+          </Typography>
+          <Select
+            value={tab}
+            onChange={(e) => setTab(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            {TABS.map((t, idx) => {
+              const count = counts[t.key];
+              return (
+                <MenuItem
+                  key={t.key}
+                  value={idx}
                   sx={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: "10px",
-                    backgroundColor: GOLD,
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.6rem",
-                      fontWeight: 700,
-                      color: CHARCOAL,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {activeFilterCount}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-            {filterOpen && (
-              <Box
-                onMouseDown={(e) => e.stopPropagation()}
-                sx={{
-                  position: "absolute",
-                  top: "calc(100% + 8px)",
-                  right: 0,
-                  width: 250,
-                  zIndex: 1300,
-                  borderRadius: "10px",
-                  overflow: "hidden",
-                  border: `1px solid ${border}`,
-                  backgroundColor: "background.paper",
-                  boxShadow: isDark
-                    ? "0 12px 40px rgba(0,0,0,0.5)"
-                    : "0 4px 24px rgba(53,53,53,0.12)",
-                }}
-              >
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1.5,
-                    borderBottom: `1px solid ${border}`,
-                    display: "flex",
-                    alignItems: "center",
                     justifyContent: "space-between",
+                    gap: 2,
                   }}
                 >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      fontWeight: 700,
-                      color: "text.primary",
-                    }}
-                  >
-                    Filter
-                  </Typography>
-                  {activeFilterCount > 0 && (
+                  {t.label}
+                  {count > 0 && (
                     <Box
-                      onClick={() => {
-                        setActiveSemesterId("all");
-                        setStafferFilter("all");
-                      }}
+                      component="span"
                       sx={{
-                        fontFamily: dm,
-                        fontSize: "0.72rem",
-                        color: "text.secondary",
-                        cursor: "pointer",
-                        "&:hover": { color: CHARCOAL },
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: "10px",
+                        px: 0.6,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#f5c52b",
+                        fontSize: "0.62rem",
+                        fontWeight: 500,
+                        lineHeight: 1,
+                        color: "#000000",
                       }}
                     >
-                      Clear all
+                      {count}
                     </Box>
                   )}
-                </Box>
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1.75,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1.5,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.62rem",
-                      fontWeight: 700,
-                      color: "text.disabled",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.09em",
-                    }}
-                  >
-                    Semester
-                  </Typography>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
-                  >
-                    {[
-                      { id: "all", name: "All Semesters" },
-                      ...semesters.map((s) => ({
-                        id: s.id,
-                        name:
-                          (s.label || s.name) +
-                          (s.is_active ? " (Active)" : ""),
-                      })),
-                    ].map((s) => (
-                      <Box
-                        key={s.id}
-                        onClick={() => setActiveSemesterId(s.id)}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          px: 1.25,
-                          py: 0.6,
-                          borderRadius: "10px",
-                          cursor: "pointer",
-                          backgroundColor:
-                            activeSemesterId === s.id ? GOLD_08 : "transparent",
-                          "&:hover": {
-                            backgroundColor:
-                              activeSemesterId === s.id ? GOLD_08 : HOVER_BG,
-                          },
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.78rem",
-                            color:
-                              activeSemesterId === s.id
-                                ? "#b45309"
-                                : "text.primary",
-                            fontWeight: activeSemesterId === s.id ? 600 : 400,
-                          }}
-                        >
-                          {s.name}
-                        </Typography>
-                        {activeSemesterId === s.id && (
-                          <Box
-                            sx={{
-                              width: 5,
-                              height: 5,
-                              borderRadius: "50%",
-                              backgroundColor: GOLD,
-                            }}
-                          />
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
-                  {allStaffers.length > 0 && (
-                    <>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.62rem",
-                          fontWeight: 700,
-                          color: "text.disabled",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.09em",
-                        }}
-                      >
-                        Staffer
-                      </Typography>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 0.5,
-                        }}
-                      >
-                        {[
-                          { id: "all", full_name: "All Staffers" },
-                          ...allStaffers,
-                        ].map((s) => (
-                          <Box
-                            key={s.id}
-                            onClick={() => setStafferFilter(s.id)}
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              px: 1.25,
-                              py: 0.6,
-                              borderRadius: "10px",
-                              cursor: "pointer",
-                              backgroundColor:
-                                stafferFilter === s.id
-                                  ? GOLD_08
-                                  : "transparent",
-                              "&:hover": {
-                                backgroundColor:
-                                  stafferFilter === s.id ? GOLD_08 : HOVER_BG,
-                              },
-                            }}
-                          >
-                            <Typography
-                              sx={{
-                                fontFamily: dm,
-                                fontSize: "0.78rem",
-                                color:
-                                  stafferFilter === s.id
-                                    ? "#b45309"
-                                    : "text.primary",
-                                fontWeight: stafferFilter === s.id ? 600 : 400,
-                              }}
-                            >
-                              {s.full_name}
-                            </Typography>
-                            {stafferFilter === s.id && (
-                              <Box
-                                sx={{
-                                  width: 5,
-                                  height: 5,
-                                  borderRadius: "50%",
-                                  backgroundColor: GOLD,
-                                }}
-                              />
-                            )}
-                          </Box>
-                        ))}
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </ClickAwayListener>
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </FormControl>
 
-        {/* ── Settings gear ── */}
+        {/* Semester */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Semester
+          </Typography>
+          <Select
+            value={activeSemesterId}
+            onChange={(e) => setActiveSemesterId(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Semesters
+            </MenuItem>
+            {semesters.map((s) => (
+              <MenuItem
+                key={s.id}
+                value={s.id}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
+                {(s.label || s.name) + (s.is_active ? " (Active)" : "")}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Staffer */}
+        {allStaffers.length > 0 && (
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.68rem",
+                fontWeight: 600,
+                color: "text.secondary",
+                mb: 0.5,
+                letterSpacing: "0.03em",
+              }}
+            >
+              Staffer
+            </Typography>
+            <Select
+              value={stafferFilter}
+              onChange={(e) => setStafferFilter(e.target.value)}
+              IconComponent={UnfoldMoreIcon}
+              displayEmpty
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                borderRadius: "10px",
+                backgroundColor: "#f7f7f8",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(0,0,0,0.12)",
+                },
+                "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+              }}
+            >
+              <MenuItem
+                value="all"
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
+                All Staffers
+              </MenuItem>
+              {allStaffers.map((s) => (
+                <MenuItem
+                  key={s.id}
+                  value={s.id}
+                  sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                >
+                  {s.full_name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* Export */}
+        <Box
+          onClick={handleExportCsv}
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            height: 40,
+            borderRadius: "10px",
+            cursor: "pointer",
+            border: "1px solid rgba(0,0,0,0.12)",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: 500,
+            color: "text.secondary",
+            backgroundColor: "#f7f7f8",
+            transition: "all 0.15s",
+            flexShrink: 0,
+            "&:hover": {
+              borderColor: "rgba(53,53,53,0.3)",
+              color: "text.primary",
+              backgroundColor: "#ededee",
+            },
+          }}
+        >
+          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+          Export
+        </Box>
+
+        {/* Settings gear */}
         <Tooltip title="Archive & Trash" arrow>
           <IconButton
             size="small"
@@ -2046,14 +1985,17 @@ export default function SecHeadAssignmentManagement() {
             sx={{
               borderRadius: "10px",
               p: 0.7,
-              border: `1px solid ${border}`,
+              height: 40,
+              width: 40,
+              border: "1px solid rgba(0,0,0,0.12)",
               color: "text.secondary",
+              backgroundColor: "#f7f7f8",
               transition: "all 0.15s",
               flexShrink: 0,
               "&:hover": {
                 borderColor: "rgba(53,53,53,0.3)",
                 color: "text.primary",
-                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
+                backgroundColor: "#ededee",
               },
             }}
           >
@@ -2061,32 +2003,6 @@ export default function SecHeadAssignmentManagement() {
           </IconButton>
         </Tooltip>
       </Box>
-
-      {/* Filter chips — static */}
-      {activeFilterCount > 0 && (
-        <Box
-          sx={{
-            display: "flex",
-            gap: 0.75,
-            mt: 1.5,
-            flexWrap: "wrap",
-            flexShrink: 0,
-          }}
-        >
-          {activeSemesterId !== "all" && (
-            <FilterChip
-              label={selectedSemLabel}
-              onDelete={() => setActiveSemesterId("all")}
-            />
-          )}
-          {stafferFilter !== "all" && (
-            <FilterChip
-              label={selectedStafferName}
-              onDelete={() => setStafferFilter("all")}
-            />
-          )}
-        </Box>
-      )}
 
       {error && (
         <Alert
@@ -2258,91 +2174,100 @@ export default function SecHeadAssignmentManagement() {
         </Box>
       )}
 
-      {/* ★ FIX 3: Table card fills remaining space — flex: 1, minHeight: 0 */}
-      <Box
-        sx={{
-          mt: 2,
-          flex: 1,
-          minHeight: 0,
-          bgcolor: "background.paper",
-          borderRadius: "10px",
-          border: `1px solid ${border}`,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {loading ? (
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress size={26} sx={{ color: GOLD }} />
-          </Box>
-        ) : (
-          <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-            {tab === 0 && (
-              <ForAssignmentTab
-                rows={applyFilters(forAssignmentReqs)}
-                highlight={highlight}
-                currentUser={currentUser}
-                isDark={isDark}
-                border={border}
-                getPaxForSection={getPaxForSection}
-                onAssign={openAssignDialog}
-                onBulkArchive={handleBulkArchive}
-                onBulkTrash={handleBulkTrash}
-                onArchive={handleArchive}
-                onTrash={handleTrash}
-              />
-            )}
-            {tab === 1 && (
-              <AssignedTab
-                rows={applyFilters(assignedReqs)}
-                highlight={highlight}
-                currentUser={currentUser}
-                isDark={isDark}
-                border={border}
-                submitLoading={submitLoading}
-                onRequestConfirm={(row) => setConfirmRequest(row)}
-                onBulkArchive={handleBulkArchive}
-                onBulkTrash={handleBulkTrash}
-                onArchive={handleArchive}
-                onTrash={handleTrash}
-              />
-            )}
-            {tab === 2 && (
-              <OnGoingTab
-                rows={applyFilters(onGoingReqs)}
-                highlight={highlight}
-                currentUser={currentUser}
-                isDark={isDark}
-                border={border}
-                onBulkArchive={handleBulkArchive}
-                onBulkTrash={handleBulkTrash}
-                onArchive={handleArchive}
-                onTrash={handleTrash}
-              />
-            )}
-            {tab === 3 && (
-              <CompletedTab
-                rows={applyFilters(completedReqs)}
-                highlight={highlight}
-                currentUser={currentUser}
-                isDark={isDark}
-                border={border}
-                onBulkArchive={handleBulkArchive}
-                onBulkTrash={handleBulkTrash}
-                onArchive={handleArchive}
-                onTrash={handleTrash}
-              />
-            )}
-          </Box>
-        )}
+      {/* ── Table ── */}
+      <Box sx={{ width: "100%", overflowX: "auto", flex: 1, minHeight: 0 }}>
+        <Box
+          sx={{
+            minWidth: 680,
+            bgcolor: "#f7f7f8",
+            borderRadius: "10px",
+            border: `1px solid ${border}`,
+            overflow: "hidden",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {loading ? (
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CircularProgress size={26} sx={{ color: GOLD }} />
+            </Box>
+          ) : (
+            <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+              {tab === 0 && (
+                <ForAssignmentTab
+                  rows={applyFilters(forAssignmentReqs)}
+                  highlight={highlight}
+                  currentUser={currentUser}
+                  isDark={isDark}
+                  border={border}
+                  getPaxForSection={getPaxForSection}
+                  onAssign={openAssignDialog}
+                  onBulkArchive={handleBulkArchive}
+                  onBulkTrash={handleBulkTrash}
+                  onArchive={handleArchive}
+                  onTrash={handleTrash}
+                  gridApiRef={gridApiRef}
+                  filterModel={externalFilterModel}
+                />
+              )}
+              {tab === 1 && (
+                <AssignedTab
+                  rows={applyFilters(assignedReqs)}
+                  highlight={highlight}
+                  currentUser={currentUser}
+                  isDark={isDark}
+                  border={border}
+                  submitLoading={submitLoading}
+                  onRequestConfirm={(row) => setConfirmRequest(row)}
+                  onBulkArchive={handleBulkArchive}
+                  onBulkTrash={handleBulkTrash}
+                  onArchive={handleArchive}
+                  onTrash={handleTrash}
+                  gridApiRef={gridApiRef}
+                  filterModel={externalFilterModel}
+                />
+              )}
+              {tab === 2 && (
+                <OnGoingTab
+                  rows={applyFilters(onGoingReqs)}
+                  highlight={highlight}
+                  currentUser={currentUser}
+                  isDark={isDark}
+                  border={border}
+                  onBulkArchive={handleBulkArchive}
+                  onBulkTrash={handleBulkTrash}
+                  onArchive={handleArchive}
+                  onTrash={handleTrash}
+                  gridApiRef={gridApiRef}
+                  filterModel={externalFilterModel}
+                />
+              )}
+              {tab === 3 && (
+                <CompletedTab
+                  rows={applyFilters(completedReqs)}
+                  highlight={highlight}
+                  currentUser={currentUser}
+                  isDark={isDark}
+                  border={border}
+                  onBulkArchive={handleBulkArchive}
+                  onBulkTrash={handleBulkTrash}
+                  onArchive={handleArchive}
+                  onTrash={handleTrash}
+                  gridApiRef={gridApiRef}
+                  filterModel={externalFilterModel}
+                />
+              )}
+            </Box>
+          )}
+        </Box>
       </Box>
 
       <AssignmentDialog
@@ -2404,21 +2329,50 @@ export default function SecHeadAssignmentManagement() {
         }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2.5, pb: 1.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2.5,
+              pt: 2.5,
+              pb: 1.5,
+            }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-              <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.88rem", color: "text.primary", letterSpacing: "-0.01em" }}>
+              <SettingsOutlinedIcon
+                sx={{ fontSize: 16, color: "text.secondary" }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontWeight: 700,
+                  fontSize: "0.88rem",
+                  color: "text.primary",
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 Request Settings
               </Typography>
             </Box>
-            <IconButton size="small" onClick={() => setSettingsOpen(false)} sx={{ color: "text.secondary" }}>
+            <IconButton
+              size="small"
+              onClick={() => setSettingsOpen(false)}
+              sx={{ color: "text.secondary" }}
+            >
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
           <Box sx={{ display: "flex", gap: "6px", px: 2.5, pb: 2 }}>
             {[
-              { label: "Archive", icon: <ArchiveOutlinedIcon sx={{ fontSize: 13 }} /> },
-              { label: "Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} /> },
+              {
+                label: "Archive",
+                icon: <ArchiveOutlinedIcon sx={{ fontSize: 13 }} />,
+              },
+              {
+                label: "Trash",
+                icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />,
+              },
             ].map((t, idx) => {
               const active = settingsTab === idx;
               return (
@@ -2426,13 +2380,26 @@ export default function SecHeadAssignmentManagement() {
                   key={t.label}
                   onClick={() => setSettingsTab(idx)}
                   sx={{
-                    display: "inline-flex", alignItems: "center", gap: 0.5, px: 1.5, py: 0.55, borderRadius: "10px", cursor: "pointer",
-                    fontFamily: dm, fontSize: "0.78rem", fontWeight: active ? 600 : 400,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    px: 1.5,
+                    py: 0.55,
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    fontWeight: active ? 600 : 400,
                     color: active ? "#fff" : "text.secondary",
                     border: `1px solid ${active ? "#212121" : border}`,
                     backgroundColor: active ? "#212121" : "transparent",
                     transition: "all 0.12s",
-                    "&:hover": active ? {} : { borderColor: "rgba(53,53,53,0.3)", color: isDark ? "#f5f5f5" : CHARCOAL },
+                    "&:hover": active
+                      ? {}
+                      : {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: isDark ? "#f5f5f5" : CHARCOAL,
+                        },
                   }}
                 >
                   {t.icon} {t.label}
@@ -3014,6 +2981,8 @@ function ForAssignmentTab({
   onBulkTrash,
   onArchive,
   onTrash,
+  gridApiRef,
+  filterModel,
 }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
@@ -3162,12 +3131,32 @@ function ForAssignmentTab({
           }}
         >
           {!p.row.myDone ? (
-            <ActionChip onClick={() => onAssign(p.row._raw)} border={border}>
+            <Box
+              onClick={() => onAssign(p.row._raw)}
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0.5,
+                px: 1.25,
+                height: 30,
+                borderRadius: "10px",
+                cursor: "pointer",
+                backgroundColor: "#f5c52b",
+                fontFamily: dm,
+                fontSize: "0.73rem",
+                fontWeight: 600,
+                color: "#000",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s",
+                "&:hover": { backgroundColor: "#e6b625" },
+              }}
+            >
               <PersonAddOutlinedIcon sx={{ fontSize: 12 }} />
               {p.row.myPartial
                 ? `Assign (${p.row.assignedDayCount}/${p.row.totalDays} days)`
                 : "Assign"}
-            </ActionChip>
+            </Box>
           ) : (
             <Box
               sx={{
@@ -3210,7 +3199,14 @@ function ForAssignmentTab({
               )}
             </Box>
           )}
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+              setMenuRow(p.row);
+            }}
+          >
             <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
@@ -3220,29 +3216,111 @@ function ForAssignmentTab({
 
   return (
     <>
-    <DataGrid
-      rows={mappedRows}
-      columns={columns}
-      hideFooter
-      checkboxSelection
-      disableRowSelectionOnClick
-      selectionActions={[
-        { label: "Archive", onClick: onBulkArchive },
-        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-      ]}
-      rowHeight={52}
-      getRowClassName={(p) =>
-        highlight && p.row.requestTitle?.toLowerCase().includes(highlight)
-          ? "highlighted-row"
-          : ""
-      }
-      sx={makeDataGridSx(isDark, border)}
-    />
-    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
-      <MenuItem onClick={() => { if (menuRow) onAssign(menuRow._raw); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><VisibilityOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>View / Assign</ListItemText></MenuItem>
-      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
-      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
-    </Menu>
+      <DataGrid
+        rows={mappedRows}
+        columns={columns}
+        pageSize={10}
+        rowsPerPageOptions={[10]}
+        checkboxSelection
+        disableRowSelectionOnClick
+        enableSearch={false}
+        apiRef={gridApiRef}
+        filterModel={filterModel}
+        selectionActions={[
+          { label: "Archive", onClick: onBulkArchive },
+          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+        ]}
+        slotProps={{
+          toolbar: {
+            csvOptions: { disableToolbarButton: true },
+            printOptions: { disableToolbarButton: true },
+          },
+        }}
+        rowHeight={52}
+        getRowClassName={(p) =>
+          highlight && p.row.requestTitle?.toLowerCase().includes(highlight)
+            ? "highlighted-row"
+            : ""
+        }
+      />
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 160,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onAssign(menuRow._raw);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            View / Assign
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onArchive(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            Archive
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onTrash(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 18, color: "#dc2626" }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              color: "#dc2626",
+            }}
+          >
+            Move to Trash
+          </ListItemText>
+        </MenuItem>
+      </Menu>
     </>
   );
 }
@@ -3260,6 +3338,8 @@ function AssignedTab({
   onBulkTrash,
   onArchive,
   onTrash,
+  gridApiRef,
+  filterModel,
 }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
@@ -3421,7 +3501,14 @@ function AssignedTab({
               Approval
             </ActionChip>
           ) : null}
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+              setMenuRow(p.row);
+            }}
+          >
             <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
@@ -3431,34 +3518,112 @@ function AssignedTab({
 
   return (
     <>
-    <DataGrid
-      rows={mappedRows}
-      columns={columns}
-      hideFooter
-      checkboxSelection
-      disableRowSelectionOnClick
-      selectionActions={[
-        { label: "Archive", onClick: onBulkArchive },
-        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-      ]}
-      rowHeight={52}
-      getRowClassName={(p) =>
-        highlight && p.row.title?.toLowerCase().includes(highlight)
-          ? "highlighted-row"
-          : ""
-      }
-      sx={makeDataGridSx(isDark, border)}
-    />
-    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
-      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
-      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
-    </Menu>
+      <DataGrid
+        rows={mappedRows}
+        columns={columns}
+        pageSize={10}
+        rowsPerPageOptions={[10]}
+        checkboxSelection
+        disableRowSelectionOnClick
+        enableSearch={false}
+        apiRef={gridApiRef}
+        filterModel={filterModel}
+        selectionActions={[
+          { label: "Archive", onClick: onBulkArchive },
+          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+        ]}
+        slotProps={{
+          toolbar: {
+            csvOptions: { disableToolbarButton: true },
+            printOptions: { disableToolbarButton: true },
+          },
+        }}
+        rowHeight={52}
+        getRowClassName={(p) =>
+          highlight && p.row.title?.toLowerCase().includes(highlight)
+            ? "highlighted-row"
+            : ""
+        }
+      />
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 160,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onArchive(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            Archive
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onTrash(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 18, color: "#dc2626" }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              color: "#dc2626",
+            }}
+          >
+            Move to Trash
+          </ListItemText>
+        </MenuItem>
+      </Menu>
     </>
   );
 }
 
 // ── On Going Tab ──────────────────────────────────────────────────────────────
-function OnGoingTab({ rows, highlight, currentUser, isDark, border, onBulkArchive, onBulkTrash, onArchive, onTrash }) {
+function OnGoingTab({
+  rows,
+  highlight,
+  currentUser,
+  isDark,
+  border,
+  onBulkArchive,
+  onBulkTrash,
+  onArchive,
+  onTrash,
+  gridApiRef,
+  filterModel,
+}) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const mappedRows = rows.map((req) => {
@@ -3608,8 +3773,23 @@ function OnGoingTab({ rows, highlight, currentUser, isDark, border, onBulkArchiv
       align: "right",
       headerAlign: "right",
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            height: "100%",
+            pr: 0.5,
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+              setMenuRow(p.row);
+            }}
+          >
             <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
@@ -3619,34 +3799,112 @@ function OnGoingTab({ rows, highlight, currentUser, isDark, border, onBulkArchiv
 
   return (
     <>
-    <DataGrid
-      rows={mappedRows}
-      columns={columns}
-      hideFooter
-      checkboxSelection
-      disableRowSelectionOnClick
-      selectionActions={[
-        { label: "Archive", onClick: onBulkArchive },
-        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-      ]}
-      rowHeight={52}
-      getRowClassName={(p) =>
-        highlight && p.row.title?.toLowerCase().includes(highlight)
-          ? "highlighted-row"
-          : ""
-      }
-      sx={makeDataGridSx(isDark, border)}
-    />
-    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
-      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
-      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
-    </Menu>
+      <DataGrid
+        rows={mappedRows}
+        columns={columns}
+        pageSize={10}
+        rowsPerPageOptions={[10]}
+        checkboxSelection
+        disableRowSelectionOnClick
+        enableSearch={false}
+        apiRef={gridApiRef}
+        filterModel={filterModel}
+        selectionActions={[
+          { label: "Archive", onClick: onBulkArchive },
+          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+        ]}
+        slotProps={{
+          toolbar: {
+            csvOptions: { disableToolbarButton: true },
+            printOptions: { disableToolbarButton: true },
+          },
+        }}
+        rowHeight={52}
+        getRowClassName={(p) =>
+          highlight && p.row.title?.toLowerCase().includes(highlight)
+            ? "highlighted-row"
+            : ""
+        }
+      />
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 160,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onArchive(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            Archive
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onTrash(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 18, color: "#dc2626" }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              color: "#dc2626",
+            }}
+          >
+            Move to Trash
+          </ListItemText>
+        </MenuItem>
+      </Menu>
     </>
   );
 }
 
 // ── Completed Tab ─────────────────────────────────────────────────────────────
-function CompletedTab({ rows, highlight, currentUser, isDark, border, onBulkArchive, onBulkTrash, onArchive, onTrash }) {
+function CompletedTab({
+  rows,
+  highlight,
+  currentUser,
+  isDark,
+  border,
+  onBulkArchive,
+  onBulkTrash,
+  onArchive,
+  onTrash,
+  gridApiRef,
+  filterModel,
+}) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const mappedRows = rows.map((req) => {
@@ -3776,8 +4034,23 @@ function CompletedTab({ rows, highlight, currentUser, isDark, border, onBulkArch
       align: "right",
       headerAlign: "right",
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            height: "100%",
+            pr: 0.5,
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+              setMenuRow(p.row);
+            }}
+          >
             <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
@@ -3787,28 +4060,94 @@ function CompletedTab({ rows, highlight, currentUser, isDark, border, onBulkArch
 
   return (
     <>
-    <DataGrid
-      rows={mappedRows}
-      columns={columns}
-      hideFooter
-      checkboxSelection
-      disableRowSelectionOnClick
-      selectionActions={[
-        { label: "Archive", onClick: onBulkArchive },
-        { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-      ]}
-      rowHeight={52}
-      getRowClassName={(p) =>
-        highlight && p.row.title?.toLowerCase().includes(highlight)
-          ? "highlighted-row"
-          : ""
-      }
-      sx={makeDataGridSx(isDark, border)}
-    />
-    <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); setMenuRow(null); }} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
-      <MenuItem onClick={() => { if (menuRow) onArchive(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
-      <MenuItem onClick={() => { if (menuRow) onTrash(menuRow.id); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
-    </Menu>
+      <DataGrid
+        rows={mappedRows}
+        columns={columns}
+        pageSize={10}
+        rowsPerPageOptions={[10]}
+        checkboxSelection
+        disableRowSelectionOnClick
+        enableSearch={false}
+        apiRef={gridApiRef}
+        filterModel={filterModel}
+        selectionActions={[
+          { label: "Archive", onClick: onBulkArchive },
+          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
+        ]}
+        slotProps={{
+          toolbar: {
+            csvOptions: { disableToolbarButton: true },
+            printOptions: { disableToolbarButton: true },
+          },
+        }}
+        rowHeight={52}
+        getRowClassName={(p) =>
+          highlight && p.row.title?.toLowerCase().includes(highlight)
+            ? "highlighted-row"
+            : ""
+        }
+      />
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 160,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onArchive(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            Archive
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuRow) onTrash(menuRow.id);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 18, color: "#dc2626" }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              color: "#dc2626",
+            }}
+          >
+            Move to Trash
+          </ListItemText>
+        </MenuItem>
+      </Menu>
     </>
   );
 }
@@ -5016,70 +5355,4 @@ function PrimaryBtn({ onClick, loading, children }) {
       {children}
     </Box>
   );
-}
-
-// ── FIX: makeDataGridSx — removed pinnedColumns styles since free tier
-// DataGrid handles its own layout; hideFooter replaces pagination
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    height: "100%",
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-    "& .MuiDataGrid-menuIcon button": {
-      color: "text.disabled",
-      padding: "2px",
-      borderRadius: "10px",
-      transition: "all 0.15s",
-      "&:hover": { backgroundColor: GOLD_08, color: "#b45309" },
-    },
-    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
-    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": {
-      color: "text.secondary",
-    },
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-    "& .MuiDataGrid-footerContainer": { display: "none" },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-    "& .highlighted-row": {
-      backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.08)",
-      "&:hover": {
-        backgroundColor: isDark ? GOLD_18 : "rgba(245,197,43,0.14)",
-      },
-    },
-  };
 }

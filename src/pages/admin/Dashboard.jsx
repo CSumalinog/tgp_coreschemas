@@ -268,7 +268,7 @@ export default function Dashboard() {
   const cardTitleSx  = { fontFamily: dm, fontSize: "0.7rem", fontWeight: 700, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.09em" };
 
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, backgroundColor: "background.default", minHeight: "100%", fontFamily: dm }}>
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, backgroundColor: "#ffffff", minHeight: "100%", fontFamily: dm }}>
 
       {/* ── Greeting ── */}
       {currentUser?.full_name && (

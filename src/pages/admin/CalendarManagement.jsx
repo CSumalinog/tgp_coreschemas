@@ -928,7 +928,7 @@ export default function CalendarManagement() {
     <Box
       sx={{
         p: { xs: 1.5, sm: 2, md: 3 },
-        backgroundColor: "background.default",
+        backgroundColor: "#ffffff",
         minHeight: "100%",
         fontFamily: dm,
       }}

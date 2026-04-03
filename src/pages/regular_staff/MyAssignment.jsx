@@ -1623,7 +1623,7 @@ export default function MyAssignment() {
     <Box
       sx={{
         p: { xs: 2, sm: 3 },
-        backgroundColor: "background.default",
+        backgroundColor: "#ffffff",
         minHeight: "100%",
         fontFamily: dm,
       }}

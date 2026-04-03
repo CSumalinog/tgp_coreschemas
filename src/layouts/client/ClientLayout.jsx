@@ -845,7 +845,7 @@ function ClientLayout() {
         display: "flex",
         height: "100vh",
         fontFamily: dm,
-        backgroundColor: "#F5F5F7",
+        backgroundColor: "#ffffff",
       }}
     >
       {!isMobile && (
@@ -887,7 +887,7 @@ function ClientLayout() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          backgroundColor: "#F5F5F7",
+          backgroundColor: "#ffffff",
           minWidth: 0,
         }}
       >

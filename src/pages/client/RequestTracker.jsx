@@ -1,5 +1,5 @@
 // src/pages/client/RequestTracker.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -16,6 +16,10 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  FormControl,
+  Select,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
@@ -28,6 +32,9 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 
 // ── Tab icons ─────────────────────────────────────────────────────────────────
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -45,7 +52,7 @@ import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 
-import { DataGrid } from "../../components/common/AppDataGrid";
+import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
@@ -243,7 +250,6 @@ const getStageIndex = (status) => {
 
 // ── Tabs config ───────────────────────────────────────────────────────────────
 const TABS = [
-  { label: "Pipeline", Icon: DashboardOutlinedIcon },
   { label: "All Requests", Icon: ListAltOutlinedIcon },
   { label: "Pending", Icon: HourglassEmptyOutlinedIcon },
   { label: "Approved", Icon: CheckCircleOutlinedIcon },
@@ -397,8 +403,27 @@ function ColumnMenuStyles({ isDark, border }) {
 export default function RequestTracker() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState("pipeline");
+  const [searchText, setSearchText] = useState("");
+  const gridApiRef = useGridApiRef();
   const border = isDark ? BORDER_DARK : BORDER;
+
+  const isPipeline = tab === "pipeline";
+
+  const externalFilterModel = useMemo(() => {
+    const tokens = searchText
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return { items: [], quickFilterValues: tokens };
+  }, [searchText]);
+
+  const handleExportCsv = () => {
+    gridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "request-tracker-export",
+    });
+  };
 
   return (
     <Box
@@ -406,14 +431,17 @@ export default function RequestTracker() {
         p: { xs: 1.5, sm: 3 },
         height: "100%",
         boxSizing: "border-box",
-        backgroundColor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
         fontFamily: dm,
       }}
     >
       <ColumnMenuStyles isDark={isDark} border={border} />
 
       {/* ── Header ── */}
-      <Box sx={{ mb: 2.5 }}>
+      <Box sx={{ mb: 2.5, flexShrink: 0 }}>
         <Typography
           sx={{
             fontFamily: dm,
@@ -438,56 +466,201 @@ export default function RequestTracker() {
         </Typography>
       </Box>
 
-      {/* ── Segmented tab bar ── */}
+      {/* ── Filter row: Pipeline | Search | View | Export ── */}
       <Box
         sx={{
-          display: "flex",
-          gap: "6px",
           mb: 2,
-          flexWrap: "wrap",
-          alignItems: "center",
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 1.5,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          flexShrink: 0,
         }}
       >
-        {TABS.map(({ label }, idx) => {
-          const isActive = tab === idx;
-          return (
-            <Box
-              key={label}
-              onClick={() => setTab(idx)}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                px: 1.5,
-                py: 0.65,
-                borderRadius: "10px",
-                cursor: "pointer",
-                flexShrink: 0,
-                fontFamily: dm,
-                fontSize: "0.79rem",
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? "#fff" : "text.secondary",
-                border: `1px solid ${isActive ? "#212121" : border}`,
-                backgroundColor: isActive ? "#212121" : "background.paper",
-                transition: "all 0.12s",
-                "&:hover": isActive
-                  ? {}
-                  : {
-                      borderColor: "rgba(53,53,53,0.3)",
-                      color: isDark ? "#f5f5f5" : CHARCOAL,
-                    },
-              }}
-            >
-              {label}
-            </Box>
-          );
-        })}
+        {/* Pipeline tab */}
+        <Box
+          onClick={() => setTab("pipeline")}
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            height: 36,
+            borderRadius: "10px",
+            cursor: "pointer",
+            flexShrink: 0,
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: isPipeline ? 600 : 500,
+            color: isPipeline ? "#fff" : "text.secondary",
+            backgroundColor: isPipeline ? "#212121" : "#f7f7f8",
+            border: `1px solid ${isPipeline ? "#212121" : "rgba(0,0,0,0.12)"}`,
+            transition: "all 0.15s",
+            alignSelf: "flex-end",
+            "&:hover": isPipeline
+              ? {}
+              : {
+                  borderColor: "rgba(53,53,53,0.3)",
+                  color: "text.primary",
+                  backgroundColor: "#ededee",
+                },
+          }}
+        >
+          Pipeline
+        </Box>
+
+        {/* Search */}
+        <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Search for request
+          </Typography>
+          <OutlinedInput
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          />
+        </FormControl>
+
+        {/* View */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            View
+          </Typography>
+          <Select
+            value={isPipeline ? "" : tab}
+            onChange={(e) => setTab(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            renderValue={(v) => {
+              if (isPipeline || v === "") return "Select view";
+              return TABS[v]?.label || "";
+            }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            {TABS.map(({ label }, idx) => (
+              <MenuItem
+                key={label}
+                value={idx}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
+                {label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* Export */}
+        <Box
+          onClick={handleExportCsv}
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            height: 40,
+            borderRadius: "10px",
+            cursor: "pointer",
+            border: "1px solid rgba(0,0,0,0.12)",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: 500,
+            color: "text.secondary",
+            backgroundColor: "#f7f7f8",
+            transition: "all 0.15s",
+            flexShrink: 0,
+            "&:hover": {
+              borderColor: "rgba(53,53,53,0.3)",
+              color: "text.primary",
+              backgroundColor: "#ededee",
+            },
+          }}
+        >
+          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+          Export
+        </Box>
       </Box>
 
-      {tab === 0 && <PipelineTab isDark={isDark} border={border} />}
-      {tab === 1 && <AllRequestsTab isDark={isDark} border={border} />}
-      {tab === 2 && <PendingTab isDark={isDark} border={border} />}
-      {tab === 3 && <ApprovedTab isDark={isDark} border={border} />}
-      {tab === 4 && <DeclinedTab isDark={isDark} border={border} />}
+      {isPipeline && (
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <PipelineTab isDark={isDark} border={border} />
+        </Box>
+      )}
+      {tab === 0 && (
+        <AllRequestsTab
+          isDark={isDark}
+          border={border}
+          gridApiRef={gridApiRef}
+          filterModel={externalFilterModel}
+        />
+      )}
+      {tab === 1 && (
+        <PendingTab
+          isDark={isDark}
+          border={border}
+          gridApiRef={gridApiRef}
+          filterModel={externalFilterModel}
+        />
+      )}
+      {tab === 2 && (
+        <ApprovedTab
+          isDark={isDark}
+          border={border}
+          gridApiRef={gridApiRef}
+          filterModel={externalFilterModel}
+        />
+      )}
+      {tab === 3 && (
+        <DeclinedTab
+          isDark={isDark}
+          border={border}
+          gridApiRef={gridApiRef}
+          filterModel={externalFilterModel}
+        />
+      )}
     </Box>
   );
 }
@@ -982,29 +1155,43 @@ function PipelineCard({ request, isDark, border, onClick }) {
 }
 
 // ── Grid Tabs ─────────────────────────────────────────────────────────────────
-function RequestsGrid({ rows, columns, isDark, border }) {
+function RequestsGrid({
+  rows,
+  columns,
+  isDark,
+  border,
+  gridApiRef,
+  filterModel,
+}) {
   return (
-    <Box
-      sx={{
-        width: "100%",
-        bgcolor: "background.paper",
-        borderRadius: "10px",
-        border: `1px solid ${border}`,
-        overflow: "hidden",
-      }}
-    >
-      <Box sx={{ overflowX: "auto", width: "100%" }}>
-        <Box sx={{ minWidth: 640 }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pageSize={8}
-            rowsPerPageOptions={[8]}
-            disableRowSelectionOnClick
-            rowHeight={52}
-            sx={makeDataGridSx(isDark, border)}
-          />
-        </Box>
+    <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+      <Box
+        sx={{
+          minWidth: 640,
+          height: "100%",
+          bgcolor: "#f7f7f8",
+          borderRadius: "10px",
+          border: `1px solid ${border}`,
+          overflow: "hidden",
+        }}
+      >
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pageSize={10}
+          rowsPerPageOptions={[10]}
+          disableRowSelectionOnClick
+          rowHeight={52}
+          enableSearch={false}
+          apiRef={gridApiRef}
+          filterModel={filterModel}
+          slotProps={{
+            toolbar: {
+              csvOptions: { disableToolbarButton: true },
+              printOptions: { disableToolbarButton: true },
+            },
+          }}
+        />
       </Box>
     </Box>
   );
@@ -1316,7 +1503,7 @@ const toRow = (req) => ({
   _raw: req,
 });
 
-function AllRequestsTab({ isDark, border }) {
+function AllRequestsTab({ isDark, border, gridApiRef, filterModel }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1390,6 +1577,8 @@ function AllRequestsTab({ isDark, border }) {
         columns={columns}
         isDark={isDark}
         border={border}
+        gridApiRef={gridApiRef}
+        filterModel={filterModel}
       />
       <RequestDetailDialog
         open={!!selected}
@@ -1427,7 +1616,7 @@ function AllRequestsTab({ isDark, border }) {
   );
 }
 
-function PendingTab({ isDark, border }) {
+function PendingTab({ isDark, border, gridApiRef, filterModel }) {
   const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1441,24 +1630,13 @@ function PendingTab({ isDark, border }) {
     ...SILENT,
     title: "Coverage Request",
   });
-  const {
-    titleCol,
-    typeCol,
-    submissionCol,
-    eventDateCol,
-    actionCol,
-  } = useGridColumns(isDark, {
-    onView: setSelected,
-    onReschedule: setRescheduleTarget,
-    onCancel: setCancelTarget,
-  });
-  const columns = [
-    titleCol,
-    typeCol,
-    submissionCol,
-    eventDateCol,
-    actionCol,
-  ];
+  const { titleCol, typeCol, submissionCol, eventDateCol, actionCol } =
+    useGridColumns(isDark, {
+      onView: setSelected,
+      onReschedule: setRescheduleTarget,
+      onCancel: setCancelTarget,
+    });
+  const columns = [titleCol, typeCol, submissionCol, eventDateCol, actionCol];
   const rows = pending.map(toRow);
 
   const handleCancelConfirm = async (reason) => {
@@ -1499,6 +1677,8 @@ function PendingTab({ isDark, border }) {
         columns={columns}
         isDark={isDark}
         border={border}
+        gridApiRef={gridApiRef}
+        filterModel={filterModel}
       />
       <RequestDetailDialog
         open={!!selected}
@@ -1536,7 +1716,7 @@ function PendingTab({ isDark, border }) {
   );
 }
 
-function ApprovedTab({ isDark, border }) {
+function ApprovedTab({ isDark, border, gridApiRef, filterModel }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1597,6 +1777,8 @@ function ApprovedTab({ isDark, border }) {
         columns={columns}
         isDark={isDark}
         border={border}
+        gridApiRef={gridApiRef}
+        filterModel={filterModel}
       />
       <RequestDetailDialog
         open={!!selected}
@@ -1634,7 +1816,7 @@ function ApprovedTab({ isDark, border }) {
   );
 }
 
-function DeclinedTab({ isDark, border }) {
+function DeclinedTab({ isDark, border, gridApiRef, filterModel }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   useRealtimeNotify("coverage_requests", refetch, null, {
@@ -1656,6 +1838,8 @@ function DeclinedTab({ isDark, border }) {
         columns={columns}
         isDark={isDark}
         border={border}
+        gridApiRef={gridApiRef}
+        filterModel={filterModel}
       />
       <RequestDetailDialog
         open={!!selected}
@@ -3576,7 +3760,6 @@ function RequestDetailDialog({
               </Box>
             </Section>
           )}
-
         </DialogContent>
       </Dialog>
 
@@ -3681,73 +3864,4 @@ function Loader() {
       <CircularProgress size={26} sx={{ color: GOLD }} />
     </Box>
   );
-}
-
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-    "& .MuiDataGrid-menuIcon button": {
-      color: "text.disabled",
-      padding: "2px",
-      borderRadius: "10px",
-      transition: "all 0.15s",
-      "&:hover": { backgroundColor: GOLD_08, color: "#b45309" },
-    },
-    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
-    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": {
-      color: "text.secondary",
-    },
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-    "& .MuiDataGrid-selectedRowCount": { fontFamily: dm, fontSize: "0.75rem" },
-  };
 }

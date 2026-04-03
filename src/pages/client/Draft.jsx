@@ -309,15 +309,19 @@ export default function Draft() {
     <Box
       sx={{
         p: { xs: 2, sm: 3 },
-        backgroundColor: "background.default",
-        minHeight: "100%",
+        backgroundColor: "#ffffff",
+        height: "100%",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
         fontFamily: dm,
       }}
     >
       <ColumnMenuStyles isDark={isDark} border={border} />
 
       {/* ── Header ── */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 3, flexShrink: 0 }}>
         <Typography
           sx={{
             fontFamily: dm,
@@ -342,37 +346,39 @@ export default function Draft() {
       </Box>
 
       {/* ── Grid ── */}
-      <Box
-        sx={{
-          width: "100%",
-          bgcolor: "background.paper",
-          borderRadius: "10px",
-          border: `1px solid ${border}`,
-          overflow: "hidden",
-        }}
-      >
-        {loading ? (
-          <Box
-            sx={{
-              height: 300,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress size={26} sx={{ color: GOLD }} />
-          </Box>
-        ) : (
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pageSize={8}
-            rowsPerPageOptions={[8]}
-            disableRowSelectionOnClick
-            rowHeight={52}
-            sx={makeDataGridSx(isDark, border)}
-          />
-        )}
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+        <Box
+          sx={{
+            minWidth: 640,
+            height: "100%",
+            bgcolor: "#f7f7f8",
+            borderRadius: "10px",
+            border: `1px solid ${border}`,
+            overflow: "hidden",
+          }}
+        >
+          {loading ? (
+            <Box
+              sx={{
+                height: 300,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CircularProgress size={26} sx={{ color: GOLD }} />
+            </Box>
+          ) : (
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
+              disableRowSelectionOnClick
+              rowHeight={52}
+            />
+          )}
+        </Box>
       </Box>
 
       {/* ── View Draft Dialog ── */}
@@ -1246,74 +1252,4 @@ function InfoGrid({ rows }) {
       ))}
     </Box>
   );
-}
-
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-    "& .MuiDataGrid-menuIcon button": {
-      color: "text.disabled",
-      padding: "2px",
-      borderRadius: "10px",
-      transition: "all 0.15s",
-      "&:hover": { backgroundColor: GOLD_08, color: "#b45309" },
-    },
-    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
-    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": {
-      color: "text.secondary",
-    },
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-  };
 }

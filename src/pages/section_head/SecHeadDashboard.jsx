@@ -347,7 +347,7 @@ export default function SecHeadDashboard() {
     <Box
       sx={{
         p: { xs: 2, sm: 2.5, md: 3 },
-        backgroundColor: "background.default",
+        backgroundColor: "#ffffff",
         minHeight: "100%",
       }}
     >

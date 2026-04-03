@@ -520,7 +520,7 @@ function SectionHeadLayout() {
         display: "flex",
         height: "100vh",
         fontFamily: dm,
-        backgroundColor: "#F5F5F7",
+        backgroundColor: "#ffffff",
       }}
     >
       {!isMobile && (
@@ -561,7 +561,7 @@ function SectionHeadLayout() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          backgroundColor: isDark ? "#0D0D0F" : "#F5F5F7",
+          backgroundColor: isDark ? "#0D0D0F" : "#ffffff",
           minWidth: 0,
         }}
       >

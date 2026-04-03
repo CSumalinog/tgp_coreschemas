@@ -16,8 +16,11 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
+  FormControl,
+  Select,
+  OutlinedInput,
 } from "@mui/material";
-import { DataGrid } from "../../components/common/AppDataGrid";
+import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
@@ -27,6 +30,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import { useSearchParams } from "react-router-dom";
 import {
   fetchAllStaffers,
@@ -160,6 +166,8 @@ export default function StaffersManagement() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteIds, setBulkDeleteIds] = useState([]);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const gridApiRef = useGridApiRef();
 
   const loadStaffers = useCallback(async () => {
     setLoading(true);
@@ -188,6 +196,21 @@ export default function StaffersManagement() {
     tab === "All"
       ? staffers.length
       : staffers.filter((s) => s.division === tab).length;
+
+  const externalFilterModel = useMemo(() => {
+    const tokens = searchText
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return { items: [], quickFilterValues: tokens };
+  }, [searchText]);
+
+  const handleExportCsv = () => {
+    gridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "staffers-export",
+    });
+  };
 
   const handleOpenCreate = () => {
     setFormMode("create");
@@ -534,16 +557,30 @@ export default function StaffersManagement() {
           const [anchorEl, setAnchorEl] = React.useState(null);
           const open = Boolean(anchorEl);
           return (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+              }}
+            >
               <IconButton
                 size="small"
-                onClick={(e) => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAnchorEl(e.currentTarget);
+                }}
                 sx={{
                   borderRadius: "4px",
                   p: 0.4,
                   color: "text.secondary",
                   transition: "all 0.15s",
-                  "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)" },
+                  "&:hover": {
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(53,53,53,0.06)",
+                  },
                 }}
               >
                 <MoreVertIcon sx={{ fontSize: 16 }} />
@@ -555,24 +592,92 @@ export default function StaffersManagement() {
                 onClick={() => setAnchorEl(null)}
                 transformOrigin={{ horizontal: "right", vertical: "top" }}
                 anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-                slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", fontFamily: dm, mt: 0.5, boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.08)" } } }}
+                slotProps={{
+                  paper: {
+                    sx: {
+                      minWidth: 160,
+                      borderRadius: "10px",
+                      fontFamily: dm,
+                      mt: 0.5,
+                      boxShadow: isDark
+                        ? "0 8px 24px rgba(0,0,0,0.4)"
+                        : "0 8px 24px rgba(0,0,0,0.08)",
+                    },
+                  },
+                }}
               >
-                <MenuItem onClick={() => handleOpenEdit(p.row)} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}>
-                  <ListItemIcon sx={{ minWidth: "auto !important" }}><EditOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} /></ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem" }}>Edit</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => { setToggleTarget(p.row); setToggleOpen(true); }} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}>
+                <MenuItem
+                  onClick={() => handleOpenEdit(p.row)}
+                  sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}
+                >
                   <ListItemIcon sx={{ minWidth: "auto !important" }}>
-                    {p.row.is_active
-                      ? <BlockOutlinedIcon sx={{ fontSize: 15, color: "#f97316" }} />
-                      : <CheckCircleOutlineIcon sx={{ fontSize: 15, color: "#22c55e" }} />
-                    }
+                    <EditOutlinedIcon
+                      sx={{ fontSize: 15, color: "text.secondary" }}
+                    />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem" }}>{p.row.is_active ? "Deactivate" : "Reactivate"}</ListItemText>
+                  <ListItemText
+                    primaryTypographyProps={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                    }}
+                  >
+                    Edit
+                  </ListItemText>
                 </MenuItem>
-                <MenuItem onClick={() => { setDeleteTarget(p.row); setDeleteOpen(true); }} sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75, color: "#dc2626" }}>
-                  <ListItemIcon sx={{ minWidth: "auto !important" }}><DeleteOutlineOutlinedIcon sx={{ fontSize: 15, color: "#dc2626" }} /></ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.78rem", color: "#dc2626" }}>Delete</ListItemText>
+                <MenuItem
+                  onClick={() => {
+                    setToggleTarget(p.row);
+                    setToggleOpen(true);
+                  }}
+                  sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}
+                >
+                  <ListItemIcon sx={{ minWidth: "auto !important" }}>
+                    {p.row.is_active ? (
+                      <BlockOutlinedIcon
+                        sx={{ fontSize: 15, color: "#f97316" }}
+                      />
+                    ) : (
+                      <CheckCircleOutlineIcon
+                        sx={{ fontSize: 15, color: "#22c55e" }}
+                      />
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primaryTypographyProps={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                    }}
+                  >
+                    {p.row.is_active ? "Deactivate" : "Reactivate"}
+                  </ListItemText>
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setDeleteTarget(p.row);
+                    setDeleteOpen(true);
+                  }}
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    gap: 1,
+                    py: 0.75,
+                    color: "#dc2626",
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: "auto !important" }}>
+                    <DeleteOutlineOutlinedIcon
+                      sx={{ fontSize: 15, color: "#dc2626" }}
+                    />
+                  </ListItemIcon>
+                  <ListItemText
+                    primaryTypographyProps={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      color: "#dc2626",
+                    }}
+                  >
+                    Delete
+                  </ListItemText>
                 </MenuItem>
               </Menu>
             </Box>
@@ -597,7 +702,10 @@ export default function StaffersManagement() {
         p: { xs: 2, sm: 3 },
         height: "100%",
         boxSizing: "border-box",
-        backgroundColor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
         fontFamily: dm,
       }}
     >
@@ -609,6 +717,7 @@ export default function StaffersManagement() {
           color: "text.primary",
           letterSpacing: "-0.01em",
           mb: 2,
+          flexShrink: 0,
         }}
       >
         Staffers Management
@@ -629,91 +738,158 @@ export default function StaffersManagement() {
         </Alert>
       )}
 
+      {/* ── Filter row: Search | Division | Export | Add Member ── */}
       <Box
         sx={{
           mb: 2,
           display: "flex",
-          gap: 1,
-          flexWrap: { xs: "wrap", md: "nowrap" },
-          alignItems: "center",
-          justifyContent: "space-between",
+          alignItems: "flex-end",
+          gap: 1.5,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          flexShrink: 0,
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            flexWrap: "wrap",
-          }}
-        >
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab;
-            const count = getCount(tab);
-            return (
-              <Box
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.6,
-                  px: 1.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  fontFamily: dm,
-                  fontSize: "0.79rem",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#fff" : "text.secondary",
-                  border: `1px solid ${isActive ? "#212121" : border}`,
-                  backgroundColor: isActive ? "#212121" : "background.paper",
-                  transition: "all 0.12s",
-                  "&:hover": isActive
-                    ? {}
-                    : {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: isDark ? "#f5f5f5" : CHARCOAL,
-                      },
-                }}
-              >
-                {tab}
-                {count > 0 && (
-                  <Box
-                    sx={{
-                      minWidth: 17,
-                      height: 17,
-                      borderRadius: "10px",
-                      px: 0.5,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isActive
-                        ? "rgba(255,255,255,0.18)"
-                        : isDark
-                          ? "rgba(255,255,255,0.1)"
-                          : "rgba(53,53,53,0.08)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
+        {/* Search */}
+        <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Search for staffer
+          </Typography>
+          <OutlinedInput
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          />
+        </FormControl>
+
+        {/* Division */}
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Division
+          </Typography>
+          <Select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            {TABS.map((tab) => {
+              const count = getCount(tab);
+              return (
+                <MenuItem
+                  key={tab}
+                  value={tab}
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 2,
+                  }}
+                >
+                  {tab}
+                  {count > 0 && (
+                    <Box
+                      component="span"
                       sx={{
-                        fontFamily: dm,
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: "10px",
+                        px: 0.6,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#f5c52b",
+                        fontSize: "0.62rem",
+                        fontWeight: 500,
                         lineHeight: 1,
-                        color: isActive ? "#fff" : "text.secondary",
+                        color: "#000000",
                       }}
                     >
                       {count}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            );
-          })}
+                    </Box>
+                  )}
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </FormControl>
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* Export */}
+        <Box
+          onClick={handleExportCsv}
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            height: 40,
+            borderRadius: "10px",
+            cursor: "pointer",
+            border: "1px solid rgba(0,0,0,0.12)",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: 500,
+            color: "text.secondary",
+            backgroundColor: "#f7f7f8",
+            transition: "all 0.15s",
+            flexShrink: 0,
+            "&:hover": {
+              borderColor: "rgba(53,53,53,0.3)",
+              color: "text.primary",
+              backgroundColor: "#ededee",
+            },
+          }}
+        >
+          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+          Export
         </Box>
+
+        {/* Add Member */}
         <Box
           onClick={handleOpenCreate}
           sx={{
@@ -721,7 +897,7 @@ export default function StaffersManagement() {
             alignItems: "center",
             gap: 0.75,
             px: 1.75,
-            py: 0.65,
+            height: 40,
             borderRadius: "10px",
             cursor: "pointer",
             backgroundColor: "#212121",
@@ -730,7 +906,6 @@ export default function StaffersManagement() {
             fontSize: "0.8rem",
             fontWeight: 600,
             transition: "background-color 0.15s",
-            ml: "auto",
             flexShrink: 0,
             "&:hover": { backgroundColor: "#333" },
           }}
@@ -740,15 +915,15 @@ export default function StaffersManagement() {
         </Box>
       </Box>
 
-      <Box sx={{ width: "100%", overflowX: "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
         <Box
           sx={{
             minWidth: 700,
-            bgcolor: "background.paper",
+            height: "100%",
+            bgcolor: "#f7f7f8",
             borderRadius: "10px",
             border: `1px solid ${border}`,
             overflow: "hidden",
-            height: 500,
           }}
         >
           {loading ? (
@@ -767,10 +942,19 @@ export default function StaffersManagement() {
               rows={filteredRows}
               columns={columns}
               columnVisibilityModel={{ division: activeTab === "All" }}
-              pageSize={8}
-              rowsPerPageOptions={[8]}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
               disableRowSelectionOnClick
               rowHeight={56}
+              enableSearch={false}
+              apiRef={gridApiRef}
+              filterModel={externalFilterModel}
+              slotProps={{
+                toolbar: {
+                  csvOptions: { disableToolbarButton: true },
+                  printOptions: { disableToolbarButton: true },
+                },
+              }}
               selectionActions={[
                 {
                   label: `Delete selected`,
@@ -787,15 +971,6 @@ export default function StaffersManagement() {
                   ? "highlighted-row"
                   : ""
               }
-              sx={{
-                ...makeDataGridSx(isDark, border),
-                "& .highlighted-row": {
-                  backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.08)",
-                  "&:hover": {
-                    backgroundColor: isDark ? GOLD_18 : "rgba(245,197,43,0.14)",
-                  },
-                },
-              }}
             />
           )}
         </Box>
@@ -1417,63 +1592,4 @@ function StyledField({ border, children, ...props }) {
       {children}
     </TextField>
   );
-}
-
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-  };
 }

@@ -14,9 +14,9 @@ import {
   Select,
   FormControl,
   InputLabel,
+  InputAdornment,
+  OutlinedInput,
   useTheme,
-  Paper,
-  ClickAwayListener,
   Avatar,
   Menu,
   ListItemIcon,
@@ -25,21 +25,22 @@ import {
   Drawer,
   Tooltip,
 } from "@mui/material";
-import { DataGrid } from "../../components/common/AppDataGrid";
+import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import RequestDetails from "../../components/admin/RequestDetails";
 import { supabase } from "../../lib/supabaseClient";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import ArchiveManagement from "./ArchiveManagement";
 import TrashManagement from "./TrashManagement";
@@ -62,8 +63,8 @@ const STATUS_CONFIG = {
   Declined: { bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
 };
 
-const TABS = [
-  { label: "All", key: "all" },
+const STATUS_OPTIONS = [
+  { label: "All Statuses", key: "all" },
   { label: "Pending", key: "Pending" },
   { label: "Forwarded", key: "Forwarded" },
   { label: "For Approval", key: "For Approval" },
@@ -157,52 +158,6 @@ function MetaCell({ children }) {
   );
 }
 
-function FilterChip({ label, onDelete }) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        pl: 1.25,
-        pr: 0.75,
-        py: 0.35,
-        borderRadius: "10px",
-        backgroundColor: GOLD_08,
-        border: "1px solid rgba(245,197,43,0.3)",
-      }}
-    >
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.72rem",
-          fontWeight: 500,
-          color: "#b45309",
-        }}
-      >
-        {label}
-      </Typography>
-      <Box
-        onClick={onDelete}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 14,
-          height: 14,
-          borderRadius: "10px",
-          cursor: "pointer",
-          color: "#b45309",
-          opacity: 0.7,
-          "&:hover": { opacity: 1 },
-        }}
-      >
-        <CloseIcon sx={{ fontSize: 11 }} />
-      </Box>
-    </Box>
-  );
-}
-
 function EventTypePill({ isMultiDay, isDark }) {
   return isMultiDay ? (
     <Box
@@ -279,86 +234,6 @@ function EventTypePill({ isMultiDay, isDark }) {
   );
 }
 
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.78rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-    "& .MuiDataGrid-menuIcon button": {
-      color: "text.disabled",
-      padding: "2px",
-      borderRadius: "10px",
-      transition: "all 0.15s",
-      "&:hover": { backgroundColor: GOLD_08, color: "#b45309" },
-    },
-    "& .MuiDataGrid-menuIcon .MuiSvgIcon-root": { fontSize: "1rem" },
-    "& .MuiDataGrid-columnHeader:hover .MuiDataGrid-menuIcon button": {
-      color: "text.secondary",
-    },
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-    "& .highlighted-row": {
-      backgroundColor: isDark
-        ? "rgba(245,197,43,0.08)"
-        : "rgba(245,197,43,0.10)",
-      "&:hover": {
-        backgroundColor: isDark
-          ? "rgba(245,197,43,0.13)"
-          : "rgba(245,197,43,0.15)",
-      },
-    },
-  };
-}
-
 // ✅ Fix 2: Removed unused DropdownPill component
 
 export default function AdminRequestManagement() {
@@ -383,11 +258,11 @@ export default function AdminRequestManagement() {
     title: "Coverage Request",
   });
 
-  const [tab, setTab] = useState(() => {
+  const [statusFilter, setStatusFilter] = useState(() => {
     const incoming = location.state?.tab;
-    if (!incoming) return 0;
-    const idx = TABS.findIndex((t) => t.key === incoming);
-    return idx >= 0 ? idx : 0;
+    return incoming && STATUS_OPTIONS.some((o) => o.key === incoming)
+      ? incoming
+      : "all";
   });
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
@@ -399,9 +274,14 @@ export default function AdminRequestManagement() {
   // Gmail-style: fetch which requests this user has viewed
   useEffect(() => {
     async function loadViewed() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("request_views").select("request_id").eq("user_id", user.id);
+      const { data } = await supabase
+        .from("request_views")
+        .select("request_id")
+        .eq("user_id", user.id);
       if (data) setViewedIds(new Set(data.map((r) => r.request_id)));
     }
     loadViewed();
@@ -409,26 +289,45 @@ export default function AdminRequestManagement() {
 
   const markAsViewed = async (requestId) => {
     if (viewedIds.has(requestId)) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("request_views").upsert({ user_id: user.id, request_id: requestId }, { onConflict: "user_id,request_id" });
+    await supabase
+      .from("request_views")
+      .upsert(
+        { user_id: user.id, request_id: requestId },
+        { onConflict: "user_id,request_id" },
+      );
     setViewedIds((prev) => new Set([...prev, requestId]));
   };
 
   const handleArchive = async (row) => {
-    const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).eq("id", row.id);
+    const { error } = await supabase
+      .from("coverage_requests")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", row.id);
     if (!error) refetch();
   };
   const handleTrash = async (row) => {
-    const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).eq("id", row.id);
+    const { error } = await supabase
+      .from("coverage_requests")
+      .update({ trashed_at: new Date().toISOString() })
+      .eq("id", row.id);
     if (!error) refetch();
   };
   const handleBulkArchive = async (ids) => {
-    const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).in("id", ids);
+    const { error } = await supabase
+      .from("coverage_requests")
+      .update({ archived_at: new Date().toISOString() })
+      .in("id", ids);
     if (!error) refetch();
   };
   const handleBulkTrash = async (ids) => {
-    const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).in("id", ids);
+    const { error } = await supabase
+      .from("coverage_requests")
+      .update({ trashed_at: new Date().toISOString() })
+      .in("id", ids);
     if (!error) refetch();
   };
 
@@ -442,16 +341,16 @@ export default function AdminRequestManagement() {
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState("all");
-  const [filterOpen, setFilterOpen] = useState(false);
-  // ✅ Fix 4: Removed unused filterRef (ClickAwayListener handles outside clicks)
+  const [searchText, setSearchText] = useState("");
+  const gridApiRef = useGridApiRef();
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
 
   useEffect(() => {
     const incoming = location.state?.tab;
     if (!incoming) return;
-    const idx = TABS.findIndex((t) => t.key === incoming);
-    if (idx >= 0) setTab(idx);
+    if (STATUS_OPTIONS.some((o) => o.key === incoming))
+      setStatusFilter(incoming);
   }, [location.state?.tab]);
 
   useEffect(() => {
@@ -478,8 +377,20 @@ export default function AdminRequestManagement() {
     return opts.sort();
   }, [requests]);
 
-  const activeFilterCount =
-    (selectedSem !== "all" ? 1 : 0) + (selectedEntity !== "all" ? 1 : 0);
+  const externalFilterModel = useMemo(() => {
+    const tokens = searchText
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return { items: [], quickFilterValues: tokens };
+  }, [searchText]);
+
+  const handleExportCsv = () => {
+    gridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "request-management-export",
+    });
+  };
 
   // ✅ Fix 3 & 5: Wrapped in useCallback so useMemo deps are stable and accurate
   const getBaseSource = useCallback(
@@ -536,8 +447,13 @@ export default function AdminRequestManagement() {
   );
 
   const filteredSource = useMemo(
-    () => applyFilters(getBaseSource(TABS[tab].key)),
-    [tab, applyFilters, getBaseSource],
+    () => applyFilters(getBaseSource(statusFilter)),
+    [statusFilter, applyFilters, getBaseSource],
+  );
+
+  const getStatusCount = useCallback(
+    (key) => applyFilters(getBaseSource(key)).length,
+    [applyFilters, getBaseSource],
   );
 
   const rows = filteredSource.map((req) => ({
@@ -566,11 +482,6 @@ export default function AdminRequestManagement() {
     assignments: req.coverage_assignments || [],
     _raw: req,
   }));
-
-  const getTabCount = useCallback(
-    (key) => applyFilters(getBaseSource(key)).length,
-    [applyFilters, getBaseSource],
-  );
 
   const titleCol = {
     field: "requestTitle",
@@ -640,8 +551,22 @@ export default function AdminRequestManagement() {
     align: "right",
     headerAlign: "right",
     renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
-        <IconButton size="small" onClick={(e) => { setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          height: "100%",
+          pr: 0.5,
+        }}
+      >
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            setMenuAnchor(e.currentTarget);
+            setMenuRow(p.row);
+          }}
+        >
           <MoreVertIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
@@ -1165,7 +1090,7 @@ export default function AdminRequestManagement() {
   };
 
   const buildColumns = () => {
-    const key = TABS[tab].key;
+    const key = statusFilter;
     if (key === "all")
       return [
         titleCol,
@@ -1237,12 +1162,23 @@ export default function AdminRequestManagement() {
         p: { xs: 1.5, sm: 2, md: 3 },
         height: "100%",
         boxSizing: "border-box",
-        backgroundColor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
         fontFamily: dm,
       }}
     >
       {/* ── Header ── */}
-      <Box sx={{ mb: 2.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <Box
+        sx={{
+          mb: 2.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexShrink: 0,
+        }}
+      >
         <Typography
           sx={{
             fontFamily: dm,
@@ -1256,308 +1192,248 @@ export default function AdminRequestManagement() {
         </Typography>
       </Box>
 
-      {/* ── Active filter chips ── */}
-      {activeFilterCount > 0 && (
-        <Box sx={{ display: "flex", gap: 0.75, mb: 2, flexWrap: "wrap" }}>
-          {selectedSem !== "all" && (
-            <FilterChip
-              label={semesters.find((s) => s.id === selectedSem)?.name}
-              onDelete={() => setSelectedSem("all")}
-            />
-          )}
-          {selectedEntity !== "all" && (
-            <FilterChip
-              label={selectedEntity}
-              onDelete={() => setSelectedEntity("all")}
-            />
-          )}
-        </Box>
-      )}
-
-      {/* ── Segmented tab bar + filter ── */}
+      {/* ── Filter row: Search | Dropdowns | Export + Settings ── */}
       <Box
         sx={{
-          mb: 2.5,
+          mb: 2,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 1,
+          alignItems: "flex-end",
+          gap: 1.5,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          flexShrink: 0,
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            gap: "6px",
-            flexWrap: "wrap",
-            flex: 1,
-            alignItems: "flex-end",
-          }}
-        >
-          {TABS.map(({ label, key }, idx) => {
-            const isActive = tab === idx;
-            const count = getTabCount(key);
-            return (
-              <Box
-                key={key}
-                onClick={() => setTab(idx)}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.6,
-                  px: 1.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  fontFamily: dm,
-                  fontSize: "0.79rem",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#fff" : "text.secondary",
-                  border: `1px solid ${isActive ? "#212121" : border}`,
-                  backgroundColor: isActive ? "#212121" : "background.paper",
-                  transition: "all 0.12s",
-                  "&:hover": isActive
-                    ? {}
-                    : {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: isDark ? "#f5f5f5" : CHARCOAL,
-                      },
-                }}
-              >
-                {label}
-                {count > 0 && (
-                  <Box
-                    sx={{
-                      minWidth: 17,
-                      height: 17,
-                      borderRadius: "10px",
-                      px: 0.5,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isActive
-                        ? "rgba(255,255,255,0.18)"
-                        : isDark
-                          ? "rgba(255,255,255,0.1)"
-                          : "rgba(53,53,53,0.08)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
+        {/* Search */}
+        <FormControl size="small" sx={{ flex: 3, minWidth: 300 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Search for request
+          </Typography>
+          <OutlinedInput
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          />
+        </FormControl>
+
+        {/* Status */}
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Status
+          </Typography>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            {STATUS_OPTIONS.map((o) => {
+              const count = getStatusCount(o.key);
+              return (
+                <MenuItem
+                  key={o.key}
+                  value={o.key}
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 2,
+                  }}
+                >
+                  {o.label}
+                  {count > 0 && (
+                    <Box
+                      component="span"
                       sx={{
-                        fontFamily: dm,
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: "10px",
+                        px: 0.6,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#f5c52b",
+                        fontSize: "0.62rem",
+                        fontWeight: 500,
                         lineHeight: 1,
-                        color: isActive ? "#fff" : "text.secondary",
+                        color: "#000000",
                       }}
                     >
                       {count}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* ── Filter button ── */}
-        {/* ✅ Fix 4: Removed unused filterRef, ClickAwayListener handles outside clicks */}
-        <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
-          <Box sx={{ position: "relative" }}>
-            <Box
-              onClick={() => setFilterOpen((p) => !p)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.6,
-                px: 1.25,
-                py: 0.6,
-                borderRadius: "10px",
-                cursor: "pointer",
-                border: `1px solid ${activeFilterCount > 0 ? "rgba(33,33,33,0.45)" : border}`,
-                backgroundColor:
-                  activeFilterCount > 0
-                    ? "rgba(33,33,33,0.08)"
-                    : "background.paper",
-                fontFamily: dm,
-                fontSize: "0.76rem",
-                fontWeight: 400,
-                color:
-                  activeFilterCount > 0 ? "text.primary" : "text.secondary",
-                transition: "all 0.15s",
-                "&:hover": {
-                  borderColor: "rgba(33,33,33,0.45)",
-                  color: "text.primary",
-                  backgroundColor: "rgba(33,33,33,0.08)",
-                },
-              }}
-            >
-              <FilterListIcon sx={{ fontSize: 14 }} />
-              Filter
-              {activeFilterCount > 0 && (
-                <Box
-                  sx={{
-                    width: 15,
-                    height: 15,
-                    borderRadius: "10px",
-                    backgroundColor: "#212121",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.58rem",
-                      fontWeight: 700,
-                      color: "#fff",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {activeFilterCount}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-            {filterOpen && (
-              <Paper
-                elevation={0}
-                onMouseDown={(e) => e.stopPropagation()}
-                sx={{
-                  position: "absolute",
-                  top: "calc(100% + 8px)",
-                  right: 0,
-                  width: 240,
-                  zIndex: 1300,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: "background.paper",
-                  boxShadow: isDark
-                    ? "0 8px 32px rgba(0,0,0,0.4)"
-                    : "0 4px 24px rgba(53,53,53,0.1)",
-                  overflow: "hidden",
-                }}
-              >
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1.5,
-                    borderBottom: `1px solid ${border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      color: "text.primary",
-                    }}
-                  >
-                    Filters
-                  </Typography>
-                  {activeFilterCount > 0 && (
-                    <Box
-                      onClick={() => {
-                        setSelectedSem("all");
-                        setSelectedEntity("all");
-                      }}
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.7rem",
-                        color: "text.secondary",
-                        cursor: "pointer",
-                        "&:hover": { color: "text.primary" },
-                      }}
-                    >
-                      Clear all
                     </Box>
                   )}
-                </Box>
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 2,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1.75,
-                  }}
-                >
-                  <FormControl size="small" fullWidth>
-                    <InputLabel sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
-                      Semester
-                    </InputLabel>
-                    <Select
-                      value={selectedSem}
-                      label="Semester"
-                      onChange={(e) => setSelectedSem(e.target.value)}
-                      MenuProps={{ disablePortal: true }}
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        borderRadius: "10px",
-                      }}
-                    >
-                      <MenuItem
-                        value="all"
-                        sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                      >
-                        All Semesters
-                      </MenuItem>
-                      {semesters.map((s) => (
-                        <MenuItem
-                          key={s.id}
-                          value={s.id}
-                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                        >
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <FormControl size="small" fullWidth>
-                    <InputLabel sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
-                      Client
-                    </InputLabel>
-                    <Select
-                      value={selectedEntity}
-                      label="Client"
-                      onChange={(e) => setSelectedEntity(e.target.value)}
-                      MenuProps={{ disablePortal: true }}
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        borderRadius: "10px",
-                      }}
-                    >
-                      <MenuItem
-                        value="all"
-                        sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                      >
-                        All Clients
-                      </MenuItem>
-                      {entityOptions.map((name) => (
-                        <MenuItem
-                          key={name}
-                          value={name}
-                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                        >
-                          {name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-              </Paper>
-            )}
-          </Box>
-        </ClickAwayListener>
+                </MenuItem>
+              );
+            })}
+          </Select>
+        </FormControl>
 
-        {/* ── Settings gear ── */}
+        {/* Semester */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Semester
+          </Typography>
+          <Select
+            value={selectedSem}
+            onChange={(e) => setSelectedSem(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Semesters
+            </MenuItem>
+            {semesters.map((s) => (
+              <MenuItem
+                key={s.id}
+                value={s.id}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
+                {s.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Client */}
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Client
+          </Typography>
+          <Select
+            value={selectedEntity}
+            onChange={(e) => setSelectedEntity(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "10px",
+              backgroundColor: "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            }}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Clients
+            </MenuItem>
+            {entityOptions.map((name) => (
+              <MenuItem
+                key={name}
+                value={name}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
+                {name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* Export */}
+        <Box
+          onClick={handleExportCsv}
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            height: 40,
+            borderRadius: "10px",
+            cursor: "pointer",
+            border: "1px solid rgba(0,0,0,0.12)",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: 500,
+            color: "text.secondary",
+            backgroundColor: "#f7f7f8",
+            transition: "all 0.15s",
+            flexShrink: 0,
+            "&:hover": {
+              borderColor: "rgba(53,53,53,0.3)",
+              color: "text.primary",
+              backgroundColor: "#ededee",
+            },
+          }}
+        >
+          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+          Export
+        </Box>
+
+        {/* Settings gear */}
         <Tooltip title="Archive & Trash" arrow>
           <IconButton
             size="small"
@@ -1565,14 +1441,17 @@ export default function AdminRequestManagement() {
             sx={{
               borderRadius: "10px",
               p: 0.7,
-              border: `1px solid ${border}`,
+              height: 40,
+              width: 40,
+              border: "1px solid rgba(0,0,0,0.12)",
               color: "text.secondary",
+              backgroundColor: "#f7f7f8",
               transition: "all 0.15s",
               flexShrink: 0,
               "&:hover": {
                 borderColor: "rgba(53,53,53,0.3)",
                 color: "text.primary",
-                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
+                backgroundColor: "#ededee",
               },
             }}
           >
@@ -1582,13 +1461,14 @@ export default function AdminRequestManagement() {
       </Box>
 
       {/* ── Table ── */}
-      <Box sx={{ width: "100%", overflowX: "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
         <Box
           sx={{
             minWidth: 680,
-            bgcolor: "background.paper",
+            height: "100%",
+            bgcolor: "#f7f7f8",
             borderRadius: "10px",
-            border: `1px solid ${border}`,
+            border: "1px solid rgba(0,0,0,0.08)",
             overflow: "hidden",
           }}
         >
@@ -1607,19 +1487,37 @@ export default function AdminRequestManagement() {
             <DataGrid
               rows={rows}
               columns={buildColumns()}
-              pageSize={8}
-              rowsPerPageOptions={[8]}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
               checkboxSelection
               disableRowSelectionOnClick
+              apiRef={gridApiRef}
+              enableSearch={false}
+              filterModel={externalFilterModel}
               selectionActions={[
-                { label: "Archive", onClick: handleBulkArchive },
-                { label: "Move to Trash", onClick: handleBulkTrash, color: "error" },
+                {
+                  label: "Archive",
+                  icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
+                  onClick: handleBulkArchive,
+                },
+                {
+                  label: "Move to Trash",
+                  icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
+                  onClick: handleBulkTrash,
+                  color: "error",
+                },
               ]}
+              slotProps={{
+                toolbar: {
+                  csvOptions: { disableToolbarButton: true },
+                  printOptions: { disableToolbarButton: true },
+                },
+              }}
               rowHeight={
-                ["On Going", "Completed"].includes(TABS[tab].key) ? 60 : 52
+                ["On Going", "Completed"].includes(statusFilter) ? 60 : 52
               }
               getRowHeight={
-                TABS[tab].key === "Forwarded"
+                statusFilter === "Forwarded"
                   ? ({ model }) => {
                       const s = model.forwardedTo?.length || 1;
                       if (s <= 1) return 52;
@@ -1634,7 +1532,6 @@ export default function AdminRequestManagement() {
                   ? "highlighted-row"
                   : ""
               }
-              sx={makeDataGridSx(isDark, border)}
             />
           )}
         </Box>
@@ -1654,22 +1551,80 @@ export default function AdminRequestManagement() {
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
-        onClose={() => { setMenuAnchor(null); setMenuRow(null); }}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 160,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
       >
-        <MenuItem onClick={() => { if (menuRow?.id) markAsViewed(menuRow.id); setSelectedRequest(menuRow?._raw); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}>
-          <ListItemIcon><VisibilityOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>View</ListItemText>
+        <MenuItem
+          onClick={() => {
+            if (menuRow?.id) markAsViewed(menuRow.id);
+            setSelectedRequest(menuRow?._raw);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            View
+          </ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => { handleArchive(menuRow); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}>
-          <ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
-          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText>
+        <MenuItem
+          onClick={() => {
+            handleArchive(menuRow);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            Archive
+          </ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => { handleTrash(menuRow); setMenuAnchor(null); setMenuRow(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}>
-          <ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon>
-          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText>
+        <MenuItem
+          onClick={() => {
+            handleTrash(menuRow);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 18, color: "#dc2626" }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              color: "#dc2626",
+            }}
+          >
+            Move to Trash
+          </ListItemText>
         </MenuItem>
       </Menu>
 
@@ -1699,7 +1654,9 @@ export default function AdminRequestManagement() {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-            <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            <SettingsOutlinedIcon
+              sx={{ fontSize: 16, color: "text.secondary" }}
+            />
             <Typography
               sx={{
                 fontFamily: dm,

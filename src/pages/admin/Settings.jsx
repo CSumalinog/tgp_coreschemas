@@ -94,66 +94,6 @@ const buildEventDateDisplay = (req) => {
   return fmtDateStr(req.event_date);
 };
 
-// ── DataGrid sx factory ───────────────────────────────────────────────────────
-function makeDataGridSx(isDark, border) {
-  return {
-    border: "none",
-    fontFamily: dm,
-    fontSize: "0.78rem",
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: isDark
-        ? "rgba(255,255,255,0.02)"
-        : "rgba(53,53,53,0.02)",
-      borderBottom: `1px solid ${border}`,
-      minHeight: "40px !important",
-      maxHeight: "40px !important",
-      lineHeight: "40px !important",
-    },
-    "& .MuiDataGrid-columnHeaderTitle": {
-      fontFamily: dm,
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: "text.secondary",
-      letterSpacing: "0.07em",
-      textTransform: "uppercase",
-    },
-    "& .MuiDataGrid-columnSeparator": { display: "none" },
-    "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within":
-      { outline: "none" },
-    "& .MuiDataGrid-row": {
-      borderBottom: `1px solid ${border}`,
-      transition: "background-color 0.12s",
-      "&:last-child": { borderBottom: "none" },
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
-    },
-    "& .MuiDataGrid-cell": {
-      border: "none",
-      outline: "none !important",
-      "&:focus, &:focus-within": { outline: "none" },
-    },
-    "& .MuiDataGrid-footerContainer": {
-      borderTop: `1px solid ${border}`,
-      backgroundColor: "transparent",
-      minHeight: "44px",
-    },
-    "& .MuiTablePagination-root": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-      color: "text.secondary",
-    },
-    "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-      fontFamily: dm,
-      fontSize: "0.75rem",
-    },
-    "& .MuiDataGrid-virtualScroller": { backgroundColor: "background.paper" },
-    "& .MuiDataGrid-overlay": { backgroundColor: "background.paper" },
-  };
-}
-
 // ── Status pill ───────────────────────────────────────────────────────────────
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CONFIG[status] || {
@@ -1036,7 +976,6 @@ export default function Settings() {
                   pageSize={10}
                   rowsPerPageOptions={[10, 25, 50]}
                   disableSelectionOnClick
-                  sx={makeDataGridSx(isDark, border)}
                 />
               </Box>
             </Box>
@@ -1123,7 +1062,6 @@ export default function Settings() {
                     checkboxSelection
                     onSelectionModelChange={(ids) => setSelected(ids)}
                     selectionModel={selected}
-                    sx={makeDataGridSx(isDark, border)}
                   />
                 </Box>
               </>
@@ -1338,7 +1276,6 @@ export default function Settings() {
                   checkboxSelection
                   onSelectionModelChange={(ids) => setSelected(ids)}
                   selectionModel={selected}
-                  sx={makeDataGridSx(isDark, border)}
                 />
               </Box>
             </>
