@@ -28,6 +28,7 @@ import {
   InputAdornment,
   Drawer,
   Tooltip,
+  Snackbar,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -51,14 +52,17 @@ import ViewActionButton from "../../components/common/ViewActionButton";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import ArchiveManagement from "./ArchiveManagement";
-import TrashManagement from "./TrashManagement";
+import {
+  RoleArchiveManagement,
+  RoleTrashManagement,
+} from "../common/request-management/RoleRequestManagement";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
 const GOLD_18 = "rgba(245,197,43,0.18)";
 const CHARCOAL = "#353535";
+const RED = "#dc2626";
 const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
 const HOVER_BG = "rgba(53,53,53,0.03)";
@@ -628,7 +632,11 @@ export default function SecHeadAssignmentManagement() {
   const [completedReqs, setCompletedReqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [toast, setToast] = useState({
+    open: false,
+    text: "",
+    severity: "success",
+  });
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [semesters, setSemesters] = useState([]);
@@ -646,7 +654,12 @@ export default function SecHeadAssignmentManagement() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
-  const hasBulkSelection = selectedRowIds.length > 0;
+  const hasBulkSelection = selectedRowIds.length > 1;
+  const isErrorToast = toast.severity === "error";
+  const toastAccent = isErrorToast ? RED : GOLD;
+  const toastSurface = isDark ? "#1f1f23" : "#ffffff";
+  const toastBorder = isDark ? "rgba(255,255,255,0.12)" : "#e8e8e8";
+  const toastTitle = isErrorToast ? "Assignment Error" : "Assignment Update";
 
   const handleRowSelectionModelChange = useCallback((model) => {
     const ids = model?.ids instanceof Set ? [...model.ids] : [];
@@ -656,8 +669,10 @@ export default function SecHeadAssignmentManagement() {
   useEffect(() => {
     if (!hasBulkSelection) return;
     if (menuAnchor) {
-      setMenuAnchor(null);
-      setMenuRow(null);
+      queueMicrotask(() => {
+        setMenuAnchor(null);
+        setMenuRow(null);
+      });
     }
   }, [hasBulkSelection, menuAnchor]);
 
@@ -871,7 +886,7 @@ export default function SecHeadAssignmentManagement() {
   const handleBulkArchive = async (ids) => {
     if (!currentUser?.id || !ids?.length) return;
     setError("");
-    setSuccessMsg("");
+    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const ts = new Date().toISOString();
     const rows = ids.map((id) => ({
       user_id: currentUser.id,
@@ -887,13 +902,17 @@ export default function SecHeadAssignmentManagement() {
       setError(error.message);
       return;
     }
-    setSuccessMsg(`${ids.length} request(s) moved to archive.`);
+    setToast({
+      open: true,
+      text: `${ids.length} request(s) moved to archive.`,
+      severity: "success",
+    });
     loadAll();
   };
   const handleBulkTrash = async (ids) => {
     if (!currentUser?.id || !ids?.length) return;
     setError("");
-    setSuccessMsg("");
+    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const ts = new Date().toISOString();
     const rows = ids.map((id) => ({
       user_id: currentUser.id,
@@ -909,13 +928,17 @@ export default function SecHeadAssignmentManagement() {
       setError(error.message);
       return;
     }
-    setSuccessMsg(`${ids.length} request(s) moved to trash.`);
+    setToast({
+      open: true,
+      text: `${ids.length} request(s) moved to trash.`,
+      severity: "success",
+    });
     loadAll();
   };
   const handleArchive = async (row) => {
     if (!currentUser?.id || !row?.id) return;
     setError("");
-    setSuccessMsg("");
+    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const { error } = await supabase
       .from("request_user_state")
       .upsert(
@@ -932,13 +955,13 @@ export default function SecHeadAssignmentManagement() {
       setError(error.message);
       return;
     }
-    setSuccessMsg("Request moved to archive.");
+    setToast({ open: true, text: "Request moved to archive.", severity: "success" });
     loadAll();
   };
   const handleTrash = async (row) => {
     if (!currentUser?.id || !row?.id) return;
     setError("");
-    setSuccessMsg("");
+    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const { error } = await supabase
       .from("request_user_state")
       .upsert(
@@ -955,7 +978,7 @@ export default function SecHeadAssignmentManagement() {
       setError(error.message);
       return;
     }
-    setSuccessMsg("Request moved to trash.");
+    setToast({ open: true, text: "Request moved to trash.", severity: "success" });
     loadAll();
   };
 
@@ -1471,21 +1494,6 @@ export default function SecHeadAssignmentManagement() {
     minWidth: 150,
     renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
   };
-  const venueCol = {
-    field: "venue",
-    headerName: "Venue",
-    flex: 0.9,
-    minWidth: 110,
-    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-  };
-  const forwardedCol = {
-    field: "forwarded",
-    headerName: "Forwarded",
-    flex: 0.85,
-    minWidth: 110,
-    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-  };
-
   const paxCol = {
     field: "pax",
     headerName: "Pax",
@@ -1512,18 +1520,6 @@ export default function SecHeadAssignmentManagement() {
             {p.value} pax
           </Typography>
         </Box>
-      </Box>
-    ),
-  };
-
-  const statusCol = {
-    field: "status",
-    headerName: "Status",
-    flex: 0.9,
-    minWidth: 110,
-    renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-        <StatusPill status={p.value} isDark={isDark} />
       </Box>
     ),
   };
@@ -1698,8 +1694,9 @@ export default function SecHeadAssignmentManagement() {
           )}
         <IconButton
           size="small"
-            disabled={hasBulkSelection}
+          disabled={hasBulkSelection}
           onClick={(e) => {
+            if (hasBulkSelection) return;
             setMenuAnchor(e.currentTarget);
             setMenuRow(p.row);
           }}
@@ -1712,46 +1709,13 @@ export default function SecHeadAssignmentManagement() {
 
   const buildColumns = () => {
     if (viewFilter === "for-assignment")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        paxCol,
-        forwardedCol,
-        actionCol,
-      ];
+      return [titleCol, typeCol, clientCol, eventDateCol, paxCol, actionCol];
     if (viewFilter === "assigned")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        staffersCol,
-        statusCol,
-        actionCol,
-      ];
+      return [titleCol, typeCol, clientCol, eventDateCol, staffersCol, actionCol];
     if (viewFilter === "on-going")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        venueCol,
-        onGoingStaffersCol,
-        actionCol,
-      ];
+      return [titleCol, typeCol, clientCol, eventDateCol, onGoingStaffersCol, actionCol];
     if (viewFilter === "completed")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        venueCol,
-        completedStaffersCol,
-        statusCol,
-        actionCol,
-      ];
+      return [titleCol, typeCol, clientCol, eventDateCol, completedStaffersCol, actionCol];
     return [titleCol, typeCol, clientCol, eventDateCol, actionCol];
   };
 
@@ -2092,22 +2056,6 @@ export default function SecHeadAssignmentManagement() {
         </Alert>
       )}
 
-      {successMsg && (
-        <Alert
-          severity="success"
-          onClose={() => setSuccessMsg("")}
-          sx={{
-            mb: 1.5,
-            borderRadius: "8px",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            flexShrink: 0,
-          }}
-        >
-          {successMsg}
-        </Alert>
-      )}
-
       {/* ── Table ── */}
       <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
         <Box
@@ -2143,7 +2091,7 @@ export default function SecHeadAssignmentManagement() {
               onRowSelectionModelChange={handleRowSelectionModelChange}
               enableSearch={false}
               filterModel={externalFilterModel}
-              selectionActions={[
+              selectionActions={hasBulkSelection ? [
                 {
                   label: "Archive",
                   icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
@@ -2155,7 +2103,7 @@ export default function SecHeadAssignmentManagement() {
                   onClick: handleBulkTrash,
                   color: "error",
                 },
-              ]}
+              ] : []}
               slotProps={{
                 toolbar: {
                   csvOptions: { disableToolbarButton: true },
@@ -2353,13 +2301,129 @@ export default function SecHeadAssignmentManagement() {
 
         <Box sx={{ flex: 1, overflow: "auto" }}>
           {settingsTab === 0 && (
-            <ArchiveManagement embedded onStateChange={loadAll} />
+            <RoleArchiveManagement
+              role="sec_head"
+              embedded
+              onStateChange={loadAll}
+              onToast={({ text, severity = "success" }) =>
+                setToast({ open: true, text, severity })
+              }
+            />
           )}
           {settingsTab === 1 && (
-            <TrashManagement embedded onStateChange={loadAll} />
+            <RoleTrashManagement
+              role="sec_head"
+              embedded
+              onStateChange={loadAll}
+              onToast={({ text, severity = "success" }) =>
+                setToast({ open: true, text, severity })
+              }
+            />
           )}
         </Box>
       </Drawer>
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={2200}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setToast((prev) => ({ ...prev, open: false }));
+        }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          mt: 1.5,
+          mr: 1,
+        }}
+      >
+        <Box
+          role="status"
+          aria-live="polite"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.25,
+            minWidth: 240,
+            maxWidth: 320,
+            px: 1.75,
+            py: 1.05,
+            borderRadius: "10px",
+            backgroundColor: toastSurface,
+            border: `1px solid ${toastBorder}`,
+            borderLeft: `3px solid ${toastAccent}`,
+            boxShadow: isDark
+              ? "0 10px 26px rgba(0,0,0,0.45)"
+              : "0 4px 20px rgba(53,53,53,0.12)",
+            userSelect: "none",
+          }}
+        >
+          <Box
+            sx={{
+              position: "relative",
+              width: 8,
+              height: 8,
+              flexShrink: 0,
+            }}
+          >
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                backgroundColor: toastAccent,
+              }}
+            />
+          </Box>
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                fontWeight: 700,
+                color: "text.primary",
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {toastTitle}
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.67rem",
+                color: "text.secondary",
+                mt: 0.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {toast.text}
+            </Typography>
+          </Box>
+
+          <IconButton
+            size="small"
+            onClick={() => setToast((prev) => ({ ...prev, open: false }))}
+            sx={{
+              color: toastAccent,
+              p: 0.35,
+              borderRadius: "8px",
+              flexShrink: 0,
+              "&:hover": {
+                backgroundColor: isErrorToast
+                  ? "rgba(220,38,38,0.1)"
+                  : "rgba(245,197,43,0.1)",
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Box>
+      </Snackbar>
 
       {/* ── Assign Dialog ── */}
       <AssignmentDialog

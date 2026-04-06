@@ -31,8 +31,10 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CloseIcon from "@mui/icons-material/Close";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import ArchiveManagement from "./ArchiveManagement";
-import TrashManagement from "./TrashManagement";
+import {
+  RoleArchiveManagement,
+  RoleTrashManagement,
+} from "../common/request-management/RoleRequestManagement";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
@@ -2234,8 +2236,8 @@ export default function MyAssignment() {
             })}
           </Box>
           <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pb: 2.5 }}>
-            {settingsTab === 0 && <ArchiveManagement embedded />}
-            {settingsTab === 1 && <TrashManagement embedded />}
+            {settingsTab === 0 && <RoleArchiveManagement role="staff" embedded />}
+            {settingsTab === 1 && <RoleTrashManagement role="staff" embedded />}
           </Box>
         </Box>
       </Drawer>

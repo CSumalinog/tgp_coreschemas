@@ -29,6 +29,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import CloseIcon from "@mui/icons-material/Close";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -127,6 +128,19 @@ const EMPTY_FORM = {
   designation: "",
 };
 
+const AVATAR_COLORS = [
+  { bg: "#FFE9A8", color: "#2D2400" },
+  { bg: "#E6F1FB", color: "#0C447C" },
+  { bg: "#EAF3DE", color: "#27500A" },
+  { bg: "#FAEEDA", color: "#633806" },
+  { bg: "#EEEDFE", color: "#3C3489" },
+  { bg: "#E1F5EE", color: "#085041" },
+  { bg: "#FAECE7", color: "#712B13" },
+  { bg: "#FBEAF0", color: "#72243E" },
+];
+
+const ACTION_BTN_HEIGHT = 36;
+
 const getInitials = (name) =>
   (name || "?")
     .split(" ")
@@ -134,6 +148,16 @@ const getInitials = (name) =>
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+const getAvatarColor = (key) => {
+  if (!key) return AVATAR_COLORS[0];
+  const str = String(key);
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
 
 export default function StaffersManagement() {
   const theme = useTheme();
@@ -154,6 +178,12 @@ export default function StaffersManagement() {
   const [selectedId, setSelectedId] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const [createdAccountOpen, setCreatedAccountOpen] = useState(false);
+  const [createdAccount, setCreatedAccount] = useState(null);
+  const [createdCopyFeedback, setCreatedCopyFeedback] = useState("");
+  const [createdCredentialsCopied, setCreatedCredentialsCopied] = useState(false);
+  const [createdDismissConfirmOpen, setCreatedDismissConfirmOpen] = useState(false);
 
   const [toggleOpen, setToggleOpen] = useState(false);
   const [toggleTarget, setToggleTarget] = useState(null);
@@ -197,6 +227,8 @@ export default function StaffersManagement() {
       ? staffers.length
       : staffers.filter((s) => s.division === tab).length;
 
+  const isDivisionFiltered = activeTab !== "All";
+
   const externalFilterModel = useMemo(() => {
     const tokens = searchText
       .split(/\s+/)
@@ -216,6 +248,7 @@ export default function StaffersManagement() {
     setFormMode("create");
     setFormData(EMPTY_FORM);
     setFormError("");
+    setCopyFeedback("");
     setFormOpen(true);
   };
 
@@ -233,6 +266,7 @@ export default function StaffersManagement() {
       designation: row.designation || "",
     });
     setFormError("");
+    setCopyFeedback("");
     setFormOpen(true);
   };
 
@@ -249,6 +283,90 @@ export default function StaffersManagement() {
       }
       return u;
     });
+    if (field === "email" || field === "password") {
+      setCopyFeedback("");
+    }
+  };
+
+  const handleCopyCredentials = async () => {
+    const email = formData.email.trim();
+    const password = formData.password;
+
+    if (!email || !password) {
+      setFormError("Enter email and password first to copy credentials.");
+      return;
+    }
+
+    const text = `Email: ${email}\nPassword: ${password}`;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setFormError("");
+      setCopyFeedback("Credentials copied");
+    } catch {
+      setFormError("Could not copy credentials. Please copy manually.");
+    }
+  };
+
+  const handleCopyCreated = async (mode = "all") => {
+    if (!createdAccount) return;
+
+    const text =
+      mode === "email"
+        ? createdAccount.email
+        : `Email: ${createdAccount.email}\nPassword: ${createdAccount.password}`;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCreatedCopyFeedback(
+        mode === "email" ? "Email copied" : "Credentials copied",
+      );
+      if (mode === "all") {
+        setCreatedCredentialsCopied(true);
+      }
+    } catch {
+      setCreatedCopyFeedback("Copy failed");
+    }
+  };
+
+  const clearCreatedAccountState = () => {
+    setCreatedAccountOpen(false);
+    setCreatedDismissConfirmOpen(false);
+    setCreatedAccount(null);
+    setCreatedCopyFeedback("");
+    setCreatedCredentialsCopied(false);
+  };
+
+  const handleAttemptCloseCreatedAccount = () => {
+    if (!createdCredentialsCopied) {
+      setCreatedDismissConfirmOpen(true);
+      return;
+    }
+    clearCreatedAccountState();
   };
 
   const handleFormSubmit = async () => {
@@ -279,6 +397,18 @@ export default function StaffersManagement() {
           email: formData.email.trim(),
           password: formData.password,
         });
+        setCreatedAccount({
+          full_name: payload.full_name,
+          email: formData.email.trim(),
+          password: formData.password,
+          role: payload.role,
+          division: payload.division,
+          section: payload.section,
+          position: payload.position,
+        });
+        setCreatedCopyFeedback("");
+        setCreatedCredentialsCopied(false);
+        setCreatedAccountOpen(true);
       } else {
         await updateStafferProfile(selectedId, payload);
       }
@@ -342,6 +472,7 @@ export default function StaffersManagement() {
         minWidth: 200,
         renderCell: (p) => {
           const url = getAvatarUrl(p.row.avatar_url);
+          const avatarColor = getAvatarColor(p.row.id || p.value);
           return (
             <Box
               sx={{
@@ -356,8 +487,8 @@ export default function StaffersManagement() {
                 sx={{
                   width: 36,
                   height: 36,
-                  backgroundColor: GOLD,
-                  color: CHARCOAL,
+                  backgroundColor: avatarColor.bg,
+                  color: avatarColor.color,
                   fontSize: "0.7rem",
                   fontWeight: 700,
                   flexShrink: 0,
@@ -743,7 +874,7 @@ export default function StaffersManagement() {
         sx={{
           mb: 2,
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: "center",
           gap: 1.5,
           flexWrap: "nowrap",
           overflowX: "auto",
@@ -752,18 +883,6 @@ export default function StaffersManagement() {
       >
         {/* Search */}
         <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            Search for staffer
-          </Typography>
           <OutlinedInput
             placeholder="Search"
             value={searchText}
@@ -787,23 +906,35 @@ export default function StaffersManagement() {
 
         {/* Division */}
         <FormControl size="small" sx={{ minWidth: 150 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            Division
-          </Typography>
           <Select
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
+            renderValue={(val) => (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {isDivisionFiltered && (
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      backgroundColor: GOLD,
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    color: "text.primary",
+                  }}
+                >
+                  {val}
+                </Typography>
+              </Box>
+            )}
             sx={{
               fontFamily: dm,
               fontSize: "0.78rem",
@@ -817,6 +948,7 @@ export default function StaffersManagement() {
           >
             {TABS.map((tab) => {
               const count = getCount(tab);
+              const isSelected = activeTab === tab;
               return (
                 <MenuItem
                   key={tab}
@@ -826,31 +958,42 @@ export default function StaffersManagement() {
                     fontSize: "0.78rem",
                     display: "flex",
                     justifyContent: "space-between",
+                    alignItems: "center",
                     gap: 2,
+                    fontWeight: isSelected ? 600 : 400,
                   }}
                 >
                   {tab}
-                  {count > 0 && (
-                    <Box
-                      component="span"
-                      sx={{
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: "10px",
-                        px: 0.6,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#f5c52b",
-                        fontSize: "0.62rem",
-                        fontWeight: 500,
-                        lineHeight: 1,
-                        color: "#000000",
-                      }}
-                    >
-                      {count}
-                    </Box>
-                  )}
+                  <Box
+                    component="span"
+                    sx={{
+                      minWidth: 20,
+                      height: 18,
+                      borderRadius: "99px",
+                      px: 0.75,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: isSelected
+                        ? GOLD
+                        : count === 0
+                          ? "transparent"
+                          : isDark
+                            ? "rgba(255,255,255,0.08)"
+                            : "rgba(53,53,53,0.07)",
+                      fontSize: "0.62rem",
+                      fontWeight: 600,
+                      lineHeight: 1,
+                      color: isSelected
+                        ? "#000"
+                        : count === 0
+                          ? "text.disabled"
+                          : "text.secondary",
+                      opacity: count === 0 ? 0.4 : 1,
+                    }}
+                  >
+                    {count}
+                  </Box>
                 </MenuItem>
               );
             })}
@@ -867,7 +1010,7 @@ export default function StaffersManagement() {
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: 40,
+            height: ACTION_BTN_HEIGHT,
             borderRadius: "10px",
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
@@ -897,17 +1040,17 @@ export default function StaffersManagement() {
             alignItems: "center",
             gap: 0.75,
             px: 1.75,
-            height: 40,
+            height: ACTION_BTN_HEIGHT,
             borderRadius: "10px",
             cursor: "pointer",
-            backgroundColor: "#212121",
-            color: "#fff",
+            backgroundColor: GOLD,
+            color: "#1a1a1a",
             fontFamily: dm,
             fontSize: "0.8rem",
             fontWeight: 600,
             transition: "background-color 0.15s",
             flexShrink: 0,
-            "&:hover": { backgroundColor: "#333" },
+            "&:hover": { backgroundColor: "#e6b722" },
           }}
         >
           <AddOutlinedIcon sx={{ fontSize: 15 }} />
@@ -990,7 +1133,11 @@ export default function StaffersManagement() {
               disabled={formLoading}
               border={border}
             />
-            <PrimaryBtn onClick={handleFormSubmit} loading={formLoading}>
+            <PrimaryBtn
+              onClick={handleFormSubmit}
+              loading={formLoading}
+              tone={formMode === "create" ? "gold" : "dark"}
+            >
               {formMode === "create" ? "Create Account" : "Save Changes"}
             </PrimaryBtn>
           </>
@@ -1037,18 +1184,37 @@ export default function StaffersManagement() {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => setShowPassword((p) => !p)}
-                      edge="end"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      {showPassword ? (
-                        <VisibilityOffOutlinedIcon sx={{ fontSize: 16 }} />
-                      ) : (
-                        <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
-                      )}
-                    </IconButton>
+                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.15 }}>
+                      <Tooltip
+                        title={copyFeedback || "Copy credentials"}
+                        arrow
+                        placement="top"
+                      >
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={handleCopyCredentials}
+                            edge="end"
+                            disabled={formLoading}
+                            sx={{ color: copyFeedback ? "#b45309" : "text.secondary" }}
+                          >
+                            <ContentCopyOutlinedIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowPassword((p) => !p)}
+                        edge="end"
+                        sx={{ color: "text.secondary" }}
+                      >
+                        {showPassword ? (
+                          <VisibilityOffOutlinedIcon sx={{ fontSize: 16 }} />
+                        ) : (
+                          <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                    </Box>
                   </InputAdornment>
                 ),
               }}
@@ -1162,6 +1328,162 @@ export default function StaffersManagement() {
             ))}
           </StyledField>
         )}
+      </BrandDialog>
+
+      {/* ── Created Account Dialog ── */}
+      <BrandDialog
+        open={createdAccountOpen}
+        onClose={(_, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+          handleAttemptCloseCreatedAccount();
+        }}
+        title="Account Created"
+        isDark={isDark}
+        border={border}
+        footer={
+          <>
+            <Box
+              onClick={() => handleCopyCreated("all")}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 1.5,
+                py: 0.65,
+                borderRadius: "10px",
+                cursor: "pointer",
+                border: `1px solid ${GOLD_18}`,
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                color: "#b45309",
+                backgroundColor: GOLD_08,
+                transition: "all 0.15s",
+                "&:hover": {
+                  backgroundColor: "rgba(245,197,43,0.16)",
+                },
+              }}
+            >
+              <ContentCopyOutlinedIcon sx={{ fontSize: 14 }} />
+              {createdCopyFeedback || "Copy Credentials"}
+            </Box>
+            <PrimaryBtn onClick={handleAttemptCloseCreatedAccount}>
+              Done
+            </PrimaryBtn>
+          </>
+        }
+      >
+        <Alert
+          severity="success"
+          sx={{
+            borderRadius: "10px",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            mb: 0.5,
+          }}
+        >
+          New account has been created successfully.
+        </Alert>
+        <Box
+          sx={{
+            border: `1px solid ${border}`,
+            borderRadius: "10px",
+            overflow: "hidden",
+          }}
+        >
+          {[
+            ["Full Name", createdAccount?.full_name || "—"],
+            ["Email", createdAccount?.email || "—"],
+            ["Password", createdAccount?.password || "—"],
+            ["Role", createdAccount?.role || "—"],
+            ["Division", createdAccount?.division || "—"],
+            ["Section", createdAccount?.section || "—"],
+            ["Position", createdAccount?.position || "—"],
+          ].map(([label, value], idx) => (
+            <Box
+              key={label}
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "110px 1fr",
+                gap: 1.25,
+                px: 1.5,
+                py: 1,
+                borderBottom:
+                  idx === 6 ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)"}`,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.74rem",
+                  fontWeight: 600,
+                  color: "text.secondary",
+                }}
+              >
+                {label}
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: label === "Password" ? 600 : 400,
+                  color: "text.primary",
+                  wordBreak: "break-word",
+                }}
+              >
+                {value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </BrandDialog>
+
+      <BrandDialog
+        open={createdDismissConfirmOpen}
+        onClose={() => setCreatedDismissConfirmOpen(false)}
+        title="Close Without Copying?"
+        isDark={isDark}
+        border={border}
+        footer={
+          <>
+            <CancelBtn
+              onClick={() => setCreatedDismissConfirmOpen(false)}
+              border={border}
+            />
+            <Box
+              onClick={clearCreatedAccountState}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                px: 1.75,
+                py: 0.65,
+                borderRadius: "10px",
+                cursor: "pointer",
+                backgroundColor: "#dc2626",
+                color: "#fff",
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                transition: "background-color 0.15s",
+                "&:hover": { backgroundColor: "#b91c1c" },
+              }}
+            >
+              Close Anyway
+            </Box>
+          </>
+        }
+      >
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.82rem",
+            color: "text.secondary",
+            lineHeight: 1.65,
+          }}
+        >
+          You have not copied the generated credentials yet. Once you close this dialog, you will not be able to view this password again. Continue only if you are sure.
+        </Typography>
       </BrandDialog>
 
       {/* ── Toggle Status Dialog ── */}
@@ -1541,7 +1863,8 @@ function CancelBtn({ onClick, disabled, border }) {
   );
 }
 
-function PrimaryBtn({ onClick, loading, children }) {
+function PrimaryBtn({ onClick, loading, children, tone = "dark" }) {
+  const isGold = tone === "gold";
   return (
     <Box
       onClick={!loading ? onClick : undefined}
@@ -1553,17 +1876,30 @@ function PrimaryBtn({ onClick, loading, children }) {
         py: 0.65,
         borderRadius: "10px",
         cursor: loading ? "default" : "pointer",
-        backgroundColor: "#212121",
-        color: "#fff",
+        backgroundColor: isGold ? GOLD : "#212121",
+        color: isGold ? "#1a1a1a" : "#fff",
         fontFamily: dm,
         fontSize: "0.8rem",
         fontWeight: 600,
         opacity: loading ? 0.7 : 1,
         transition: "background-color 0.15s",
-        "&:hover": { backgroundColor: loading ? "#212121" : "#333" },
+        "&:hover": {
+          backgroundColor: loading
+            ? isGold
+              ? GOLD
+              : "#212121"
+            : isGold
+              ? "#e6b722"
+              : "#333",
+        },
       }}
     >
-      {loading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
+      {loading && (
+        <CircularProgress
+          size={13}
+          sx={{ color: isGold ? "#1a1a1a" : "#fff" }}
+        />
+      )}
       {children}
     </Box>
   );

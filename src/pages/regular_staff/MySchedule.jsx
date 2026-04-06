@@ -23,7 +23,30 @@ const dm = "'Inter', sans-serif";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_SHORT = ["MON", "TUE", "WED", "THU", "FRI"];
-const MAX_SLOTS = 10;
+const SLOT_FIELDS = [
+  "monday_slots",
+  "tuesday_slots",
+  "wednesday_slots",
+  "thursday_slots",
+  "friday_slots",
+];
+
+const ACTIVE_REQUEST_STATUSES = ["Assigned", "For Approval", "On Going"];
+
+const getDutyDayFromDate = (dateStr) => {
+  if (!dateStr) return null;
+  const day = new Date(`${dateStr}T00:00:00`).getDay();
+  if (day === 0 || day === 6) return null;
+  return day - 1;
+};
+
+const getUpcomingRequestDates = (request) => {
+  if (!request) return [];
+  if (request.is_multiday && Array.isArray(request.event_days)) {
+    return request.event_days.map((entry) => entry?.date).filter(Boolean);
+  }
+  return request.event_date ? [request.event_date] : [];
+};
 
 export default function MySchedule() {
   const theme = useTheme();
@@ -34,11 +57,21 @@ export default function MySchedule() {
   const [activeSemester, setActiveSemester] = useState(null);
   const [slotCounts, setSlotCounts] = useState([0, 0, 0, 0, 0]);
   const [existingSchedule, setExistingSchedule] = useState(null);
+  const [pendingRequest, setPendingRequest] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const loadActiveSemester = useCallback(async () => {
+    const { data } = await supabase
+      .from("semesters")
+      .select("*")
+      .eq("is_active", true)
+      .single();
+    setActiveSemester(data || null);
+  }, []);
 
   useEffect(() => {
     async function loadUser() {
@@ -57,35 +90,42 @@ export default function MySchedule() {
   }, []);
 
   useEffect(() => {
-    async function loadSemester() {
-      const { data } = await supabase
-        .from("semesters")
-        .select("*")
-        .eq("is_active", true)
-        .single();
-      setActiveSemester(data || null);
-    }
-    loadSemester();
-  }, []);
+    loadActiveSemester();
+  }, [loadActiveSemester]);
 
   const loadScheduleData = useCallback(async () => {
     if (!activeSemester?.id || !currentUser?.id) return;
     setLoading(true);
-    const { data: allSchedules } = await supabase
-      .from("duty_schedules")
-      .select("duty_day, staffer_id")
-      .eq("semester_id", activeSemester.id);
+    const [{ data: allSchedules }, { data: pendingRows }] = await Promise.all([
+      supabase
+        .from("duty_schedules")
+        .select("duty_day, staffer_id")
+        .eq("semester_id", activeSemester.id),
+      supabase
+        .from("duty_schedule_change_requests")
+        .select("id, current_duty_day, requested_duty_day, status, created_at")
+        .eq("semester_id", activeSemester.id)
+        .eq("staffer_id", currentUser.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1),
+    ]);
     const counts = [0, 0, 0, 0, 0];
     (allSchedules || []).forEach((s) => {
       if (s.duty_day >= 0 && s.duty_day <= 4) counts[s.duty_day]++;
     });
     setSlotCounts(counts);
+    const nextPending = pendingRows?.[0] || null;
+    setPendingRequest(nextPending);
     const myPick = (allSchedules || []).find(
       (s) => s.staffer_id === currentUser.id,
     );
     if (myPick) {
       setExistingSchedule(myPick);
-      setSelectedDay(myPick.duty_day);
+      setSelectedDay(nextPending?.requested_duty_day ?? myPick.duty_day);
+    } else if (nextPending) {
+      setExistingSchedule(null);
+      setSelectedDay(nextPending.requested_duty_day);
     } else {
       setExistingSchedule(null);
       setSelectedDay(null);
@@ -101,39 +141,107 @@ export default function MySchedule() {
   useRealtimeNotify("duty_schedules", loadScheduleData, null, {
     title: "Duty Schedule",
   });
+  useRealtimeNotify(
+    "duty_schedule_change_requests",
+    loadScheduleData,
+    currentUser?.id ? `staffer_id=eq.${currentUser.id}` : null,
+    {
+      title: "Duty Schedule Change",
+      sound: false,
+    },
+  );
+  useRealtimeNotify("semesters", loadActiveSemester, "is_active=eq.true", {
+    title: "Duty Slots",
+    sound: false,
+  });
+
+  const checkScheduleConflict = useCallback(async () => {
+    if (!currentUser?.id || !existingSchedule) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from("coverage_assignments")
+      .select(
+        `id, request:coverage_requests!inner(id, title, event_date, is_multiday, event_days, status)`
+      )
+      .eq("assigned_to", currentUser.id);
+
+    if (error) throw error;
+
+    return (data || [])
+      .map((row) => row.request)
+      .filter((request) => request && ACTIVE_REQUEST_STATUSES.includes(request.status))
+      .filter((request) =>
+        getUpcomingRequestDates(request).some((date) => {
+          const nextDate = new Date(`${date}T00:00:00`);
+          nextDate.setHours(0, 0, 0, 0);
+          return nextDate >= today && getDutyDayFromDate(date) === existingSchedule.duty_day;
+        }),
+      );
+  }, [currentUser, existingSchedule]);
 
   const handleSave = async () => {
     if (selectedDay === null) return;
+    if (pendingRequest) return;
     setSaving(true);
     setSaveError("");
-    setSaveSuccess(false);
+    setSaveSuccess("");
     try {
       const countForDay = slotCounts[selectedDay];
+      const capacityForDay = slotCapacities[selectedDay] ?? 10;
       const isChanging =
         existingSchedule && existingSchedule.duty_day !== selectedDay;
       const isNew = !existingSchedule;
 
-      if ((isNew || isChanging) && countForDay >= MAX_SLOTS) {
+      if ((isNew || isChanging) && countForDay >= capacityForDay) {
         setSaveError(
-          `${DAY_LABELS[selectedDay]} is already full (${MAX_SLOTS}/${MAX_SLOTS}). Please pick another day.`,
+          `${DAY_LABELS[selectedDay]} is already full (${countForDay}/${capacityForDay}). Please pick another day.`,
         );
         setSaving(false);
         return;
       }
 
-      const { error: upsertErr } = await supabase
-        .from("duty_schedules")
-        .upsert(
-          {
+      if (isChanging) {
+        const conflicts = await checkScheduleConflict();
+        if (conflicts.length > 0) {
+          setSaveError(
+            `You have upcoming coverage assignments tied to your current ${DAY_LABELS[existingSchedule.duty_day]} schedule. Please contact an admin to resolve this before requesting a change.`,
+          );
+          setSaving(false);
+          return;
+        }
+
+        const { error: requestErr } = await supabase
+          .from("duty_schedule_change_requests")
+          .insert({
             staffer_id: currentUser.id,
             semester_id: activeSemester.id,
-            duty_day: selectedDay,
-          },
-          { onConflict: "staffer_id,semester_id" },
-        );
-      if (upsertErr) throw upsertErr;
+            current_duty_day: existingSchedule.duty_day,
+            requested_duty_day: selectedDay,
+            status: "pending",
+          });
 
-      setSaveSuccess(true);
+        if (requestErr) throw requestErr;
+
+        setSaveSuccess("Duty day change request submitted for approval.");
+      } else {
+        const { error: upsertErr } = await supabase
+          .from("duty_schedules")
+          .upsert(
+            {
+              staffer_id: currentUser.id,
+              semester_id: activeSemester.id,
+              duty_day: selectedDay,
+            },
+            { onConflict: "staffer_id,semester_id" },
+          );
+        if (upsertErr) throw upsertErr;
+
+        setSaveSuccess("Duty day saved successfully!");
+      }
+
       await loadScheduleData();
     } catch (err) {
       setSaveError(err.message);
@@ -145,6 +253,9 @@ export default function MySchedule() {
   const schedulingClosed = activeSemester && !activeSemester.scheduling_open;
   const noSemester = !loading && !activeSemester;
   const hasChanged = selectedDay !== (existingSchedule?.duty_day ?? null);
+  const slotCapacities = SLOT_FIELDS.map(
+    (field) => Math.max(0, Number(activeSemester?.[field] ?? 10) || 0),
+  );
 
   if (!currentUser || loading)
     return (
@@ -322,7 +433,36 @@ export default function MySchedule() {
               </Typography>
             </Box>
           )}
-          {existingSchedule && !schedulingClosed && (
+          {pendingRequest ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1.75,
+                py: 1.25,
+                mb: 2.5,
+                borderRadius: "10px",
+                border: `1px solid rgba(245,197,43,0.35)`,
+                backgroundColor: isDark ? GOLD_08 : "#fefce8",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  backgroundColor: GOLD,
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.78rem", color: "#b45309" }}
+              >
+                Your request to change from <strong>{DAY_LABELS[pendingRequest.current_duty_day]}</strong> to <strong>{DAY_LABELS[pendingRequest.requested_duty_day]}</strong> is pending admin approval.
+              </Typography>
+            </Box>
+          ) : existingSchedule && !schedulingClosed && (
             <Box
               sx={{
                 display: "flex",
@@ -367,7 +507,7 @@ export default function MySchedule() {
               {saveError}
             </Alert>
           )}
-          {saveSuccess && !hasChanged && (
+          {saveSuccess && (
             <Box
               sx={{
                 display: "flex",
@@ -393,7 +533,7 @@ export default function MySchedule() {
               <Typography
                 sx={{ fontFamily: dm, fontSize: "0.78rem", color: "#15803d" }}
               >
-                Duty day saved successfully!
+                {saveSuccess}
               </Typography>
             </Box>
           )}
@@ -440,11 +580,16 @@ export default function MySchedule() {
 
             {DAY_LABELS.map((day, i) => {
               const count = slotCounts[i];
-              const isFull = count >= MAX_SLOTS;
+              const capacity = slotCapacities[i] ?? 10;
+              const isFull = count >= capacity;
               const isMyPick = existingSchedule?.duty_day === i;
               const isSelected = selectedDay === i;
-              const isDisabled = schedulingClosed || (isFull && !isMyPick);
-              const pct = Math.min((count / MAX_SLOTS) * 100, 100);
+              const isPendingTarget = pendingRequest?.requested_duty_day === i;
+              const isDisabled = schedulingClosed || !!pendingRequest || (isFull && !isMyPick);
+              const pct = Math.min(
+                capacity > 0 ? (count / capacity) * 100 : count > 0 ? 100 : 0,
+                100,
+              );
 
               return (
                 <Box
@@ -469,6 +614,10 @@ export default function MySchedule() {
                         ? isDark
                           ? "rgba(34,197,94,0.06)"
                           : "#f0fdf4"
+                        : isPendingTarget
+                          ? isDark
+                            ? "rgba(245,197,43,0.06)"
+                            : "#fefce8"
                         : "background.paper",
                     opacity: isDisabled && !isMyPick ? 0.4 : 1,
                     transition: "all 0.15s ease",
@@ -538,7 +687,7 @@ export default function MySchedule() {
                         fontWeight: isFull ? 600 : 400,
                       }}
                     >
-                      {count}/{MAX_SLOTS}
+                      {count}/{capacity}
                     </Typography>
                     {isFull && !isMyPick && (
                       <Typography
@@ -550,6 +699,18 @@ export default function MySchedule() {
                         }}
                       >
                         Full
+                      </Typography>
+                    )}
+                    {isPendingTarget && (
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.63rem",
+                          color: "#b45309",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Pending
                       </Typography>
                     )}
                     {isMyPick && (
@@ -605,7 +766,8 @@ export default function MySchedule() {
                 !saving &&
                 selectedDay !== null &&
                 hasChanged &&
-                !schedulingClosed
+                !schedulingClosed &&
+                !pendingRequest
                   ? handleSave
                   : undefined
               }
@@ -621,14 +783,16 @@ export default function MySchedule() {
                   saving ||
                   selectedDay === null ||
                   !hasChanged ||
-                  schedulingClosed
+                  schedulingClosed ||
+                  pendingRequest
                     ? "not-allowed"
                     : "pointer",
                 backgroundColor:
                   saving ||
                   selectedDay === null ||
                   !hasChanged ||
-                  schedulingClosed
+                  schedulingClosed ||
+                  pendingRequest
                     ? isDark
                       ? "rgba(255,255,255,0.06)"
                       : "rgba(53,53,53,0.06)"
@@ -637,7 +801,8 @@ export default function MySchedule() {
                   saving ||
                   selectedDay === null ||
                   !hasChanged ||
-                  schedulingClosed
+                  schedulingClosed ||
+                  pendingRequest
                     ? "text.disabled"
                     : CHARCOAL,
                 fontFamily: dm,
@@ -648,7 +813,8 @@ export default function MySchedule() {
                   !saving &&
                   selectedDay !== null &&
                   hasChanged &&
-                  !schedulingClosed
+                  !schedulingClosed &&
+                  !pendingRequest
                     ? { backgroundColor: "#e6b920" }
                     : {},
               }}
@@ -658,8 +824,10 @@ export default function MySchedule() {
                   <CircularProgress size={13} sx={{ color: "inherit" }} />{" "}
                   Saving…
                 </>
+              ) : pendingRequest ? (
+                "Request Pending"
               ) : existingSchedule ? (
-                "Change My Day"
+                "Submit Change Request"
               ) : (
                 "Confirm My Day"
               )}

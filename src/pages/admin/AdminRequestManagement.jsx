@@ -22,6 +22,7 @@ import {
   IconButton,
   Drawer,
   Tooltip,
+  Snackbar,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -39,12 +40,15 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import ArchiveManagement from "./ArchiveManagement";
-import TrashManagement from "./TrashManagement";
+import {
+  RoleArchiveManagement,
+  RoleTrashManagement,
+} from "../common/request-management/RoleRequestManagement";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
 const CHARCOAL = "#353535";
+const RED = "#dc2626";
 const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
 const HOVER_BG = "rgba(53,53,53,0.03)";
@@ -180,6 +184,7 @@ export default function AdminRequestManagement() {
   const [viewedIds, setViewedIds] = useState(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
+  const [toast, setToast] = useState({ open: false, text: "", severity: "success" });
 
   useEffect(() => {
     async function loadViewed() {
@@ -203,20 +208,36 @@ export default function AdminRequestManagement() {
   };
 
   const handleArchive = async (row) => {
+    if (!row?.id) return;
     const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).eq("id", row.id);
-    if (!error) refetch();
+    if (!error) {
+      refetch();
+      setToast({ open: true, text: "Request moved to archive.", severity: "success" });
+    }
   };
   const handleTrash = async (row) => {
+    if (!row?.id) return;
     const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).eq("id", row.id);
-    if (!error) refetch();
+    if (!error) {
+      refetch();
+      setToast({ open: true, text: "Request moved to trash.", severity: "success" });
+    }
   };
   const handleBulkArchive = async (ids) => {
+    if (!ids?.length) return;
     const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).in("id", ids);
-    if (!error) refetch();
+    if (!error) {
+      refetch();
+      setToast({ open: true, text: `${ids.length} request(s) moved to archive.`, severity: "success" });
+    }
   };
   const handleBulkTrash = async (ids) => {
+    if (!ids?.length) return;
     const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).in("id", ids);
-    if (!error) refetch();
+    if (!error) {
+      refetch();
+      setToast({ open: true, text: `${ids.length} request(s) moved to trash.`, severity: "success" });
+    }
   };
 
   const handleOpenRequest = async (row) => {
@@ -229,22 +250,52 @@ export default function AdminRequestManagement() {
     const openId = location.state?.openRequestId;
     if (!openId || loading || requests.length === 0) return;
     const found = requests.find((r) => r.id === openId);
-    if (found) setSelectedRequest(found);
+    if (found) {
+      queueMicrotask(() => {
+        setSelectedRequest(found);
+      });
+    }
   }, [location.state?.openRequestId, loading, requests]);
 
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState("all");
   const [searchText, setSearchText] = useState("");
+  const [rowSelectionModel, setRowSelectionModel] = useState({ type: "include", ids: new Set() });
+  const [suppressedArchivableIds, setSuppressedArchivableIds] = useState(() => new Set());
   const gridApiRef = useGridApiRef();
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
+  const selectedRowCount = rowSelectionModel?.ids instanceof Set ? rowSelectionModel.ids.size : 0;
+  const isBulkSelectionActive = selectedRowCount > 1;
+
+  const handleSuppressArchivableIds = useCallback((ids = []) => {
+    if (!ids.length) return;
+    setSuppressedArchivableIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const incoming = location.state?.tab;
     if (!incoming) return;
-    if (STATUS_OPTIONS.some((o) => o.key === incoming)) setStatusFilter(incoming);
-  }, [location.state?.tab]);
+    if (STATUS_OPTIONS.some((o) => o.key === incoming) && incoming !== statusFilter) {
+      queueMicrotask(() => {
+        setStatusFilter(incoming);
+      });
+    }
+  }, [location.state?.tab, statusFilter]);
+
+  useEffect(() => {
+    if (!isBulkSelectionActive) return;
+    if (!menuAnchor) return;
+    queueMicrotask(() => {
+      setMenuAnchor(null);
+      setMenuRow(null);
+    });
+  }, [isBulkSelectionActive, menuAnchor]);
 
   useEffect(() => {
     async function loadSemesters() {
@@ -366,7 +417,15 @@ export default function AdminRequestManagement() {
     renderCell: (p) => (
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
         <ViewActionButton onClick={() => handleOpenRequest(p.row)} />
-        <IconButton size="small" onClick={(e) => { setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
+        <IconButton
+          size="small"
+          disabled={isBulkSelectionActive}
+          onClick={(e) => {
+            if (isBulkSelectionActive) return;
+            setMenuAnchor(e.currentTarget);
+            setMenuRow(p.row);
+          }}
+        >
           <MoreVertIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
@@ -433,17 +492,6 @@ export default function AdminRequestManagement() {
   const forwardedByCol = mkPersonCol("forwardedBy", "forwardedByAvatar", "Forwarded By", "#f5f3ff", "#6d28d9");
   const approvedByCol = mkPersonCol("approvedBy", "approvedByAvatar", "Approved By", "#f0fdf4", "#15803d");
   const declinedByCol = mkPersonCol("declinedBy", "declinedByAvatar", "Declined By", "#fef2f2", "#dc2626");
-
-  const declinedReasonCol = {
-    field: "declinedReason", headerName: "Reason", flex: 1.4, minWidth: 180,
-    renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.81rem", fontWeight: 400, color: p.value === "—" ? "text.disabled" : "#dc2626", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: p.value === "—" ? "normal" : "italic" }}>
-          {p.value}
-        </Typography>
-      </Box>
-    ),
-  };
 
   const onGoingVenueCol = {
     field: "venue", headerName: "Venue", flex: 1, minWidth: 120,
@@ -573,8 +621,8 @@ export default function AdminRequestManagement() {
     if (key === "Forwarded") return [titleCol, typeCol, clientCol, eventDateCol, forwardedToCol, forwardedByCol, actionCol];
     if (key === "Approved") return [titleCol, typeCol, clientCol, eventDateCol, approvedByCol, actionCol];
     if (key === "On Going") return [titleCol, typeCol, clientCol, eventDateCol, onGoingVenueCol, onGoingStaffersCol, actionCol];
-    if (key === "Completed") return [titleCol, typeCol, clientCol, eventDateCol, onGoingVenueCol, completedStafferCol, completedTimeInCol, completedTimeOutCol, completedDurCol, actionCol];
-    if (key === "Declined") return [titleCol, typeCol, clientCol, eventDateCol, declinedByCol, declinedReasonCol, actionCol];
+    if (key === "Completed") return [titleCol, typeCol, clientCol, eventDateCol, completedStafferCol, completedTimeInCol, completedTimeOutCol, completedDurCol, actionCol];
+    if (key === "Declined") return [titleCol, typeCol, clientCol, declinedByCol, actionCol];
     return [titleCol, typeCol, clientCol, receivedCol, eventDateCol, actionCol];
   };
 
@@ -589,6 +637,11 @@ export default function AdminRequestManagement() {
   };
 
   const isStatusFiltered = statusFilter !== "all";
+  const isErrorToast = toast.severity === "error";
+  const toastAccent = isErrorToast ? RED : GOLD;
+  const toastSurface = isDark ? "#1f1f23" : "#ffffff";
+  const toastBorder = isDark ? "rgba(255,255,255,0.12)" : "#e8e8e8";
+  const toastTitle = isErrorToast ? "Request Error" : "Request Update";
 
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: isDark ? "background.default" : "#ffffff", fontFamily: dm }}>
@@ -601,15 +654,13 @@ export default function AdminRequestManagement() {
       </Box>
 
       {/* ── Filter row ── */}
-      <Box sx={{ mb: 2, display: "flex", alignItems: "flex-end", gap: 1.5, flexWrap: "nowrap", overflowX: "auto", flexShrink: 0 }}>
+      <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1, flexWrap: "nowrap", overflowX: "auto", flexShrink: 0 }}>
 
         {/* Search */}
-        <FormControl size="small" sx={{ flex: 3, minWidth: 300 }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
-            Search for request
-          </Typography>
+        <FormControl size="small" sx={{ flex: 2.4, minWidth: 250, maxWidth: 440 }}>
           <OutlinedInput
             placeholder="Search"
+            inputProps={{ "aria-label": "Search for request" }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             startAdornment={
@@ -622,15 +673,13 @@ export default function AdminRequestManagement() {
         </FormControl>
 
         {/* Status — clean trigger, counts only inside dropdown items */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
-            Status
-          </Typography>
+        <FormControl size="small" sx={{ minWidth: 158 }}>
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
+            inputProps={{ "aria-label": "Status filter" }}
             // ✅ Clean trigger: just the label + a small dot when a filter is active
             renderValue={(val) => {
               const opt = STATUS_OPTIONS.find((o) => o.key === val);
@@ -699,11 +748,8 @@ export default function AdminRequestManagement() {
         </FormControl>
 
         {/* Semester */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
-            Semester
-          </Typography>
-          <Select value={selectedSem} onChange={(e) => setSelectedSem(e.target.value)} IconComponent={UnfoldMoreIcon} displayEmpty sx={selectSx}>
+        <FormControl size="small" sx={{ minWidth: 148 }}>
+          <Select value={selectedSem} onChange={(e) => setSelectedSem(e.target.value)} IconComponent={UnfoldMoreIcon} displayEmpty inputProps={{ "aria-label": "Semester filter" }} sx={selectSx}>
             <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Semesters</MenuItem>
             {semesters.map((s) => (
               <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{s.name}</MenuItem>
@@ -713,10 +759,7 @@ export default function AdminRequestManagement() {
 
         {/* Client */}
         <FormControl size="small" sx={{ minWidth: 140 }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
-            Client
-          </Typography>
-          <Select value={selectedEntity} onChange={(e) => setSelectedEntity(e.target.value)} IconComponent={UnfoldMoreIcon} displayEmpty sx={selectSx}>
+          <Select value={selectedEntity} onChange={(e) => setSelectedEntity(e.target.value)} IconComponent={UnfoldMoreIcon} displayEmpty inputProps={{ "aria-label": "Client filter" }} sx={selectSx}>
             <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Clients</MenuItem>
             {entityOptions.map((name) => (
               <MenuItem key={name} value={name} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{name}</MenuItem>
@@ -724,14 +767,14 @@ export default function AdminRequestManagement() {
           </Select>
         </FormControl>
 
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 0.35 }} />
 
         {/* Export */}
         <Box
           onClick={handleExportCsv}
           sx={{
             display: "inline-flex", alignItems: "center", gap: 0.5,
-            px: 1.5, height: 40, borderRadius: "10px", cursor: "pointer",
+            px: 1.5, height: 38, borderRadius: "10px", cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)", fontFamily: dm,
             fontSize: "0.78rem", fontWeight: 500, color: "text.secondary",
             backgroundColor: isDark ? "transparent" : "#f7f7f8",
@@ -744,12 +787,15 @@ export default function AdminRequestManagement() {
         </Box>
 
         {/* Settings gear */}
-        <Tooltip title="Archive & Trash" arrow>
+        <Tooltip title="Manage requests" arrow>
           <IconButton
             size="small"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => {
+              setSuppressedArchivableIds(new Set());
+              setSettingsOpen(true);
+            }}
             sx={{
-              borderRadius: "10px", p: 0.7, height: 40, width: 40,
+              borderRadius: "10px", p: 0.7, height: 38, width: 38,
               border: "1px solid rgba(0,0,0,0.12)", color: "text.secondary",
               backgroundColor: isDark ? "transparent" : "#f7f7f8",
               transition: "all 0.15s", flexShrink: 0,
@@ -777,12 +823,14 @@ export default function AdminRequestManagement() {
               checkboxSelection
               disableRowSelectionOnClick
               apiRef={gridApiRef}
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={setRowSelectionModel}
               enableSearch={false}
               filterModel={externalFilterModel}
-              selectionActions={[
+              selectionActions={selectedRowCount > 1 ? [
                 { label: "Archive", icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />, onClick: handleBulkArchive },
                 { label: "Move to Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />, onClick: handleBulkTrash, color: "error" },
-              ]}
+              ] : []}
               slotProps={{ toolbar: { csvOptions: { disableToolbarButton: true }, printOptions: { disableToolbarButton: true } } }}
               rowHeight={["On Going", "Completed"].includes(statusFilter) ? 60 : 52}
               getRowHeight={
@@ -879,10 +927,125 @@ export default function AdminRequestManagement() {
         </Box>
 
         <Box sx={{ flex: 1, overflow: "auto" }}>
-          {settingsTab === 0 && <ArchiveManagement embedded />}
-          {settingsTab === 1 && <TrashManagement embedded />}
+          {settingsTab === 0 && (
+            <RoleArchiveManagement
+              role="admin"
+              embedded
+              onStateChange={refetch}
+              suppressedArchivableIds={[...suppressedArchivableIds]}
+              onSuppressArchivableIds={handleSuppressArchivableIds}
+              onToast={({ text, severity = "success" }) => setToast({ open: true, text, severity })}
+            />
+          )}
+          {settingsTab === 1 && (
+            <RoleTrashManagement
+              role="admin"
+              embedded
+              onStateChange={refetch}
+              onSuppressArchivableIds={handleSuppressArchivableIds}
+              onToast={({ text, severity = "success" }) => setToast({ open: true, text, severity })}
+            />
+          )}
         </Box>
       </Drawer>
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={2200}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setToast((prev) => ({ ...prev, open: false }));
+        }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          mt: 1.5,
+          mr: 1,
+        }}
+      >
+        <Box
+          role="status"
+          aria-live="polite"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.25,
+            minWidth: 240,
+            maxWidth: 320,
+            px: 1.75,
+            py: 1.05,
+            borderRadius: "10px",
+            backgroundColor: toastSurface,
+            border: `1px solid ${toastBorder}`,
+            borderLeft: `3px solid ${toastAccent}`,
+            boxShadow: isDark ? "0 10px 26px rgba(0,0,0,0.45)" : "0 4px 20px rgba(53,53,53,0.12)",
+            userSelect: "none",
+          }}
+        >
+          <Box
+            sx={{
+              position: "relative",
+              width: 8,
+              height: 8,
+              flexShrink: 0,
+            }}
+          >
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                backgroundColor: toastAccent,
+              }}
+            />
+          </Box>
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                fontWeight: 700,
+                color: "text.primary",
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {toastTitle}
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.67rem",
+                color: "text.secondary",
+                mt: 0.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {toast.text}
+            </Typography>
+          </Box>
+
+          <IconButton
+            size="small"
+            onClick={() => setToast((prev) => ({ ...prev, open: false }))}
+            sx={{
+              color: toastAccent,
+              p: 0.35,
+              borderRadius: "8px",
+              flexShrink: 0,
+              "&:hover": {
+                backgroundColor: isErrorToast ? "rgba(220,38,38,0.1)" : "rgba(245,197,43,0.1)",
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Box>
+      </Snackbar>
     </Box>
   );
 }
