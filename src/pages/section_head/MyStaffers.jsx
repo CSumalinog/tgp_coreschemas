@@ -8,7 +8,12 @@ import {
   Avatar,
   useTheme,
   GlobalStyles,
+  FormControl,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -31,6 +36,17 @@ const DAY_CFG = [
   { label: "Friday", dot: "#ec4899", color: "#be185d", bg: "#fdf2f8" },
 ];
 
+const AVATAR_COLORS = [
+  { bg: "#E6F1FB", color: "#0C447C" },
+  { bg: "#EAF3DE", color: "#27500A" },
+  { bg: "#FAEEDA", color: "#633806" },
+  { bg: "#EEEDFE", color: "#3C3489" },
+  { bg: "#E1F5EE", color: "#085041" },
+  { bg: "#FAECE7", color: "#712B13" },
+  { bg: "#FBEAF0", color: "#72243E" },
+  { bg: "#DBEAFE", color: "#1E40AF" },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const getInitials = (name) => {
   if (!name) return "?";
@@ -40,6 +56,16 @@ const getInitials = (name) => {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+};
+
+const getAvatarColor = (seed) => {
+  if (!seed) return AVATAR_COLORS[0];
+  const key = String(seed);
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
 // ── Day Pill ──────────────────────────────────────────────────────────────────
@@ -351,6 +377,7 @@ export default function MyStaffers() {
       flex: 1.3,
       renderCell: (params) => {
         const url = getAvatarUrl(params.row.avatar_url);
+        const avatarColor = getAvatarColor(params.row.id || params.value);
         return (
           <Box
             sx={{
@@ -367,8 +394,8 @@ export default function MyStaffers() {
                 height: 28,
                 fontSize: "0.62rem",
                 fontWeight: 700,
-                backgroundColor: GOLD,
-                color: CHARCOAL,
+                backgroundColor: avatarColor.bg,
+                color: avatarColor.color,
                 flexShrink: 0,
               }}
             >
@@ -379,7 +406,7 @@ export default function MyStaffers() {
                 sx={{
                   fontFamily: dm,
                   fontSize: "0.8rem",
-                  fontWeight: 600,
+                  fontWeight: 400,
                   color: "text.primary",
                   lineHeight: 1.2,
                 }}
@@ -558,51 +585,31 @@ export default function MyStaffers() {
           }}
         >
           {/* Search bar */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              background: isDark ? "#232323" : "#f7f7f8",
-              borderRadius: "8px",
-              px: 1.2,
-              py: 0.5,
-              border: `1px solid ${border}`,
-              minWidth: 180,
-            }}
-          >
-            <svg
-              width="18"
-              height="18"
-              fill="none"
-              viewBox="0 0 24 24"
-              style={{ marginRight: 6, opacity: 0.6 }}
-            >
-              <path
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35m1.35-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
+          <FormControl size="small" sx={{ minWidth: 300 }}>
+            <OutlinedInput
               placeholder="Search staffers..."
+              inputProps={{ "aria-label": "Search staffers" }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                border: "none",
-                outline: "none",
-                background: "transparent",
+              startAdornment={
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                </InputAdornment>
+              }
+              sx={{
                 fontFamily: dm,
-                fontSize: "0.92rem",
-                width: "100%",
-                color: isDark ? "#fff" : CHARCOAL,
+                fontSize: "0.78rem",
+                borderRadius: "10px",
+                backgroundColor: isDark ? "transparent" : "#f7f7f8",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(0,0,0,0.12)",
+                },
               }}
             />
-          </Box>
+          </FormControl>
+
           {/* Export button */}
-          <button
+          <Box
             onClick={() => {
               // Simple CSV export
               const csvRows = [
@@ -641,24 +648,32 @@ export default function MyStaffers() {
               a.click();
               URL.revokeObjectURL(url);
             }}
-            style={{
-              background: GOLD,
-              color: CHARCOAL,
-              border: "none",
-              borderRadius: 6,
-              fontFamily: dm,
-              fontWeight: 600,
-              fontSize: "0.92rem",
-              padding: "7px 18px",
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 1.5,
+              height: 36,
+              borderRadius: "10px",
               cursor: "pointer",
-              boxShadow: isDark
-                ? "0 2px 8px rgba(0,0,0,0.12)"
-                : "0 2px 8px rgba(53,53,53,0.08)",
-              transition: "background 0.15s",
+              border: "1px solid rgba(0,0,0,0.12)",
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
             }}
           >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
             Export
-          </button>
+          </Box>
         </Box>
       </Box>
 

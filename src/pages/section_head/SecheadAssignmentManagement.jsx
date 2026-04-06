@@ -37,7 +37,6 @@ import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -48,6 +47,7 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ViewActionButton from "../../components/common/ViewActionButton";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -509,7 +509,8 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
       onMouseEnter={showPopover}
       onMouseLeave={hidePopover}
     >
-      <Box sx={{ display: "flex", alignItems: "center" }}>
+      <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.35 }}>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
         {visible.map((s, i) => {
           const url = getAvatarUrl(s.avatar_url);
           const clr = getAvatarColor(s.id);
@@ -579,6 +580,15 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
             </Typography>
           </Box>
         )}
+        </Box>
+        <ChevronRightIcon
+          sx={{
+            fontSize: 16,
+            color: isDark ? "rgba(255,255,255,0.38)" : "rgba(53,53,53,0.42)",
+            transform: open ? "translateX(1px)" : "none",
+            transition: "transform 140ms ease, color 140ms ease",
+          }}
+        />
       </Box>
       {popoverContent}
     </Box>
@@ -618,6 +628,7 @@ export default function SecHeadAssignmentManagement() {
   const [completedReqs, setCompletedReqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [semesters, setSemesters] = useState([]);
@@ -626,15 +637,29 @@ export default function SecHeadAssignmentManagement() {
   const [stafferFilter, setStafferFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [semRange, setSemRange] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
 
   // ── Menu + dialog state ───────────────────────────────────────────────────
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
-  const [selectedRequest, setSelectedRequest] = useState(null);
   const [confirmRequest, setConfirmRequest] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
+  const hasBulkSelection = selectedRowIds.length > 0;
+
+  const handleRowSelectionModelChange = useCallback((model) => {
+    const ids = model?.ids instanceof Set ? [...model.ids] : [];
+    setSelectedRowIds(ids);
+  }, []);
+
+  useEffect(() => {
+    if (!hasBulkSelection) return;
+    if (menuAnchor) {
+      setMenuAnchor(null);
+      setMenuRow(null);
+    }
+  }, [hasBulkSelection, menuAnchor]);
 
   // ── Assign dialog state ───────────────────────────────────────────────────
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -706,6 +731,18 @@ export default function SecHeadAssignmentManagement() {
     setLoading(true);
     setError("");
     try {
+      const { data: hiddenStateRows, error: hiddenStateError } = await supabase
+        .from("request_user_state")
+        .select("request_id")
+        .eq("user_id", currentUser.id);
+      if (hiddenStateError) throw hiddenStateError;
+
+      const hiddenRequestIds = (hiddenStateRows || []).map((r) => r.request_id);
+      const applyHiddenFilter = (query) =>
+        hiddenRequestIds.length > 0
+          ? query.not("id", "in", `(${hiddenRequestIds.join(",")})`)
+          : query;
+
       const baseSelect = `
         id, title, description, event_date, from_time, to_time,
         is_multiday, event_days, end_date,
@@ -722,25 +759,32 @@ export default function SecHeadAssignmentManagement() {
 
       const [allForwarded, assignedAndApproval, onGoing, completed] =
         await Promise.all([
-          supabase
+          applyHiddenFilter(
+            supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", ["Forwarded", "Assigned", "For Approval"])
             .contains("forwarded_sections", [currentUser.section])
             .order("forwarded_at", { ascending: false }),
-          supabase
+          ),
+          applyHiddenFilter(
+            supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", ["Assigned", "For Approval"])
             .contains("forwarded_sections", [currentUser.section])
             .order("event_date", { ascending: true }),
-          supabase
+          ),
+          applyHiddenFilter(
+            supabase
             .from("coverage_requests")
             .select(baseSelect)
             .eq("status", "On Going")
             .contains("forwarded_sections", [currentUser.section])
             .order("event_date", { ascending: true }),
-          supabase
+          ),
+          applyHiddenFilter(
+            supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", [
@@ -752,6 +796,7 @@ export default function SecHeadAssignmentManagement() {
             ])
             .contains("forwarded_sections", [currentUser.section])
             .order("event_date", { ascending: false }),
+          ),
         ]);
 
       if (
@@ -824,31 +869,93 @@ export default function SecHeadAssignmentManagement() {
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleBulkArchive = async (ids) => {
-    await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .in("id", ids);
-    refetch?.() || loadAll();
+    if (!currentUser?.id || !ids?.length) return;
+    setError("");
+    setSuccessMsg("");
+    const ts = new Date().toISOString();
+    const rows = ids.map((id) => ({
+      user_id: currentUser.id,
+      request_id: id,
+      archived_at: ts,
+      trashed_at: null,
+      purged_at: null,
+    }));
+    const { error } = await supabase
+      .from("request_user_state")
+      .upsert(rows, { onConflict: "user_id,request_id" });
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccessMsg(`${ids.length} request(s) moved to archive.`);
+    loadAll();
   };
   const handleBulkTrash = async (ids) => {
-    await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .in("id", ids);
-    refetch?.() || loadAll();
+    if (!currentUser?.id || !ids?.length) return;
+    setError("");
+    setSuccessMsg("");
+    const ts = new Date().toISOString();
+    const rows = ids.map((id) => ({
+      user_id: currentUser.id,
+      request_id: id,
+      archived_at: null,
+      trashed_at: ts,
+      purged_at: null,
+    }));
+    const { error } = await supabase
+      .from("request_user_state")
+      .upsert(rows, { onConflict: "user_id,request_id" });
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccessMsg(`${ids.length} request(s) moved to trash.`);
+    loadAll();
   };
   const handleArchive = async (row) => {
-    await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .eq("id", row.id);
+    if (!currentUser?.id || !row?.id) return;
+    setError("");
+    setSuccessMsg("");
+    const { error } = await supabase
+      .from("request_user_state")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          request_id: row.id,
+          archived_at: new Date().toISOString(),
+          trashed_at: null,
+          purged_at: null,
+        },
+        { onConflict: "user_id,request_id" },
+      );
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccessMsg("Request moved to archive.");
     loadAll();
   };
   const handleTrash = async (row) => {
-    await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .eq("id", row.id);
+    if (!currentUser?.id || !row?.id) return;
+    setError("");
+    setSuccessMsg("");
+    const { error } = await supabase
+      .from("request_user_state")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          request_id: row.id,
+          archived_at: null,
+          trashed_at: new Date().toISOString(),
+          purged_at: null,
+        },
+        { onConflict: "user_id,request_id" },
+      );
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccessMsg("Request moved to trash.");
     loadAll();
   };
 
@@ -1043,7 +1150,7 @@ export default function SecHeadAssignmentManagement() {
       setDayAssigned(byDate);
       await loadStaffersForDate(dates[0]);
     },
-    [currentUser, loadStaffersForDate],
+    [loadStaffersForDate],
   );
 
   const handleSelectDay = useCallback(
@@ -1549,8 +1656,8 @@ export default function SecHeadAssignmentManagement() {
   const actionCol = {
     field: "actions",
     headerName: "",
-    flex: 0.4,
-    minWidth: 56,
+    flex: 0.95,
+    minWidth: 130,
     sortable: false,
     align: "right",
     headerAlign: "right",
@@ -1564,8 +1671,34 @@ export default function SecHeadAssignmentManagement() {
           pr: 0.5,
         }}
       >
+        {viewFilter === "for-assignment" && !hasBulkSelection && (
+          <ViewActionButton
+            onClick={(e) => {
+              e.stopPropagation();
+              openAssignDialog(p.row);
+            }}
+          >
+            {p.row?.myPartial
+              ? `Assign (${p.row?.assignedDayCount}/${p.row?.totalDays})`
+              : "Assign"}
+          </ViewActionButton>
+        )}
+        {viewFilter === "assigned" &&
+          !hasBulkSelection &&
+          p.row?.myHasAssignments &&
+          !p.row?.myHasSubmitted && (
+            <ViewActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmRequest(p.row);
+              }}
+            >
+              Submit
+            </ViewActionButton>
+          )}
         <IconButton
           size="small"
+            disabled={hasBulkSelection}
           onClick={(e) => {
             setMenuAnchor(e.currentTarget);
             setMenuRow(p.row);
@@ -1710,28 +1843,20 @@ export default function SecHeadAssignmentManagement() {
           mb: 2,
           display: "flex",
           alignItems: "flex-end",
-          gap: 1.5,
+          gap: 1,
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
         }}
       >
         {/* Search */}
-        <FormControl size="small" sx={{ flex: 3, minWidth: 300 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            Search for request
-          </Typography>
+        <FormControl
+          size="small"
+          sx={{ flex: 2.4, minWidth: 250, maxWidth: 440 }}
+        >
           <OutlinedInput
             placeholder="Search"
+            inputProps={{ "aria-label": "Search for request" }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             startAdornment={
@@ -1752,24 +1877,13 @@ export default function SecHeadAssignmentManagement() {
         </FormControl>
 
         {/* View dropdown — matches Status dropdown pattern */}
-        <FormControl size="small" sx={{ minWidth: 170 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            View
-          </Typography>
+        <FormControl size="small" sx={{ minWidth: 158 }}>
           <Select
             value={viewFilter}
             onChange={(e) => setViewFilter(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
+            inputProps={{ "aria-label": "Assignment view filter" }}
             renderValue={(val) => {
               const opt = VIEW_OPTIONS.find((o) => o.key === val);
               return (
@@ -1854,24 +1968,13 @@ export default function SecHeadAssignmentManagement() {
         </FormControl>
 
         {/* Semester */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            Semester
-          </Typography>
+        <FormControl size="small" sx={{ minWidth: 148 }}>
           <Select
             value={selectedSem}
             onChange={(e) => setSelectedSem(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
+            inputProps={{ "aria-label": "Semester filter" }}
             sx={selectSx}
           >
             <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
@@ -1891,24 +1994,13 @@ export default function SecHeadAssignmentManagement() {
         </FormControl>
 
         {/* Staffer */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            Staffer
-          </Typography>
+        <FormControl size="small" sx={{ minWidth: 140 }}>
           <Select
             value={stafferFilter}
             onChange={(e) => setStafferFilter(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
+            inputProps={{ "aria-label": "Staffer filter" }}
             sx={selectSx}
           >
             <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
@@ -1926,7 +2018,7 @@ export default function SecHeadAssignmentManagement() {
           </Select>
         </FormControl>
 
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 0.35 }} />
 
         {/* Export */}
         <Box
@@ -1936,7 +2028,7 @@ export default function SecHeadAssignmentManagement() {
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: 40,
+            height: 36,
             borderRadius: "10px",
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
@@ -1959,15 +2051,15 @@ export default function SecHeadAssignmentManagement() {
         </Box>
 
         {/* Settings gear */}
-        <Tooltip title="Archive & Trash" arrow>
+        <Tooltip title="Manage record" arrow>
           <IconButton
             size="small"
             onClick={() => setSettingsOpen(true)}
             sx={{
               borderRadius: "10px",
               p: 0.7,
-              height: 40,
-              width: 40,
+              height: 36,
+              width: 36,
               border: "1px solid rgba(0,0,0,0.12)",
               color: "text.secondary",
               backgroundColor: isDark ? "transparent" : "#f7f7f8",
@@ -1997,6 +2089,22 @@ export default function SecHeadAssignmentManagement() {
           }}
         >
           {error}
+        </Alert>
+      )}
+
+      {successMsg && (
+        <Alert
+          severity="success"
+          onClose={() => setSuccessMsg("")}
+          sx={{
+            mb: 1.5,
+            borderRadius: "8px",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            flexShrink: 0,
+          }}
+        >
+          {successMsg}
         </Alert>
       )}
 
@@ -2032,6 +2140,7 @@ export default function SecHeadAssignmentManagement() {
               checkboxSelection
               disableRowSelectionOnClick
               apiRef={gridApiRef}
+              onRowSelectionModelChange={handleRowSelectionModelChange}
               enableSearch={false}
               filterModel={externalFilterModel}
               selectionActions={[
@@ -2061,6 +2170,15 @@ export default function SecHeadAssignmentManagement() {
                   ? "highlighted-row"
                   : ""
               }
+              sx={{
+                "& .MuiDataGrid-columnHeaders": {
+                  backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
+                  borderBottom: `1px solid ${border}`,
+                  minHeight: "42px !important",
+                  maxHeight: "42px !important",
+                  lineHeight: "42px !important",
+                },
+              }}
             />
           )}
         </Box>
@@ -2087,52 +2205,6 @@ export default function SecHeadAssignmentManagement() {
           },
         }}
       >
-        {/* For Assignment — show Assign */}
-        {viewFilter === "for-assignment" && (
-          <MenuItem
-            onClick={() => {
-              openAssignDialog(menuRow);
-              setMenuAnchor(null);
-              setMenuRow(null);
-            }}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-          >
-            <ListItemIcon>
-              <PersonAddOutlinedIcon sx={{ fontSize: 18 }} />
-            </ListItemIcon>
-            <ListItemText
-              primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-            >
-              {menuRow?.myPartial
-                ? `Assign (${menuRow?.assignedDayCount}/${menuRow?.totalDays} days)`
-                : "Assign"}
-            </ListItemText>
-          </MenuItem>
-        )}
-
-        {/* Assigned — show Submit for Approval */}
-        {viewFilter === "assigned" &&
-          menuRow?.myHasAssignments &&
-          !menuRow?.myHasSubmitted && (
-            <MenuItem
-              onClick={() => {
-                setConfirmRequest(menuRow);
-                setMenuAnchor(null);
-                setMenuRow(null);
-              }}
-              sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-            >
-              <ListItemIcon>
-                <CheckCircleOutlinedIcon sx={{ fontSize: 18 }} />
-              </ListItemIcon>
-              <ListItemText
-                primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-              >
-                Submit for Approval
-              </ListItemText>
-            </MenuItem>
-          )}
-
         <MenuItem
           onClick={() => {
             handleArchive(menuRow);
@@ -2280,8 +2352,12 @@ export default function SecHeadAssignmentManagement() {
         </Box>
 
         <Box sx={{ flex: 1, overflow: "auto" }}>
-          {settingsTab === 0 && <ArchiveManagement embedded />}
-          {settingsTab === 1 && <TrashManagement embedded />}
+          {settingsTab === 0 && (
+            <ArchiveManagement embedded onStateChange={loadAll} />
+          )}
+          {settingsTab === 1 && (
+            <TrashManagement embedded onStateChange={loadAll} />
+          )}
         </Box>
       </Drawer>
 

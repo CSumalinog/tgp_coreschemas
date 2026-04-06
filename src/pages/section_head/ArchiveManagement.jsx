@@ -1,5 +1,5 @@
 // src/pages/section_head/ArchiveManagement.jsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -7,6 +7,7 @@ import {
   Dialog,
   Alert,
   IconButton,
+  Tooltip,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -20,6 +21,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { supabase } from "../../lib/supabaseClient";
 
 const GOLD = "#F5C52B";
@@ -101,7 +103,7 @@ function ConfirmDialog({ open, onClose, onConfirm, title, message, loading, dest
   );
 }
 
-export default function ArchiveManagement({ embedded = false }) {
+export default function ArchiveManagement({ embedded = false, onStateChange }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
@@ -115,6 +117,16 @@ export default function ArchiveManagement({ embedded = false }) {
   const [confirm, setConfirm] = useState({ open: false, title: "", message: "", destructive: false, action: null });
   const [userId, setUserId] = useState(null);
   const [mySection, setMySection] = useState(null);
+  const [bulkDone, setBulkDone] = useState(null);
+  const bulkDoneTimer = useRef(null);
+
+  const markBulkDone = useCallback((key) => {
+    clearTimeout(bulkDoneTimer.current);
+    setBulkDone(key);
+    bulkDoneTimer.current = setTimeout(() => setBulkDone(null), 1400);
+  }, []);
+
+  useEffect(() => () => clearTimeout(bulkDoneTimer.current), []);
 
   useEffect(() => {
     (async () => {
@@ -191,10 +203,12 @@ export default function ArchiveManagement({ embedded = false }) {
       if (error) throw error;
       setMsg({ type: "success", text: `${ids.length} request(s) archived.` });
       setSelected([]);
+      if (ids.length > 1) markBulkDone("archive");
       await Promise.all([fetchArchived(), fetchArchivable()]);
+      await onStateChange?.();
     } catch (err) { setMsg({ type: "error", text: err.message }); }
     finally { setActionLoading(false); }
-  }, [userId, fetchArchived, fetchArchivable]);
+  }, [userId, fetchArchived, fetchArchivable, markBulkDone, onStateChange]);
 
   const restoreFromArchive = useCallback(async (ids) => {
     setActionLoading(true);
@@ -203,10 +217,12 @@ export default function ArchiveManagement({ embedded = false }) {
       if (error) throw error;
       setMsg({ type: "success", text: `${ids.length} request(s) unarchived.` });
       setSelected([]);
+      if (ids.length > 1) markBulkDone("unarchive");
       await Promise.all([fetchArchived(), fetchArchivable()]);
+      await onStateChange?.();
     } catch (err) { setMsg({ type: "error", text: err.message }); }
     finally { setActionLoading(false); }
-  }, [userId, fetchArchived, fetchArchivable]);
+  }, [userId, fetchArchived, fetchArchivable, markBulkDone, onStateChange]);
 
   const moveToTrash = useCallback(async (ids) => {
     setActionLoading(true);
@@ -217,10 +233,12 @@ export default function ArchiveManagement({ embedded = false }) {
       if (error) throw error;
       setMsg({ type: "success", text: `${ids.length} request(s) moved to trash.` });
       setSelected([]);
+      if (ids.length > 1) markBulkDone("trash");
       await Promise.all([fetchArchived(), fetchArchivable()]);
+      await onStateChange?.();
     } catch (err) { setMsg({ type: "error", text: err.message }); }
     finally { setActionLoading(false); }
-  }, [userId, fetchArchived, fetchArchivable]);
+  }, [userId, fetchArchived, fetchArchivable, markBulkDone, onStateChange]);
 
   const openConfirm = (title, message, action, destructive = false) => setConfirm({ open: true, title, message, destructive, action });
   const closeConfirm = () => setConfirm((p) => ({ ...p, open: false }));
@@ -258,6 +276,9 @@ export default function ArchiveManagement({ embedded = false }) {
     {
       field: "actions", headerName: "", width: 50, sortable: false, disableColumnMenu: true,
       renderCell: ({ row }) => {
+        if (selected.length > 0) {
+          return <Box sx={{ width: 24, height: 24 }} />;
+        }
         const [anchorEl, setAnchorEl] = React.useState(null);
         return (
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
@@ -278,7 +299,7 @@ export default function ArchiveManagement({ embedded = false }) {
         );
       },
     },
-  ], [requestColumns, restoreFromArchive, moveToTrash, isDark]);
+  ], [requestColumns, restoreFromArchive, moveToTrash, isDark, selected.length]);
 
   const archivableColumns = useMemo(() => [
     ...requestColumns,
@@ -319,11 +340,54 @@ export default function ArchiveManagement({ embedded = false }) {
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 2, py: 1, mb: 1.5, borderRadius: "10px", backgroundColor: isDark ? "rgba(245,197,43,0.06)" : GOLD_08, border: `1px solid ${isDark ? "rgba(245,197,43,0.15)" : "rgba(245,197,43,0.25)"}` }}>
         <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 600, color: "text.primary" }}>{count} selected</Typography>
         <Box sx={{ flex: 1 }} />
-        {actions.map((a, i) => (
-          <Box key={i} onClick={!actionLoading ? a.onClick : undefined} sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.5, py: 0.5, borderRadius: "4px", cursor: actionLoading ? "not-allowed" : "pointer", fontFamily: dm, fontSize: "0.75rem", fontWeight: 600, color: a.destructive ? RED : "text.primary", backgroundColor: a.destructive ? RED_08 : isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.05)", border: `1px solid ${a.destructive ? "rgba(220,38,38,0.2)" : border}`, userSelect: "none", transition: "all 0.15s", "&:hover": { backgroundColor: a.destructive ? "rgba(220,38,38,0.15)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.08)" } }}>
-            {a.icon}{a.label}
-          </Box>
-        ))}
+        {actions.map((a, i) => {
+          const isDone = bulkDone === a.key;
+          return (
+            <Tooltip key={i} title={isDone ? `${a.label} done` : a.label} arrow>
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={actionLoading}
+                  onClick={a.onClick}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "4px",
+                    border: `1px solid ${isDone ? "#212121" : a.destructive ? "rgba(220,38,38,0.2)" : border}`,
+                    color: isDone
+                      ? "#ffffff"
+                      : a.destructive
+                        ? RED
+                        : "text.secondary",
+                    backgroundColor: isDone
+                      ? "#212121"
+                      : a.destructive
+                        ? RED_08
+                        : isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(53,53,53,0.05)",
+                    transition: "all 0.15s",
+                    "&:hover": {
+                      backgroundColor: isDone
+                        ? "#212121"
+                        : a.destructive
+                          ? "rgba(220,38,38,0.15)"
+                          : isDark
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(53,53,53,0.08)",
+                    },
+                    "&.Mui-disabled": {
+                      opacity: 0.55,
+                      color: isDone ? "#ffffff" : undefined,
+                    },
+                  }}
+                >
+                  {isDone ? <CheckCircleOutlinedIcon sx={{ fontSize: 15 }} /> : a.icon}
+                </IconButton>
+              </span>
+            </Tooltip>
+          );
+        })}
       </Box>
     );
   };
@@ -365,7 +429,17 @@ export default function ArchiveManagement({ embedded = false }) {
             <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled", mb: 1.5 }}>
               {archivableRequests.length} request(s) ready to be archived.
             </Typography>
-            <DataGrid rows={archivableRequests} columns={archivableColumns} density="compact" autoHeight pageSize={10} rowsPerPageOptions={[10, 25, 50]} disableSelectionOnClick />
+            <DataGrid
+              rows={archivableRequests}
+              columns={archivableColumns}
+              density="compact"
+              autoHeight
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              disableSelectionOnClick
+              showToolbar={!embedded}
+              enableSearch={!embedded}
+            />
           </Card>
         )}
 
@@ -381,11 +455,26 @@ export default function ArchiveManagement({ embedded = false }) {
               <BulkBar
                 count={selected.length}
                 actions={[
-                  { label: "Unarchive", icon: <UnarchiveOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => restoreFromArchive(selected) },
-                  { label: "Move to Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => openConfirm("Move to Trash", `Move ${selected.length} request(s) to trash?`, () => moveToTrash(selected)), destructive: true },
+                  { key: "unarchive", label: "Unarchive", icon: <UnarchiveOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => restoreFromArchive(selected) },
+                  { key: "trash", label: "Move to Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 14 }} />, onClick: () => openConfirm("Move to Trash", `Move ${selected.length} request(s) to trash?`, () => moveToTrash(selected)), destructive: true },
                 ]}
               />
-              <DataGrid rows={archivedRequests} columns={archiveColumns} density="compact" autoHeight pageSize={10} rowsPerPageOptions={[10, 25, 50]} checkboxSelection onSelectionModelChange={(ids) => setSelected(ids)} selectionModel={selected} />
+              <DataGrid
+                rows={archivedRequests}
+                columns={archiveColumns}
+                density="compact"
+                autoHeight
+                pageSize={10}
+                rowsPerPageOptions={[10, 25, 50]}
+                checkboxSelection
+                rowSelectionModel={{ type: "include", ids: new Set(selected) }}
+                onRowSelectionModelChange={(model) => {
+                  const ids = model?.ids instanceof Set ? [...model.ids] : [];
+                  setSelected(ids);
+                }}
+                showToolbar={!embedded}
+                enableSearch={!embedded}
+              />
             </>
           )}
         </Card>

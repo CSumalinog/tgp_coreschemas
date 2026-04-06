@@ -376,6 +376,15 @@ const AppDataGrid = forwardRef(function AppDataGrid(
   const internalApiRef = externalApiRef || _internalApiRef;
   const [selectedIds, setSelectedIds] = useState([]);
 
+  useEffect(() => {
+    if (!externalSelectionModel) return;
+    const ids =
+      externalSelectionModel?.ids instanceof Set
+        ? [...externalSelectionModel.ids]
+        : [];
+    setSelectedIds(ids);
+  }, [externalSelectionModel]);
+
   const handleSelectionChange = (model) => {
     const ids = model?.ids instanceof Set ? [...model.ids] : [];
     setSelectedIds(ids);
@@ -457,6 +466,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
         disableRowSelectionOnClick: true,
         disableRowSelectionExcludeModel: true,
         apiRef: internalApiRef,
+        rowSelectionModel: externalSelectionModel,
         onRowSelectionModelChange: handleSelectionChange,
       }
     : {};
