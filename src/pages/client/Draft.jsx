@@ -235,7 +235,7 @@ export default function Draft() {
       venue: req.venue,
       coverageComponents: req.services
         ? Object.entries(req.services)
-            .filter(([_, pax]) => pax > 0)
+            .filter(([, pax]) => pax > 0)
             .map(([name, pax]) => ({ name, pax }))
         : [],
       client: req.entity?.name || "—",
@@ -374,6 +374,7 @@ export default function Draft() {
               columns={columns}
               pageSize={10}
               rowsPerPageOptions={[10]}
+              showToolbar={false}
               disableRowSelectionOnClick
               rowHeight={52}
             />

@@ -18,8 +18,6 @@ import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
-import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import { supabase } from "../../lib/supabaseClient";
@@ -147,7 +145,7 @@ function BrandField({ label, type, value, onChange, show, onToggle, isDark }) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { isDark, toggleDark } = useThemeMode();
+  const { isDark } = useThemeMode();
   const fileInputRef = useRef(null);
   const border = isDark ? BORDER_DARK : BORDER;
 
@@ -597,109 +595,6 @@ export default function ProfilePage() {
         </Box>
       </Card>
 
-      {/* ── Display Preferences ── */}
-      <Card isDark={isDark}>
-        <SectionLabel
-          icon={isDark ? LightModeOutlinedIcon : DarkModeOutlinedIcon}
-          label="Display"
-        />
-
-        <Box
-          onClick={toggleDark}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            px: 1.75,
-            py: 1.5,
-            borderRadius: "10px",
-            border: `1px solid ${isDark ? GOLD : border}`,
-            backgroundColor: isDark ? GOLD_08 : "transparent",
-            cursor: "pointer",
-            transition: "all 0.15s",
-            "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
-          }}
-        >
-          {/* Icon pill */}
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: "10px",
-              flexShrink: 0,
-              backgroundColor: isDark
-                ? GOLD_16
-                : isDark
-                  ? "rgba(255,255,255,0.06)"
-                  : "rgba(53,53,53,0.05)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {isDark ? (
-              <LightModeOutlinedIcon sx={{ fontSize: 17, color: GOLD }} />
-            ) : (
-              <DarkModeOutlinedIcon
-                sx={{ fontSize: 17, color: "text.secondary" }}
-              />
-            )}
-          </Box>
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                color: "text.primary",
-                lineHeight: 1.3,
-              }}
-            >
-              {isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-                mt: 0.15,
-              }}
-            >
-              {isDark
-                ? "Currently using dark theme"
-                : "Currently using light theme"}
-            </Typography>
-          </Box>
-
-          {/* Toggle pill */}
-          <Box
-            sx={{
-              width: 36,
-              height: 20,
-              borderRadius: "10px",
-              flexShrink: 0,
-              backgroundColor: isDark ? GOLD : border,
-              position: "relative",
-              transition: "background-color 0.2s",
-            }}
-          >
-            <Box
-              sx={{
-                position: "absolute",
-                top: 2,
-                left: isDark ? 18 : 2,
-                width: 16,
-                height: 16,
-                borderRadius: "50%",
-                backgroundColor: "#fff",
-                transition: "left 0.2s",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
-              }}
-            />
-          </Box>
-        </Box>
-      </Card>
     </Box>
   );
 }

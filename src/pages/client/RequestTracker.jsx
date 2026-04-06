@@ -466,7 +466,7 @@ export default function RequestTracker() {
         </Typography>
       </Box>
 
-      {/* ── Filter row: Pipeline | Search | View | Export ── */}
+      {/* ── Filter row: Search | View | Export ── */}
       <Box
         sx={{
           mb: 2,
@@ -478,54 +478,11 @@ export default function RequestTracker() {
           flexShrink: 0,
         }}
       >
-        {/* Pipeline tab */}
-        <Box
-          onClick={() => setTab("pipeline")}
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: 36,
-            borderRadius: "10px",
-            cursor: "pointer",
-            flexShrink: 0,
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: isPipeline ? 600 : 500,
-            color: isPipeline ? "#fff" : "text.secondary",
-            backgroundColor: isPipeline ? "#212121" : "#f7f7f8",
-            border: `1px solid ${isPipeline ? "#212121" : "rgba(0,0,0,0.12)"}`,
-            transition: "all 0.15s",
-            alignSelf: "flex-end",
-            "&:hover": isPipeline
-              ? {}
-              : {
-                  borderColor: "rgba(53,53,53,0.3)",
-                  color: "text.primary",
-                  backgroundColor: "#ededee",
-                },
-          }}
-        >
-          Pipeline
-        </Box>
-
         {/* Search */}
         <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            Search for request
-          </Typography>
           <OutlinedInput
             placeholder="Search"
+            inputProps={{ "aria-label": "Search for request" }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             startAdornment={
@@ -547,25 +504,15 @@ export default function RequestTracker() {
 
         {/* View */}
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
-            View
-          </Typography>
           <Select
-            value={isPipeline ? "" : tab}
+            value={tab}
             onChange={(e) => setTab(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
+            inputProps={{ "aria-label": "Request view filter" }}
             renderValue={(v) => {
-              if (isPipeline || v === "") return "Select view";
+              if (v === "pipeline") return "Pipeline";
+              if (v === "") return "Select view";
               return TABS[v]?.label || "";
             }}
             sx={{
@@ -579,6 +526,12 @@ export default function RequestTracker() {
               "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
             }}
           >
+            <MenuItem
+              value="pipeline"
+              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+            >
+              Pipeline
+            </MenuItem>
             {TABS.map(({ label }, idx) => (
               <MenuItem
                 key={label}
@@ -1204,25 +1157,36 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
   const status = row._raw?.status;
   const canReschedule = onReschedule && RESCHEDULABLE_STATUSES.includes(status);
   const canCancel = onCancel && CANCELLABLE_STATUSES.includes(status);
+  const hasSecondaryActions = canReschedule || canCancel;
 
   return (
     <>
-      <IconButton
-        size="small"
+      <ViewActionButton
         onClick={(e) => {
           e.stopPropagation();
-          setAnchor(e.currentTarget);
-        }}
-        sx={{
-          color: "text.secondary",
-          borderRadius: "10px",
-          "&:hover": {
-            backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-          },
+          onView(row._raw);
         }}
       >
-        <MoreVertIcon sx={{ fontSize: 18 }} />
-      </IconButton>
+        View
+      </ViewActionButton>
+      {hasSecondaryActions && (
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAnchor(e.currentTarget);
+          }}
+          sx={{
+            color: "text.secondary",
+            borderRadius: "10px",
+            "&:hover": {
+              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+            },
+          }}
+        >
+          <MoreVertIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      )}
       <Menu
         anchorEl={anchor}
         open={Boolean(anchor)}
@@ -1243,25 +1207,6 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
           },
         }}
       >
-        <MenuItem
-          onClick={() => {
-            setAnchor(null);
-            onView(row._raw);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.8rem", py: 1, gap: 0.5 }}
-        >
-          <ListItemIcon sx={{ minWidth: 28 }}>
-            <ChevronRightIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-          </ListItemIcon>
-          <ListItemText
-            primary="View Details"
-            primaryTypographyProps={{
-              fontFamily: dm,
-              fontSize: "0.8rem",
-              fontWeight: 500,
-            }}
-          />
-        </MenuItem>
         {canReschedule && (
           <MenuItem
             onClick={() => {
@@ -1422,7 +1367,7 @@ function useGridColumns(isDark, { onView, onReschedule, onCancel } = {}) {
   const actionCol = {
     field: "actions",
     headerName: "",
-    width: 56,
+    width: 140,
     sortable: false,
     align: "right",
     headerAlign: "right",
