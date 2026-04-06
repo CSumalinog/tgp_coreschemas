@@ -3,7 +3,6 @@ import React, {
   useState,
   useEffect,
   useMemo,
-  useRef,
   useCallback,
 } from "react";
 import {
@@ -13,7 +12,6 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel,
   InputAdornment,
   OutlinedInput,
   useTheme,
@@ -35,7 +33,6 @@ import { supabase } from "../../lib/supabaseClient";
 import CloseIcon from "@mui/icons-material/Close";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -82,13 +79,9 @@ const SECTION_COLORS = {
 
 const getInitials = (name) => {
   if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 };
+
 const computeDuration = (timedIn, completedAt) => {
   if (!timedIn || !completedAt) return null;
   const diffMs = new Date(completedAt) - new Date(timedIn);
@@ -100,6 +93,7 @@ const computeDuration = (timedIn, completedAt) => {
   if (mins === 0) return `${hrs}h`;
   return `${hrs}h ${mins}m`;
 };
+
 const fmtTime = (ts) => {
   if (!ts) return null;
   return new Date(ts).toLocaleTimeString("en-US", {
@@ -107,51 +101,28 @@ const fmtTime = (ts) => {
     minute: "2-digit",
   });
 };
-const fmtDateStr = (
-  d,
-  opts = { month: "short", day: "numeric", year: "numeric" },
-) => {
-  if (!d) return "\u2014";
+
+const fmtDateStr = (d, opts = { month: "short", day: "numeric", year: "numeric" }) => {
+  if (!d) return "—";
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
 };
+
 const buildEventDateDisplay = (req) => {
   if (req.is_multiday && req.event_days?.length > 0) {
-    const sorted = [...req.event_days].sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
-    const first = fmtDateStr(sorted[0].date, {
-      month: "short",
-      day: "numeric",
-    });
-    const last = fmtDateStr(sorted[sorted.length - 1].date, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    return sorted.length === 1
-      ? fmtDateStr(sorted[0].date)
-      : `${first} \u2013 ${last}`;
+    const sorted = [...req.event_days].sort((a, b) => a.date.localeCompare(b.date));
+    const first = fmtDateStr(sorted[0].date, { month: "short", day: "numeric" });
+    const last = fmtDateStr(sorted[sorted.length - 1].date, { month: "short", day: "numeric", year: "numeric" });
+    return sorted.length === 1 ? fmtDateStr(sorted[0].date) : `${first} – ${last}`;
   }
   return req.event_date
-    ? new Date(req.event_date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "\u2014";
+    ? new Date(req.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
 };
 
 function MetaCell({ children }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.78rem",
-          fontWeight: 400,
-          color: "text.secondary",
-        }}
-      >
+      <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 400, color: "text.secondary" }}>
         {children}
       </Typography>
     </Box>
@@ -160,81 +131,31 @@ function MetaCell({ children }) {
 
 function EventTypePill({ isMultiDay, isDark }) {
   return isMultiDay ? (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 0.5,
-        px: 1,
-        py: 0.3,
-        borderRadius: "10px",
-        backgroundColor: isDark ? "rgba(74,222,128,0.1)" : "#f0fdf4",
-        border: `1px solid ${isDark ? "rgba(74,222,128,0.25)" : "#86efac"}`,
-      }}
-    >
-      <Box
-        sx={{
-          width: 5,
-          height: 5,
-          borderRadius: "50%",
-          backgroundColor: isDark ? "#4ade80" : "#22c55e",
-          flexShrink: 0,
-        }}
-      />
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.66rem",
-          fontWeight: 700,
-          color: isDark ? "#4ade80" : "#15803d",
-          letterSpacing: "0.04em",
-        }}
-      >
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: 0.5,
+      px: 1, py: 0.3, borderRadius: "10px",
+      backgroundColor: isDark ? "rgba(74,222,128,0.1)" : "#f0fdf4",
+      border: `1px solid ${isDark ? "rgba(74,222,128,0.25)" : "#86efac"}`,
+    }}>
+      <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: isDark ? "#4ade80" : "#22c55e", flexShrink: 0 }} />
+      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? "#4ade80" : "#15803d", letterSpacing: "0.04em" }}>
         Multi-day
       </Typography>
     </Box>
   ) : (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 0.5,
-        px: 1,
-        py: 0.3,
-        borderRadius: "10px",
-        backgroundColor: isDark
-          ? "rgba(148,163,184,0.1)"
-          : "rgba(53,53,53,0.05)",
-        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.1)"}`,
-      }}
-    >
-      <Box
-        sx={{
-          width: 5,
-          height: 5,
-          borderRadius: "50%",
-          backgroundColor: isDark
-            ? "rgba(255,255,255,0.3)"
-            : "rgba(53,53,53,0.3)",
-          flexShrink: 0,
-        }}
-      />
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.66rem",
-          fontWeight: 700,
-          color: isDark ? "rgba(255,255,255,0.45)" : "rgba(53,53,53,0.5)",
-          letterSpacing: "0.04em",
-        }}
-      >
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: 0.5,
+      px: 1, py: 0.3, borderRadius: "10px",
+      backgroundColor: isDark ? "rgba(148,163,184,0.1)" : "rgba(53,53,53,0.05)",
+      border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.1)"}`,
+    }}>
+      <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(53,53,53,0.3)", flexShrink: 0 }} />
+      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", fontWeight: 700, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(53,53,53,0.5)", letterSpacing: "0.04em" }}>
         Single
       </Typography>
     </Box>
   );
 }
-
-// ✅ Fix 2: Removed unused DropdownPill component
 
 export default function AdminRequestManagement() {
   const theme = useTheme();
@@ -243,45 +164,28 @@ export default function AdminRequestManagement() {
   const border = isDark ? BORDER_DARK : BORDER;
 
   const {
-    requests,
-    pending,
-    forwarded,
-    forApproval,
-    approved,
-    onGoing,
-    completed,
-    declined,
-    loading,
-    refetch,
+    requests, pending, forwarded, forApproval, approved,
+    onGoing, completed, declined, loading, refetch,
   } = useAdminRequests();
-  useRealtimeNotify("coverage_requests", refetch, null, {
-    title: "Coverage Request",
-  });
+
+  useRealtimeNotify("coverage_requests", refetch, null, { title: "Coverage Request" });
 
   const [statusFilter, setStatusFilter] = useState(() => {
     const incoming = location.state?.tab;
-    return incoming && STATUS_OPTIONS.some((o) => o.key === incoming)
-      ? incoming
-      : "all";
+    return incoming && STATUS_OPTIONS.some((o) => o.key === incoming) ? incoming : "all";
   });
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const [viewedIds, setViewedIds] = useState(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState(0); // 0 = Archive, 1 = Trash
+  const [settingsTab, setSettingsTab] = useState(0);
 
-  // Gmail-style: fetch which requests this user has viewed
   useEffect(() => {
     async function loadViewed() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from("request_views")
-        .select("request_id")
-        .eq("user_id", user.id);
+      const { data } = await supabase.from("request_views").select("request_id").eq("user_id", user.id);
       if (data) setViewedIds(new Set(data.map((r) => r.request_id)));
     }
     loadViewed();
@@ -289,46 +193,36 @@ export default function AdminRequestManagement() {
 
   const markAsViewed = async (requestId) => {
     if (viewedIds.has(requestId)) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase
-      .from("request_views")
-      .upsert(
-        { user_id: user.id, request_id: requestId },
-        { onConflict: "user_id,request_id" },
-      );
+    await supabase.from("request_views").upsert(
+      { user_id: user.id, request_id: requestId },
+      { onConflict: "user_id,request_id" }
+    );
     setViewedIds((prev) => new Set([...prev, requestId]));
   };
 
   const handleArchive = async (row) => {
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .eq("id", row.id);
+    const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).eq("id", row.id);
     if (!error) refetch();
   };
   const handleTrash = async (row) => {
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .eq("id", row.id);
+    const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).eq("id", row.id);
     if (!error) refetch();
   };
   const handleBulkArchive = async (ids) => {
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .in("id", ids);
+    const { error } = await supabase.from("coverage_requests").update({ archived_at: new Date().toISOString() }).in("id", ids);
     if (!error) refetch();
   };
   const handleBulkTrash = async (ids) => {
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .in("id", ids);
+    const { error } = await supabase.from("coverage_requests").update({ trashed_at: new Date().toISOString() }).in("id", ids);
     if (!error) refetch();
+  };
+
+  const handleOpenRequest = async (row) => {
+    if (!row) return;
+    if (row.id) await markAsViewed(row.id);
+    setSelectedRequest(row._raw || row);
   };
 
   useEffect(() => {
@@ -349,16 +243,12 @@ export default function AdminRequestManagement() {
   useEffect(() => {
     const incoming = location.state?.tab;
     if (!incoming) return;
-    if (STATUS_OPTIONS.some((o) => o.key === incoming))
-      setStatusFilter(incoming);
+    if (STATUS_OPTIONS.some((o) => o.key === incoming)) setStatusFilter(incoming);
   }, [location.state?.tab]);
 
   useEffect(() => {
     async function loadSemesters() {
-      const { data } = await supabase
-        .from("semesters")
-        .select("id, name, start_date, end_date")
-        .order("start_date", { ascending: false });
+      const { data } = await supabase.from("semesters").select("id, name, start_date, end_date").order("start_date", { ascending: false });
       setSemesters(data || []);
     }
     loadSemesters();
@@ -369,251 +259,129 @@ export default function AdminRequestManagement() {
     const opts = [];
     requests.forEach((r) => {
       const name = r.entity?.name;
-      if (name && !seen.has(name)) {
-        seen.add(name);
-        opts.push(name);
-      }
+      if (name && !seen.has(name)) { seen.add(name); opts.push(name); }
     });
     return opts.sort();
   }, [requests]);
 
   const externalFilterModel = useMemo(() => {
-    const tokens = searchText
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const tokens = searchText.split(/\s+/).map((t) => t.trim()).filter(Boolean);
     return { items: [], quickFilterValues: tokens };
   }, [searchText]);
 
   const handleExportCsv = () => {
-    gridApiRef.current?.exportDataAsCsv({
-      utf8WithBom: true,
-      fileName: "request-management-export",
-    });
+    gridApiRef.current?.exportDataAsCsv({ utf8WithBom: true, fileName: "request-management-export" });
   };
 
-  // ✅ Fix 3 & 5: Wrapped in useCallback so useMemo deps are stable and accurate
-  const getBaseSource = useCallback(
-    (key) => {
-      if (key === "all") return requests.filter((r) => r.status !== "Draft");
-      if (key === "Pending") return pending || [];
-      if (key === "Forwarded") return forwarded || [];
-      if (key === "For Approval")
-        return (
-          forApproval || requests.filter((r) => r.status === "For Approval")
-        );
-      if (key === "Approved") return approved || [];
-      if (key === "On Going") return onGoing || [];
-      if (key === "Completed") return completed || [];
-      if (key === "Declined") return declined || [];
-      return [];
-    },
-    [
-      requests,
-      pending,
-      forwarded,
-      forApproval,
-      approved,
-      onGoing,
-      completed,
-      declined,
-    ],
-  );
+  const getBaseSource = useCallback((key) => {
+    if (key === "all") return requests.filter((r) => r.status !== "Draft");
+    if (key === "Pending") return pending || [];
+    if (key === "Forwarded") return forwarded || [];
+    if (key === "For Approval") return forApproval || requests.filter((r) => r.status === "For Approval");
+    if (key === "Approved") return approved || [];
+    if (key === "On Going") return onGoing || [];
+    if (key === "Completed") return completed || [];
+    if (key === "Declined") return declined || [];
+    return [];
+  }, [requests, pending, forwarded, forApproval, approved, onGoing, completed, declined]);
 
-  const applyFilters = useCallback(
-    (source) => {
-      let filtered = source;
-      if (selectedSem !== "all") {
-        const sem = semesters.find((s) => s.id === selectedSem);
-        if (sem) {
-          const start = new Date(sem.start_date);
-          const end = new Date(sem.end_date);
-          end.setHours(23, 59, 59, 999);
-          filtered = filtered.filter((r) => {
-            const df = ["On Going", "Completed"].includes(r.status)
-              ? r.event_date
-              : r.submitted_at;
-            if (!df) return false;
-            const d = new Date(df);
-            return d >= start && d <= end;
-          });
-        }
+  const applyFilters = useCallback((source) => {
+    let filtered = source;
+    if (selectedSem !== "all") {
+      const sem = semesters.find((s) => s.id === selectedSem);
+      if (sem) {
+        const start = new Date(sem.start_date);
+        const end = new Date(sem.end_date);
+        end.setHours(23, 59, 59, 999);
+        filtered = filtered.filter((r) => {
+          const df = ["On Going", "Completed"].includes(r.status) ? r.event_date : r.submitted_at;
+          if (!df) return false;
+          const d = new Date(df);
+          return d >= start && d <= end;
+        });
       }
-      if (selectedEntity !== "all")
-        filtered = filtered.filter((r) => r.entity?.name === selectedEntity);
-      return filtered;
-    },
-    [selectedSem, selectedEntity, semesters],
-  );
+    }
+    if (selectedEntity !== "all") filtered = filtered.filter((r) => r.entity?.name === selectedEntity);
+    return filtered;
+  }, [selectedSem, selectedEntity, semesters]);
 
-  const filteredSource = useMemo(
-    () => applyFilters(getBaseSource(statusFilter)),
-    [statusFilter, applyFilters, getBaseSource],
-  );
+  const filteredSource = useMemo(() => applyFilters(getBaseSource(statusFilter)), [statusFilter, applyFilters, getBaseSource]);
 
-  const getStatusCount = useCallback(
-    (key) => applyFilters(getBaseSource(key)).length,
-    [applyFilters, getBaseSource],
-  );
+  const getStatusCount = useCallback((key) => applyFilters(getBaseSource(key)).length, [applyFilters, getBaseSource]);
 
   const rows = filteredSource.map((req) => ({
     id: req.id,
     requestTitle: req.title,
-    client: req.entity?.name || "\u2014",
+    client: req.entity?.name || "—",
     dateReceived: req.submitted_at
-      ? new Date(req.submitted_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : "\u2014",
+      ? new Date(req.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "—",
     eventDate: buildEventDateDisplay(req),
     is_multiday: !!(req.is_multiday && req.event_days?.length > 0),
     eventType: !!(req.is_multiday && req.event_days?.length > 0),
     forwardedTo: req.forwarded_sections || [],
-    forwardedBy: req.forwarded_by_profile?.full_name || "\u2014",
+    forwardedBy: req.forwarded_by_profile?.full_name || "—",
     forwardedByAvatar: req.forwarded_by_profile?.avatar_url || null,
-    approvedBy: req.approved_by_profile?.full_name || "\u2014",
+    approvedBy: req.approved_by_profile?.full_name || "—",
     approvedByAvatar: req.approved_by_profile?.avatar_url || null,
-    declinedBy: req.declined_by_profile?.full_name || "\u2014",
+    declinedBy: req.declined_by_profile?.full_name || "—",
     declinedByAvatar: req.declined_by_profile?.avatar_url || null,
-    declinedReason: req.declined_reason || "\u2014",
+    declinedReason: req.declined_reason || "—",
     status: req.status,
     assignments: req.coverage_assignments || [],
     _raw: req,
   }));
 
+  // ── Column definitions ──────────────────────────────────────────────────────
+
   const titleCol = {
-    field: "requestTitle",
-    headerName: "Request Title",
-    flex: 1.4,
-    minWidth: 180,
+    field: "requestTitle", headerName: "Request Title", flex: 1.4, minWidth: 180,
     renderCell: (p) => {
       const isUnread = !viewedIds.has(p.row.id);
       return (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: isUnread ? 600 : 400,
-              color: isDark ? "#f5f5f5" : "#1a1a1a",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: isUnread ? 600 : 400, color: isDark ? "#f5f5f5" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {p.value}
           </Typography>
         </Box>
       );
     },
   };
+
   const typeCol = {
-    field: "eventType",
-    headerName: "Type",
-    flex: 0.65,
-    minWidth: 90,
-    sortable: false,
+    field: "eventType", headerName: "Type", flex: 0.65, minWidth: 90, sortable: false,
     renderCell: (p) => (
       <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
         <EventTypePill isMultiDay={p.value} isDark={isDark} />
       </Box>
     ),
   };
-  const clientCol = {
-    field: "client",
-    headerName: "Client",
-    flex: 1,
-    minWidth: 120,
-    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-  };
-  const receivedCol = {
-    field: "dateReceived",
-    headerName: "Received",
-    flex: 0.9,
-    minWidth: 110,
-    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-  };
-  const eventDateCol = {
-    field: "eventDate",
-    headerName: "Event Date",
-    flex: 1.1,
-    minWidth: 150,
-    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-  };
+
+  const clientCol = { field: "client", headerName: "Client", flex: 1, minWidth: 120, renderCell: (p) => <MetaCell>{p.value}</MetaCell> };
+  const receivedCol = { field: "dateReceived", headerName: "Received", flex: 0.9, minWidth: 110, renderCell: (p) => <MetaCell>{p.value}</MetaCell> };
+  const eventDateCol = { field: "eventDate", headerName: "Event Date", flex: 1.1, minWidth: 150, renderCell: (p) => <MetaCell>{p.value}</MetaCell> };
+
   const actionCol = {
-    field: "actions",
-    headerName: "",
-    flex: 0.4,
-    minWidth: 56,
-    sortable: false,
-    align: "right",
-    headerAlign: "right",
+    field: "actions", headerName: "", flex: 0.95, minWidth: 120, sortable: false, align: "right", headerAlign: "right",
     renderCell: (p) => (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          height: "100%",
-          pr: 0.5,
-        }}
-      >
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            setMenuAnchor(e.currentTarget);
-            setMenuRow(p.row);
-          }}
-        >
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: "100%", pr: 0.5 }}>
+        <ViewActionButton onClick={() => handleOpenRequest(p.row)} />
+        <IconButton size="small" onClick={(e) => { setMenuAnchor(e.currentTarget); setMenuRow(p.row); }}>
           <MoreVertIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
     ),
   };
+
   const statusCol = {
-    field: "status",
-    headerName: "Status",
-    flex: 0.9,
-    minWidth: 110,
+    field: "status", headerName: "Status", flex: 0.9, minWidth: 110,
     renderCell: (p) => {
-      const cfg = STATUS_CONFIG[p.value] || {
-        bg: "#f9fafb",
-        color: "#6b7280",
-        dot: "#9ca3af",
-      };
+      const cfg = STATUS_CONFIG[p.value] || { bg: "#f9fafb", color: "#6b7280", dot: "#9ca3af" };
       return (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.6,
-              px: 1.25,
-              py: 0.35,
-              borderRadius: "10px",
-              backgroundColor: cfg.bg,
-            }}
-          >
-            <Box
-              sx={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                backgroundColor: cfg.dot,
-                flexShrink: 0,
-              }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                fontWeight: 500,
-                color: cfg.color,
-                letterSpacing: "0.02em",
-              }}
-            >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, px: 1.25, py: 0.35, borderRadius: "10px", backgroundColor: cfg.bg }}>
+            <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: cfg.dot, flexShrink: 0 }} />
+            <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 500, color: cfg.color, letterSpacing: "0.02em" }}>
               {p.value}
             </Typography>
           </Box>
@@ -621,64 +389,20 @@ export default function AdminRequestManagement() {
       );
     },
   };
+
   const forwardedToCol = {
-    field: "forwardedTo",
-    headerName: "Forwarded To",
-    flex: 1.4,
-    minWidth: 200,
+    field: "forwardedTo", headerName: "Forwarded To", flex: 1.4, minWidth: 200,
     renderCell: (p) => {
       const sections = p.value || [];
-      if (!sections.length) return <MetaCell>\u2014</MetaCell>;
+      if (!sections.length) return <MetaCell>—</MetaCell>;
       return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.4,
-            py: 0.75,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.4, py: 0.75 }}>
           {sections.map((s, i) => {
-            const clr = SECTION_COLORS[s] || {
-              bg: "#f3f4f6",
-              color: "#6b7280",
-              dot: "#9ca3af",
-            };
+            const clr = SECTION_COLORS[s] || { bg: "#f3f4f6", color: "#6b7280", dot: "#9ca3af" };
             return (
-              <Box
-                key={i}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  px: 0.9,
-                  py: 0.2,
-                  borderRadius: "10px",
-                  backgroundColor: clr.bg,
-                  width: "fit-content",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    backgroundColor: clr.dot,
-                    flexShrink: 0,
-                  }}
-                />
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.7rem",
-                    fontWeight: 500,
-                    color: clr.color,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {s}
-                </Typography>
+              <Box key={i} sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, px: 0.9, py: 0.2, borderRadius: "10px", backgroundColor: clr.bg, width: "fit-content" }}>
+                <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: clr.dot, flexShrink: 0 }} />
+                <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", fontWeight: 500, color: clr.color, whiteSpace: "nowrap" }}>{s}</Typography>
               </Box>
             );
           })}
@@ -686,204 +410,71 @@ export default function AdminRequestManagement() {
       );
     },
   };
+
   const mkPersonCol = (field, avatarField, header, avatarBg, avatarColor) => ({
-    field,
-    headerName: header,
-    flex: 1,
-    minWidth: 150,
+    field, headerName: header, flex: 1, minWidth: 150,
     renderCell: (p) => {
       const url = getAvatarUrl(p.row[avatarField]);
       return (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            height: "100%",
-            gap: 0.85,
-          }}
-        >
-          {p.value !== "\u2014" && (
-            <Avatar
-              src={url || undefined}
-              sx={{
-                width: 28,
-                height: 28,
-                fontSize: "0.62rem",
-                fontWeight: 600,
-                backgroundColor: avatarBg,
-                color: avatarColor,
-                flexShrink: 0,
-              }}
-            >
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.85 }}>
+          {p.value !== "—" && (
+            <Avatar src={url || undefined} sx={{ width: 28, height: 28, fontSize: "0.62rem", fontWeight: 600, backgroundColor: avatarBg, color: avatarColor, flexShrink: 0 }}>
               {!url && getInitials(p.value)}
             </Avatar>
           )}
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: 400,
-              color: p.value === "\u2014" ? "text.disabled" : "text.secondary",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 400, color: p.value === "—" ? "text.disabled" : "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {p.value}
           </Typography>
         </Box>
       );
     },
   });
-  const forwardedByCol = mkPersonCol(
-    "forwardedBy",
-    "forwardedByAvatar",
-    "Forwarded By",
-    "#f5f3ff",
-    "#6d28d9",
-  );
-  const approvedByCol = mkPersonCol(
-    "approvedBy",
-    "approvedByAvatar",
-    "Approved By",
-    "#f0fdf4",
-    "#15803d",
-  );
-  const declinedByCol = mkPersonCol(
-    "declinedBy",
-    "declinedByAvatar",
-    "Declined By",
-    "#fef2f2",
-    "#dc2626",
-  );
+
+  const forwardedByCol = mkPersonCol("forwardedBy", "forwardedByAvatar", "Forwarded By", "#f5f3ff", "#6d28d9");
+  const approvedByCol = mkPersonCol("approvedBy", "approvedByAvatar", "Approved By", "#f0fdf4", "#15803d");
+  const declinedByCol = mkPersonCol("declinedBy", "declinedByAvatar", "Declined By", "#fef2f2", "#dc2626");
+
   const declinedReasonCol = {
-    field: "declinedReason",
-    headerName: "Reason",
-    flex: 1.4,
-    minWidth: 180,
+    field: "declinedReason", headerName: "Reason", flex: 1.4, minWidth: 180,
     renderCell: (p) => (
       <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.81rem",
-            fontWeight: 400,
-            color: p.value === "\u2014" ? "text.disabled" : "#dc2626",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontStyle: p.value === "\u2014" ? "normal" : "italic",
-          }}
-        >
+        <Typography sx={{ fontFamily: dm, fontSize: "0.81rem", fontWeight: 400, color: p.value === "—" ? "text.disabled" : "#dc2626", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: p.value === "—" ? "normal" : "italic" }}>
           {p.value}
         </Typography>
       </Box>
     ),
   };
+
   const onGoingVenueCol = {
-    field: "venue",
-    headerName: "Venue",
-    flex: 1,
-    minWidth: 120,
-    renderCell: (p) => <MetaCell>{p.row._raw?.venue || "\u2014"}</MetaCell>,
+    field: "venue", headerName: "Venue", flex: 1, minWidth: 120,
+    renderCell: (p) => <MetaCell>{p.row._raw?.venue || "—"}</MetaCell>,
   };
+
   const onGoingStaffersCol = {
-    field: "assignments",
-    headerName: "Staffers On-Site",
-    flex: 1.6,
-    minWidth: 200,
-    sortable: false,
+    field: "assignments", headerName: "Staffers On-Site", flex: 1.6, minWidth: 200, sortable: false,
     renderCell: (p) => {
       const assignments = p.value || [];
-      if (!assignments.length) return <MetaCell>\u2014</MetaCell>;
+      if (!assignments.length) return <MetaCell>—</MetaCell>;
       return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.35,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.35, height: "100%", py: 0.5 }}>
           {assignments.map((a) => {
             const url = getAvatarUrl(a.staffer?.avatar_url);
             const timeIn = fmtTime(a.timed_in_at);
             return (
-              <Box
-                key={a.id}
-                sx={{ display: "flex", alignItems: "center", gap: 0.6 }}
-              >
-                <Avatar
-                  src={url}
-                  sx={{
-                    width: 18,
-                    height: 18,
-                    fontSize: "0.48rem",
-                    fontWeight: 600,
-                    backgroundColor: "#eff6ff",
-                    color: "#1d4ed8",
-                    flexShrink: 0,
-                  }}
-                >
+              <Box key={a.id} sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
+                <Avatar src={url} sx={{ width: 18, height: 18, fontSize: "0.48rem", fontWeight: 600, backgroundColor: "#eff6ff", color: "#1d4ed8", flexShrink: 0 }}>
                   {!url && getInitials(a.staffer?.full_name)}
                 </Avatar>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 400,
-                    color: "text.secondary",
-                  }}
-                >
-                  {a.staffer?.full_name || "\u2014"}
+                <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 400, color: "text.secondary" }}>
+                  {a.staffer?.full_name || "—"}
                 </Typography>
                 {timeIn ? (
-                  <Box
-                    sx={{
-                      px: 0.8,
-                      py: 0.15,
-                      borderRadius: "10px",
-                      backgroundColor: isDark
-                        ? "rgba(59,130,246,0.12)"
-                        : "#eff6ff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.64rem",
-                        fontWeight: 500,
-                        color: "#1d4ed8",
-                      }}
-                    >
-                      {timeIn}
-                    </Typography>
+                  <Box sx={{ px: 0.8, py: 0.15, borderRadius: "10px", backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 500, color: "#1d4ed8" }}>{timeIn}</Typography>
                   </Box>
                 ) : (
-                  <Box
-                    sx={{
-                      px: 0.8,
-                      py: 0.15,
-                      borderRadius: "10px",
-                      backgroundColor: isDark
-                        ? "rgba(245,158,11,0.12)"
-                        : "#fffbeb",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.64rem",
-                        fontWeight: 500,
-                        color: "#b45309",
-                      }}
-                    >
-                      Not yet
-                    </Typography>
+                  <Box sx={{ px: 0.8, py: 0.15, borderRadius: "10px", backgroundColor: isDark ? "rgba(245,158,11,0.12)" : "#fffbeb", flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", fontWeight: 500, color: "#b45309" }}>Not yet</Typography>
                   </Box>
                 )}
               </Box>
@@ -893,61 +484,23 @@ export default function AdminRequestManagement() {
       );
     },
   };
+
   const completedStafferCol = {
-    field: "assignments",
-    headerName: "Staffer",
-    flex: 1.2,
-    minWidth: 150,
-    sortable: false,
+    field: "assignments", headerName: "Staffer", flex: 1.2, minWidth: 150, sortable: false,
     renderCell: (p) => {
       const a = p.value || [];
-      if (!a.length) return <MetaCell>\u2014</MetaCell>;
+      if (!a.length) return <MetaCell>—</MetaCell>;
       return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.5,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
           {a.map((x) => {
             const url = getAvatarUrl(x.staffer?.avatar_url);
             return (
-              <Box
-                key={x.id}
-                sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
-              >
-                <Avatar
-                  src={url}
-                  sx={{
-                    width: 22,
-                    height: 22,
-                    fontSize: "0.52rem",
-                    fontWeight: 600,
-                    backgroundColor: isDark
-                      ? "rgba(34,197,94,0.15)"
-                      : "#f0fdf4",
-                    color: "#15803d",
-                    flexShrink: 0,
-                  }}
-                >
+              <Box key={x.id} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                <Avatar src={url} sx={{ width: 22, height: 22, fontSize: "0.52rem", fontWeight: 600, backgroundColor: isDark ? "rgba(34,197,94,0.15)" : "#f0fdf4", color: "#15803d", flexShrink: 0 }}>
                   {!url && getInitials(x.staffer?.full_name)}
                 </Avatar>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 400,
-                    color: "text.secondary",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {x.staffer?.full_name || "\u2014"}
+                <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 400, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {x.staffer?.full_name || "—"}
                 </Typography>
               </Box>
             );
@@ -956,56 +509,24 @@ export default function AdminRequestManagement() {
       );
     },
   };
+
   const mkTimeCol = (field, header, color) => ({
-    field,
-    flex: 0.7,
-    minWidth: 80,
-    sortable: false,
+    field, flex: 0.7, minWidth: 80, sortable: false,
     renderHeader: () => (
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.65rem",
-          fontWeight: 700,
-          color,
-          letterSpacing: "0.07em",
-          textTransform: "uppercase",
-        }}
-      >
+      <Typography sx={{ fontFamily: dm, fontSize: "0.65rem", fontWeight: 700, color, letterSpacing: "0.07em", textTransform: "uppercase" }}>
         {header}
       </Typography>
     ),
     renderCell: (p) => {
       const a = p.row.assignments || [];
-      if (!a.length) return <MetaCell>\u2014</MetaCell>;
+      if (!a.length) return <MetaCell>—</MetaCell>;
       return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.5,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
           {a.map((x) => {
-            const t =
-              field === "timeIn"
-                ? fmtTime(x.timed_in_at)
-                : fmtTime(x.completed_at);
+            const t = field === "timeIn" ? fmtTime(x.timed_in_at) : fmtTime(x.completed_at);
             return (
-              <Typography
-                key={x.id}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.81rem",
-                  fontWeight: 400,
-                  color: t ? color : "text.disabled",
-                  fontStyle: t ? "normal" : "italic",
-                }}
-              >
-                {t || "\u2014"}
+              <Typography key={x.id} sx={{ fontFamily: dm, fontSize: "0.81rem", fontWeight: 400, color: t ? color : "text.disabled", fontStyle: t ? "normal" : "italic" }}>
+                {t || "—"}
               </Typography>
             );
           })}
@@ -1013,75 +534,32 @@ export default function AdminRequestManagement() {
       );
     },
   });
+
   const completedTimeInCol = mkTimeCol("timeIn", "IN", "#1d4ed8");
   const completedTimeOutCol = mkTimeCol("timeOut", "OUT", "#15803d");
+
   const completedDurCol = {
-    field: "duration",
-    flex: 0.7,
-    minWidth: 80,
-    sortable: false,
+    field: "duration", flex: 0.7, minWidth: 80, sortable: false,
     renderHeader: () => (
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.65rem",
-          fontWeight: 700,
-          color: "#b45309",
-          letterSpacing: "0.07em",
-          textTransform: "uppercase",
-        }}
-      >
+      <Typography sx={{ fontFamily: dm, fontSize: "0.65rem", fontWeight: 700, color: "#b45309", letterSpacing: "0.07em", textTransform: "uppercase" }}>
         DUR
       </Typography>
     ),
     renderCell: (p) => {
       const a = p.row.assignments || [];
-      if (!a.length) return <MetaCell>\u2014</MetaCell>;
+      if (!a.length) return <MetaCell>—</MetaCell>;
       return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.5,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, height: "100%", py: 0.5 }}>
           {a.map((x) => {
             const dur = computeDuration(x.timed_in_at, x.completed_at);
             return dur ? (
               <Box key={x.id} sx={{ display: "inline-flex" }}>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.72rem",
-                    fontWeight: 600,
-                    color: "#b45309",
-                    backgroundColor: isDark
-                      ? "rgba(245,197,43,0.1)"
-                      : "rgba(245,197,43,0.12)",
-                    border: "1px solid rgba(245,197,43,0.3)",
-                    px: 0.75,
-                    py: 0.15,
-                    borderRadius: "10px",
-                  }}
-                >
+                <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 600, color: "#b45309", backgroundColor: isDark ? "rgba(245,197,43,0.1)" : "rgba(245,197,43,0.12)", border: "1px solid rgba(245,197,43,0.3)", px: 0.75, py: 0.15, borderRadius: "10px" }}>
                   {dur}
                 </Typography>
               </Box>
             ) : (
-              <Typography
-                key={x.id}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.81rem",
-                  color: "text.disabled",
-                  fontStyle: "italic",
-                }}
-              >
-                \u2014
-              </Typography>
+              <Typography key={x.id} sx={{ fontFamily: dm, fontSize: "0.81rem", color: "text.disabled", fontStyle: "italic" }}>—</Typography>
             );
           })}
         </Box>
@@ -1091,131 +569,43 @@ export default function AdminRequestManagement() {
 
   const buildColumns = () => {
     const key = statusFilter;
-    if (key === "all")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        receivedCol,
-        eventDateCol,
-        statusCol,
-        actionCol,
-      ];
-    if (key === "Forwarded")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        forwardedToCol,
-        forwardedByCol,
-        actionCol,
-      ];
-    if (key === "Approved")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        approvedByCol,
-        actionCol,
-      ];
-    if (key === "On Going")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        onGoingVenueCol,
-        onGoingStaffersCol,
-        actionCol,
-      ];
-    if (key === "Completed")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        onGoingVenueCol,
-        completedStafferCol,
-        completedTimeInCol,
-        completedTimeOutCol,
-        completedDurCol,
-        actionCol,
-      ];
-    if (key === "Declined")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        declinedByCol,
-        declinedReasonCol,
-        actionCol,
-      ];
+    if (key === "all") return [titleCol, typeCol, clientCol, receivedCol, eventDateCol, statusCol, actionCol];
+    if (key === "Forwarded") return [titleCol, typeCol, clientCol, eventDateCol, forwardedToCol, forwardedByCol, actionCol];
+    if (key === "Approved") return [titleCol, typeCol, clientCol, eventDateCol, approvedByCol, actionCol];
+    if (key === "On Going") return [titleCol, typeCol, clientCol, eventDateCol, onGoingVenueCol, onGoingStaffersCol, actionCol];
+    if (key === "Completed") return [titleCol, typeCol, clientCol, eventDateCol, onGoingVenueCol, completedStafferCol, completedTimeInCol, completedTimeOutCol, completedDurCol, actionCol];
+    if (key === "Declined") return [titleCol, typeCol, clientCol, eventDateCol, declinedByCol, declinedReasonCol, actionCol];
     return [titleCol, typeCol, clientCol, receivedCol, eventDateCol, actionCol];
   };
 
+  // ── Shared dropdown sx ──────────────────────────────────────────────────────
+  const selectSx = {
+    fontFamily: dm,
+    fontSize: "0.78rem",
+    borderRadius: "10px",
+    backgroundColor: isDark ? "transparent" : "#f7f7f8",
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.12)" },
+    "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+  };
+
+  const isStatusFiltered = statusFilter !== "all";
+
   return (
-    <Box
-      sx={{
-        p: { xs: 1.5, sm: 2, md: 3 },
-        height: "100%",
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        backgroundColor: "#ffffff",
-        fontFamily: dm,
-      }}
-    >
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: isDark ? "background.default" : "#ffffff", fontFamily: dm }}>
+
       {/* ── Header ── */}
-      <Box
-        sx={{
-          mb: 2.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}
-      >
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.95rem",
-            fontWeight: 600,
-            color: "text.primary",
-            letterSpacing: "-0.01em",
-          }}
-        >
+      <Box sx={{ mb: 2.5, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.95rem", fontWeight: 600, color: "text.primary", letterSpacing: "-0.01em" }}>
           Request Management
         </Typography>
       </Box>
 
-      {/* ── Filter row: Search | Dropdowns | Export + Settings ── */}
-      <Box
-        sx={{
-          mb: 2,
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 1.5,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-          flexShrink: 0,
-        }}
-      >
+      {/* ── Filter row ── */}
+      <Box sx={{ mb: 2, display: "flex", alignItems: "flex-end", gap: 1.5, flexWrap: "nowrap", overflowX: "auto", flexShrink: 0 }}>
+
         {/* Search */}
         <FormControl size="small" sx={{ flex: 3, minWidth: 300 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
             Search for request
           </Typography>
           <OutlinedInput
@@ -1227,30 +617,13 @@ export default function AdminRequestManagement() {
                 <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
               </InputAdornment>
             }
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(0,0,0,0.12)",
-              },
-            }}
+            sx={{ fontFamily: dm, fontSize: "0.78rem", borderRadius: "10px", backgroundColor: isDark ? "transparent" : "#f7f7f8", "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.12)" } }}
           />
         </FormControl>
 
-        {/* Status */}
+        {/* Status — clean trigger, counts only inside dropdown items */}
         <FormControl size="small" sx={{ minWidth: 150 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
             Status
           </Typography>
           <Select
@@ -1258,19 +631,25 @@ export default function AdminRequestManagement() {
             onChange={(e) => setStatusFilter(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(0,0,0,0.12)",
-              },
-              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            // ✅ Clean trigger: just the label + a small dot when a filter is active
+            renderValue={(val) => {
+              const opt = STATUS_OPTIONS.find((o) => o.key === val);
+              return (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  {isStatusFiltered && (
+                    <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: GOLD, flexShrink: 0 }} />
+                  )}
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>
+                    {opt?.label || "All Statuses"}
+                  </Typography>
+                </Box>
+              );
             }}
+            sx={selectSx}
           >
             {STATUS_OPTIONS.map((o) => {
               const count = getStatusCount(o.key);
+              const isSelected = statusFilter === o.key;
               return (
                 <MenuItem
                   key={o.key}
@@ -1280,31 +659,39 @@ export default function AdminRequestManagement() {
                     fontSize: "0.78rem",
                     display: "flex",
                     justifyContent: "space-between",
+                    alignItems: "center",
                     gap: 2,
+                    fontWeight: isSelected ? 600 : 400,
                   }}
                 >
-                  {o.label}
-                  {count > 0 && (
-                    <Box
-                      component="span"
-                      sx={{
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: "10px",
-                        px: 0.6,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#f5c52b",
-                        fontSize: "0.62rem",
-                        fontWeight: 500,
-                        lineHeight: 1,
-                        color: "#000000",
-                      }}
-                    >
-                      {count}
-                    </Box>
-                  )}
+                  <span>{o.label}</span>
+                  {/* Count badge — shown for all items so users can scan totals */}
+                  <Box
+                    component="span"
+                    sx={{
+                      minWidth: 20,
+                      height: 18,
+                      borderRadius: "99px",
+                      px: 0.75,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      // gold if selected, muted gray if zero, light gray otherwise
+                      backgroundColor: isSelected
+                        ? GOLD
+                        : count === 0
+                        ? "transparent"
+                        : isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.07)",
+                      fontSize: "0.62rem",
+                      fontWeight: 600,
+                      lineHeight: 1,
+                      color: isSelected ? "#000" : count === 0 ? "text.disabled" : "text.secondary",
+                      border: count === 0 ? "none" : "none",
+                      opacity: count === 0 ? 0.4 : 1,
+                    }}
+                  >
+                    {count}
+                  </Box>
                 </MenuItem>
               );
             })}
@@ -1313,90 +700,26 @@ export default function AdminRequestManagement() {
 
         {/* Semester */}
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
             Semester
           </Typography>
-          <Select
-            value={selectedSem}
-            onChange={(e) => setSelectedSem(e.target.value)}
-            IconComponent={UnfoldMoreIcon}
-            displayEmpty
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(0,0,0,0.12)",
-              },
-              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
-            }}
-          >
-            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
-              All Semesters
-            </MenuItem>
+          <Select value={selectedSem} onChange={(e) => setSelectedSem(e.target.value)} IconComponent={UnfoldMoreIcon} displayEmpty sx={selectSx}>
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Semesters</MenuItem>
             {semesters.map((s) => (
-              <MenuItem
-                key={s.id}
-                value={s.id}
-                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-              >
-                {s.name}
-              </MenuItem>
+              <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{s.name}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
         {/* Client */}
         <FormControl size="small" sx={{ minWidth: 140 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              mb: 0.5,
-              letterSpacing: "0.03em",
-            }}
-          >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", mb: 0.5, letterSpacing: "0.03em" }}>
             Client
           </Typography>
-          <Select
-            value={selectedEntity}
-            onChange={(e) => setSelectedEntity(e.target.value)}
-            IconComponent={UnfoldMoreIcon}
-            displayEmpty
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(0,0,0,0.12)",
-              },
-              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
-            }}
-          >
-            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
-              All Clients
-            </MenuItem>
+          <Select value={selectedEntity} onChange={(e) => setSelectedEntity(e.target.value)} IconComponent={UnfoldMoreIcon} displayEmpty sx={selectSx}>
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Clients</MenuItem>
             {entityOptions.map((name) => (
-              <MenuItem
-                key={name}
-                value={name}
-                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-              >
-                {name}
-              </MenuItem>
+              <MenuItem key={name} value={name} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{name}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -1407,26 +730,13 @@ export default function AdminRequestManagement() {
         <Box
           onClick={handleExportCsv}
           sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: 40,
-            borderRadius: "10px",
-            cursor: "pointer",
-            border: "1px solid rgba(0,0,0,0.12)",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 500,
-            color: "text.secondary",
-            backgroundColor: "#f7f7f8",
-            transition: "all 0.15s",
-            flexShrink: 0,
-            "&:hover": {
-              borderColor: "rgba(53,53,53,0.3)",
-              color: "text.primary",
-              backgroundColor: "#ededee",
-            },
+            display: "inline-flex", alignItems: "center", gap: 0.5,
+            px: 1.5, height: 40, borderRadius: "10px", cursor: "pointer",
+            border: "1px solid rgba(0,0,0,0.12)", fontFamily: dm,
+            fontSize: "0.78rem", fontWeight: 500, color: "text.secondary",
+            backgroundColor: isDark ? "transparent" : "#f7f7f8",
+            transition: "all 0.15s", flexShrink: 0,
+            "&:hover": { borderColor: "rgba(53,53,53,0.3)", color: "text.primary", backgroundColor: "#ededee" },
           }}
         >
           <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
@@ -1439,20 +749,11 @@ export default function AdminRequestManagement() {
             size="small"
             onClick={() => setSettingsOpen(true)}
             sx={{
-              borderRadius: "10px",
-              p: 0.7,
-              height: 40,
-              width: 40,
-              border: "1px solid rgba(0,0,0,0.12)",
-              color: "text.secondary",
-              backgroundColor: "#f7f7f8",
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
+              borderRadius: "10px", p: 0.7, height: 40, width: 40,
+              border: "1px solid rgba(0,0,0,0.12)", color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              transition: "all 0.15s", flexShrink: 0,
+              "&:hover": { borderColor: "rgba(53,53,53,0.3)", color: "text.primary", backgroundColor: "#ededee" },
             }}
           >
             <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
@@ -1462,25 +763,9 @@ export default function AdminRequestManagement() {
 
       {/* ── Table ── */}
       <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
-        <Box
-          sx={{
-            minWidth: 680,
-            height: "100%",
-            bgcolor: "#f7f7f8",
-            borderRadius: "10px",
-            border: "1px solid rgba(0,0,0,0.08)",
-            overflow: "hidden",
-          }}
-        >
+        <Box sx={{ minWidth: 680, height: "100%", bgcolor: isDark ? "background.paper" : "#f7f7f8", borderRadius: "10px", border: `1px solid ${border}`, overflow: "hidden" }}>
           {loading ? (
-            <Box
-              sx={{
-                height: 300,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <Box sx={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <CircularProgress size={24} sx={{ color: GOLD }} />
             </Box>
           ) : (
@@ -1495,27 +780,11 @@ export default function AdminRequestManagement() {
               enableSearch={false}
               filterModel={externalFilterModel}
               selectionActions={[
-                {
-                  label: "Archive",
-                  icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
-                  onClick: handleBulkArchive,
-                },
-                {
-                  label: "Move to Trash",
-                  icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
-                  onClick: handleBulkTrash,
-                  color: "error",
-                },
+                { label: "Archive", icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />, onClick: handleBulkArchive },
+                { label: "Move to Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />, onClick: handleBulkTrash, color: "error" },
               ]}
-              slotProps={{
-                toolbar: {
-                  csvOptions: { disableToolbarButton: true },
-                  printOptions: { disableToolbarButton: true },
-                },
-              }}
-              rowHeight={
-                ["On Going", "Completed"].includes(statusFilter) ? 60 : 52
-              }
+              slotProps={{ toolbar: { csvOptions: { disableToolbarButton: true }, printOptions: { disableToolbarButton: true } } }}
+              rowHeight={["On Going", "Completed"].includes(statusFilter) ? 60 : 52}
               getRowHeight={
                 statusFilter === "Forwarded"
                   ? ({ model }) => {
@@ -1527,10 +796,7 @@ export default function AdminRequestManagement() {
                   : undefined
               }
               getRowClassName={(params) =>
-                highlight &&
-                params.row.requestTitle?.toLowerCase().includes(highlight)
-                  ? "highlighted-row"
-                  : ""
+                highlight && params.row.requestTitle?.toLowerCase().includes(highlight) ? "highlighted-row" : ""
               }
             />
           )}
@@ -1541,189 +807,68 @@ export default function AdminRequestManagement() {
         open={!!selectedRequest}
         onClose={() => setSelectedRequest(null)}
         request={selectedRequest}
-        onActionSuccess={() => {
-          setSelectedRequest(null);
-          refetch();
-        }}
+        onActionSuccess={() => { setSelectedRequest(null); refetch(); }}
       />
 
-      {/* 3-dot menu */}
+      {/* ── 3-dot menu ── */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
-        onClose={() => {
-          setMenuAnchor(null);
-          setMenuRow(null);
-        }}
+        onClose={() => { setMenuAnchor(null); setMenuRow(null); }}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: {
-              minWidth: 160,
-              borderRadius: "10px",
-              mt: 0.5,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-            },
-          },
-        }}
+        slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}
       >
         <MenuItem
-          onClick={() => {
-            if (menuRow?.id) markAsViewed(menuRow.id);
-            setSelectedRequest(menuRow?._raw);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
+          onClick={() => { handleArchive(menuRow); setMenuAnchor(null); setMenuRow(null); }}
           sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
         >
-          <ListItemIcon>
-            <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            View
-          </ListItemText>
+          <ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText>
         </MenuItem>
         <MenuItem
-          onClick={() => {
-            handleArchive(menuRow);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-        >
-          <ListItemIcon>
-            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            Archive
-          </ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleTrash(menuRow);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
+          onClick={() => { handleTrash(menuRow); setMenuAnchor(null); setMenuRow(null); }}
           sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
         >
-          <ListItemIcon>
-            <DeleteOutlineOutlinedIcon
-              sx={{ fontSize: 18, color: "#dc2626" }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            }}
-          >
-            Move to Trash
-          </ListItemText>
+          <ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText>
         </MenuItem>
       </Menu>
 
-      {/* ── Settings Drawer (Archive & Trash) ── */}
+      {/* ── Settings Drawer ── */}
       <Drawer
         anchor="right"
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: "100%", sm: 520, md: 600 },
-            backgroundColor: "background.default",
-            borderLeft: `1px solid ${border}`,
-          },
-        }}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 520, md: 600 }, backgroundColor: "background.default", borderLeft: `1px solid ${border}` } }}
       >
-        {/* Drawer header */}
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            borderBottom: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
+        <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-            <SettingsOutlinedIcon
-              sx={{ fontSize: 16, color: "text.secondary" }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                color: "text.primary",
-              }}
-            >
-              Request Settings
-            </Typography>
+            <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", fontWeight: 600, color: "text.primary" }}>Request Settings</Typography>
           </Box>
-          <IconButton
-            size="small"
-            onClick={() => setSettingsOpen(false)}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
+          <IconButton size="small" onClick={() => setSettingsOpen(false)} sx={{ borderRadius: "10px", color: "text.secondary", "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG } }}>
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
 
-        {/* Drawer tabs */}
-        <Box
-          sx={{
-            px: 2.5,
-            pt: 2,
-            pb: 2,
-            display: "flex",
-            gap: "6px",
-            flexShrink: 0,
-          }}
-        >
-          {[
-            { label: "Archive", Icon: ArchiveOutlinedIcon },
-            { label: "Trash", Icon: DeleteOutlineOutlinedIcon },
-          ].map((t, idx) => {
+        <Box sx={{ px: 2.5, pt: 2, pb: 2, display: "flex", gap: "6px", flexShrink: 0 }}>
+          {[{ label: "Archive", Icon: ArchiveOutlinedIcon }, { label: "Trash", Icon: DeleteOutlineOutlinedIcon }].map((t, idx) => {
             const active = settingsTab === idx;
             return (
               <Box
                 key={t.label}
                 onClick={() => setSettingsTab(idx)}
                 sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.6,
-                  px: 1.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  fontFamily: dm,
-                  fontSize: "0.79rem",
+                  display: "inline-flex", alignItems: "center", gap: 0.6,
+                  px: 1.5, py: 0.65, borderRadius: "10px", cursor: "pointer",
+                  fontFamily: dm, fontSize: "0.79rem",
                   fontWeight: active ? 600 : 400,
                   color: active ? "#fff" : "text.secondary",
                   border: `1px solid ${active ? "#212121" : border}`,
                   backgroundColor: active ? "#212121" : "background.paper",
                   transition: "all 0.12s",
-                  "&:hover": active
-                    ? {}
-                    : {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: isDark ? "#f5f5f5" : CHARCOAL,
-                      },
+                  "&:hover": active ? {} : { borderColor: "rgba(53,53,53,0.3)", color: isDark ? "#f5f5f5" : CHARCOAL },
                 }}
               >
                 <t.Icon sx={{ fontSize: 14 }} />
@@ -1733,7 +878,6 @@ export default function AdminRequestManagement() {
           })}
         </Box>
 
-        {/* Drawer content */}
         <Box sx={{ flex: 1, overflow: "auto" }}>
           {settingsTab === 0 && <ArchiveManagement embedded />}
           {settingsTab === 1 && <TrashManagement embedded />}

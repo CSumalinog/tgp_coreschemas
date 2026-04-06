@@ -230,6 +230,7 @@ export default function MyStaffers() {
   const [activeSemester, setActiveSemester] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function loadUser() {
@@ -330,7 +331,18 @@ export default function MyStaffers() {
     if (currentUser && activeSemester) loadStaffers();
   }, [currentUser, activeSemester, loadStaffers]);
 
-  const rows = staffers.map((s) => ({ id: s.id, ...s }));
+  // Search filter
+  const filteredStaffers = useMemo(() => {
+    if (!search) return staffers;
+    const q = search.toLowerCase();
+    return staffers.filter(
+      (s) =>
+        s.full_name.toLowerCase().includes(q) ||
+        (s.section && s.section.toLowerCase().includes(q)),
+    );
+  }, [staffers, search]);
+
+  const rows = filteredStaffers.map((s) => ({ id: s.id, ...s }));
 
   const columns = [
     {
@@ -500,31 +512,154 @@ export default function MyStaffers() {
     >
       <ColumnMenuStyles isDark={isDark} border={border} />
 
-      {/* ── Header ── */}
-      <Box sx={{ mb: 3, flexShrink: 0 }}>
-        <Typography
+      {/* ── Header and Controls ── */}
+      <Box
+        sx={{
+          mb: 3,
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { sm: "center" },
+          justifyContent: "space-between",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "1.05rem",
+              color: "text.primary",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            My Staffers
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.secondary",
+              mt: 0.3,
+            }}
+          >
+            {activeSemester
+              ? `${currentUser.division} division — ${activeSemester.name}`
+              : `${currentUser.division} division`}
+          </Typography>
+        </Box>
+        <Box
           sx={{
-            fontFamily: dm,
-            fontWeight: 700,
-            fontSize: "1.05rem",
-            color: "text.primary",
-            letterSpacing: "-0.02em",
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            mt: { xs: 2, sm: 0 },
           }}
         >
-          My Staffers
-        </Typography>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            color: "text.secondary",
-            mt: 0.3,
-          }}
-        >
-          {activeSemester
-            ? `${currentUser.division} division — ${activeSemester.name}`
-            : `${currentUser.division} division`}
-        </Typography>
+          {/* Search bar */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              background: isDark ? "#232323" : "#f7f7f8",
+              borderRadius: "8px",
+              px: 1.2,
+              py: 0.5,
+              border: `1px solid ${border}`,
+              minWidth: 180,
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              fill="none"
+              viewBox="0 0 24 24"
+              style={{ marginRight: 6, opacity: 0.6 }}
+            >
+              <path
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-4.35-4.35m1.35-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search staffers..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontFamily: dm,
+                fontSize: "0.92rem",
+                width: "100%",
+                color: isDark ? "#fff" : CHARCOAL,
+              }}
+            />
+          </Box>
+          {/* Export button */}
+          <button
+            onClick={() => {
+              // Simple CSV export
+              const csvRows = [
+                [
+                  "Staffer",
+                  "Section",
+                  "Duty Day",
+                  "Total",
+                  "Pending",
+                  "Completed",
+                ],
+                ...filteredStaffers.map((s) => [
+                  s.full_name,
+                  s.section,
+                  typeof s.dutyDay === "number"
+                    ? DAY_CFG[s.dutyDay]?.label
+                    : "",
+                  s.total,
+                  s.pending,
+                  s.completed,
+                ]),
+              ];
+              const csvContent = csvRows
+                .map((r) =>
+                  r
+                    .map(String)
+                    .map((v) => `"${v.replace(/"/g, '""')}"`)
+                    .join(","),
+                )
+                .join("\n");
+              const blob = new Blob([csvContent], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "staffers.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            style={{
+              background: GOLD,
+              color: CHARCOAL,
+              border: "none",
+              borderRadius: 6,
+              fontFamily: dm,
+              fontWeight: 600,
+              fontSize: "0.92rem",
+              padding: "7px 18px",
+              cursor: "pointer",
+              boxShadow: isDark
+                ? "0 2px 8px rgba(0,0,0,0.12)"
+                : "0 2px 8px rgba(53,53,53,0.08)",
+              transition: "background 0.15s",
+            }}
+          >
+            Export
+          </button>
+        </Box>
       </Box>
 
       {error && (
@@ -601,9 +736,11 @@ export default function MyStaffers() {
               rows={rows}
               columns={columns}
               pageSize={10}
-              rowsPerPageOptions={[10]}
+              rowsPerPageOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick
               rowHeight={52}
+              showToolbar={false}
+              enableSearch={false}
             />
           )}
         </Box>

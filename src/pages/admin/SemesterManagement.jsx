@@ -12,6 +12,10 @@ import {
   FormControlLabel,
   useTheme,
   GlobalStyles,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import AddIcon from "@mui/icons-material/Add";
@@ -22,6 +26,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "../../lib/supabaseClient";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
@@ -131,6 +136,8 @@ export default function SemesterManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
 
   const loadSemesters = useCallback(async () => {
     setLoading(true);
@@ -340,8 +347,8 @@ export default function SemesterManagement() {
     {
       field: "actions",
       headerName: "",
-      flex: 1.8,
-      minWidth: 260,
+      flex: 0.8,
+      minWidth: 120,
       sortable: false,
       align: "right",
       headerAlign: "right",
@@ -372,39 +379,15 @@ export default function SemesterManagement() {
           >
             {p.row.is_active ? "Active" : "Set Active"}
           </ActionChip>
-          <ActionChip
-            active={p.row.scheduling_open}
-            onClick={() => toggleScheduling(p.row)}
-            activeColor="#1d4ed8"
-            activeBg="#eff6ff"
-            icon={
-              p.row.scheduling_open ? (
-                <LockOpenOutlinedIcon sx={{ fontSize: 12 }} />
-              ) : (
-                <LockOutlinedIcon sx={{ fontSize: 12 }} />
-              )
-            }
-            border={border}
-          >
-            {p.row.scheduling_open ? "Close Scheduling" : "Open Scheduling"}
-          </ActionChip>
           <IconButton
             size="small"
-            onClick={() => openEdit(p.row)}
-            sx={{
-              borderRadius: "10px",
-              border: `1px solid ${border}`,
-              p: 0.55,
-              color: "text.secondary",
-              transition: "all 0.15s",
-              "&:hover": {
-                borderColor: GOLD,
-                color: CHARCOAL,
-                backgroundColor: GOLD_08,
-              },
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+              setMenuRow(p.row);
             }}
           >
-            <EditOutlinedIcon sx={{ fontSize: 14 }} />
+            <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
       ),
@@ -654,6 +637,64 @@ export default function SemesterManagement() {
           )}
         </Box>
       </Box>
+
+      {/* ── Row action menu ── */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => { setMenuAnchor(null); setMenuRow(null); }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 180,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
+      >
+        {menuRow && (
+          <MenuItem
+            onClick={() => {
+              toggleScheduling(menuRow);
+              setMenuAnchor(null);
+              setMenuRow(null);
+            }}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+          >
+            <ListItemIcon>
+              {menuRow.scheduling_open ? (
+                <LockOutlinedIcon sx={{ fontSize: 18 }} />
+              ) : (
+                <LockOpenOutlinedIcon sx={{ fontSize: 18 }} />
+              )}
+            </ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>
+              {menuRow.scheduling_open ? "Close Scheduling" : "Open Scheduling"}
+            </ListItemText>
+          </MenuItem>
+        )}
+        {menuRow && (
+          <MenuItem
+            onClick={() => {
+              openEdit(menuRow);
+              setMenuAnchor(null);
+              setMenuRow(null);
+            }}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+          >
+            <ListItemIcon>
+              <EditOutlinedIcon sx={{ fontSize: 18 }} />
+            </ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>
+              Edit
+            </ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
 
       {/* ── Create / Edit Dialog ── */}
       <Dialog

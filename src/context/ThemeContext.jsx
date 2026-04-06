@@ -237,13 +237,13 @@ function buildTheme(isDark) {
           [style*="color: rgb(158, 158, 158)"],
           [style*="color: #9e9e9e"]              { color: rgba(255,255,255,0.75) !important; }
 
-          .MuiDataGrid-root          { background-color: #1e1e1e !important; color: #f5f5f5 !important; border-color: #2e2e2e !important; }
-          .MuiDataGrid-columnHeaders { background-color: #2a2a2a !important; border-color: #2e2e2e !important; }
-          .MuiDataGrid-cell          { border-color: #2e2e2e !important; color: #f5f5f5 !important; }
+          .MuiDataGrid-root          { background-color: #1e1e1e !important; color: #f5f5f5 !important; border-color: #2e2e2e !important; font-family: 'Inter', sans-serif !important; }
+          .MuiDataGrid-columnHeaders { background-color: #2a2a2a !important; border-color: #2e2e2e !important; font-family: 'Inter', sans-serif !important; }
+          .MuiDataGrid-cell          { border-color: #2e2e2e !important; color: #f5f5f5 !important; font-family: 'Inter', sans-serif !important; }
           .MuiDataGrid-row:hover     { background-color: #2a2a2a !important; }
           .MuiDataGrid-row.row--highlighted { background-color: rgba(245,197,43,0.14) !important; }
           .MuiDataGrid-row.row--highlighted:hover { background-color: rgba(245,197,43,0.2) !important; }
-          .MuiDataGrid-footerContainer { background-color: #1e1e1e !important; border-color: #2e2e2e !important; }
+          .MuiDataGrid-footerContainer { background-color: #1e1e1e !important; border-color: #2e2e2e !important; font-family: 'Inter', sans-serif !important; }
 
           nav, aside, header,
           [class*="sidebar"], [class*="Sidebar"],
@@ -270,12 +270,12 @@ function buildTheme(isDark) {
           ::-webkit-scrollbar-thumb:hover   { background: #4a4a4a; }
         `
           : `
-          *, *::before, *::after { font-family: ${dm}; }
+          *, *::before, *::after { font-family: 'Inter', sans-serif; }
 
           body, #root {
             background-color: #f9f9f9;
             color: #212121;
-            font-family: ${dm};
+            font-family: 'Inter', sans-serif;
           }
           ::-webkit-scrollbar               { width: 6px; height: 6px; }
           ::-webkit-scrollbar-track         { background: #f5f5f5; }

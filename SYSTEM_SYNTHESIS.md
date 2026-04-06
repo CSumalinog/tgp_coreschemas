@@ -1,6 +1,8 @@
 # TGP Coverage Request Management System — System Synthesis
 
-## 1. System Overview
+> **Note:** This document is current as of April 2026. All referenced components, hooks, services, and utilities are actively used in the codebase. No unused files are present in the main src/components directories. For hooks, services, and utils, all referenced files are in use as described below.
+
+## 1. System Overview!
 
 The **TGP Coverage Request Management System** is a comprehensive, role-based web application designed to streamline the submission, tracking, and fulfillment of media coverage requests within an organization. The system facilitates the coordination between clients who need coverage services (such as news articles, photo documentation, and video documentation) and the staff members responsible for delivering those services.
 
@@ -273,7 +275,7 @@ The Section Head Assignment Management integrates with duty schedules to:
 
 While the full schema is defined in Supabase, the key tables include:
 
-- **profiles**: User accounts with role, section, full_name, avatar_url, 
+- **profiles**: User accounts with role, section, full_name, avatar_url,
 - **coverage_requests**: Main request records with all event details, status, timestamps, including multi-day event support (`is_multiday`, `event_days`, `end_date`)
 - **coverage_assignments**: Staff assignments linking requests to staff members with status, timed_in_at
 - **client_types**: Categories of clients (e.g., academic department, student organization)

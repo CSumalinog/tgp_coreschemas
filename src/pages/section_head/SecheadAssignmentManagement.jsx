@@ -17,30 +17,30 @@ import {
   IconButton,
   Alert,
   Checkbox,
-  FormGroup,
   useTheme,
-  GlobalStyles,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Drawer,
-  Tooltip,
   FormControl,
   Select,
   OutlinedInput,
   InputAdornment,
+  Drawer,
+  Tooltip,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import ArchiveManagement from "./ArchiveManagement";
-import TrashManagement from "./TrashManagement";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
@@ -48,18 +48,11 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import {
-  notifyAdmins,
-  notifyClient,
-  notifySpecificStaff,
-} from "../../services/NotificationService";
+import ArchiveManagement from "./ArchiveManagement";
+import TrashManagement from "./TrashManagement";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -130,7 +123,8 @@ const STATUS_CFG = {
   Completed: { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
 };
 
-const TABS = [
+// View options — replaces the old TABS array
+const VIEW_OPTIONS = [
   { label: "For Assignment", key: "for-assignment" },
   { label: "Assigned", key: "assigned" },
   { label: "On Going", key: "on-going" },
@@ -207,7 +201,24 @@ const fmtWeekday = (d) => {
   });
 };
 
-// ── Status pill ───────────────────────────────────────────────────────────────
+// ── Small shared UI pieces ────────────────────────────────────────────────────
+function MetaCell({ children }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.78rem",
+          fontWeight: 400,
+          color: "text.secondary",
+        }}
+      >
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CFG[status] || {
     dot: "#9ca3af",
@@ -250,7 +261,6 @@ function StatusPill({ status, isDark }) {
   );
 }
 
-// ── Event Type pill ───────────────────────────────────────────────────────────
 function EventTypePill({ isMultiDay, isDark }) {
   return isMultiDay ? (
     <Box
@@ -360,7 +370,7 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
   if (staffers.length === 0) {
     return (
       <Typography
-        sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}
+        sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}
       >
         —
       </Typography>
@@ -575,92 +585,32 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
   );
 }
 
-// ── FIX 2: Column menu GlobalStyles — fixed broken template literal ───────────
-function ColumnMenuStyles({ isDark, border }) {
-  const paperBg = isDark ? "#1e1e1e" : "#ffffff";
-  const shadow = isDark
-    ? "0 12px 40px rgba(0,0,0,0.55)"
-    : "0 4px 24px rgba(53,53,53,0.12)";
-  const textColor = isDark ? "rgba(255,255,255,0.85)" : CHARCOAL;
-  const iconColor = isDark ? "rgba(255,255,255,0.35)" : "rgba(53,53,53,0.4)";
-  const hoverBg = isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.07)";
-  return (
-    <GlobalStyles
-      styles={{
-        ".MuiPaper-root:has(> .MuiDataGrid-menuList)": {
-          borderRadius: "10px !important",
-          border: `1px solid ${border} !important`,
-          backgroundColor: `${paperBg} !important`,
-          boxShadow: `${shadow} !important`,
-          minWidth: "180px !important",
-          overflow: "hidden !important",
-        },
-        ".MuiDataGrid-menuList": { padding: "4px 0 !important" },
-        ".MuiDataGrid-menuList .MuiMenuItem-root": {
-          fontFamily: `${dm} !important`,
-          fontSize: "0.78rem !important",
-          fontWeight: "500 !important",
-          color: `${textColor} !important`,
-          padding: "7px 14px !important",
-          minHeight: "unset !important",
-          gap: "10px !important",
-          transition: "background-color 0.12s, color 0.12s !important",
-        },
-        ".MuiDataGrid-menuList .MuiMenuItem-root:hover": {
-          backgroundColor: `${hoverBg} !important`,
-          color: "#b45309 !important",
-        },
-        ".MuiDataGrid-menuList .MuiMenuItem-root .MuiListItemIcon-root": {
-          minWidth: "unset !important",
-          color: `${iconColor} !important`,
-          transition: "color 0.12s !important",
-        },
-        ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
-          fontSize: "1rem !important",
-          color: `${iconColor} !important`,
-        },
-        ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
-          color: "#b45309 !important",
-        },
-        ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiSvgIcon-root": {
-          color: "#b45309 !important",
-        },
-        // FIX: was mixing " and ` — now all consistent double quotes
-        ".MuiDataGrid-menuList .MuiListItemText-primary": {
-          fontFamily: `${dm} !important`,
-          fontSize: "0.78rem !important",
-          fontWeight: "500 !important",
-        },
-        ".MuiDataGrid-menuList .MuiDivider-root": {
-          borderColor: `${border} !important`,
-          margin: "4px 12px !important",
-        },
-      }}
-    />
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function SecHeadAssignmentManagement() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
   const location = useLocation();
+  const gridApiRef = useGridApiRef();
+  const [searchParams] = useSearchParams();
+  const highlight = searchParams.get("highlight")?.toLowerCase() || "";
 
-  const [tab, setTab] = useState(() => {
+  // ── View filter (replaces tabs) ───────────────────────────────────────────
+  const [viewFilter, setViewFilter] = useState(() => {
     const incoming = location.state?.tab;
-    if (!incoming) return 0;
-    const idx = TABS.findIndex((t) => t.key === incoming);
-    return idx >= 0 ? idx : 0;
+    if (!incoming) return "for-assignment";
+    const found = VIEW_OPTIONS.find((o) => o.key === incoming);
+    return found ? found.key : "for-assignment";
   });
 
   useEffect(() => {
     const incoming = location.state?.tab;
     if (!incoming) return;
-    const idx = TABS.findIndex((t) => t.key === incoming);
-    if (idx >= 0) setTab(idx);
+    const found = VIEW_OPTIONS.find((o) => o.key === incoming);
+    if (found) setViewFilter(found.key);
   }, [location.state?.tab]);
 
+  // ── Data state ────────────────────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null);
   const [forAssignmentReqs, setForAssignmentReqs] = useState([]);
   const [assignedReqs, setAssignedReqs] = useState([]);
@@ -669,21 +619,26 @@ export default function SecHeadAssignmentManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // ── Filter state ──────────────────────────────────────────────────────────
   const [semesters, setSemesters] = useState([]);
-  const [activeSemesterId, setActiveSemesterId] = useState("all");
+  const [selectedSem, setSelectedSem] = useState("all");
   const [allStaffers, setAllStaffers] = useState([]);
   const [stafferFilter, setStafferFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [semRange, setSemRange] = useState(null);
+
+  // ── Menu + dialog state ───────────────────────────────────────────────────
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [confirmRequest, setConfirmRequest] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
-  const [semRange, setSemRange] = useState(null);
-  const [searchText, setSearchText] = useState("");
 
-  const gridApiRef = useGridApiRef();
-
-  const [searchParams] = useSearchParams();
-  const highlight = searchParams.get("highlight")?.toLowerCase() || "";
-
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  // ── Assign dialog state ───────────────────────────────────────────────────
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignRequest, setAssignRequest] = useState(null);
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
   const [dayStaffers, setDayStaffers] = useState({});
   const [daySelected, setDaySelected] = useState({});
@@ -691,20 +646,8 @@ export default function SecHeadAssignmentManagement() {
   const [staffersLoading, setStaffersLoading] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
-  const [submitLoading, setSubmitLoading] = useState(false);
-  const [confirmRequest, setConfirmRequest] = useState(null);
 
-  // ── Emergency reassignment state ──────────────────────────────────────────
-  const [noShowAlerts, setNoShowAlerts] = useState([]);
-  const [reassignOpen, setReassignOpen] = useState(false);
-  const [reassignTarget, setReassignTarget] = useState(null);
-  const [reassignPool, setReassignPool] = useState([]);
-  const [reassignPoolLoading, setReassignPoolLoading] = useState(false);
-  const [reassignSelected, setReassignSelected] = useState(null);
-  const [reassignLoading, setReassignLoading] = useState(false);
-  const [reassignError, setReassignError] = useState("");
-  const noShowNotifiedRef = useRef(new Set());
-
+  // ── Load user ─────────────────────────────────────────────────────────────
   useEffect(() => {
     async function loadUser() {
       const {
@@ -725,7 +668,7 @@ export default function SecHeadAssignmentManagement() {
     async function loadSemesters() {
       const { data } = await supabase
         .from("semesters")
-        .select("id, name, label, start_date, end_date, is_active")
+        .select("id, name, start_date, end_date, is_active")
         .order("start_date", { ascending: false });
       setSemesters(data || []);
     }
@@ -747,16 +690,17 @@ export default function SecHeadAssignmentManagement() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!activeSemesterId || activeSemesterId === "all") {
+    if (!selectedSem || selectedSem === "all") {
       setSemRange(null);
       return;
     }
-    const sem = semesters.find((s) => s.id === activeSemesterId);
+    const sem = semesters.find((s) => s.id === selectedSem);
     setSemRange(
       sem ? { start_date: sem.start_date, end_date: sem.end_date } : null,
     );
-  }, [activeSemesterId, semesters]);
+  }, [selectedSem, semesters]);
 
+  // ── Load all requests ─────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     if (!currentUser?.section) return;
     setLoading(true);
@@ -766,60 +710,48 @@ export default function SecHeadAssignmentManagement() {
         id, title, description, event_date, from_time, to_time,
         is_multiday, event_days, end_date,
         venue, services, status, contact_person, contact_info,
-        file_url, forwarded_sections, submitted_sections, forwarded_at, submitted_at, requester_id,
+        file_url, forwarded_sections, submitted_sections, forwarded_at, submitted_at,
         client_type:client_types ( id, name ),
         entity:client_entities ( id, name ),
         coverage_assignments (
-          id, status, assigned_to, assigned_by, section, service, timed_in_at, completed_at,
+          id, status, assigned_to, section, service_key, timed_in_at, completed_at,
           assignment_date, from_time, to_time,
-          staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url ),
-          assigner:assigned_by ( id, section, full_name )
+          staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
         )
       `;
 
-      const [allForwarded, assignedAndApproval, onGoing, completed, userState] =
+      const [allForwarded, assignedAndApproval, onGoing, completed] =
         await Promise.all([
           supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", ["Forwarded", "Assigned", "For Approval"])
             .contains("forwarded_sections", [currentUser.section])
-            .is("archived_at", null)
-            .is("trashed_at", null)
             .order("forwarded_at", { ascending: false }),
           supabase
             .from("coverage_requests")
             .select(baseSelect)
-            .in("status", ["Assigned", "For Approval", "Approved"])
+            .in("status", ["Assigned", "For Approval"])
             .contains("forwarded_sections", [currentUser.section])
-            .is("archived_at", null)
-            .is("trashed_at", null)
             .order("event_date", { ascending: true }),
           supabase
             .from("coverage_requests")
             .select(baseSelect)
             .eq("status", "On Going")
             .contains("forwarded_sections", [currentUser.section])
-            .is("archived_at", null)
-            .is("trashed_at", null)
             .order("event_date", { ascending: true }),
           supabase
             .from("coverage_requests")
             .select(baseSelect)
             .in("status", [
+              "Approved",
               "Coverage Complete",
               "Completed",
               "No-show",
               "Declined",
             ])
             .contains("forwarded_sections", [currentUser.section])
-            .is("archived_at", null)
-            .is("trashed_at", null)
             .order("event_date", { ascending: false }),
-          supabase
-            .from("request_user_state")
-            .select("request_id")
-            .eq("user_id", currentUser.id),
         ]);
 
       if (
@@ -835,14 +767,8 @@ export default function SecHeadAssignmentManagement() {
           completed.error
         );
 
-      const hiddenIds = new Set(
-        (userState.data || []).map((r) => r.request_id),
-      );
-      const exclude = (rows) =>
-        (rows || []).filter((r) => !hiddenIds.has(r.id));
-
       const mySection = currentUser.section;
-      const forwardedData = exclude(allForwarded.data);
+      const forwardedData = allForwarded.data || [];
 
       const forAssignRows = forwardedData.filter((req) => {
         if (req.status !== "Forwarded") return false;
@@ -871,7 +797,7 @@ export default function SecHeadAssignmentManagement() {
       });
 
       const assignedMap = new Map();
-      [...forwardedButMySecDone, ...exclude(assignedAndApproval.data)].forEach(
+      [...forwardedButMySecDone, ...(assignedAndApproval.data || [])].forEach(
         (r) => assignedMap.set(r.id, r),
       );
       const assignedRows = Array.from(assignedMap.values()).sort(
@@ -880,8 +806,8 @@ export default function SecHeadAssignmentManagement() {
 
       setForAssignmentReqs(forAssignRows);
       setAssignedReqs(assignedRows);
-      setOnGoingReqs(exclude(onGoing.data));
-      setCompletedReqs(exclude(completed.data));
+      setOnGoingReqs(onGoing.data || []);
+      setCompletedReqs(completed.data || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -896,400 +822,116 @@ export default function SecHeadAssignmentManagement() {
     title: "Assignment",
   });
 
-  const handleArchive = async (id) => {
-    const ts = new Date().toISOString();
-    await supabase
-      .from("request_user_state")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          request_id: id,
-          archived_at: ts,
-          trashed_at: null,
-          purged_at: null,
-        },
-        { onConflict: "user_id,request_id" },
-      );
-    loadAll();
-  };
-  const handleTrash = async (id) => {
-    const ts = new Date().toISOString();
-    await supabase
-      .from("request_user_state")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          request_id: id,
-          archived_at: null,
-          trashed_at: ts,
-          purged_at: null,
-        },
-        { onConflict: "user_id,request_id" },
-      );
-    loadAll();
-  };
+  // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleBulkArchive = async (ids) => {
-    const ts = new Date().toISOString();
-    const rows = ids.map((rid) => ({
-      user_id: currentUser.id,
-      request_id: rid,
-      archived_at: ts,
-      trashed_at: null,
-      purged_at: null,
-    }));
     await supabase
-      .from("request_user_state")
-      .upsert(rows, { onConflict: "user_id,request_id" });
-    loadAll();
+      .from("coverage_requests")
+      .update({ archived_at: new Date().toISOString() })
+      .in("id", ids);
+    refetch?.() || loadAll();
   };
   const handleBulkTrash = async (ids) => {
-    const ts = new Date().toISOString();
-    const rows = ids.map((rid) => ({
-      user_id: currentUser.id,
-      request_id: rid,
-      archived_at: null,
-      trashed_at: ts,
-      purged_at: null,
-    }));
     await supabase
-      .from("request_user_state")
-      .upsert(rows, { onConflict: "user_id,request_id" });
+      .from("coverage_requests")
+      .update({ trashed_at: new Date().toISOString() })
+      .in("id", ids);
+    refetch?.() || loadAll();
+  };
+  const handleArchive = async (row) => {
+    await supabase
+      .from("coverage_requests")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", row.id);
+    loadAll();
+  };
+  const handleTrash = async (row) => {
+    await supabase
+      .from("coverage_requests")
+      .update({ trashed_at: new Date().toISOString() })
+      .eq("id", row.id);
     loadAll();
   };
 
-  // ── Request browser notification permission once on mount ─────────────────
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // ── No-show detection: runs every 60 s ────────────────────────────────────
-  useEffect(() => {
-    const TWO_MIN = 2 * 60 * 1000;
-
-    const detect = () => {
-      if (!assignedReqs.length || !currentUser?.section) return;
-      const now = Date.now();
-      const found = [];
-
-      assignedReqs.forEach((req) => {
-        if (req.status !== "Approved") return;
-        (req.coverage_assignments || []).forEach((a) => {
-          const belongsToMe =
-            a.section === currentUser.section ||
-            a.assigner?.section === currentUser.section;
-          if (!belongsToMe) return;
-          if (a.timed_in_at) return;
-          if (a.status === "No-show" || a.status === "Cancelled") return;
-
-          const aDateStr = a.assignment_date || req.event_date;
-          const aFromTime = (a.from_time || req.from_time || "").slice(0, 5);
-          const aStart = new Date(`${aDateStr}T${aFromTime}`).getTime();
-          // Window closed = event start + 2 min has passed
-          if (now <= aStart + TWO_MIN) return;
-          // Skip stale (> 24 h)
-          if (now > aStart + 24 * 60 * 60 * 1000) return;
-
-          if (found.some((f) => f.assignmentId === a.id)) return;
-
-          found.push({
-            assignmentId: a.id,
-            requestId: req.id,
-            reqTitle: req.title || "Untitled",
-            requesterId: req.requester_id || null,
-            stafferId: a.assigned_to,
-            stafferName: a.staffer?.full_name || "Unknown",
-            assignDate: aDateStr,
-            fromTime: a.from_time || req.from_time,
-            toTime: a.to_time || req.to_time,
-          });
-
-          // Browser notification — once per assignment
-          if (
-            !noShowNotifiedRef.current.has(a.id) &&
-            "Notification" in window
-          ) {
-            noShowNotifiedRef.current.add(a.id);
-            const fire = () => {
-              try {
-                const n = new Notification(
-                  "TGP — Emergency Reassignment Needed",
-                  {
-                    body: `${a.staffer?.full_name || "A staffer"} missed time-in for "${req.title || "an event"}". Tap to reassign.`,
-                    icon: "/favicon.ico",
-                    tag: `noshow-${a.id}`,
-                    requireInteraction: true,
-                  },
-                );
-                n.onclick = () => {
-                  window.focus();
-                  n.close();
-                };
-              } catch {
-                /* silently ignore */
-              }
-            };
-            if (Notification.permission === "granted") {
-              fire();
-            } else if (Notification.permission !== "denied") {
-              Notification.requestPermission().then((p) => {
-                if (p === "granted") fire();
-              });
-            }
-          }
+  // ── Filters ───────────────────────────────────────────────────────────────
+  const applyFilters = useCallback(
+    (reqs) => {
+      let filtered = reqs;
+      if (semRange) {
+        const start = new Date(semRange.start_date);
+        const end = new Date(semRange.end_date);
+        end.setHours(23, 59, 59, 999);
+        filtered = filtered.filter((r) => {
+          if (!r.event_date) return false;
+          const d = new Date(r.event_date);
+          return d >= start && d <= end;
         });
-      });
-
-      setNoShowAlerts(found);
-    };
-
-    detect();
-    const id = setInterval(detect, 60_000);
-    return () => clearInterval(id);
-  }, [assignedReqs, currentUser]);
-
-  const loadReassignPool = useCallback(
-    async (alert) => {
-      if (!currentUser?.section) return;
-      setReassignPoolLoading(true);
-      try {
-        const dutyDay = jsDateToDutyDay(alert.assignDate);
-
-        // 1. Get active semester
-        const { data: semester } = await supabase
-          .from("semesters")
-          .select("id")
-          .eq("is_active", true)
-          .single();
-
-        // 2. Get on-duty staffer IDs for that day
-        let onDutyIds = null;
-        if (semester?.id && dutyDay !== null) {
-          const { data: schedules } = await supabase
-            .from("duty_schedules")
-            .select("staffer_id")
-            .eq("semester_id", semester.id)
-            .eq("duty_day", dutyDay);
-          onDutyIds = new Set((schedules || []).map((s) => s.staffer_id));
-        }
-
-        // 3. Get all active section staff (excluding the no-show staffer)
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name, section, avatar_url")
-          .eq("division", currentUser.division)
-          .eq("role", "staff")
-          .eq("is_active", true)
-          .eq("section", currentUser.section)
-          .neq("id", alert.stafferId);
-
-        const candidates = (profiles || []).filter(
-          (p) => onDutyIds === null || onDutyIds.has(p.id),
-        );
-
-        if (candidates.length === 0) {
-          setReassignPool([]);
-          return;
-        }
-
-        const ids = candidates.map((p) => p.id);
-
-        // 4. Get assignments on the same date to check overlap
-        const { data: dayAssignments } = await supabase
-          .from("coverage_assignments")
-          .select("assigned_to, from_time, to_time, status")
-          .in("assigned_to", ids)
-          .eq("assignment_date", alert.assignDate)
-          .not(
-            "status",
-            "in",
-            '("No-show","Cancelled","Completed","Coverage Complete")',
-          );
-
-        // 5. Count past no-shows per staffer
-        const { data: noShows } = await supabase
-          .from("coverage_assignments")
-          .select("assigned_to")
-          .in("assigned_to", ids)
-          .eq("status", "No-show");
-
-        const noShowCount = {};
-        (noShows || []).forEach((r) => {
-          noShowCount[r.assigned_to] = (noShowCount[r.assigned_to] || 0) + 1;
-        });
-
-        // 6. Classify availability
-        const eFrom = (alert.fromTime || "00:00").slice(0, 5);
-        const eTo = (alert.toTime || "23:59").slice(0, 5);
-
-        const scored = candidates.map((p) => {
-          const mine = (dayAssignments || []).filter(
-            (a) => a.assigned_to === p.id,
-          );
-          let availability = "available";
-          let freeAt = null;
-
-          for (const a of mine) {
-            const af = (a.from_time || "").slice(0, 5);
-            const at = (a.to_time || "").slice(0, 5);
-            const overlaps = af < eTo && at > eFrom;
-            if (overlaps) {
-              // Ends before event starts? → free after
-              if (at <= eFrom) {
-                availability = "free-after";
-                freeAt = at;
-              } else {
-                availability = "busy";
-                break;
-              }
-            }
-          }
-
-          return {
-            ...p,
-            availability,
-            freeAt,
-            noShowCount: noShowCount[p.id] || 0,
-          };
-        });
-
-        // Sort: available → free-after → busy, then fewest no-shows
-        const order = { available: 0, "free-after": 1, busy: 2 };
-        scored.sort(
-          (a, b) =>
-            order[a.availability] - order[b.availability] ||
-            a.noShowCount - b.noShowCount,
-        );
-
-        setReassignPool(scored);
-      } catch {
-        setReassignPool([]);
-      } finally {
-        setReassignPoolLoading(false);
       }
-    },
-    [currentUser],
-  );
-
-  const openReassignDialog = useCallback(
-    async (alert) => {
-      setReassignTarget(alert);
-      setReassignSelected(null);
-      setReassignError("");
-      setReassignPool([]);
-      setReassignOpen(true);
-      await loadReassignPool(alert);
-      // Pre-select best candidate
-      setReassignSelected((prev) => prev); // will be set after pool loads below
-    },
-    [loadReassignPool],
-  );
-
-  // Pre-select top available candidate once pool loads
-  useEffect(() => {
-    if (!reassignOpen || reassignPoolLoading || reassignPool.length === 0)
-      return;
-    if (!reassignSelected) {
-      const best =
-        reassignPool.find((s) => s.availability === "available") ||
-        reassignPool[0];
-      setReassignSelected(best);
-    }
-  }, [reassignPool, reassignPoolLoading, reassignOpen, reassignSelected]);
-
-  const handleQuickConfirm = useCallback(
-    async (alert, staffer) => {
-      if (!staffer || !currentUser) return;
-      try {
-        await supabase
-          .from("coverage_assignments")
-          .update({
-            status: "No-show",
-            cancelled_at: new Date().toISOString(),
-            cancellation_reason:
-              "Missed time-in window — emergency reassignment",
-          })
-          .eq("id", alert.assignmentId);
-
-        await supabase.from("coverage_assignments").insert({
-          request_id: alert.requestId,
-          assigned_to: staffer.id,
-          assigned_by: currentUser.id,
-          section: staffer.section || currentUser.section,
-          assignment_date: alert.assignDate,
-          from_time: alert.fromTime,
-          to_time: alert.toTime,
-          is_reassigned: true,
-        });
-
-        await supabase.from("notifications").insert({
-          user_id: staffer.id,
-          recipient_id: staffer.id,
-          recipient_role: "staff",
-          request_id: alert.requestId,
-          type: "emergency_assignment",
-          title: "Emergency Assignment",
-          message: `You've been urgently reassigned to "${alert.reqTitle}". Check in immediately.`,
-          is_read: false,
-          created_by: currentUser.id,
-        });
-
-        // Notify the no-show staffer — formal record in their notification history
-        await notifySpecificStaff({
-          staffIds: [alert.stafferId],
-          type: "no_show",
-          title: "Assignment Marked No Show",
-          message: `Your assignment for "${alert.reqTitle}" was marked No Show due to missed time-in. Please contact your section head.`,
-          requestId: alert.requestId,
-          createdBy: currentUser.id,
-        });
-
-        // Notify admins — accountability and visibility
-        await notifyAdmins({
-          type: "no_show",
-          title: "No Show — Emergency Reassignment Made",
-          message: `${alert.stafferName} missed time-in for "${alert.reqTitle}". ${staffer.full_name} has been reassigned as emergency coverage.`,
-          requestId: alert.requestId,
-          createdBy: currentUser.id,
-        });
-
-        // Notify client — reassurance that coverage is still happening
-        if (alert.requesterId) {
-          await notifyClient({
-            requesterId: alert.requesterId,
-            type: "coverage_update",
-            title: "Coverage Update",
-            message: `A replacement staffer has been assigned for "${alert.reqTitle}". Your coverage will proceed as scheduled.`,
-            requestId: alert.requestId,
-            createdBy: currentUser.id,
-          });
-        }
-
-        await loadAll();
-      } catch {
-        /* banner stays visible if it fails */
+      if (stafferFilter !== "all") {
+        filtered = filtered.filter((r) =>
+          (r.coverage_assignments || []).some(
+            (a) =>
+              a.assigned_to === stafferFilter &&
+              a.section === currentUser?.section,
+          ),
+        );
       }
+      return filtered;
     },
-    [currentUser, loadAll],
+    [semRange, stafferFilter, currentUser],
   );
 
-  const handleReassign = useCallback(async () => {
-    if (!reassignTarget || !reassignSelected || !currentUser) return;
-    setReassignLoading(true);
-    setReassignError("");
-    try {
-      await handleQuickConfirm(reassignTarget, reassignSelected);
-      setReassignOpen(false);
-      setReassignTarget(null);
-      setReassignSelected(null);
-    } catch (err) {
-      setReassignError(err.message);
-    } finally {
-      setReassignLoading(false);
-    }
-  }, [reassignTarget, reassignSelected, currentUser, handleQuickConfirm]);
+  const getViewSource = useCallback(
+    (key) => {
+      if (key === "for-assignment") return applyFilters(forAssignmentReqs);
+      if (key === "assigned") return applyFilters(assignedReqs);
+      if (key === "on-going") return applyFilters(onGoingReqs);
+      if (key === "completed") return applyFilters(completedReqs);
+      return [];
+    },
+    [applyFilters, forAssignmentReqs, assignedReqs, onGoingReqs, completedReqs],
+  );
 
+  const getViewCount = useCallback(
+    (key) => getViewSource(key).length,
+    [getViewSource],
+  );
+
+  const filteredSource = useMemo(
+    () => getViewSource(viewFilter),
+    [viewFilter, getViewSource],
+  );
+
+  const isViewFiltered = viewFilter !== "for-assignment";
+
+  // ── External search filter for DataGrid ───────────────────────────────────
+  const externalFilterModel = useMemo(() => {
+    const tokens = searchText
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return { items: [], quickFilterValues: tokens };
+  }, [searchText]);
+
+  const handleExportCsv = () => {
+    gridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "assignment-management-export",
+    });
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const getPaxForSection = (request) => {
+    if (!currentUser?.section || !request?.services) return "—";
+    if (currentUser.section === "Videojournalism") {
+      const videoPax = request.services["Video Documentation"] || 0;
+      const cameraPax =
+        request.services["Camera Operator (for live streaming)"] || 0;
+      return videoPax + cameraPax || "—";
+    }
+    return request.services[SECTION_SERVICE_MAP[currentUser.section]] || "—";
+  };
+
+  // ── Staffer loading for assign dialog ────────────────────────────────────
   const loadStaffersForDate = useCallback(
     async (dateStr) => {
       if (!currentUser?.section || !dateStr) return;
@@ -1353,19 +995,14 @@ export default function SecHeadAssignmentManagement() {
           ...p,
           assignmentCount: assignmentCounts[p.id] || 0,
         }));
-
         const primary = withCounts
           .filter((p) => primaryPositions.includes(p.position))
           .sort((a, b) => a.assignmentCount - b.assignmentCount);
-
         const others = withCounts
           .filter((p) => !primaryPositions.includes(p.position))
           .sort((a, b) => a.assignmentCount - b.assignmentCount);
 
-        setDayStaffers((prev) => ({
-          ...prev,
-          [dateStr]: { primary, others },
-        }));
+        setDayStaffers((prev) => ({ ...prev, [dateStr]: { primary, others } }));
       } finally {
         setStaffersLoading(false);
       }
@@ -1376,10 +1013,11 @@ export default function SecHeadAssignmentManagement() {
   const openAssignDialog = useCallback(
     async (req) => {
       setAssignError("");
-      setSelectedRequest(req);
+      setAssignRequest(req);
       setSelectedDayIdx(0);
       setDaySelected({});
       setDayStaffers({});
+      setAssignDialogOpen(true);
 
       const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
       const dates = isMultiDay
@@ -1391,7 +1029,7 @@ export default function SecHeadAssignmentManagement() {
         .select(
           "assigned_to, assignment_date, staffer:profiles!assigned_to ( full_name, section )",
         )
-        .eq("request_id", req.id);
+        .eq("request_id", req._raw?.id || req.id);
 
       const byDate = {};
       dates.forEach((d) => {
@@ -1419,7 +1057,7 @@ export default function SecHeadAssignmentManagement() {
   );
 
   const getServiceKeysForAssignment = useCallback(
-    (request, stafferId) => {
+    (request) => {
       const section = currentUser?.section;
       const serviceKeys = SECTION_SERVICE_KEYS[section] || [];
       return serviceKeys.filter((key) => (request.services?.[key] || 0) > 0);
@@ -1428,10 +1066,9 @@ export default function SecHeadAssignmentManagement() {
   );
 
   const handleAssign = useCallback(async () => {
-    if (!selectedRequest || !currentUser) return;
-    const isMultiDay = !!(
-      selectedRequest.is_multiday && selectedRequest.event_days?.length > 0
-    );
+    if (!assignRequest || !currentUser) return;
+    const req = assignRequest._raw || assignRequest;
+    const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
 
     const totalSelected = Object.values(daySelected).flat().length;
     const totalAlreadyAssigned = Object.values(dayAssigned).flat().length;
@@ -1443,9 +1080,9 @@ export default function SecHeadAssignmentManagement() {
       return;
     }
     if (totalSelected === 0 && totalAlreadyAssigned > 0) {
-      setSelectedRequest(null);
+      setAssignDialogOpen(false);
       await loadAll();
-      setTab(1);
+      setViewFilter("assigned");
       return;
     }
 
@@ -1453,55 +1090,54 @@ export default function SecHeadAssignmentManagement() {
     setAssignError("");
     try {
       const rows = [];
-
-      if (isMultiDay) {
-        selectedRequest.event_days.forEach((dayObj) => {
-          const stafferIds = daySelected[dayObj.date] || [];
-          stafferIds.forEach((stafferId) => {
-            const dayData = dayStaffers[dayObj.date] || {
-              primary: [],
-              others: [],
-            };
-            const allForDay = [
-              ...(dayData.primary || []),
-              ...(dayData.others || []),
-            ];
-            const stafferProfile = allForDay.find((s) => s.id === stafferId);
-
-            rows.push({
-              request_id: selectedRequest.id,
-              assigned_to: stafferId,
-              assigned_by: currentUser.id,
-              section: stafferProfile?.section || currentUser.section,
-              assignment_date: dayObj.date,
-              from_time: dayObj.from_time,
-              to_time: dayObj.to_time,
-            });
-          });
-        });
-      } else {
-        const stafferIds = daySelected[selectedRequest.event_date] || [];
-        const dayData = dayStaffers[selectedRequest.event_date] || {
-          primary: [],
-          others: [],
-        };
+      const buildRows = (stafferIds, dateStr, fromTime, toTime) => {
+        const dayData = dayStaffers[dateStr] || { primary: [], others: [] };
         const allForDay = [
           ...(dayData.primary || []),
           ...(dayData.others || []),
         ];
         stafferIds.forEach((stafferId) => {
           const stafferProfile = allForDay.find((s) => s.id === stafferId);
-
-          rows.push({
-            request_id: selectedRequest.id,
-            assigned_to: stafferId,
-            assigned_by: currentUser.id,
-            section: stafferProfile?.section || currentUser.section,
-            assignment_date: selectedRequest.event_date,
-            from_time: selectedRequest.from_time,
-            to_time: selectedRequest.to_time,
-          });
+          const serviceKeys = getServiceKeysForAssignment(req);
+          if (serviceKeys.length === 0) {
+            rows.push({
+              request_id: req.id,
+              assigned_to: stafferId,
+              assigned_by: currentUser.id,
+              section: stafferProfile?.section || currentUser.section,
+              assignment_date: dateStr,
+              from_time: fromTime,
+              to_time: toTime,
+            });
+          } else {
+            serviceKeys.forEach((serviceKey) => {
+              rows.push({
+                request_id: req.id,
+                assigned_to: stafferId,
+                assigned_by: currentUser.id,
+                section: stafferProfile?.section || currentUser.section,
+                service_key: serviceKey,
+                assignment_date: dateStr,
+                from_time: fromTime,
+                to_time: toTime,
+              });
+            });
+          }
         });
+      };
+
+      if (isMultiDay) {
+        req.event_days.forEach((dayObj) => {
+          const stafferIds = daySelected[dayObj.date] || [];
+          buildRows(stafferIds, dayObj.date, dayObj.from_time, dayObj.to_time);
+        });
+      } else {
+        buildRows(
+          daySelected[req.event_date] || [],
+          req.event_date,
+          req.from_time,
+          req.to_time,
+        );
       }
 
       if (rows.length === 0) {
@@ -1515,13 +1151,13 @@ export default function SecHeadAssignmentManagement() {
         .insert(rows);
       if (assignErr) throw assignErr;
 
-      const forwardedSections = selectedRequest.forwarded_sections || [];
+      const forwardedSections = req.forwarded_sections || [];
       let allAssigned = forwardedSections.length === 0;
       if (!allAssigned) {
         const { data: existing } = await supabase
           .from("coverage_assignments")
           .select("section")
-          .eq("request_id", selectedRequest.id);
+          .eq("request_id", req.id);
         const assignedSections = new Set(
           (existing || []).map((a) => a.section),
         );
@@ -1531,18 +1167,18 @@ export default function SecHeadAssignmentManagement() {
         await supabase
           .from("coverage_requests")
           .update({ status: "Assigned" })
-          .eq("id", selectedRequest.id);
+          .eq("id", req.id);
 
-      setSelectedRequest(null);
+      setAssignDialogOpen(false);
       await loadAll();
-      setTab(1);
+      setViewFilter("assigned");
     } catch (err) {
       setAssignError(err.message);
     } finally {
       setAssignLoading(false);
     }
   }, [
-    selectedRequest,
+    assignRequest,
     currentUser,
     daySelected,
     dayAssigned,
@@ -1569,14 +1205,12 @@ export default function SecHeadAssignmentManagement() {
       const allSectionsSubmitted =
         forwardedSections.length > 0 &&
         forwardedSections.every((s) => updatedSubmitted.includes(s));
-
       const newStatus = allSectionsSubmitted ? "For Approval" : req.status;
 
       const { error } = await supabase
         .from("coverage_requests")
         .update({ submitted_sections: updatedSubmitted, status: newStatus })
         .eq("id", requestId);
-
       if (error) throw error;
 
       if (allSectionsSubmitted) {
@@ -1585,8 +1219,7 @@ export default function SecHeadAssignmentManagement() {
           .select("id")
           .eq("role", "admin")
           .eq("is_active", true);
-
-        if (admins && admins.length > 0) {
+        if (admins?.length) {
           await supabase.from("notifications").insert(
             admins.map((admin) => ({
               user_id: admin.id,
@@ -1601,7 +1234,6 @@ export default function SecHeadAssignmentManagement() {
           );
         }
       }
-
       setConfirmRequest(null);
       loadAll();
     } catch (err) {
@@ -1611,68 +1243,393 @@ export default function SecHeadAssignmentManagement() {
     }
   };
 
-  const applyFilters = useCallback(
-    (reqs) => {
-      let filtered = reqs;
-      if (semRange) {
-        const start = new Date(semRange.start_date);
-        const end = new Date(semRange.end_date);
-        end.setHours(23, 59, 59, 999);
-        filtered = filtered.filter((r) => {
-          if (!r.event_date) return false;
-          const d = new Date(r.event_date);
-          return d >= start && d <= end;
-        });
-      }
-      if (stafferFilter !== "all") {
-        filtered = filtered.filter((r) =>
-          (r.coverage_assignments || []).some(
-            (a) =>
-              a.assigned_to === stafferFilter &&
-              (a.assigner?.section === currentUser?.section ||
-                a.section === currentUser?.section),
-          ),
-        );
-      }
-      return filtered;
-    },
-    [semRange, stafferFilter, currentUser],
-  );
+  // ── Row builder ───────────────────────────────────────────────────────────
+  const buildRows = (source) =>
+    source.map((req) => {
+      const myAssignments = (req.coverage_assignments || []).filter(
+        (a) => a.section === currentUser?.section,
+      );
+      const seen = new Set();
+      const uniqueStaffers = myAssignments
+        .filter((a) => {
+          if (seen.has(a.assigned_to)) return false;
+          seen.add(a.assigned_to);
+          return true;
+        })
+        .map((a) => ({
+          ...a.staffer,
+          id: a.assigned_to,
+          timed_in_at: a.timed_in_at,
+          completed_at: a.completed_at,
+        }));
 
-  const externalFilterModel = useMemo(() => {
-    const tokens = searchText
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
-    return { items: [], quickFilterValues: tokens };
-  }, [searchText]);
+      const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
+      const assignedDates = new Set(
+        myAssignments.map((a) => a.assignment_date),
+      );
+      const totalDays = isMultiDay ? req.event_days?.length || 1 : 1;
+      const assignedDayCount = isMultiDay
+        ? (req.event_days || []).filter((d) => assignedDates.has(d.date)).length
+        : myAssignments.length > 0
+          ? 1
+          : 0;
 
-  const handleExportCsv = () => {
-    gridApiRef.current?.exportDataAsCsv({
-      utf8WithBom: true,
-      fileName: "assignment-management-export",
+      return {
+        id: req.id,
+        title: req.title,
+        client: req.entity?.name || "—",
+        eventDate:
+          isMultiDay && req.event_days?.length > 0
+            ? `${fmtDateShort(req.event_days[0].date)} – ${fmtDateShort(req.event_days[req.event_days.length - 1].date)}`
+            : req.event_date
+              ? new Date(req.event_date + "T00:00:00").toLocaleDateString(
+                  "en-US",
+                  { month: "short", day: "numeric", year: "numeric" },
+                )
+              : "—",
+        eventType: isMultiDay,
+        pax: getPaxForSection(req),
+        forwarded: req.forwarded_at
+          ? new Date(req.forwarded_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "—",
+        status: req.status,
+        staffers: uniqueStaffers,
+        myHasSubmitted: (req.submitted_sections || []).includes(
+          currentUser?.section,
+        ),
+        myHasAssignments: myAssignments.length > 0,
+        myDone: assignedDayCount >= totalDays,
+        myPartial: assignedDayCount > 0 && assignedDayCount < totalDays,
+        assignedDayCount,
+        totalDays,
+        venue: req.venue || "—",
+        assignments: req.coverage_assignments || [],
+        _raw: req,
+      };
     });
+
+  // ── Column definitions ────────────────────────────────────────────────────
+  const titleCol = {
+    field: "title",
+    headerName: "Event Title",
+    flex: 1.4,
+    minWidth: 180,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: 500,
+            color: isDark ? "#f5f5f5" : "#1a1a1a",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {p.value}
+        </Typography>
+      </Box>
+    ),
   };
 
-  const counts = useMemo(
-    () => ({
-      "for-assignment": applyFilters(forAssignmentReqs).length,
-      assigned: applyFilters(assignedReqs).length,
-      "on-going": applyFilters(onGoingReqs).length,
-      completed: applyFilters(completedReqs).length,
-    }),
-    [applyFilters, forAssignmentReqs, assignedReqs, onGoingReqs, completedReqs],
-  );
+  const typeCol = {
+    field: "eventType",
+    headerName: "Type",
+    flex: 0.65,
+    minWidth: 90,
+    sortable: false,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <EventTypePill isMultiDay={p.value} isDark={isDark} />
+      </Box>
+    ),
+  };
 
-  const getPaxForSection = (request) => {
-    if (!currentUser?.section || !request?.services) return "—";
-    if (currentUser.section === "Videojournalism") {
-      const videoPax = request.services["Video Documentation"] || 0;
-      const cameraPax =
-        request.services["Camera Operator (for live streaming)"] || 0;
-      return videoPax + cameraPax || "—";
-    }
-    return request.services[SECTION_SERVICE_MAP[currentUser.section]] || "—";
+  const clientCol = {
+    field: "client",
+    headerName: "Client",
+    flex: 1,
+    minWidth: 120,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+  const eventDateCol = {
+    field: "eventDate",
+    headerName: "Event Date",
+    flex: 1.1,
+    minWidth: 150,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+  const venueCol = {
+    field: "venue",
+    headerName: "Venue",
+    flex: 0.9,
+    minWidth: 110,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+  const forwardedCol = {
+    field: "forwarded",
+    headerName: "Forwarded",
+    flex: 0.85,
+    minWidth: 110,
+    renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+  };
+
+  const paxCol = {
+    field: "pax",
+    headerName: "Pax",
+    flex: 0.55,
+    minWidth: 70,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Box
+          sx={{
+            px: 1.1,
+            py: 0.3,
+            borderRadius: "10px",
+            backgroundColor: isDark ? "rgba(59,130,246,0.1)" : "#eff6ff",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "#1d4ed8",
+            }}
+          >
+            {p.value} pax
+          </Typography>
+        </Box>
+      </Box>
+    ),
+  };
+
+  const statusCol = {
+    field: "status",
+    headerName: "Status",
+    flex: 0.9,
+    minWidth: 110,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <StatusPill status={p.value} isDark={isDark} />
+      </Box>
+    ),
+  };
+
+  const staffersCol = {
+    field: "staffers",
+    headerName: "Staffers",
+    flex: 0.65,
+    minWidth: 80,
+    sortable: false,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <AvatarStackPopover
+          staffers={p.value}
+          isDark={isDark}
+          border={border}
+        />
+      </Box>
+    ),
+  };
+
+  const onGoingStaffersCol = {
+    field: "staffers",
+    headerName: "Staffers On-Site",
+    flex: 1.4,
+    minWidth: 180,
+    sortable: false,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <AvatarStackPopover
+          staffers={p.value}
+          isDark={isDark}
+          border={border}
+          renderExtra={(s) => {
+            const timeIn = fmtTime(s.timed_in_at);
+            return timeIn ? (
+              <Box
+                sx={{
+                  px: 0.8,
+                  py: 0.2,
+                  borderRadius: "5px",
+                  backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff",
+                  flexShrink: 0,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.64rem",
+                    fontWeight: 600,
+                    color: "#1d4ed8",
+                  }}
+                >
+                  {timeIn}
+                </Typography>
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  px: 0.8,
+                  py: 0.2,
+                  borderRadius: "5px",
+                  backgroundColor: isDark ? "rgba(245,158,11,0.12)" : "#fffbeb",
+                  flexShrink: 0,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.64rem",
+                    fontWeight: 600,
+                    color: "#b45309",
+                  }}
+                >
+                  Not yet
+                </Typography>
+              </Box>
+            );
+          }}
+        />
+      </Box>
+    ),
+  };
+
+  const completedStaffersCol = {
+    field: "staffers",
+    headerName: "Staffers",
+    flex: 0.65,
+    minWidth: 80,
+    sortable: false,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <AvatarStackPopover
+          staffers={p.value}
+          isDark={isDark}
+          border={border}
+          renderExtra={(s) => {
+            const duration = computeDuration(s.timed_in_at, s.completed_at);
+            return duration ? (
+              <Box
+                sx={{
+                  px: 0.8,
+                  py: 0.2,
+                  borderRadius: "5px",
+                  backgroundColor: isDark
+                    ? "rgba(245,197,43,0.1)"
+                    : "rgba(245,197,43,0.12)",
+                  border: "1px solid rgba(245,197,43,0.3)",
+                  flexShrink: 0,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.64rem",
+                    fontWeight: 700,
+                    color: "#b45309",
+                  }}
+                >
+                  {duration}
+                </Typography>
+              </Box>
+            ) : null;
+          }}
+        />
+      </Box>
+    ),
+  };
+
+  const actionCol = {
+    field: "actions",
+    headerName: "",
+    flex: 0.4,
+    minWidth: 56,
+    sortable: false,
+    align: "right",
+    headerAlign: "right",
+    renderCell: (p) => (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          height: "100%",
+          pr: 0.5,
+        }}
+      >
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            setMenuAnchor(e.currentTarget);
+            setMenuRow(p.row);
+          }}
+        >
+          <MoreVertIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </Box>
+    ),
+  };
+
+  const buildColumns = () => {
+    if (viewFilter === "for-assignment")
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        paxCol,
+        forwardedCol,
+        actionCol,
+      ];
+    if (viewFilter === "assigned")
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        staffersCol,
+        statusCol,
+        actionCol,
+      ];
+    if (viewFilter === "on-going")
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        venueCol,
+        onGoingStaffersCol,
+        actionCol,
+      ];
+    if (viewFilter === "completed")
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        venueCol,
+        completedStaffersCol,
+        statusCol,
+        actionCol,
+      ];
+    return [titleCol, typeCol, clientCol, eventDateCol, actionCol];
+  };
+
+  // ── Shared dropdown sx ────────────────────────────────────────────────────
+  const selectSx = {
+    fontFamily: dm,
+    fontSize: "0.78rem",
+    borderRadius: "10px",
+    backgroundColor: isDark ? "transparent" : "#f7f7f8",
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.12)" },
+    "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
   };
 
   if (!currentUser)
@@ -1689,50 +1646,65 @@ export default function SecHeadAssignmentManagement() {
       </Box>
     );
 
-  // ── FIX 1 & 3: Outer wrapper uses height 100vh + flex column (no page scroll)
-  // FIX 1 was JSX comment placed outside root element — now it's just regular code
+  const rows = buildRows(filteredSource);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Box
       sx={{
-        p: { xs: 1.5, sm: 3 },
+        p: { xs: 1.5, sm: 2, md: 3 },
         height: "100%",
-        overflow: "hidden",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#ffffff",
+        overflow: "hidden",
+        backgroundColor: isDark ? "background.default" : "#ffffff",
         fontFamily: dm,
       }}
     >
-      <ColumnMenuStyles isDark={isDark} border={border} />
-
-      {/* Header — static */}
-      <Box sx={{ mb: 2, flexShrink: 0 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontWeight: 700,
-            fontSize: "1.05rem",
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Assignment Management
-        </Typography>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            color: "text.secondary",
-            mt: 0.3,
-          }}
-        >
-          Requests forwarded to your section ({currentUser.section}). Assign
-          staffers, then submit for admin approval.
-        </Typography>
+      {/* ── Header ── */}
+      <Box
+        sx={{
+          mb: 2.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexShrink: 0,
+        }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              color: "text.primary",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Assignment Management
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.secondary",
+              mt: 0.3,
+            }}
+          >
+            {viewFilter === "for-assignment" &&
+              `Requests forwarded to your section (${currentUser.section}). Assign staffers, then submit for admin approval.`}
+            {viewFilter === "assigned" &&
+              `Requests with staffers assigned from your section (${currentUser.section}). Submit ready ones for admin approval.`}
+            {viewFilter === "on-going" &&
+              `Coverage currently in progress — your section's staffers have timed in and are on-site.`}
+            {viewFilter === "completed" &&
+              `Completed coverage requests handled by your section (${currentUser.section}).`}
+          </Typography>
+        </Box>
       </Box>
 
-      {/* ── Filter row: Search | View | Semester | Staffer | Export + Settings ── */}
+      {/* ── Filter row ── */}
       <Box
         sx={{
           mb: 2,
@@ -1745,7 +1717,7 @@ export default function SecHeadAssignmentManagement() {
         }}
       >
         {/* Search */}
-        <FormControl size="small" sx={{ flex: 3, minWidth: 260 }}>
+        <FormControl size="small" sx={{ flex: 3, minWidth: 300 }}>
           <Typography
             sx={{
               fontFamily: dm,
@@ -1771,7 +1743,7 @@ export default function SecHeadAssignmentManagement() {
               fontFamily: dm,
               fontSize: "0.78rem",
               borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
               "& .MuiOutlinedInput-notchedOutline": {
                 borderColor: "rgba(0,0,0,0.12)",
               },
@@ -1779,8 +1751,8 @@ export default function SecHeadAssignmentManagement() {
           />
         </FormControl>
 
-        {/* View (tab selector) */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
+        {/* View dropdown — matches Status dropdown pattern */}
+        <FormControl size="small" sx={{ minWidth: 170 }}>
           <Typography
             sx={{
               fontFamily: dm,
@@ -1794,56 +1766,87 @@ export default function SecHeadAssignmentManagement() {
             View
           </Typography>
           <Select
-            value={tab}
-            onChange={(e) => setTab(e.target.value)}
+            value={viewFilter}
+            onChange={(e) => setViewFilter(e.target.value)}
             IconComponent={UnfoldMoreIcon}
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(0,0,0,0.12)",
-              },
-              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+            displayEmpty
+            renderValue={(val) => {
+              const opt = VIEW_OPTIONS.find((o) => o.key === val);
+              return (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  {isViewFiltered && (
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: GOLD,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      color: "text.primary",
+                    }}
+                  >
+                    {opt?.label || "For Assignment"}
+                  </Typography>
+                </Box>
+              );
             }}
+            sx={selectSx}
           >
-            {TABS.map((t, idx) => {
-              const count = counts[t.key];
+            {VIEW_OPTIONS.map((o) => {
+              const count = getViewCount(o.key);
+              const isSelected = viewFilter === o.key;
               return (
                 <MenuItem
-                  key={t.key}
-                  value={idx}
+                  key={o.key}
+                  value={o.key}
                   sx={{
                     fontFamily: dm,
                     fontSize: "0.78rem",
                     display: "flex",
                     justifyContent: "space-between",
+                    alignItems: "center",
                     gap: 2,
+                    fontWeight: isSelected ? 600 : 400,
                   }}
                 >
-                  {t.label}
-                  {count > 0 && (
-                    <Box
-                      component="span"
-                      sx={{
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: "10px",
-                        px: 0.6,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#f5c52b",
-                        fontSize: "0.62rem",
-                        fontWeight: 500,
-                        lineHeight: 1,
-                        color: "#000000",
-                      }}
-                    >
-                      {count}
-                    </Box>
-                  )}
+                  <span>{o.label}</span>
+                  <Box
+                    component="span"
+                    sx={{
+                      minWidth: 20,
+                      height: 18,
+                      borderRadius: "99px",
+                      px: 0.75,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: isSelected
+                        ? GOLD
+                        : count === 0
+                          ? "transparent"
+                          : isDark
+                            ? "rgba(255,255,255,0.08)"
+                            : "rgba(53,53,53,0.07)",
+                      fontSize: "0.62rem",
+                      fontWeight: 600,
+                      lineHeight: 1,
+                      color: isSelected
+                        ? "#000"
+                        : count === 0
+                          ? "text.disabled"
+                          : "text.secondary",
+                      opacity: count === 0 ? 0.4 : 1,
+                    }}
+                  >
+                    {count}
+                  </Box>
                 </MenuItem>
               );
             })}
@@ -1865,20 +1868,11 @@ export default function SecHeadAssignmentManagement() {
             Semester
           </Typography>
           <Select
-            value={activeSemesterId}
-            onChange={(e) => setActiveSemesterId(e.target.value)}
+            value={selectedSem}
+            onChange={(e) => setSelectedSem(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(0,0,0,0.12)",
-              },
-              "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
-            }}
+            sx={selectSx}
           >
             <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
               All Semesters
@@ -1889,61 +1883,48 @@ export default function SecHeadAssignmentManagement() {
                 value={s.id}
                 sx={{ fontFamily: dm, fontSize: "0.78rem" }}
               >
-                {(s.label || s.name) + (s.is_active ? " (Active)" : "")}
+                {s.name}
+                {s.is_active ? " (Active)" : ""}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
 
         {/* Staffer */}
-        {allStaffers.length > 0 && (
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                fontWeight: 600,
-                color: "text.secondary",
-                mb: 0.5,
-                letterSpacing: "0.03em",
-              }}
-            >
-              Staffer
-            </Typography>
-            <Select
-              value={stafferFilter}
-              onChange={(e) => setStafferFilter(e.target.value)}
-              IconComponent={UnfoldMoreIcon}
-              displayEmpty
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                borderRadius: "10px",
-                backgroundColor: "#f7f7f8",
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.12)",
-                },
-                "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
-              }}
-            >
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              mb: 0.5,
+              letterSpacing: "0.03em",
+            }}
+          >
+            Staffer
+          </Typography>
+          <Select
+            value={stafferFilter}
+            onChange={(e) => setStafferFilter(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            displayEmpty
+            sx={selectSx}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Staffers
+            </MenuItem>
+            {allStaffers.map((s) => (
               <MenuItem
-                value="all"
+                key={s.id}
+                value={s.id}
                 sx={{ fontFamily: dm, fontSize: "0.78rem" }}
               >
-                All Staffers
+                {s.full_name}
               </MenuItem>
-              {allStaffers.map((s) => (
-                <MenuItem
-                  key={s.id}
-                  value={s.id}
-                  sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                >
-                  {s.full_name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+            ))}
+          </Select>
+        </FormControl>
 
         <Box sx={{ flex: 1 }} />
 
@@ -1963,7 +1944,7 @@ export default function SecHeadAssignmentManagement() {
             fontSize: "0.78rem",
             fontWeight: 500,
             color: "text.secondary",
-            backgroundColor: "#f7f7f8",
+            backgroundColor: isDark ? "transparent" : "#f7f7f8",
             transition: "all 0.15s",
             flexShrink: 0,
             "&:hover": {
@@ -1989,7 +1970,7 @@ export default function SecHeadAssignmentManagement() {
               width: 40,
               border: "1px solid rgba(0,0,0,0.12)",
               color: "text.secondary",
-              backgroundColor: "#f7f7f8",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
               transition: "all 0.15s",
               flexShrink: 0,
               "&:hover": {
@@ -2008,8 +1989,8 @@ export default function SecHeadAssignmentManagement() {
         <Alert
           severity="error"
           sx={{
-            mt: 1.5,
-            borderRadius: "10px",
+            mb: 1.5,
+            borderRadius: "8px",
             fontFamily: dm,
             fontSize: "0.78rem",
             flexShrink: 0,
@@ -2019,266 +2000,303 @@ export default function SecHeadAssignmentManagement() {
         </Alert>
       )}
 
-      {/* ── Emergency no-show banner ─────────────────────────────────────── */}
-      {noShowAlerts.length > 0 && (
-        <Box
-          sx={{
-            mt: 1.5,
-            flexShrink: 0,
-            borderRadius: "10px",
-            border: "1.5px solid #ef4444",
-            backgroundColor: isDark ? "rgba(239,68,68,0.07)" : "#fff5f5",
-            overflow: "hidden",
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              px: 2,
-              py: 1.25,
-              borderBottom: "1px solid rgba(239,68,68,0.2)",
-              display: "flex",
-              alignItems: "center",
-              gap: 0.75,
-              backgroundColor: isDark
-                ? "rgba(239,68,68,0.10)"
-                : "rgba(239,68,68,0.06)",
-            }}
-          >
-            <WarningAmberOutlinedIcon sx={{ fontSize: 16, color: "#ef4444" }} />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "#ef4444",
-              }}
-            >
-              {noShowAlerts.length} staffer{noShowAlerts.length > 1 ? "s" : ""}{" "}
-              missed time-in — emergency reassignment required
-            </Typography>
-          </Box>
-          {/* Per-alert rows */}
-          <Box sx={{ display: "flex", flexDirection: "column" }}>
-            {noShowAlerts.map((al, idx) => {
-              const suggested =
-                reassignTarget?.assignmentId === al.assignmentId
-                  ? reassignSelected
-                  : null;
-              // Find pre-computed suggestion from pool if dialog not open
-              const poolSuggestion = null; // populated in dialog only
-              return (
-                <Box
-                  key={al.assignmentId}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    px: 2,
-                    py: 1.25,
-                    flexWrap: "wrap",
-                    borderBottom:
-                      idx < noShowAlerts.length - 1
-                        ? "1px solid rgba(239,68,68,0.12)"
-                        : "none",
-                  }}
-                >
-                  {/* No-show staffer info */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.75,
-                      flex: 1,
-                      minWidth: 180,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: "50%",
-                        backgroundColor: "#ef4444",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        color: "text.primary",
-                      }}
-                    >
-                      {al.stafferName}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        color: "text.secondary",
-                      }}
-                    >
-                      · {al.reqTitle}
-                    </Typography>
-                    {al.fromTime && (
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.74rem",
-                          color: "text.disabled",
-                        }}
-                      >
-                        · {fmtTimeStr(al.fromTime)}
-                      </Typography>
-                    )}
-                  </Box>
-                  {/* Action buttons */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Box
-                      component="button"
-                      onClick={() => openReassignDialog(al)}
-                      sx={{
-                        cursor: "pointer",
-                        border: "1.5px solid #ef4444",
-                        borderRadius: "10px",
-                        px: 1.5,
-                        py: 0.45,
-                        background: "#ef4444",
-                        fontFamily: dm,
-                        fontSize: "0.73rem",
-                        fontWeight: 700,
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.5,
-                        transition: "background 0.15s",
-                        "&:hover": { background: "#dc2626" },
-                      }}
-                    >
-                      <PersonAddOutlinedIcon sx={{ fontSize: 13 }} />
-                      Reassign
-                    </Box>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Box>
-        </Box>
-      )}
-
       {/* ── Table ── */}
-      <Box sx={{ width: "100%", overflowX: "auto", flex: 1, minHeight: 0 }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
         <Box
           sx={{
             minWidth: 680,
-            bgcolor: "#f7f7f8",
+            height: "100%",
+            bgcolor: isDark ? "background.paper" : "#f7f7f8",
             borderRadius: "10px",
             border: `1px solid ${border}`,
             overflow: "hidden",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
           }}
         >
           {loading ? (
             <Box
               sx={{
-                flex: 1,
+                height: 300,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={26} sx={{ color: GOLD }} />
+              <CircularProgress size={24} sx={{ color: GOLD }} />
             </Box>
           ) : (
-            <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-              {tab === 0 && (
-                <ForAssignmentTab
-                  rows={applyFilters(forAssignmentReqs)}
-                  highlight={highlight}
-                  currentUser={currentUser}
-                  isDark={isDark}
-                  border={border}
-                  getPaxForSection={getPaxForSection}
-                  onAssign={openAssignDialog}
-                  onBulkArchive={handleBulkArchive}
-                  onBulkTrash={handleBulkTrash}
-                  onArchive={handleArchive}
-                  onTrash={handleTrash}
-                  gridApiRef={gridApiRef}
-                  filterModel={externalFilterModel}
-                />
-              )}
-              {tab === 1 && (
-                <AssignedTab
-                  rows={applyFilters(assignedReqs)}
-                  highlight={highlight}
-                  currentUser={currentUser}
-                  isDark={isDark}
-                  border={border}
-                  submitLoading={submitLoading}
-                  onRequestConfirm={(row) => setConfirmRequest(row)}
-                  onBulkArchive={handleBulkArchive}
-                  onBulkTrash={handleBulkTrash}
-                  onArchive={handleArchive}
-                  onTrash={handleTrash}
-                  gridApiRef={gridApiRef}
-                  filterModel={externalFilterModel}
-                />
-              )}
-              {tab === 2 && (
-                <OnGoingTab
-                  rows={applyFilters(onGoingReqs)}
-                  highlight={highlight}
-                  currentUser={currentUser}
-                  isDark={isDark}
-                  border={border}
-                  onBulkArchive={handleBulkArchive}
-                  onBulkTrash={handleBulkTrash}
-                  onArchive={handleArchive}
-                  onTrash={handleTrash}
-                  gridApiRef={gridApiRef}
-                  filterModel={externalFilterModel}
-                />
-              )}
-              {tab === 3 && (
-                <CompletedTab
-                  rows={applyFilters(completedReqs)}
-                  highlight={highlight}
-                  currentUser={currentUser}
-                  isDark={isDark}
-                  border={border}
-                  onBulkArchive={handleBulkArchive}
-                  onBulkTrash={handleBulkTrash}
-                  onArchive={handleArchive}
-                  onTrash={handleTrash}
-                  gridApiRef={gridApiRef}
-                  filterModel={externalFilterModel}
-                />
-              )}
-            </Box>
+            <DataGrid
+              rows={rows}
+              columns={buildColumns()}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
+              checkboxSelection
+              disableRowSelectionOnClick
+              apiRef={gridApiRef}
+              enableSearch={false}
+              filterModel={externalFilterModel}
+              selectionActions={[
+                {
+                  label: "Archive",
+                  icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
+                  onClick: handleBulkArchive,
+                },
+                {
+                  label: "Move to Trash",
+                  icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
+                  onClick: handleBulkTrash,
+                  color: "error",
+                },
+              ]}
+              slotProps={{
+                toolbar: {
+                  csvOptions: { disableToolbarButton: true },
+                  printOptions: { disableToolbarButton: true },
+                },
+              }}
+              rowHeight={
+                ["on-going", "completed"].includes(viewFilter) ? 60 : 52
+              }
+              getRowClassName={(params) =>
+                highlight && params.row.title?.toLowerCase().includes(highlight)
+                  ? "highlighted-row"
+                  : ""
+              }
+            />
           )}
         </Box>
       </Box>
 
+      {/* ── 3-dot context menu ── */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 180,
+              borderRadius: "10px",
+              mt: 0.5,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+            },
+          },
+        }}
+      >
+        {/* For Assignment — show Assign */}
+        {viewFilter === "for-assignment" && (
+          <MenuItem
+            onClick={() => {
+              openAssignDialog(menuRow);
+              setMenuAnchor(null);
+              setMenuRow(null);
+            }}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+          >
+            <ListItemIcon>
+              <PersonAddOutlinedIcon sx={{ fontSize: 18 }} />
+            </ListItemIcon>
+            <ListItemText
+              primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+            >
+              {menuRow?.myPartial
+                ? `Assign (${menuRow?.assignedDayCount}/${menuRow?.totalDays} days)`
+                : "Assign"}
+            </ListItemText>
+          </MenuItem>
+        )}
+
+        {/* Assigned — show Submit for Approval */}
+        {viewFilter === "assigned" &&
+          menuRow?.myHasAssignments &&
+          !menuRow?.myHasSubmitted && (
+            <MenuItem
+              onClick={() => {
+                setConfirmRequest(menuRow);
+                setMenuAnchor(null);
+                setMenuRow(null);
+              }}
+              sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+            >
+              <ListItemIcon>
+                <CheckCircleOutlinedIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
+              <ListItemText
+                primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+              >
+                Submit for Approval
+              </ListItemText>
+            </MenuItem>
+          )}
+
+        <MenuItem
+          onClick={() => {
+            handleArchive(menuRow);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+          >
+            Archive
+          </ListItemText>
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            handleTrash(menuRow);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 18, color: "#dc2626" }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              color: "#dc2626",
+            }}
+          >
+            Move to Trash
+          </ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* ── Settings Drawer ── */}
+      <Drawer
+        anchor="right"
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 520, md: 600 },
+            backgroundColor: "background.default",
+            borderLeft: `1px solid ${border}`,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <SettingsOutlinedIcon
+              sx={{ fontSize: 16, color: "text.secondary" }}
+            />
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "text.primary",
+              }}
+            >
+              Assignment Settings
+            </Typography>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => setSettingsOpen(false)}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Box
+          sx={{
+            px: 2.5,
+            pt: 2,
+            pb: 2,
+            display: "flex",
+            gap: "6px",
+            flexShrink: 0,
+          }}
+        >
+          {[
+            { label: "Archive", Icon: ArchiveOutlinedIcon },
+            { label: "Trash", Icon: DeleteOutlineOutlinedIcon },
+          ].map((t, idx) => {
+            const active = settingsTab === idx;
+            return (
+              <Box
+                key={t.label}
+                onClick={() => setSettingsTab(idx)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.6,
+                  px: 1.5,
+                  py: 0.65,
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  fontFamily: dm,
+                  fontSize: "0.79rem",
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "#fff" : "text.secondary",
+                  border: `1px solid ${active ? "#212121" : border}`,
+                  backgroundColor: active ? "#212121" : "background.paper",
+                  transition: "all 0.12s",
+                  "&:hover": active
+                    ? {}
+                    : {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: isDark ? "#f5f5f5" : CHARCOAL,
+                      },
+                }}
+              >
+                <t.Icon sx={{ fontSize: 14 }} />
+                {t.label}
+              </Box>
+            );
+          })}
+        </Box>
+
+        <Box sx={{ flex: 1, overflow: "auto" }}>
+          {settingsTab === 0 && <ArchiveManagement embedded />}
+          {settingsTab === 1 && <TrashManagement embedded />}
+        </Box>
+      </Drawer>
+
+      {/* ── Assign Dialog ── */}
       <AssignmentDialog
-        open={!!selectedRequest}
-        request={selectedRequest}
-        onClose={() => !assignLoading && setSelectedRequest(null)}
+        open={assignDialogOpen}
+        request={assignRequest}
+        onClose={() => !assignLoading && setAssignDialogOpen(false)}
         currentUser={currentUser}
         isDark={isDark}
         border={border}
         selectedDayIdx={selectedDayIdx}
-        onSelectDay={(idx) => handleSelectDay(idx, selectedRequest)}
+        onSelectDay={(idx) =>
+          handleSelectDay(idx, assignRequest?._raw || assignRequest)
+        }
         dayStaffers={dayStaffers}
         daySelected={daySelected}
         setDaySelected={setDaySelected}
@@ -2290,6 +2308,7 @@ export default function SecHeadAssignmentManagement() {
         onAssign={handleAssign}
       />
 
+      {/* ── Submit Confirm Dialog ── */}
       <SubmitConfirmDialog
         open={!!confirmRequest}
         request={confirmRequest}
@@ -2297,122 +2316,10 @@ export default function SecHeadAssignmentManagement() {
         border={border}
         loading={submitLoading}
         onCancel={() => !submitLoading && setConfirmRequest(null)}
-        onConfirm={() => handleSubmitForApproval(confirmRequest.id)}
+        onConfirm={() =>
+          handleSubmitForApproval(confirmRequest._raw?.id || confirmRequest.id)
+        }
       />
-
-      <ReassignDialog
-        open={reassignOpen}
-        target={reassignTarget}
-        pool={reassignPool}
-        poolLoading={reassignPoolLoading}
-        selected={reassignSelected}
-        onSelect={setReassignSelected}
-        loading={reassignLoading}
-        error={reassignError}
-        isDark={isDark}
-        border={border}
-        onClose={() => !reassignLoading && setReassignOpen(false)}
-        onConfirm={handleReassign}
-      />
-
-      {/* ── Settings Drawer (Archive / Trash) ── */}
-      <Drawer
-        anchor="right"
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: "100%", sm: 520, md: 600 },
-            backgroundColor: "background.default",
-            backgroundImage: "none",
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              px: 2.5,
-              pt: 2.5,
-              pb: 1.5,
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <SettingsOutlinedIcon
-                sx={{ fontSize: 16, color: "text.secondary" }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontWeight: 700,
-                  fontSize: "0.88rem",
-                  color: "text.primary",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Request Settings
-              </Typography>
-            </Box>
-            <IconButton
-              size="small"
-              onClick={() => setSettingsOpen(false)}
-              sx={{ color: "text.secondary" }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
-          <Box sx={{ display: "flex", gap: "6px", px: 2.5, pb: 2 }}>
-            {[
-              {
-                label: "Archive",
-                icon: <ArchiveOutlinedIcon sx={{ fontSize: 13 }} />,
-              },
-              {
-                label: "Trash",
-                icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />,
-              },
-            ].map((t, idx) => {
-              const active = settingsTab === idx;
-              return (
-                <Box
-                  key={t.label}
-                  onClick={() => setSettingsTab(idx)}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1.5,
-                    py: 0.55,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: active ? 600 : 400,
-                    color: active ? "#fff" : "text.secondary",
-                    border: `1px solid ${active ? "#212121" : border}`,
-                    backgroundColor: active ? "#212121" : "transparent",
-                    transition: "all 0.12s",
-                    "&:hover": active
-                      ? {}
-                      : {
-                          borderColor: "rgba(53,53,53,0.3)",
-                          color: isDark ? "#f5f5f5" : CHARCOAL,
-                        },
-                  }}
-                >
-                  {t.icon} {t.label}
-                </Box>
-              );
-            })}
-          </Box>
-          <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pb: 2.5 }}>
-            {settingsTab === 0 && <ArchiveManagement embedded />}
-            {settingsTab === 1 && <TrashManagement embedded />}
-          </Box>
-        </Box>
-      </Drawer>
     </Box>
   );
 }
@@ -2439,7 +2346,7 @@ function SubmitConfirmDialog({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: "10px",
+          borderRadius: "14px",
           backgroundColor: "background.paper",
           border: `1px solid ${border}`,
           boxShadow: isDark
@@ -2463,7 +2370,7 @@ function SubmitConfirmDialog({
             sx={{
               width: 2.5,
               height: 26,
-              borderRadius: "10px",
+              borderRadius: "2px",
               backgroundColor: GOLD,
               flexShrink: 0,
             }}
@@ -2495,7 +2402,7 @@ function SubmitConfirmDialog({
           onClick={onCancel}
           disabled={loading}
           sx={{
-            borderRadius: "10px",
+            borderRadius: "8px",
             color: "text.secondary",
             "&:hover": { backgroundColor: HOVER_BG },
           }}
@@ -2516,7 +2423,7 @@ function SubmitConfirmDialog({
           sx={{
             px: 1.75,
             py: 1.25,
-            borderRadius: "10px",
+            borderRadius: "8px",
             border: `1px solid ${border}`,
             backgroundColor: isDark
               ? "rgba(255,255,255,0.02)"
@@ -2571,7 +2478,7 @@ function SubmitConfirmDialog({
                     gap: 0.6,
                     px: 1.1,
                     py: 0.3,
-                    borderRadius: "10px",
+                    borderRadius: "6px",
                     backgroundColor: isDark
                       ? "rgba(34,197,94,0.08)"
                       : "#f0fdf4",
@@ -2607,7 +2514,7 @@ function SubmitConfirmDialog({
             gap: 1,
             px: 1.5,
             py: 1.25,
-            borderRadius: "10px",
+            borderRadius: "8px",
             backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)",
             border: "1px solid rgba(245,197,43,0.3)",
           }}
@@ -2643,1512 +2550,11 @@ function SubmitConfirmDialog({
       >
         <CancelBtn onClick={onCancel} disabled={loading} border={border} />
         <PrimaryBtn onClick={onConfirm} loading={loading}>
-          {!loading && <CheckCircleOutlinedIcon sx={{ fontSize: 14 }} />}Confirm
-          Submission
+          {!loading && <CheckCircleOutlinedIcon sx={{ fontSize: 14 }} />}
+          Confirm Submission
         </PrimaryBtn>
       </Box>
     </Dialog>
-  );
-}
-
-// ── Reassign Dialog ─────────────────────────────────────────────────────────
-function ReassignDialog({
-  open,
-  target,
-  pool,
-  poolLoading,
-  selected,
-  onSelect,
-  loading,
-  error,
-  isDark,
-  border,
-  onClose,
-  onConfirm,
-}) {
-  if (!target) return null;
-
-  const AVAIL_CFG = {
-    available: { color: "#16a34a", label: "Available" },
-    "free-after": { color: "#d97706", label: null },
-    busy: { color: "#ef4444", label: "Busy" },
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xs"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
-        },
-      }}
-    >
-      {/* Header */}
-      <Box
-        sx={{
-          px: 3,
-          py: 2,
-          borderBottom: `1px solid ${border}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <WarningAmberOutlinedIcon sx={{ fontSize: 17, color: "#ef4444" }} />
-          <Typography
-            sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.92rem" }}
-          >
-            Emergency Reassignment
-          </Typography>
-        </Box>
-        <IconButton size="small" onClick={onClose} disabled={loading}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      {/* Event info */}
-      <Box sx={{ px: 3, pt: 2, pb: 0 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.76rem",
-            color: "text.secondary",
-            mb: 0.25,
-          }}
-        >
-          <strong>{target.stafferName}</strong> did not time in for:
-        </Typography>
-        <Typography
-          sx={{ fontFamily: dm, fontSize: "0.85rem", fontWeight: 700, mb: 0.2 }}
-        >
-          {target.reqTitle}
-        </Typography>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.74rem",
-            color: "text.disabled",
-            mb: 2,
-          }}
-        >
-          {target.fromTime ? fmtTimeStr(target.fromTime) : ""}
-          {target.toTime ? ` — ${fmtTimeStr(target.toTime)}` : ""}
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            color: "text.secondary",
-            textTransform: "uppercase",
-            letterSpacing: "0.09em",
-            mb: 1,
-          }}
-        >
-          On-duty replacements
-        </Typography>
-      </Box>
-
-      {/* Pool list */}
-      <Box sx={{ px: 3, pb: 2, maxHeight: 260, overflowY: "auto" }}>
-        {poolLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-            <CircularProgress size={22} sx={{ color: GOLD }} />
-          </Box>
-        ) : pool.length === 0 ? (
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.disabled",
-              py: 1,
-            }}
-          >
-            No on-duty staffers available.
-          </Typography>
-        ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            {pool.map((s, idx) => {
-              const acol = getAvatarColor(s.id);
-              const isSelected = selected?.id === s.id;
-              const cfg = AVAIL_CFG[s.availability] || AVAIL_CFG["available"];
-              const availLabel =
-                s.availability === "free-after" && s.freeAt
-                  ? `Free at ${fmtTimeStr(s.freeAt)}`
-                  : cfg.label;
-              return (
-                <Box
-                  key={s.id}
-                  onClick={() => onSelect(s)}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.25,
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    border: isSelected
-                      ? "1.5px solid #ef4444"
-                      : `1px solid ${border}`,
-                    backgroundColor: isSelected
-                      ? isDark
-                        ? "rgba(239,68,68,0.10)"
-                        : "rgba(239,68,68,0.05)"
-                      : "transparent",
-                    transition: "all 0.15s",
-                    "&:hover": {
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : HOVER_BG,
-                    },
-                  }}
-                >
-                  <Avatar
-                    src={s.avatar_url || undefined}
-                    sx={{
-                      width: 30,
-                      height: 30,
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      bgcolor: acol.bg,
-                      color: acol.color,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {!s.avatar_url && getInitials(s.full_name)}
-                  </Avatar>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
-                    >
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.8rem",
-                          fontWeight: isSelected ? 700 : 500,
-                        }}
-                      >
-                        {s.full_name}
-                      </Typography>
-                      {idx === 0 && (
-                        <Box
-                          sx={{
-                            px: 0.8,
-                            py: 0.15,
-                            borderRadius: "10px",
-                            backgroundColor: isDark
-                              ? "rgba(245,197,43,0.12)"
-                              : GOLD_08,
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.6rem",
-                              fontWeight: 700,
-                              color: "#b45309",
-                            }}
-                          >
-                            ★ Recommended
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                    {availLabel && (
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.66rem",
-                          color: cfg.color,
-                          fontWeight: 600,
-                        }}
-                      >
-                        ● {availLabel}
-                      </Typography>
-                    )}
-                  </Box>
-                  {isSelected && (
-                    <CheckCircleIcon
-                      sx={{ fontSize: 16, color: "#ef4444", flexShrink: 0 }}
-                    />
-                  )}
-                </Box>
-              );
-            })}
-          </Box>
-        )}
-        {error && (
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.73rem",
-              color: "#ef4444",
-              mt: 1,
-            }}
-          >
-            {error}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Footer */}
-      <Box
-        sx={{
-          px: 3,
-          py: 2,
-          borderTop: `1px solid ${border}`,
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 1,
-        }}
-      >
-        <Box
-          component="button"
-          onClick={onClose}
-          disabled={loading}
-          sx={{
-            cursor: "pointer",
-            border: `1px solid ${border}`,
-            borderRadius: "10px",
-            px: 2,
-            py: 0.7,
-            background: "transparent",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 600,
-            color: "text.secondary",
-            "&:hover": {
-              backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
-            },
-          }}
-        >
-          Cancel
-        </Box>
-        <Box
-          component="button"
-          onClick={onConfirm}
-          disabled={loading || !selected}
-          sx={{
-            cursor: loading || !selected ? "not-allowed" : "pointer",
-            border: "none",
-            borderRadius: "10px",
-            px: 2,
-            py: 0.7,
-            background: loading || !selected ? "#9ca3af" : "#ef4444",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 700,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            gap: 0.75,
-            transition: "background 0.15s",
-            "&:hover": {
-              background: loading || !selected ? "#9ca3af" : "#dc2626",
-            },
-          }}
-        >
-          {loading && <CircularProgress size={12} sx={{ color: "#fff" }} />}
-          Confirm Reassignment
-        </Box>
-      </Box>
-    </Dialog>
-  );
-}
-
-// ── For Assignment Tab ────────────────────────────────────────────────────────
-// FIX: removed initialState={{ pinnedColumns }} — Pro only, crashes on free tier
-function ForAssignmentTab({
-  rows,
-  highlight,
-  currentUser,
-  isDark,
-  border,
-  getPaxForSection,
-  onAssign,
-  onBulkArchive,
-  onBulkTrash,
-  onArchive,
-  onTrash,
-  gridApiRef,
-  filterModel,
-}) {
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [menuRow, setMenuRow] = useState(null);
-  const mappedRows = rows.map((req) => {
-    // Filter assignments by who assigned them (assigner's section head)
-    // This correctly includes cross-assigned staff (e.g., Videojournalism staff assigned by Photo head)
-    const myAssignments = (req.coverage_assignments || []).filter(
-      (a) =>
-        a.assigner?.section === currentUser?.section ||
-        a.section === currentUser?.section,
-    );
-    const allSections = req.forwarded_sections || [];
-    const otherSections = allSections.filter((s) => s !== currentUser?.section);
-    const assignedSections = new Set(
-      (req.coverage_assignments || [])
-        .map((a) => a.assigner?.section || a.section)
-        .filter(Boolean),
-    );
-    const pendingOthers = otherSections.filter((s) => !assignedSections.has(s));
-    const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
-    const assignedDates = new Set(myAssignments.map((a) => a.assignment_date));
-    const totalDays = isMultiDay ? req.event_days.length : 1;
-    const assignedDayCount = isMultiDay
-      ? req.event_days.filter((d) => assignedDates.has(d.date)).length
-      : myAssignments.length > 0
-        ? 1
-        : 0;
-    const myDone = assignedDayCount >= totalDays;
-    const myPartial = !myDone && assignedDayCount > 0;
-    return {
-      id: req.id,
-      requestTitle: req.title,
-      client: req.entity?.name || "—",
-      eventDate:
-        isMultiDay && req.event_days?.length > 0
-          ? `${fmtDateShort(req.event_days[0].date)} – ${fmtDateShort(req.event_days[req.event_days.length - 1].date)}`
-          : req.event_date
-            ? new Date(req.event_date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-            : "—",
-      eventType: isMultiDay,
-      paxNeeded: getPaxForSection(req),
-      dateForwarded: req.forwarded_at
-        ? new Date(req.forwarded_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "—",
-      myDone,
-      myPartial,
-      assignedDayCount,
-      totalDays,
-      pendingOthers,
-      _raw: req,
-    };
-  });
-
-  const columns = [
-    {
-      field: "requestTitle",
-      headerName: "Event Title",
-      flex: 1.4,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <CellText bold>{p.value}</CellText>
-        </Box>
-      ),
-    },
-    {
-      field: "eventType",
-      headerName: "Type",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <EventTypePill isMultiDay={p.value} isDark={isDark} />
-        </Box>
-      ),
-    },
-    {
-      field: "client",
-      headerName: "Client",
-      flex: 0.9,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "eventDate",
-      headerName: "Event Date",
-      flex: 1,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "paxNeeded",
-      headerName: "Pax",
-      flex: 0.55,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Box
-            sx={{
-              px: 1.1,
-              py: 0.3,
-              borderRadius: "10px",
-              backgroundColor: isDark ? "rgba(59,130,246,0.1)" : "#eff6ff",
-            }}
-          >
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                fontWeight: 600,
-                color: "#1d4ed8",
-              }}
-            >
-              {p.value} pax
-            </Typography>
-          </Box>
-        </Box>
-      ),
-    },
-    {
-      field: "dateForwarded",
-      headerName: "Forwarded",
-      flex: 0.85,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "actions",
-      headerName: "",
-      flex: 1.6,
-      sortable: false,
-      align: "right",
-      headerAlign: "right",
-      renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            height: "100%",
-            gap: 0.5,
-            pr: 0.5,
-          }}
-        >
-          {!p.row.myDone ? (
-            <Box
-              onClick={() => onAssign(p.row._raw)}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 0.5,
-                px: 1.25,
-                height: 30,
-                borderRadius: "10px",
-                cursor: "pointer",
-                backgroundColor: "#f5c52b",
-                fontFamily: dm,
-                fontSize: "0.73rem",
-                fontWeight: 600,
-                color: "#000",
-                whiteSpace: "nowrap",
-                transition: "all 0.15s",
-                "&:hover": { backgroundColor: "#e6b625" },
-              }}
-            >
-              <PersonAddOutlinedIcon sx={{ fontSize: 12 }} />
-              {p.row.myPartial
-                ? `Assign (${p.row.assignedDayCount}/${p.row.totalDays} days)`
-                : "Assign"}
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.2,
-                alignItems: "flex-end",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                <Box
-                  sx={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    backgroundColor: "#22c55e",
-                  }}
-                />
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.72rem",
-                    color: "#15803d",
-                    fontWeight: 600,
-                  }}
-                >
-                  Your section assigned
-                </Typography>
-              </Box>
-              {p.row.pendingOthers.length > 0 && (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.68rem",
-                    color: "text.secondary",
-                  }}
-                >
-                  Waiting: {p.row.pendingOthers.join(", ")}
-                </Typography>
-              )}
-            </Box>
-          )}
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAnchor(e.currentTarget);
-              setMenuRow(p.row);
-            }}
-          >
-            <MoreVertIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-      ),
-    },
-  ];
-
-  return (
-    <>
-      <DataGrid
-        rows={mappedRows}
-        columns={columns}
-        pageSize={10}
-        rowsPerPageOptions={[10]}
-        checkboxSelection
-        disableRowSelectionOnClick
-        enableSearch={false}
-        apiRef={gridApiRef}
-        filterModel={filterModel}
-        selectionActions={[
-          { label: "Archive", onClick: onBulkArchive },
-          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-        ]}
-        slotProps={{
-          toolbar: {
-            csvOptions: { disableToolbarButton: true },
-            printOptions: { disableToolbarButton: true },
-          },
-        }}
-        rowHeight={52}
-        getRowClassName={(p) =>
-          highlight && p.row.requestTitle?.toLowerCase().includes(highlight)
-            ? "highlighted-row"
-            : ""
-        }
-      />
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => {
-          setMenuAnchor(null);
-          setMenuRow(null);
-        }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: {
-              minWidth: 160,
-              borderRadius: "10px",
-              mt: 0.5,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-            },
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onAssign(menuRow._raw);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-        >
-          <ListItemIcon>
-            <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            View / Assign
-          </ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onArchive(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-        >
-          <ListItemIcon>
-            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            Archive
-          </ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onTrash(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
-        >
-          <ListItemIcon>
-            <DeleteOutlineOutlinedIcon
-              sx={{ fontSize: 18, color: "#dc2626" }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            }}
-          >
-            Move to Trash
-          </ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
-  );
-}
-
-// ── Assigned Tab ──────────────────────────────────────────────────────────────
-function AssignedTab({
-  rows,
-  highlight,
-  currentUser,
-  isDark,
-  border,
-  submitLoading,
-  onRequestConfirm,
-  onBulkArchive,
-  onBulkTrash,
-  onArchive,
-  onTrash,
-  gridApiRef,
-  filterModel,
-}) {
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [menuRow, setMenuRow] = useState(null);
-  const mappedRows = rows.map((req) => {
-    // Filter assignments by who assigned them (assigner's section head)
-    // This correctly includes cross-assigned staff
-    const sectionAssignments = (req.coverage_assignments || []).filter(
-      (a) =>
-        a.assigner?.section === currentUser?.section ||
-        a.section === currentUser?.section,
-    );
-    const seen = new Set();
-    const uniqueStaffers = sectionAssignments
-      .filter((a) => {
-        if (seen.has(a.assigned_to)) return false;
-        seen.add(a.assigned_to);
-        return true;
-      })
-      .map((a) => ({ ...a.staffer, id: a.assigned_to }));
-
-    const myHasSubmitted = (req.submitted_sections || []).includes(
-      currentUser?.section,
-    );
-    const myHasAssignments = sectionAssignments.length > 0;
-
-    return {
-      id: req.id,
-      title: req.title,
-      client: req.entity?.name || "—",
-      eventDate: req.event_date
-        ? new Date(req.event_date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "—",
-      eventType: !!(req.is_multiday && req.event_days?.length > 0),
-      status: req.status,
-      staffers: uniqueStaffers,
-      myHasSubmitted,
-      myHasAssignments,
-    };
-  });
-
-  const columns = [
-    {
-      field: "title",
-      headerName: "Event Title",
-      flex: 1.2,
-      renderCell: (p) => <CellText bold>{p.value}</CellText>,
-    },
-    {
-      field: "eventType",
-      headerName: "Type",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <EventTypePill isMultiDay={p.value} isDark={isDark} />
-        </Box>
-      ),
-    },
-    {
-      field: "client",
-      headerName: "Client",
-      flex: 0.9,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "eventDate",
-      headerName: "Event Date",
-      flex: 0.9,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "staffers",
-      headerName: "Staffers",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <AvatarStackPopover
-            staffers={p.value}
-            isDark={isDark}
-            border={border}
-          />
-        </Box>
-      ),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      flex: 0.85,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <StatusPill status={p.value} isDark={isDark} />
-        </Box>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "",
-      flex: 1.3,
-      sortable: false,
-      align: "right",
-      headerAlign: "right",
-      renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            height: "100%",
-            pr: 0.5,
-          }}
-        >
-          {p.row.status === "Approved" ? (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                px: 1.1,
-                py: 0.3,
-                borderRadius: "10px",
-                backgroundColor: isDark ? "rgba(34,197,94,0.1)" : "#f0fdf4",
-              }}
-            >
-              <CheckCircleIcon sx={{ fontSize: 12, color: "#22c55e" }} />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.73rem",
-                  fontWeight: 600,
-                  color: "#15803d",
-                }}
-              >
-                Approved — awaiting coverage
-              </Typography>
-            </Box>
-          ) : p.row.myHasSubmitted ? (
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.73rem",
-                color: "#0369a1",
-                fontStyle: "italic",
-              }}
-            >
-              Submitted — awaiting admin approval
-            </Typography>
-          ) : p.row.myHasAssignments ? (
-            <ActionChip
-              onClick={() => onRequestConfirm(p.row)}
-              disabled={submitLoading}
-              border={isDark ? BORDER_DARK : BORDER}
-            >
-              <CheckCircleOutlinedIcon sx={{ fontSize: 12 }} /> Submit for
-              Approval
-            </ActionChip>
-          ) : null}
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAnchor(e.currentTarget);
-              setMenuRow(p.row);
-            }}
-          >
-            <MoreVertIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-      ),
-    },
-  ];
-
-  return (
-    <>
-      <DataGrid
-        rows={mappedRows}
-        columns={columns}
-        pageSize={10}
-        rowsPerPageOptions={[10]}
-        checkboxSelection
-        disableRowSelectionOnClick
-        enableSearch={false}
-        apiRef={gridApiRef}
-        filterModel={filterModel}
-        selectionActions={[
-          { label: "Archive", onClick: onBulkArchive },
-          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-        ]}
-        slotProps={{
-          toolbar: {
-            csvOptions: { disableToolbarButton: true },
-            printOptions: { disableToolbarButton: true },
-          },
-        }}
-        rowHeight={52}
-        getRowClassName={(p) =>
-          highlight && p.row.title?.toLowerCase().includes(highlight)
-            ? "highlighted-row"
-            : ""
-        }
-      />
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => {
-          setMenuAnchor(null);
-          setMenuRow(null);
-        }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: {
-              minWidth: 160,
-              borderRadius: "10px",
-              mt: 0.5,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-            },
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onArchive(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-        >
-          <ListItemIcon>
-            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            Archive
-          </ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onTrash(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
-        >
-          <ListItemIcon>
-            <DeleteOutlineOutlinedIcon
-              sx={{ fontSize: 18, color: "#dc2626" }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            }}
-          >
-            Move to Trash
-          </ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
-  );
-}
-
-// ── On Going Tab ──────────────────────────────────────────────────────────────
-function OnGoingTab({
-  rows,
-  highlight,
-  currentUser,
-  isDark,
-  border,
-  onBulkArchive,
-  onBulkTrash,
-  onArchive,
-  onTrash,
-  gridApiRef,
-  filterModel,
-}) {
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [menuRow, setMenuRow] = useState(null);
-  const mappedRows = rows.map((req) => {
-    // Filter assignments by who assigned them (assigner's section head)
-    // This correctly includes cross-assigned staff
-    const sectionAssignments = (req.coverage_assignments || []).filter(
-      (a) =>
-        a.assigner?.section === currentUser?.section ||
-        a.section === currentUser?.section,
-    );
-    const seen = new Set();
-    const uniqueStaffers = sectionAssignments
-      .filter((a) => {
-        if (seen.has(a.assigned_to)) return false;
-        seen.add(a.assigned_to);
-        return true;
-      })
-      .map((a) => ({
-        ...a.staffer,
-        id: a.assigned_to,
-        timed_in_at: a.timed_in_at,
-      }));
-    return {
-      id: req.id,
-      title: req.title,
-      client: req.entity?.name || "—",
-      eventDate: req.event_date
-        ? new Date(req.event_date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "—",
-      eventType: !!(req.is_multiday && req.event_days?.length > 0),
-      venue: req.venue || "—",
-      staffers: uniqueStaffers,
-    };
-  });
-
-  const columns = [
-    {
-      field: "title",
-      headerName: "Event Title",
-      flex: 1.2,
-      renderCell: (p) => <CellText bold>{p.value}</CellText>,
-    },
-    {
-      field: "eventType",
-      headerName: "Type",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <EventTypePill isMultiDay={p.value} isDark={isDark} />
-        </Box>
-      ),
-    },
-    {
-      field: "client",
-      headerName: "Client",
-      flex: 0.85,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "eventDate",
-      headerName: "Event Date",
-      flex: 0.85,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "venue",
-      headerName: "Venue",
-      flex: 0.85,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "staffers",
-      headerName: "Staffers",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <AvatarStackPopover
-            staffers={p.value}
-            isDark={isDark}
-            border={border}
-            renderExtra={(s) => {
-              const timeIn = fmtTime(s.timed_in_at);
-              return timeIn ? (
-                <Box
-                  sx={{
-                    px: 0.8,
-                    py: 0.2,
-                    borderRadius: "10px",
-                    backgroundColor: isDark
-                      ? "rgba(59,130,246,0.12)"
-                      : "#eff6ff",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.64rem",
-                      fontWeight: 600,
-                      color: "#1d4ed8",
-                    }}
-                  >
-                    {timeIn}
-                  </Typography>
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    px: 0.8,
-                    py: 0.2,
-                    borderRadius: "10px",
-                    backgroundColor: isDark
-                      ? "rgba(245,158,11,0.12)"
-                      : "#fffbeb",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.64rem",
-                      fontWeight: 600,
-                      color: "#b45309",
-                    }}
-                  >
-                    Not yet
-                  </Typography>
-                </Box>
-              );
-            }}
-          />
-        </Box>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "",
-      flex: 0.4,
-      minWidth: 56,
-      sortable: false,
-      align: "right",
-      headerAlign: "right",
-      renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            height: "100%",
-            pr: 0.5,
-          }}
-        >
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAnchor(e.currentTarget);
-              setMenuRow(p.row);
-            }}
-          >
-            <MoreVertIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-      ),
-    },
-  ];
-
-  return (
-    <>
-      <DataGrid
-        rows={mappedRows}
-        columns={columns}
-        pageSize={10}
-        rowsPerPageOptions={[10]}
-        checkboxSelection
-        disableRowSelectionOnClick
-        enableSearch={false}
-        apiRef={gridApiRef}
-        filterModel={filterModel}
-        selectionActions={[
-          { label: "Archive", onClick: onBulkArchive },
-          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-        ]}
-        slotProps={{
-          toolbar: {
-            csvOptions: { disableToolbarButton: true },
-            printOptions: { disableToolbarButton: true },
-          },
-        }}
-        rowHeight={52}
-        getRowClassName={(p) =>
-          highlight && p.row.title?.toLowerCase().includes(highlight)
-            ? "highlighted-row"
-            : ""
-        }
-      />
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => {
-          setMenuAnchor(null);
-          setMenuRow(null);
-        }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: {
-              minWidth: 160,
-              borderRadius: "10px",
-              mt: 0.5,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-            },
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onArchive(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-        >
-          <ListItemIcon>
-            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            Archive
-          </ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onTrash(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
-        >
-          <ListItemIcon>
-            <DeleteOutlineOutlinedIcon
-              sx={{ fontSize: 18, color: "#dc2626" }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            }}
-          >
-            Move to Trash
-          </ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
-  );
-}
-
-// ── Completed Tab ─────────────────────────────────────────────────────────────
-function CompletedTab({
-  rows,
-  highlight,
-  currentUser,
-  isDark,
-  border,
-  onBulkArchive,
-  onBulkTrash,
-  onArchive,
-  onTrash,
-  gridApiRef,
-  filterModel,
-}) {
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [menuRow, setMenuRow] = useState(null);
-  const mappedRows = rows.map((req) => {
-    // Filter assignments by who assigned them (assigner's section head)
-    // This correctly includes cross-assigned staff
-    const sectionAssignments = (req.coverage_assignments || []).filter(
-      (a) =>
-        a.assigner?.section === currentUser?.section ||
-        a.section === currentUser?.section,
-    );
-    const seen = new Set();
-    const uniqueStaffers = sectionAssignments
-      .filter((a) => {
-        if (seen.has(a.assigned_to)) return false;
-        seen.add(a.assigned_to);
-        return true;
-      })
-      .map((a) => ({
-        ...a.staffer,
-        id: a.assigned_to,
-        timed_in_at: a.timed_in_at,
-        completed_at: a.completed_at,
-      }));
-    return {
-      id: req.id,
-      title: req.title,
-      client: req.entity?.name || "—",
-      eventDate: req.event_date
-        ? new Date(req.event_date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "—",
-      eventType: !!(req.is_multiday && req.event_days?.length > 0),
-      venue: req.venue || "—",
-      status: req.status,
-      staffers: uniqueStaffers,
-    };
-  });
-
-  const columns = [
-    {
-      field: "title",
-      headerName: "Event Title",
-      flex: 1.2,
-      renderCell: (p) => <CellText bold>{p.value}</CellText>,
-    },
-    {
-      field: "eventType",
-      headerName: "Type",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <EventTypePill isMultiDay={p.value} isDark={isDark} />
-        </Box>
-      ),
-    },
-    {
-      field: "client",
-      headerName: "Client",
-      flex: 0.8,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "eventDate",
-      headerName: "Event Date",
-      flex: 0.8,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "venue",
-      headerName: "Venue",
-      flex: 0.8,
-      renderCell: (p) => <CellText secondary>{p.value}</CellText>,
-    },
-    {
-      field: "staffers",
-      headerName: "Staffers",
-      flex: 0.65,
-      sortable: false,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <AvatarStackPopover
-            staffers={p.value}
-            isDark={isDark}
-            border={border}
-            renderExtra={(s) => {
-              const duration = computeDuration(s.timed_in_at, s.completed_at);
-              return duration ? (
-                <Box
-                  sx={{
-                    px: 0.8,
-                    py: 0.2,
-                    borderRadius: "10px",
-                    backgroundColor: isDark
-                      ? "rgba(245,197,43,0.1)"
-                      : "rgba(245,197,43,0.12)",
-                    border: "1px solid rgba(245,197,43,0.3)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.64rem",
-                      fontWeight: 700,
-                      color: "#b45309",
-                    }}
-                  >
-                    {duration}
-                  </Typography>
-                </Box>
-              ) : null;
-            }}
-          />
-        </Box>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "",
-      flex: 0.4,
-      minWidth: 56,
-      sortable: false,
-      align: "right",
-      headerAlign: "right",
-      renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            height: "100%",
-            pr: 0.5,
-          }}
-        >
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAnchor(e.currentTarget);
-              setMenuRow(p.row);
-            }}
-          >
-            <MoreVertIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-      ),
-    },
-  ];
-
-  return (
-    <>
-      <DataGrid
-        rows={mappedRows}
-        columns={columns}
-        pageSize={10}
-        rowsPerPageOptions={[10]}
-        checkboxSelection
-        disableRowSelectionOnClick
-        enableSearch={false}
-        apiRef={gridApiRef}
-        filterModel={filterModel}
-        selectionActions={[
-          { label: "Archive", onClick: onBulkArchive },
-          { label: "Move to Trash", onClick: onBulkTrash, color: "error" },
-        ]}
-        slotProps={{
-          toolbar: {
-            csvOptions: { disableToolbarButton: true },
-            printOptions: { disableToolbarButton: true },
-          },
-        }}
-        rowHeight={52}
-        getRowClassName={(p) =>
-          highlight && p.row.title?.toLowerCase().includes(highlight)
-            ? "highlighted-row"
-            : ""
-        }
-      />
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => {
-          setMenuAnchor(null);
-          setMenuRow(null);
-        }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: {
-              minWidth: 160,
-              borderRadius: "10px",
-              mt: 0.5,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-            },
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onArchive(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-        >
-          <ListItemIcon>
-            <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-          >
-            Archive
-          </ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuRow) onTrash(menuRow.id);
-            setMenuAnchor(null);
-            setMenuRow(null);
-          }}
-          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}
-        >
-          <ListItemIcon>
-            <DeleteOutlineOutlinedIcon
-              sx={{ fontSize: 18, color: "#dc2626" }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primaryTypographyProps={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            }}
-          >
-            Move to Trash
-          </ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
   );
 }
 
@@ -4173,19 +2579,20 @@ function AssignmentDialog({
   onAssign,
 }) {
   const [showOthersMap, setShowOthersMap] = useState({});
-
   if (!request) return null;
 
-  const isMultiDay = !!(request.is_multiday && request.event_days?.length > 0);
+  const req = request._raw || request;
+  const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
   const days = isMultiDay
-    ? request.event_days
+    ? req.event_days
     : [
         {
-          date: request.event_date,
-          from_time: request.from_time,
-          to_time: request.to_time,
+          date: req.event_date,
+          from_time: req.from_time,
+          to_time: req.to_time,
         },
       ];
+
   const activeDateStr = days[selectedDayIdx]?.date;
   const activeDayData = dayStaffers[activeDateStr] || {
     primary: [],
@@ -4205,12 +2612,11 @@ function AssignmentDialog({
   const isDayDone = (dateStr) => (dayAssigned[dateStr] || []).length > 0;
   const showOthers = showOthersMap[activeDateStr] || false;
 
-  const toggleShowOthers = () => {
+  const toggleShowOthers = () =>
     setShowOthersMap((prev) => ({
       ...prev,
       [activeDateStr]: !prev[activeDateStr],
     }));
-  };
 
   const renderStafferRow = (staffer, showPosition = false) => {
     const isSelected = activeSelected.includes(staffer.id);
@@ -4240,7 +2646,7 @@ function AssignmentDialog({
           gap: 1.25,
           px: 1.25,
           py: 1,
-          borderRadius: "10px",
+          borderRadius: "8px",
           cursor: isAlreadyAssigned ? "default" : "pointer",
           border: `1px solid ${isAlreadyAssigned ? "rgba(34,197,94,0.35)" : isSelected ? "rgba(245,197,43,0.5)" : border}`,
           backgroundColor: isAlreadyAssigned
@@ -4313,7 +2719,7 @@ function AssignmentDialog({
             sx={{
               px: 0.9,
               py: 0.2,
-              borderRadius: "10px",
+              borderRadius: "20px",
               backgroundColor: isDark
                 ? "rgba(255,255,255,0.06)"
                 : "rgba(53,53,53,0.06)",
@@ -4355,7 +2761,7 @@ function AssignmentDialog({
       maxWidth="md"
       PaperProps={{
         sx: {
-          borderRadius: "10px",
+          borderRadius: "14px",
           height: { md: "90vh" },
           maxHeight: "95vh",
           backgroundColor: "background.paper",
@@ -4381,7 +2787,7 @@ function AssignmentDialog({
             sx={{
               width: 2.5,
               height: 26,
-              borderRadius: "10px",
+              borderRadius: "2px",
               backgroundColor: GOLD,
               flexShrink: 0,
             }}
@@ -4397,14 +2803,14 @@ function AssignmentDialog({
                   lineHeight: 1.3,
                 }}
               >
-                {request.title}
+                {req.title}
               </Typography>
               {isMultiDay && (
                 <Box
                   sx={{
                     px: 0.8,
                     py: 0.2,
-                    borderRadius: "10px",
+                    borderRadius: "20px",
                     backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4",
                     border: "1px solid",
                     borderColor: isDark ? "#166534" : "#86efac",
@@ -4431,8 +2837,8 @@ function AssignmentDialog({
                 mt: 0.2,
               }}
             >
-              {request.forwarded_at
-                ? `Forwarded ${new Date(request.forwarded_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+              {req.forwarded_at
+                ? `Forwarded ${new Date(req.forwarded_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
                 : "Forwarded date unknown"}
             </Typography>
           </Box>
@@ -4442,7 +2848,7 @@ function AssignmentDialog({
             sx={{
               px: 1.1,
               py: 0.3,
-              borderRadius: "10px",
+              borderRadius: "6px",
               backgroundColor: isDark ? "rgba(168,85,247,0.1)" : "#f5f3ff",
             }}
           >
@@ -4462,7 +2868,7 @@ function AssignmentDialog({
             size="small"
             disabled={assignLoading}
             sx={{
-              borderRadius: "10px",
+              borderRadius: "8px",
               color: "text.secondary",
               "&:hover": { backgroundColor: HOVER_BG },
             }}
@@ -4481,6 +2887,7 @@ function AssignmentDialog({
           minHeight: 0,
         }}
       >
+        {/* Left panel */}
         <Box
           sx={{
             flex: 1,
@@ -4493,15 +2900,15 @@ function AssignmentDialog({
           <Section label="Event Information" border={border}>
             <InfoGrid
               rows={[
-                ["Title", request.title],
-                ["Description", request.description],
-                ["Venue", request.venue || "—"],
+                ["Title", req.title],
+                ["Description", req.description],
+                ["Venue", req.venue || "—"],
               ]}
             />
           </Section>
           <Section label="Coverage Requirements" border={border}>
             {(() => {
-              const totalPax = getPaxForSection(request);
+              const totalPax = getPaxForSection(req);
               const perDay =
                 isMultiDay && days.length > 1
                   ? Math.round(totalPax / days.length)
@@ -4514,7 +2921,7 @@ function AssignmentDialog({
                     gap: 0.75,
                     px: 1.25,
                     py: 0.5,
-                    borderRadius: "10px",
+                    borderRadius: "6px",
                     border: `1px solid ${border}`,
                     backgroundColor: isDark
                       ? "rgba(255,255,255,0.02)"
@@ -4546,7 +2953,7 @@ function AssignmentDialog({
                       sx={{
                         px: 0.75,
                         py: 0.15,
-                        borderRadius: "10px",
+                        borderRadius: "5px",
                         backgroundColor: isDark
                           ? "rgba(59,130,246,0.1)"
                           : "#eff6ff",
@@ -4629,7 +3036,7 @@ function AssignmentDialog({
                           sx={{
                             px: 0.9,
                             py: 0.2,
-                            borderRadius: "10px",
+                            borderRadius: "20px",
                             backgroundColor: isActive
                               ? GOLD
                               : isDark
@@ -4706,7 +3113,7 @@ function AssignmentDialog({
                                 gap: 0.5,
                                 px: 0.75,
                                 py: 0.25,
-                                borderRadius: "10px",
+                                borderRadius: "6px",
                                 backgroundColor: isDark
                                   ? "rgba(34,197,94,0.08)"
                                   : "#f0fdf4",
@@ -4750,7 +3157,7 @@ function AssignmentDialog({
                             sx={{
                               px: 0.75,
                               py: 0.25,
-                              borderRadius: "10px",
+                              borderRadius: "6px",
                               backgroundColor: isDark
                                 ? GOLD_08
                                 : "rgba(245,197,43,0.08)",
@@ -4779,23 +3186,23 @@ function AssignmentDialog({
           <Section label="Client Details" border={border}>
             <InfoGrid
               rows={[
-                ["Organization", request.entity?.name || "—"],
-                ["Contact Person", request.contact_person || "—"],
-                ["Contact Info", request.contact_info || "—"],
+                ["Organization", req.entity?.name || "—"],
+                ["Contact Person", req.contact_person || "—"],
+                ["Contact Info", req.contact_info || "—"],
               ]}
             />
           </Section>
           <Section label="Attachment" border={border}>
-            {request.file_url ? (
+            {req.file_url ? (
               <Box
-                onClick={() => openFile(request.file_url)}
+                onClick={() => openFile(req.file_url)}
                 sx={{
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 0.75,
                   px: 1.25,
                   py: 0.5,
-                  borderRadius: "10px",
+                  borderRadius: "6px",
                   cursor: "pointer",
                   border: `1px solid ${border}`,
                   transition: "all 0.15s",
@@ -4812,7 +3219,7 @@ function AssignmentDialog({
                     color: "text.secondary",
                   }}
                 >
-                  {getFileName(request.file_url)}
+                  {getFileName(req.file_url)}
                 </Typography>
                 <ChevronRightIcon
                   sx={{ fontSize: 13, color: "text.disabled" }}
@@ -4840,6 +3247,7 @@ function AssignmentDialog({
           }}
         />
 
+        {/* Right panel — staffer selection */}
         <Box
           sx={{
             width: { xs: "100%", md: 280 },
@@ -4870,7 +3278,6 @@ function AssignmentDialog({
               {activeDateStr ? fmtDateShort(activeDateStr) : "Select Staffers"}
             </Typography>
           </Box>
-
           <Typography
             sx={{
               fontFamily: dm,
@@ -4889,7 +3296,7 @@ function AssignmentDialog({
           {assignError && (
             <Alert
               severity="error"
-              sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.76rem" }}
+              sx={{ borderRadius: "8px", fontFamily: dm, fontSize: "0.76rem" }}
             >
               {assignError}
             </Alert>
@@ -4950,7 +3357,6 @@ function AssignmentDialog({
                   )}
                 </>
               )}
-
               {activeOthers.length > 0 && (
                 <>
                   <Box
@@ -4961,7 +3367,7 @@ function AssignmentDialog({
                       gap: 0.75,
                       px: 1.25,
                       py: 0.7,
-                      borderRadius: "10px",
+                      borderRadius: "8px",
                       cursor: "pointer",
                       border: `1px dashed ${isDark ? "rgba(255,255,255,0.12)" : "rgba(53,53,53,0.15)"}`,
                       color: "text.secondary",
@@ -5045,14 +3451,13 @@ function AssignmentDialog({
                   )}
                 </>
               )}
-
               {activePrimary.length === 0 && activeOthers.length > 0 && (
                 <>
                   <Box
                     sx={{
                       px: 1.25,
                       py: 0.9,
-                      borderRadius: "10px",
+                      borderRadius: "8px",
                       backgroundColor: isDark
                         ? "rgba(245,158,11,0.08)"
                         : "#fffbeb",
@@ -5109,7 +3514,7 @@ function AssignmentDialog({
               sx={{
                 px: 1.25,
                 py: 0.9,
-                borderRadius: "10px",
+                borderRadius: "8px",
                 backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)",
                 border: "1px solid rgba(245,197,43,0.35)",
               }}
@@ -5159,7 +3564,7 @@ function AssignmentDialog({
   );
 }
 
-// ── Shared components ─────────────────────────────────────────────────────────
+// ── Shared small components ───────────────────────────────────────────────────
 function Section({ label, children, border }) {
   return (
     <Box sx={{ mb: 2.5 }}>
@@ -5219,93 +3624,6 @@ function InfoGrid({ rows }) {
     </Box>
   );
 }
-function CellText({ children, secondary, bold }) {
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.8rem",
-          fontWeight: bold ? 500 : 400,
-          color: secondary ? "text.secondary" : "text.primary",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {children}
-      </Typography>
-    </Box>
-  );
-}
-function ActionChip({ children, onClick, disabled, border }) {
-  return (
-    <Box
-      onClick={!disabled ? onClick : undefined}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        px: 1.25,
-        py: 0.45,
-        borderRadius: "10px",
-        cursor: disabled ? "default" : "pointer",
-        border: `1px solid ${border}`,
-        fontFamily: dm,
-        fontSize: "0.73rem",
-        fontWeight: 500,
-        color: "text.secondary",
-        opacity: disabled ? 0.5 : 1,
-        transition: "all 0.15s",
-        "&:hover": disabled
-          ? {}
-          : { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-function FilterChip({ label, onDelete }) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        px: 1.1,
-        py: 0.35,
-        borderRadius: "10px",
-        border: "1px solid rgba(245,197,43,0.45)",
-        backgroundColor: GOLD_08,
-      }}
-    >
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.72rem",
-          fontWeight: 500,
-          color: "#b45309",
-        }}
-      >
-        {label}
-      </Typography>
-      <Box
-        onClick={onDelete}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          cursor: "pointer",
-          color: "#b45309",
-          opacity: 0.7,
-          "&:hover": { opacity: 1 },
-        }}
-      >
-        <CloseIcon sx={{ fontSize: 11 }} />
-      </Box>
-    </Box>
-  );
-}
 function CancelBtn({ onClick, disabled, border }) {
   return (
     <Box
@@ -5313,7 +3631,7 @@ function CancelBtn({ onClick, disabled, border }) {
       sx={{
         px: 1.75,
         py: 0.65,
-        borderRadius: "10px",
+        borderRadius: "8px",
         cursor: disabled ? "default" : "pointer",
         border: `1px solid ${border}`,
         fontFamily: dm,
@@ -5339,19 +3657,19 @@ function PrimaryBtn({ onClick, loading, children }) {
         gap: 0.6,
         px: 1.75,
         py: 0.65,
-        borderRadius: "10px",
+        borderRadius: "8px",
         cursor: loading ? "default" : "pointer",
-        backgroundColor: "#212121",
-        color: "#fff",
+        backgroundColor: GOLD,
+        color: CHARCOAL,
         fontFamily: dm,
         fontSize: "0.8rem",
         fontWeight: 600,
-        opacity: loading ? 0.7 : 1,
+        opacity: loading ? 0.8 : 1,
         transition: "background-color 0.15s",
-        "&:hover": { backgroundColor: loading ? "#212121" : "#333" },
+        "&:hover": { backgroundColor: loading ? GOLD : "#e6b920" },
       }}
     >
-      {loading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
+      {loading && <CircularProgress size={13} sx={{ color: CHARCOAL }} />}
       {children}
     </Box>
   );

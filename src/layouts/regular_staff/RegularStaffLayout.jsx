@@ -32,7 +32,7 @@ const SIDEBAR_W = 228;
 const GOLD = "#F5C52B";
 const CHARCOAL = "#353535";
 const WHITE = "#ffffff";
-const dm = "'DM Sans', sans-serif";
+const dm = "'Inter', sans-serif";
 const SIDEBAR_BG = "#121212";
 const SIDEBAR_BORDER = "rgba(255,255,255,0.07)";
 const TEXT_PRIMARY = "#ffffff";
@@ -249,8 +249,10 @@ function SidebarContent({
 }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({});
-  const toggleGroup = (label) => setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
-  const isChildActive = (children) => children?.some((c) => location.pathname.includes(c.to));
+  const toggleGroup = (label) =>
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  const isChildActive = (children) =>
+    children?.some((c) => location.pathname.includes(c.to));
 
   return (
     <Box
@@ -367,7 +369,9 @@ function SidebarContent({
                             fontSize: 15,
                             color: TEXT_ICON,
                             transition: "transform 0.22s",
-                            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                            transform: isOpen
+                              ? "rotate(180deg)"
+                              : "rotate(0deg)",
                           }}
                         />
                       }
@@ -375,7 +379,13 @@ function SidebarContent({
                     <Collapse in={isOpen} timeout="auto" unmountOnExit>
                       <Box sx={{ pl: 1.5, mt: 0.25 }}>
                         {item.children.map((child) => (
-                          <NavItem key={child.to} label={child.label} Icon={child.Icon} to={child.to} isChild />
+                          <NavItem
+                            key={child.to}
+                            label={child.label}
+                            Icon={child.Icon}
+                            to={child.to}
+                            isChild
+                          />
                         ))}
                       </Box>
                     </Collapse>
@@ -474,8 +484,12 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
   );
 
   return to ? (
-    <NavLink to={to} style={{ textDecoration: "none" }}>{inner}</NavLink>
-  ) : inner;
+    <NavLink to={to} style={{ textDecoration: "none" }}>
+      {inner}
+    </NavLink>
+  ) : (
+    inner
+  );
 }
 
 function RegularStaffLayout() {

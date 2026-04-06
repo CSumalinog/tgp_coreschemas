@@ -48,7 +48,7 @@ const SIDEBAR_W = 228;
 const GOLD = "#F5C52B";
 const CHARCOAL = "#353535";
 const WHITE = "#ffffff";
-const dm = "'DM Sans', sans-serif";
+const dm = "'Inter', sans-serif";
 
 // ── Gold sidebar tokens ───────────────────────────────────────────────────────
 const SIDEBAR_BG = "#121212";
