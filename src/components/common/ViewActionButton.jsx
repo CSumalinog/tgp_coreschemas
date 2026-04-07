@@ -13,7 +13,7 @@ export default function ViewActionButton({ onClick, children = "View" }) {
         minWidth: 72,
         px: 1.5,
         py: 0.45,
-        borderRadius: "4px",
+        borderRadius: "8px",
         border: "1px solid #d4a20a",
         backgroundColor: "#F5C52B",
         color: "#111111",

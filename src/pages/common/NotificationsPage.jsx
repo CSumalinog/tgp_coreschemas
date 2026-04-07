@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   CircularProgress,
   IconButton,
@@ -14,10 +15,19 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import MarkunreadOutlinedIcon from "@mui/icons-material/MarkunreadOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import { useNavigate } from "react-router-dom";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
+import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getAvatarUrl } from "../../components/common/UserAvatar";
 import {
   getNotificationDestination,
+  getRoleFromPathname,
   isNotificationNavigable,
 } from "../../utils/notificationRouting";
 import {
@@ -47,18 +57,150 @@ function timeAgo(dateStr) {
   });
 }
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "unread", label: "Unread" },
-  { key: "requests", label: "Requests" },
-  { key: "schedule", label: "Schedule" },
-];
+const TYPE_CONFIG = {
+  new_request: { dot: "#3b82f6", icon: AddCircleOutlineIcon },
+  time_in_alert: { dot: "#f59e0b", icon: HowToRegOutlinedIcon },
+  for_approval: { dot: "#8b5cf6", icon: AssignmentOutlinedIcon },
+  approved: { dot: "#22c55e", icon: CheckCircleOutlineIcon },
+  declined: { dot: "#ef4444", icon: CancelOutlinedIcon },
+  forwarded: { dot: "#8b5cf6", icon: ForwardToInboxOutlinedIcon },
+  assigned: { dot: "#3b82f6", icon: AssignmentOutlinedIcon },
+  request_cancelled: { dot: "#ef4444", icon: CancelOutlinedIcon },
+  request_rescheduled: { dot: "#3b82f6", icon: AddCircleOutlineIcon },
+  assignment_cancelled: { dot: "#ef4444", icon: CancelOutlinedIcon },
+  duty_schedule_change_requested: { dot: "#f59e0b", icon: HowToRegOutlinedIcon },
+  duty_schedule_change_approved: { dot: "#22c55e", icon: CheckCircleOutlineIcon },
+  duty_schedule_change_rejected: { dot: "#ef4444", icon: CancelOutlinedIcon },
+  default: { dot: GOLD, icon: InfoOutlinedIcon },
+};
+
+const getTypeCfg = (type) => TYPE_CONFIG[type] || TYPE_CONFIG.default;
+
+function getInitials(name) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function getCoverageRequestLabel(message, fallbackTitle) {
+  const fromQuotedMessage = String(message || "").match(/"([^"]+)"/);
+  if (fromQuotedMessage?.[1]) return fromQuotedMessage[1];
+  return fallbackTitle || "this request";
+}
+
+function getRequestLabel(message, fallbackTitle) {
+  const fromQuotedMessage = String(message || "").match(/"([^"]+)"/);
+  if (fromQuotedMessage?.[1]) return fromQuotedMessage[1];
+
+  const beforeVerb = String(message || "").match(/^(.+?)\s+has\s+been\s+/i);
+  if (beforeVerb?.[1]) {
+    return beforeVerb[1].replace(/^"|"$/g, "").trim();
+  }
+
+  return fallbackTitle || "this request";
+}
+
+function getSectionFromCoverageMessage(message) {
+  const sectionMatch = String(message || "").match(/\bby\s+(.+?)(?:\.|$)/i);
+  return sectionMatch?.[1]?.trim() || "";
+}
+
+function buildCoverageRequestMessage(notification, requesterName) {
+  if (!requesterName || requesterName === "Unknown requester") {
+    return notification.message;
+  }
+
+  const requestLabel = getCoverageRequestLabel(notification.message, notification.title);
+  const section = getSectionFromCoverageMessage(notification.message);
+  const fromClause = section ? ` from ${section}` : "";
+
+  return `${requesterName}${fromClause} submitted "${requestLabel}".`;
+}
+
+function getReasonFromMessage(message) {
+  const reasonMatch = String(message || "").match(/Reason:\s*(.+)$/i);
+  return reasonMatch?.[1]?.trim() || "";
+}
+
+function getRescheduleDateFromMessage(message) {
+  const dateMatch = String(message || "").match(/rescheduled\s+to\s+(.+?)(?:\.|$)/i);
+  return dateMatch?.[1]?.trim() || "";
+}
+
+function buildRequestCancelledMessage(notification, actorLabel) {
+  if (!actorLabel || actorLabel === "Unknown requester") {
+    return notification.message;
+  }
+
+  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const reason = getReasonFromMessage(notification.message);
+
+  return `${actorLabel} cancelled the request for "${requestLabel}".${reason ? ` Reason: ${reason}` : ""}`;
+}
+
+function buildRequestRescheduledMessage(notification, actorLabel) {
+  if (!actorLabel || actorLabel === "Unknown requester") {
+    return notification.message;
+  }
+
+  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const nextDate = getRescheduleDateFromMessage(notification.message);
+  const reason = getReasonFromMessage(notification.message);
+  const dateClause = nextDate ? ` to ${nextDate}` : "";
+
+  return `${actorLabel} rescheduled the request for "${requestLabel}"${dateClause}.${reason ? ` Reason: ${reason}` : ""}`;
+}
+
+function buildForwardedMessage(notification, actorLabel) {
+  if (!actorLabel || actorLabel === "Unknown requester") {
+    return notification.message;
+  }
+
+  const requestLabel = getRequestLabel(notification.message, notification.title);
+  return `${actorLabel} forwarded "${requestLabel}" for staff assignment.`;
+}
+
+function buildDutyChangeRejectedMessage(notification, actorLabel) {
+  if (!actorLabel || actorLabel === "Unknown requester") {
+    return notification.message;
+  }
+
+  const message = String(notification.message || "");
+  const changeMatch = message.match(/change\s+from\s+(.+?)\s+to\s+(.+?)\s+was\s+rejected/i);
+  const reasonMatch = message.match(/Reason:\s*(.+)$/i);
+
+  if (!changeMatch) {
+    return `${actorLabel} declined your duty day change request.${reasonMatch?.[1] ? ` Reason: ${reasonMatch[1].trim()}` : ""}`;
+  }
+
+  const fromDay = changeMatch[1]?.trim();
+  const toDay = changeMatch[2]?.trim();
+  const reason = reasonMatch?.[1]?.trim();
+
+  return `${actorLabel} declined your duty day change request from ${fromDay} to ${toDay}.${reason ? ` Reason: ${reason}` : ""}`;
+}
+
+function startsWithRequesterName(message, requesterName) {
+  if (!message || !requesterName || requesterName === "Unknown requester") {
+    return false;
+  }
+
+  return String(message)
+    .toLowerCase()
+    .startsWith(String(requesterName).toLowerCase());
+}
 
 export default function NotificationsPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const location = useLocation();
   const navigate = useNavigate();
   const border = isDark ? BORDER_DARK : BORDER;
+  const currentRole = getRoleFromPathname(location.pathname);
 
   const [userId, setUserId] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -66,6 +208,61 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [requesterProfiles, setRequesterProfiles] = useState({});
+
+  const filters = useMemo(() => {
+    if (currentRole === "client") {
+      return [
+        { key: "all", label: "All" },
+        { key: "unread", label: "Unread" },
+      ];
+    }
+
+    const roleSpecific =
+      currentRole === "staff"
+        ? { key: "assignments", label: "Assignments" }
+        : { key: "requests", label: "Requests" };
+
+    return [
+      { key: "all", label: "All" },
+      { key: "unread", label: "Unread" },
+      roleSpecific,
+      { key: "schedule", label: "Schedule" },
+    ];
+  }, [currentRole]);
+
+  useEffect(() => {
+    const hasCurrentFilter = filters.some((item) => item.key === filter);
+    if (!hasCurrentFilter) {
+      setFilter("all");
+    }
+  }, [filters, filter]);
+
+  const loadRequesterProfiles = useCallback(async (rows) => {
+    const requesterIds = [...new Set(rows.map((row) => row.created_by).filter(Boolean))];
+
+    if (!requesterIds.length) {
+      setRequesterProfiles({});
+      return;
+    }
+
+    const { data, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, full_name, section, position, designation, avatar_url")
+      .in("id", requesterIds);
+
+    if (profileError) {
+      console.error("Requester profile fetch failed:", profileError.message);
+      return;
+    }
+
+    const profileMap = (data || []).reduce((acc, profile) => {
+      acc[profile.id] = profile;
+      return acc;
+    }, {});
+
+    setRequesterProfiles(profileMap);
+  }, []);
 
   const loadNotifications = useCallback(async (currentUserId) => {
     if (!currentUserId) return;
@@ -83,11 +280,13 @@ export default function NotificationsPage() {
     if (fetchError) {
       setError(fetchError.message);
     } else {
-      setNotifications(data || []);
+      const rows = data || [];
+      setNotifications(rows);
+      loadRequesterProfiles(rows);
     }
 
     setLoading(false);
-  }, []);
+  }, [loadRequesterProfiles]);
 
   useEffect(() => {
     async function loadUser() {
@@ -138,6 +337,12 @@ export default function NotificationsPage() {
         (notification) =>
           !!notification.request_id ||
           !String(notification.type || "").startsWith("duty_schedule_change"),
+      );
+    }
+
+    if (filter === "assignments") {
+      return notifications.filter((notification) =>
+        ["assigned", "assignment_cancelled"].includes(notification.type),
       );
     }
 
@@ -325,7 +530,7 @@ export default function NotificationsPage() {
         </Box>
 
         <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", mb: 2 }}>
-          {FILTERS.map((item) => {
+          {filters.map((item) => {
             const active = item.key === filter;
             return (
               <Box
@@ -430,6 +635,47 @@ export default function NotificationsPage() {
             {filteredNotifications.map((notification) => {
             const unread = !notification.is_read;
             const navigable = isNotificationNavigable(notification);
+            const requester = requesterProfiles[notification.created_by] || null;
+            const requesterName = requester?.full_name || "Unknown requester";
+            const requesterSection = requester?.section || "";
+            const requesterDesignation = requester?.designation || requesterSection;
+            const actorLabel =
+              requesterName === "Unknown requester"
+                ? requesterName
+                : `${requesterName}${requesterSection ? ` from ${requesterSection}` : ""}`;
+            const forwardedActorLabel =
+              requesterName === "Unknown requester"
+                ? requesterName
+                : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
+            const reviewerActorLabel =
+              requesterName === "Unknown requester"
+                ? requesterName
+                : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
+            const requesterAvatarUrl = getAvatarUrl(requester?.avatar_url);
+            const typeCfg = getTypeCfg(notification.type);
+            const TypeIcon = typeCfg.icon;
+            const isCoverageRequest = notification.type === "new_request";
+            const isRequestCancelled = notification.type === "request_cancelled";
+            const isRequestRescheduled = notification.type === "request_rescheduled";
+            const isForwarded = notification.type === "forwarded";
+            const isDutyChangeRejected =
+              notification.type === "duty_schedule_change_rejected";
+
+            let displayMessage = notification.message;
+            if (isCoverageRequest) {
+              displayMessage = buildCoverageRequestMessage(notification, requesterName);
+            } else if (isRequestCancelled) {
+              displayMessage = buildRequestCancelledMessage(notification, actorLabel);
+            } else if (isRequestRescheduled) {
+              displayMessage = buildRequestRescheduledMessage(notification, actorLabel);
+            } else if (isForwarded) {
+              displayMessage = buildForwardedMessage(notification, forwardedActorLabel);
+            } else if (isDutyChangeRejected) {
+              displayMessage = buildDutyChangeRejectedMessage(notification, reviewerActorLabel);
+            }
+
+            const shouldShowRequesterLine =
+              !startsWithRequesterName(displayMessage, requesterName);
 
             return (
               <Box
@@ -462,7 +708,84 @@ export default function NotificationsPage() {
                     gap: 1.5,
                   }}
                 >
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Box
+                    sx={{
+                      minWidth: 0,
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 1.3,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: "relative",
+                        mt: 0.1,
+                        flexShrink: 0,
+                        width: 42,
+                        height: 42,
+                      }}
+                    >
+                      <Tooltip title={requesterName} arrow>
+                        <Avatar
+                          src={requesterAvatarUrl || undefined}
+                          sx={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: "50%",
+                            fontFamily: dm,
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.12)"
+                              : "rgba(53,53,53,0.14)",
+                            color: isDark ? "#ffffff" : "#212121",
+                          }}
+                        >
+                          {!requesterAvatarUrl && getInitials(requester?.full_name)}
+                        </Avatar>
+                      </Tooltip>
+
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          position: "absolute",
+                          right: -3,
+                          bottom: -3,
+                          backgroundColor: "#ffffff",
+                          zIndex: 1,
+                          pointerEvents: "none",
+                        }}
+                      />
+
+                      <Box
+                        sx={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "absolute",
+                          right: -2,
+                          bottom: -2,
+                          backgroundColor: `${typeCfg.dot}18`,
+                          border: `1px solid ${typeCfg.dot}44`,
+                          zIndex: 2,
+                        }}
+                      >
+                        <TypeIcon
+                          sx={{
+                            fontSize: 11,
+                            color: typeCfg.dot,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Box
                       sx={{
                         display: "flex",
@@ -497,13 +820,26 @@ export default function NotificationsPage() {
                     <Typography
                       sx={{
                         fontFamily: dm,
+                        fontSize: "0.66rem",
+                        color: "text.disabled",
+                        mb: 0.35,
+                        display: shouldShowRequesterLine ? "block" : "none",
+                      }}
+                    >
+                      {requesterName}
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
                         fontSize: "0.74rem",
                         lineHeight: 1.6,
                         color: unread ? "text.secondary" : "text.disabled",
                       }}
                     >
-                      {notification.message}
+                      {displayMessage}
                     </Typography>
+                    </Box>
                   </Box>
 
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>

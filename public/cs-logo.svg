@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Core Schemas logo">
+  <rect width="512" height="512" fill="#212121" />
+  <g transform="translate(256 256) scale(1.1) translate(-256 -256)">
+    <polygon points="256,28 355,127 313,169 256,112 199,169 157,127" fill="#ffffff" />
+    <polygon points="484,256 385,355 343,313 400,256 343,199 385,157" fill="#ffffff" />
+    <polygon points="256,484 157,385 199,343 256,400 313,343 355,385" fill="#ffffff" />
+    <polygon points="28,256 127,157 169,199 112,256 169,313 127,355" fill="#ffffff" />
+    <circle cx="256" cy="256" r="68" fill="#ffffff" />
+  </g>
+</svg>

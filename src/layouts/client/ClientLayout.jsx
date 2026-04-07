@@ -34,6 +34,7 @@ import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import brandLogo from "../../assets/img/cs-logo.svg";
 
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
   const l = document.createElement("link");
@@ -453,30 +454,16 @@ function SidebarContent({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
           <Box
+            component="img"
+            src={brandLogo}
+            alt="core schemas logo"
             sx={{
-              width: 30,
-              height: 30,
-              borderRadius: "10px",
-              backgroundColor: GOLD,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              width: 34,
+              height: 34,
+              objectFit: "contain",
               flexShrink: 0,
             }}
-          >
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.92rem",
-                fontWeight: 800,
-                color: CHARCOAL,
-                lineHeight: 1,
-                letterSpacing: "-0.03em",
-              }}
-            >
-              cs
-            </Typography>
-          </Box>
+          />
           <Typography
             sx={{
               fontFamily: dm,
