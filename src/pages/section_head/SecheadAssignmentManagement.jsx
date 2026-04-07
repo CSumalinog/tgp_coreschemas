@@ -686,6 +686,7 @@ export default function SecHeadAssignmentManagement() {
   const [staffersLoading, setStaffersLoading] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
+  const openedFromNotificationRef = useRef(null);
 
   // ── Load user ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1189,6 +1190,41 @@ export default function SecHeadAssignmentManagement() {
     },
     [dayStaffers, loadStaffersForDate],
   );
+
+  useEffect(() => {
+    const openRequestId = location.state?.openRequestId;
+    if (!openRequestId || loading) return;
+    if (openedFromNotificationRef.current === openRequestId) return;
+
+    const sources = [
+      ["for-assignment", forAssignmentReqs],
+      ["assigned", assignedReqs],
+      ["on-going", onGoingReqs],
+      ["completed", completedReqs],
+    ];
+
+    const matchEntry = sources
+      .map(([view, rows]) => [view, rows.find((request) => request.id === openRequestId)])
+      .find(([, request]) => !!request);
+
+    if (!matchEntry) return;
+
+    const [view, request] = matchEntry;
+    openedFromNotificationRef.current = openRequestId;
+
+    queueMicrotask(() => {
+      setViewFilter(view);
+      openAssignDialog(request);
+    });
+  }, [
+    location.state?.openRequestId,
+    loading,
+    forAssignmentReqs,
+    assignedReqs,
+    onGoingReqs,
+    completedReqs,
+    openAssignDialog,
+  ]);
 
   const getServiceKeysForAssignment = useCallback(
     (request) => {

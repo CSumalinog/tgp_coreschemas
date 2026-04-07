@@ -26,6 +26,7 @@ The frontend is constructed using **React 18** with functional components and ho
 - `useClientRequests()` - Manages client-side request data with filtering
 - `useRealtimeNotify()` - Handles real-time notifications and data synchronization
 - `useRealtimeSync()` - Subscribes to database changes for live updates
+- `useDutyChangeRequestQuota()` - Tracks duty day change request quota per semester
 
 ### 2.2 Backend and Data Infrastructure
 
@@ -284,6 +285,7 @@ While the full schema is defined in Supabase, the key tables include:
 - **semesters**: Academic semester definitions
 - **calendar_availability**: Staff availability windows
 - **duty_schedules**: Staff duty day assignments per semester
+- **duty_schedule_change_requests**: Staff duty day change requests with status tracking
 - **sections**: Coverage sections (News, Photojournalism, Videojournalism)
 
 ---
@@ -781,6 +783,67 @@ These functions are used by the Request Tracker's reschedule dialog to:
 2. Check for scheduling conflicts on the proposed date
 3. Present warnings before allowing submission
 4. Provide clear feedback on why validation failed
+
+### 9.23 Duty Schedule Change Request System (v2.4)
+
+Staff members can now request changes to their duty day assignments through a formal request workflow:
+
+#### Database Schema
+
+The [`duty_schedule_change_requests`](supabase/migrations/008_create_duty_schedule_change_requests.sql) table stores:
+
+- `staffer_id`: Reference to the staff member's profile
+- `semester_id`: Reference to the active semester
+- `current_duty_day`: The staff member's current assigned day (0-4, Monday-Friday)
+- `requested_duty_day`: The requested duty day (0-4, Monday-Friday)
+- `request_reason`: Optional reason for the change request
+- `status`: Request status (pending, approved, rejected, cancelled)
+- `review_notes`: Admin notes when reviewing the request
+- `reviewed_at`: Timestamp of admin review
+- `reviewed_by`: Admin who reviewed the request
+
+#### Quota System
+
+The [`useDutyChangeRequestQuota`](src/hooks/useDutyChangeRequestQuota.js:1) hook enforces a quota system:
+
+- **Maximum 3 requests per semester**: Each staff member can have up to 3 approved duty day changes per semester
+- **Quota tracking**: The hook fetches and counts only APPROVED requests (rejected/pending don't consume quota)
+- **Exhaustion handling**: When quota is exhausted, staff cannot submit new requests
+
+#### Regular Staff Interface
+
+The MySchedule page now includes duty day change request functionality:
+
+- **Current Schedule Display**: Shows assigned duty day with weekend detection
+- **Pending Request Status**: Displays any pending change requests
+- **Request Submission**: Staff can request a new duty day with optional reason
+- **Quota Display**: Shows remaining requests (X of 3 used)
+- **Real-time Updates**: Notifications when requests are approved/rejected
+
+#### Admin Management Interface
+
+The Admin DutyScheduleView includes change request management:
+
+- **Request Queue Tab**: View all pending change requests
+- **Request Details**: View staffer info, current/requested day, and reason
+- **Approval Workflow**: Approve or reject with optional review notes
+- **History Tab**: View approved/rejected/cancelled requests
+- **Conflict Detection**: Prevents duplicate pending requests per staff per semester
+
+#### Workflow Notifications
+
+Notifications are sent to relevant parties:
+
+- **Admins**: Notified when new change requests are submitted
+- **Staff**: Notified when their request is approved or rejected
+
+#### Security and Access Control
+
+RLS policies ensure proper access:
+
+- **Read Access**: Staff can read their own requests; Admins can read all
+- **Insert Access**: Staff can only insert their own pending requests
+- **Update Access**: Only admins can update (approve/reject) requests
 
 ---
 

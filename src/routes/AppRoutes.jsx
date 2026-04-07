@@ -36,6 +36,7 @@ import TimeoutPage from "../pages/regular_staff/TimeoutPage";
 
 // Shared Profile Page
 import ProfilePage from "../pages/common/ProfilePage";
+import NotificationsPage from "../pages/common/NotificationsPage";
 
 function AppRoutes() {
   return (
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="archive" element={<Navigate to="/admin/request-management" replace />} />
         <Route path="trash" element={<Navigate to="/admin/request-management" replace />} />
         <Route path="notification-cleanup" element={<Navigate to="/admin/request-management" replace />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="settings" element={<Navigate to="/admin/request-management" replace />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
@@ -96,6 +98,7 @@ function AppRoutes() {
         <Route path="calendar" element={<Calendar />} />
         <Route path="draft" element={<Draft />} />
         <Route path="request-tracker" element={<RequestTracker />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
         <Route path="pending-requests"  element={<Navigate to="/client/request-tracker" replace />} />
@@ -120,6 +123,7 @@ function AppRoutes() {
         <Route path="archive" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
         <Route path="trash" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
         <Route path="notification-cleanup" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="settings" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
@@ -144,6 +148,7 @@ function AppRoutes() {
         <Route path="archive" element={<Navigate to="/staff/my-assignment" replace />} />
         <Route path="trash" element={<Navigate to="/staff/my-assignment" replace />} />
         <Route path="notification-cleanup" element={<Navigate to="/staff/my-assignment" replace />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="settings" element={<Navigate to="/staff/my-assignment" replace />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

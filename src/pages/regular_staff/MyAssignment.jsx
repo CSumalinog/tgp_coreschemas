@@ -49,6 +49,7 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
+import { useLocation } from "react-router-dom";
 
 import {
   TimeInModal,
@@ -1249,6 +1250,7 @@ export default function MyAssignment() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
+  const location = useLocation();
 
   const [currentUser, setCurrentUser] = useState(null);
   const [assignments, setAssignments] = useState([]);
@@ -1343,6 +1345,18 @@ export default function MyAssignment() {
   useEffect(() => {
     loadAssignments();
   }, [loadAssignments]);
+
+  useEffect(() => {
+    const openRequestId = location.state?.openRequestId;
+    if (!openRequestId || assignments.length === 0) return;
+
+    const match = assignments.find((assignment) => assignment.request?.id === openRequestId);
+    if (!match) return;
+
+    queueMicrotask(() => {
+      setDetailTarget(match);
+    });
+  }, [location.state?.openRequestId, assignments]);
 
   useRealtimeNotify(
     "coverage_assignments",

@@ -1,5 +1,5 @@
 // src/pages/client/RequestTracker.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -35,6 +35,7 @@ import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import { useLocation } from "react-router-dom";
 
 // ── Tab icons ─────────────────────────────────────────────────────────────────
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -258,6 +259,34 @@ const TABS = [
 
 const SILENT = { sound: false, toast: false, tabFlash: false };
 
+function resolveTrackerTab(tab) {
+  if (tab === "pipeline") return "pipeline";
+  if (tab === "all" || tab === 0) return 0;
+  if (tab === "pending" || tab === 1) return 1;
+  if (tab === "approved" || tab === 2) return 2;
+  if (tab === "declined" || tab === 3) return 3;
+  return "pipeline";
+}
+
+function useAutoOpenRequest(rows, openRequestId, onOpen) {
+  const handledIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!openRequestId || !rows.length) return;
+    if (handledIdRef.current === openRequestId) return;
+
+    const match = rows.find(
+      (row) => (row._raw?.id || row.id) === openRequestId,
+    );
+    if (!match) return;
+
+    handledIdRef.current = openRequestId;
+    queueMicrotask(() => {
+      onOpen(match._raw || match);
+    });
+  }, [openRequestId, onOpen, rows]);
+}
+
 // ── Event Type Pill (mirrors AdminRequestManagement) ──────────────────────────
 function EventTypePill({ isMultiDay, isDark }) {
   return isMultiDay ? (
@@ -403,10 +432,12 @@ function ColumnMenuStyles({ isDark, border }) {
 export default function RequestTracker() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const [tab, setTab] = useState("pipeline");
+  const location = useLocation();
+  const [tab, setTab] = useState(() => resolveTrackerTab(location.state?.tab));
   const [searchText, setSearchText] = useState("");
   const gridApiRef = useGridApiRef();
   const border = isDark ? BORDER_DARK : BORDER;
+  const openRequestId = location.state?.openRequestId || null;
 
   const isPipeline = tab === "pipeline";
 
@@ -424,6 +455,11 @@ export default function RequestTracker() {
       fileName: "request-tracker-export",
     });
   };
+
+  useEffect(() => {
+    const nextTab = resolveTrackerTab(location.state?.tab);
+    if (nextTab !== tab) setTab(nextTab);
+  }, [location.state?.tab, tab]);
 
   return (
     <Box
@@ -579,7 +615,11 @@ export default function RequestTracker() {
 
       {isPipeline && (
         <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          <PipelineTab isDark={isDark} border={border} />
+          <PipelineTab
+            isDark={isDark}
+            border={border}
+            openRequestId={openRequestId}
+          />
         </Box>
       )}
       {tab === 0 && (
@@ -588,6 +628,7 @@ export default function RequestTracker() {
           border={border}
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
+          openRequestId={openRequestId}
         />
       )}
       {tab === 1 && (
@@ -596,6 +637,7 @@ export default function RequestTracker() {
           border={border}
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
+          openRequestId={openRequestId}
         />
       )}
       {tab === 2 && (
@@ -604,6 +646,7 @@ export default function RequestTracker() {
           border={border}
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
+          openRequestId={openRequestId}
         />
       )}
       {tab === 3 && (
@@ -612,6 +655,7 @@ export default function RequestTracker() {
           border={border}
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
+          openRequestId={openRequestId}
         />
       )}
     </Box>
@@ -619,7 +663,7 @@ export default function RequestTracker() {
 }
 
 // ── Pipeline Tab ──────────────────────────────────────────────────────────────
-function PipelineTab({ isDark, border }) {
+function PipelineTab({ isDark, border, openRequestId }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   useRealtimeNotify("coverage_requests", refetch, null, {
@@ -641,6 +685,8 @@ function PipelineTab({ isDark, border }) {
       "Completed",
     ].includes(r.status),
   );
+
+  useAutoOpenRequest(active, openRequestId, setSelected);
 
   if (loading) return <Loader />;
   if (active.length === 0)
@@ -1448,7 +1494,7 @@ const toRow = (req) => ({
   _raw: req,
 });
 
-function AllRequestsTab({ isDark, border, gridApiRef, filterModel }) {
+function AllRequestsTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1484,6 +1530,8 @@ function AllRequestsTab({ isDark, border, gridApiRef, filterModel }) {
   ];
   const rows = requests.filter((r) => r.status !== "Draft").map(toRow);
 
+  useAutoOpenRequest(rows, openRequestId, setSelected);
+
   const handleCancelConfirm = async (reason) => {
     setCancelLoading(true);
     try {
@@ -1561,7 +1609,7 @@ function AllRequestsTab({ isDark, border, gridApiRef, filterModel }) {
   );
 }
 
-function PendingTab({ isDark, border, gridApiRef, filterModel }) {
+function PendingTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
   const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1584,6 +1632,8 @@ function PendingTab({ isDark, border, gridApiRef, filterModel }) {
   const columns = [titleCol, typeCol, submissionCol, eventDateCol, actionCol];
   const rows = pending.map(toRow);
 
+  useAutoOpenRequest(rows, openRequestId, setSelected);
+
   const handleCancelConfirm = async (reason) => {
     setCancelLoading(true);
     try {
@@ -1661,7 +1711,7 @@ function PendingTab({ isDark, border, gridApiRef, filterModel }) {
   );
 }
 
-function ApprovedTab({ isDark, border, gridApiRef, filterModel }) {
+function ApprovedTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1684,6 +1734,8 @@ function ApprovedTab({ isDark, border, gridApiRef, filterModel }) {
   const columns = [titleCol, typeCol, eventDateCol, dateApprovedCol, actionCol];
   const rows = requests.filter((r) => r.status === "Approved").map(toRow);
 
+  useAutoOpenRequest(rows, openRequestId, setSelected);
+
   const handleCancelConfirm = async (reason) => {
     setCancelLoading(true);
     try {
@@ -1761,7 +1813,7 @@ function ApprovedTab({ isDark, border, gridApiRef, filterModel }) {
   );
 }
 
-function DeclinedTab({ isDark, border, gridApiRef, filterModel }) {
+function DeclinedTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   useRealtimeNotify("coverage_requests", refetch, null, {
@@ -1775,6 +1827,8 @@ function DeclinedTab({ isDark, border, gridApiRef, filterModel }) {
     useGridColumns(isDark, { onView: setSelected });
   const columns = [titleCol, typeCol, eventDateCol, dateDeclinedCol, actionCol];
   const rows = requests.filter((r) => r.status === "Declined").map(toRow);
+
+  useAutoOpenRequest(rows, openRequestId, setSelected);
   if (loading) return <Loader />;
   return (
     <>

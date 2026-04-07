@@ -8,15 +8,21 @@ import {
   TextField,
   Dialog,
   useTheme,
+  IconButton,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifyAdmins } from "../../services/NotificationService";
+import { useDutyChangeRequestQuota } from "../../hooks/useDutyChangeRequestQuota";
+import { useLocation } from "react-router-dom";
 
 // -- Brand tokens -------------------------------------------------------------
 const GOLD = "#F5C52B";
@@ -57,6 +63,7 @@ export default function MySchedule() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
+  const location = useLocation();
 
   const [currentUser, setCurrentUser] = useState(null);
   const [activeSemester, setActiveSemester] = useState(null);
@@ -71,7 +78,15 @@ export default function MySchedule() {
   const [saveSuccess, setSaveSuccess] = useState("");
   const [requestReason, setRequestReason] = useState("");
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
+  const [pendingNoticeExpanded, setPendingNoticeExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // quotas hook - re-fetches when currentUser or activeSemester changes
+  const {
+    remaining: requestsRemaining,
+    isExhausted: quotaExhausted,
+    refetch: refetchQuota,
+  } = useDutyChangeRequestQuota(currentUser?.id, activeSemester?.id);
 
   const loadActiveSemester = useCallback(async () => {
     const { data } = await supabase
@@ -160,6 +175,21 @@ export default function MySchedule() {
     loadScheduleData();
   }, [loadScheduleData]);
 
+  useEffect(() => {
+    if (!pendingRequest) setPendingNoticeExpanded(false);
+  }, [pendingRequest]);
+
+  useEffect(() => {
+    const openDutyChangeRequestId = location.state?.openDutyChangeRequestId;
+    if (!openDutyChangeRequestId) return;
+
+    if (pendingRequest?.id === openDutyChangeRequestId) {
+      queueMicrotask(() => {
+        setPendingNoticeExpanded(true);
+      });
+    }
+  }, [location.state?.openDutyChangeRequestId, pendingRequest]);
+
   const refreshScheduleData = useCallback(() => {
     loadScheduleData();
     setTimeout(() => {
@@ -232,6 +262,15 @@ export default function MySchedule() {
   const handleSave = async (requestedDay = selectedDay) => {
     if (requestedDay === null) return;
     if (pendingRequest) return;
+
+    // Check quota for duty day CHANGE requests (not initial setup)
+    if (existingSchedule && existingSchedule.duty_day !== requestedDay) {
+      if (quotaExhausted) {
+        setSaveError("You have reached your 3 duty day change limit for this semester. Contact admin for more.");
+        return;
+      }
+    }
+
     setSaving(true);
     setSaveError("");
     setSaveSuccess("");
@@ -281,7 +320,7 @@ export default function MySchedule() {
           return;
         }
 
-        const { error: requestErr } = await supabase
+        const { data: changeRequest, error: requestErr } = await supabase
           .from("duty_schedule_change_requests")
           .insert({
             staffer_id: currentUser.id,
@@ -302,10 +341,13 @@ export default function MySchedule() {
           message: `${currentUser?.full_name || "A staff member"} requested a duty day change from ${DAY_LABELS[effectiveExistingSchedule.duty_day]} to ${DAY_LABELS[requestedDay]}.`,
           requestId: null,
           createdBy: currentUser?.id || null,
+          targetPath: "/admin/duty-schedule-view",
+          targetPayload: { openDutyChangeRequestId: changeRequest?.id || null },
         });
 
         setSaveSuccess("Duty day change request submitted for approval.");
         setRequestReason("");
+        await refetchQuota();
       } else {
         const { error: upsertErr } = await supabase
           .from("duty_schedules")
@@ -509,6 +551,56 @@ export default function MySchedule() {
                 })}
               </Typography>
             </Box>
+
+            {existingSchedule && !schedulingClosed && (
+              <Box
+                sx={{
+                  ml: { xs: 0, md: "auto" },
+                  width: { xs: "100%", md: "auto" },
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  pt: { xs: 0.6, md: 0 },
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.73rem",
+                    fontWeight: 600,
+                    color: quotaExhausted ? "#b91c1c" : "#b45309",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Changes left this semester
+                </Typography>
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 42,
+                    px: 1,
+                    py: 0.35,
+                    borderRadius: "999px",
+                    border: quotaExhausted
+                      ? "1.5px solid rgba(220,38,38,0.4)"
+                      : "1.5px solid rgba(245,197,43,0.5)",
+                    backgroundColor: "#ffffff",
+                    color: quotaExhausted ? "#dc2626" : "#b45309",
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    boxShadow: quotaExhausted
+                      ? "inset 0 0 0 1px rgba(220,38,38,0.2)"
+                      : "inset 0 0 0 1px rgba(245,197,43,0.2)",
+                  }}
+                >
+                  {requestsRemaining}/3
+                </Box>
+              </Box>
+            )}
           </Box>
 
           {isInitialSetup && !schedulingClosed && (
@@ -624,43 +716,75 @@ export default function MySchedule() {
           {pendingRequest ? (
             <Box
               sx={{
-                display: "flex",
-                gap: 1,
-                px: 1.75,
-                py: 1.25,
+                px: 1.5,
+                py: 1,
                 mb: 2.5,
                 borderRadius: "10px",
                 border: `1px solid rgba(245,197,43,0.35)`,
                 backgroundColor: isDark ? GOLD_08 : "#fefce8",
-                flexDirection: "column",
-                alignItems: "flex-start",
               }}
             >
               <Box
                 sx={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  backgroundColor: GOLD,
-                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
                 }}
-              />
-              <Typography
-                sx={{ fontFamily: dm, fontSize: "0.78rem", color: "#b45309" }}
               >
-                Your request to change from{" "}
-                <strong>{DAY_LABELS[pendingRequest.current_duty_day]}</strong>{" "}
-                to{" "}
-                <strong>{DAY_LABELS[pendingRequest.requested_duty_day]}</strong>{" "}
-                is pending admin approval.
-              </Typography>
-              {pendingRequest.request_reason && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      backgroundColor: GOLD,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      color: "#b45309",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Your request to change from{" "}
+                    <strong>{DAY_LABELS[pendingRequest.current_duty_day]}</strong> to{" "}
+                    <strong>{DAY_LABELS[pendingRequest.requested_duty_day]}</strong> is pending admin approval.
+                  </Typography>
+                </Box>
+
+                {pendingRequest.request_reason && (
+                  <IconButton
+                    size="small"
+                    onClick={() => setPendingNoticeExpanded((v) => !v)}
+                    sx={{
+                      color: "#b45309",
+                      border: "1px solid rgba(245,197,43,0.4)",
+                      borderRadius: "4px",
+                      width: 26,
+                      height: 26,
+                    }}
+                  >
+                    {pendingNoticeExpanded ? (
+                      <ExpandLessIcon sx={{ fontSize: 16 }} />
+                    ) : (
+                      <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                    )}
+                  </IconButton>
+                )}
+              </Box>
+
+              {pendingNoticeExpanded && pendingRequest.request_reason && (
                 <Typography
                   sx={{
                     fontFamily: dm,
-                    fontSize: "0.75rem",
+                    fontSize: "0.74rem",
                     color: "text.secondary",
-                    mt: 0.5,
+                    mt: 0.8,
+                    pl: 1.6,
                   }}
                 >
                   Reason: {pendingRequest.request_reason}
@@ -841,8 +965,12 @@ export default function MySchedule() {
               const isMyPick = existingSchedule?.duty_day === i;
               const isSelected = selectedDay === i;
               const isPendingTarget = pendingRequest?.requested_duty_day === i;
+              const isChangingDay = existingSchedule && i !== existingSchedule.duty_day;
               const isDisabled =
-                schedulingClosed || !!pendingRequest || (isFull && !isMyPick);
+                schedulingClosed ||
+                !!pendingRequest ||
+                (isFull && !isMyPick) ||
+                (isChangingDay && quotaExhausted);
               const pct = Math.min(
                 capacity > 0 ? (count / capacity) * 100 : count > 0 ? 100 : 0,
                 100,

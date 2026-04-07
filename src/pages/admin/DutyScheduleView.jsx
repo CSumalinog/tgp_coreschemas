@@ -24,6 +24,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifySpecificStaff } from "../../services/NotificationService";
+import { useLocation } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
@@ -137,6 +138,27 @@ const AVATAR_COLORS = [
 const ACTION_BTN_HEIGHT = 36;
 const REASON_PREVIEW_LIMIT = 88;
 
+const REQUEST_STATUS_META = {
+  pending: {
+    label: "Pending",
+    bg: "rgba(245,197,43,0.14)",
+    color: "#9a6b00",
+    border: "rgba(245,197,43,0.38)",
+  },
+  approved: {
+    label: "Approved",
+    bg: "rgba(34,197,94,0.12)",
+    color: "#166534",
+    border: "rgba(34,197,94,0.28)",
+  },
+  rejected: {
+    label: "Declined",
+    bg: "rgba(239,68,68,0.1)",
+    color: "#b91c1c",
+    border: "rgba(239,68,68,0.24)",
+  },
+};
+
 const getSlotForm = (semester) => ({
   monday_slots: semester?.monday_slots ?? 10,
   tuesday_slots: semester?.tuesday_slots ?? 10,
@@ -165,10 +187,19 @@ const getAvatarColor = (key) => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
+const getRequestStatusMeta = (status) =>
+  REQUEST_STATUS_META[status] || {
+    label: status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown",
+    bg: "rgba(53,53,53,0.06)",
+    color: "#525252",
+    border: "rgba(53,53,53,0.12)",
+  };
+
 export default function DutyScheduleView() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
+  const location = useLocation();
 
   const [schedules, setSchedules] = useState([]);
   const [activeSemester, setActiveSemester] = useState(null);
@@ -183,14 +214,18 @@ export default function DutyScheduleView() {
   const [slotDialogDayIndex, setSlotDialogDayIndex] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestActionId, setRequestActionId] = useState("");
-  const [expandedReasonById, setExpandedReasonById] = useState({});
+  const [requestDetailsOpen, setRequestDetailsOpen] = useState(false);
+  const [requestDetailsTarget, setRequestDetailsTarget] = useState(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [isTableFullscreen, setIsTableFullscreen] = useState(false);
   const [selectedDayFilter, setSelectedDayFilter] = useState(null);
+  const [requestSearchText, setRequestSearchText] = useState("");
+  const [requestStatusFilter, setRequestStatusFilter] = useState("All");
   const gridApiRef = useGridApiRef();
+  const requestGridApiRef = useGridApiRef();
 
   const loadActiveSemester = useCallback(async () => {
     const { data, error: semesterError } = await supabase
@@ -247,11 +282,11 @@ export default function DutyScheduleView() {
     const { data, error: fetchErr } = await supabase
       .from("duty_schedule_change_requests")
       .select(
-        `id, staffer_id, current_duty_day, requested_duty_day, request_reason, status, created_at, staffer:staffer_id ( id, full_name, section, role, division, avatar_url )`,
+        `id, staffer_id, current_duty_day, requested_duty_day, request_reason, status, created_at, reviewed_at, review_notes, staffer:staffer_id ( id, full_name, section, role, division, avatar_url )`,
       )
       .eq("semester_id", activeSemester.id)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true });
+      .in("status", ["pending", "approved", "rejected"])
+      .order("created_at", { ascending: false });
 
     if (fetchErr) {
       setError(fetchErr.message);
@@ -290,6 +325,86 @@ export default function DutyScheduleView() {
       ? schedules
       : schedules.filter((s) => s.staffer?.section === sectionFilter);
   const isSectionFiltered = sectionFilter !== "All";
+  const pendingRequestCount = useMemo(
+    () => pendingRequests.filter((request) => request.status === "pending").length,
+    [pendingRequests],
+  );
+
+  // Count total APPROVED requests per staffer for quota display
+  const requestCountPerStaffer = useMemo(() => {
+    const counts = {};
+    (pendingRequests || []).forEach((request) => {
+      // Only count approved requests toward quota
+      if (request.status === "approved") {
+        const stafferId = request.staffer_id;
+        counts[stafferId] = (counts[stafferId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [pendingRequests]);
+
+  const requestSearchTokens = requestSearchText
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const filteredRequests = useMemo(
+    () =>
+      pendingRequests.filter((request) => {
+        const matchesStatus =
+          requestStatusFilter === "All" ||
+          getRequestStatusMeta(request.status).label === requestStatusFilter;
+
+        if (!matchesStatus) return false;
+
+        if (requestSearchTokens.length === 0) return true;
+
+        const content = [
+          request.staffer?.full_name,
+          request.staffer?.role,
+          request.staffer?.section,
+          DAY_LABELS[request.current_duty_day],
+          DAY_LABELS[request.requested_duty_day],
+          request.request_reason,
+          request.review_notes,
+          getRequestStatusMeta(request.status).label,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return requestSearchTokens.every((token) => content.includes(token));
+      }),
+    [pendingRequests, requestSearchTokens, requestStatusFilter],
+  );
+
+  useEffect(() => {
+    const openRequestId = location.state?.openDutyChangeRequestId;
+    const openStafferId = location.state?.openDutyChangeRequestStafferId;
+    if ((!openRequestId && !openStafferId) || pendingRequests.length === 0) return;
+
+    const match = openRequestId
+      ? pendingRequests.find((request) => request.id === openRequestId)
+      : pendingRequests.find(
+          (request) =>
+            request.staffer_id === openStafferId && request.status === "pending",
+        ) || pendingRequests.find((request) => request.staffer_id === openStafferId);
+
+    if (!match) return;
+
+    queueMicrotask(() => {
+      setActiveTab(1);
+      setRequestStatusFilter("All");
+      setRequestSearchText(match.staffer?.full_name || "");
+      setRequestDetailsTarget(match);
+      setRequestDetailsOpen(true);
+    });
+  }, [
+    location.state?.openDutyChangeRequestId,
+    location.state?.openDutyChangeRequestStafferId,
+    pendingRequests,
+  ]);
 
   const sectionOptions = useMemo(() => {
     const uniqueSections = Array.from(
@@ -350,6 +465,13 @@ export default function DutyScheduleView() {
     gridApiRef.current?.exportDataAsCsv({
       utf8WithBom: true,
       fileName: "duty-schedule-export",
+    });
+  };
+
+  const handleExportRequestsCsv = () => {
+    requestGridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "duty-change-requests-export",
     });
   };
 
@@ -539,10 +661,14 @@ export default function DutyScheduleView() {
           message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was approved.`,
           requestId: null,
           createdBy: user?.id || null,
+          targetPath: "/staff/my-schedule",
+          targetPayload: { openDutyChangeRequestId: request.id },
         });
 
         await loadSchedules();
         await loadPendingRequests();
+        setRequestDetailsOpen(false);
+        setRequestDetailsTarget(null);
       } catch (actionErr) {
         setError(
           actionErr.message || "Failed to approve schedule change request.",
@@ -588,16 +714,18 @@ export default function DutyScheduleView() {
         await notifySpecificStaff({
           staffIds: [request.staffer_id],
           type: "duty_schedule_change_rejected",
-          title: "Duty Day Change Rejected",
-          message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was rejected.${reason?.trim() ? ` Reason: ${reason.trim()}` : ""}`,
+          title: "Duty Day Change Declined",
+          message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was declined.${reason?.trim() ? ` Reason: ${reason.trim()}` : ""}`,
           requestId: null,
           createdBy: user?.id || null,
+          targetPath: "/staff/my-schedule",
+          targetPayload: { openDutyChangeRequestId: request.id },
         });
 
         await loadPendingRequests();
       } catch (actionErr) {
         setError(
-          actionErr.message || "Failed to reject schedule change request.",
+          actionErr.message || "Failed to decline schedule change request.",
         );
       } finally {
         setRequestActionId("");
@@ -608,10 +736,24 @@ export default function DutyScheduleView() {
 
   const openRejectDialog = useCallback((request) => {
     if (!request?.id) return;
+    setRequestDetailsOpen(false);
+    setRequestDetailsTarget(null);
     setRejectTarget(request);
     setRejectReason("");
     setRejectDialogOpen(true);
   }, []);
+
+  const openRequestDetails = useCallback((request) => {
+    if (!request?.id) return;
+    setRequestDetailsTarget(request);
+    setRequestDetailsOpen(true);
+  }, []);
+
+  const closeRequestDetails = useCallback(() => {
+    if (requestActionId) return;
+    setRequestDetailsOpen(false);
+    setRequestDetailsTarget(null);
+  }, [requestActionId]);
 
   const closeRejectDialog = useCallback(() => {
     if (requestActionId) return;
@@ -627,13 +769,6 @@ export default function DutyScheduleView() {
     setRejectTarget(null);
     setRejectReason("");
   }, [handleRejectRequest, rejectReason, rejectTarget]);
-
-  const toggleReasonExpanded = useCallback((requestId) => {
-    setExpandedReasonById((prev) => ({
-      ...prev,
-      [requestId]: !prev[requestId],
-    }));
-  }, []);
 
   const rows = filteredByDay.map((s) => ({
     id: s.id,
@@ -821,6 +956,240 @@ export default function DutyScheduleView() {
     },
   ];
 
+  const requestRows = filteredRequests.map((request) => ({
+    id: request.id,
+    staffer_name: request.staffer?.full_name || "Unknown Staffer",
+    staffer_section: request.staffer?.section || "—",
+    staffer_role: request.staffer?.role || "Staff",
+    staffer_avatar_url: request.staffer?.avatar_url || null,
+    staffer_id: request.staffer_id,
+    current_duty_day: request.current_duty_day,
+    requested_duty_day: request.requested_duty_day,
+    request_reason: request.request_reason || "No reason provided.",
+    status: request.status,
+    status_label: getRequestStatusMeta(request.status).label,
+    created_at: request.created_at,
+    request_count: requestCountPerStaffer[request.staffer_id] || 0,
+    rawRequest: request,
+  }));
+
+  const requestColumns = [
+    {
+      field: "staffer_name",
+      headerName: "Staffer",
+      flex: 1.2,
+      renderCell: (p) => {
+        const url = getAvatarUrl(p.row.staffer_avatar_url);
+        const avatarColor = getAvatarColor(p.row.staffer_id || p.row.id);
+        const count = p.row.request_count || 0;
+        const isQuotaExhausted = count >= 3;
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.85, height: "100%" }}>
+            <Avatar
+              src={url}
+              sx={{
+                width: 26,
+                height: 26,
+                fontSize: "0.62rem",
+                fontWeight: 700,
+                backgroundColor: avatarColor.bg,
+                color: avatarColor.color,
+              }}
+            >
+              {!url && getInitials(p.value)}
+            </Avatar>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 400,
+                  color: "text.primary",
+                  lineHeight: 1.15,
+                }}
+              >
+                {p.value}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 32,
+                px: 0.7,
+                py: 0.3,
+                borderRadius: "999px",
+                border: `1px solid ${isQuotaExhausted ? "#dc2626" : "rgba(245,197,43,0.5)"}`,
+                backgroundColor: isQuotaExhausted
+                  ? "rgba(220,38,38,0.08)"
+                  : isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.06)",
+                color: isQuotaExhausted ? "#b91c1c" : "#b45309",
+                fontFamily: dm,
+                fontSize: "0.65rem",
+                fontWeight: 700,
+              }}
+            >
+              {count}/3
+            </Box>
+          </Box>
+        );
+      },
+    },
+    {
+      field: "staffer_section",
+      headerName: "Section",
+      flex: 0.85,
+      renderCell: (p) => {
+        const cfg = SECTION_CFG[p.value] || {
+          bg: "#f9fafb",
+          color: "#6b7280",
+          dot: "#9ca3af",
+        };
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.6,
+                px: 1.15,
+                py: 0.35,
+                borderRadius: "10px",
+                backgroundColor: isDark ? `${cfg.dot}15` : cfg.bg,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  backgroundColor: cfg.dot,
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  color: isDark ? cfg.dot : cfg.color,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {p.value}
+              </Typography>
+            </Box>
+          </Box>
+        );
+      },
+    },
+    {
+      field: "staffer_role",
+      headerName: "Role",
+      flex: 0.72,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Box
+            sx={{
+              px: 1.15,
+              py: 0.35,
+              borderRadius: "10px",
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(53,53,53,0.04)",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.68rem",
+                fontWeight: 500,
+                color: "text.secondary",
+                textTransform: "capitalize",
+              }}
+            >
+              {p.value || "Staff"}
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      field: "created_at",
+      headerName: "Requested",
+      flex: 0.8,
+      renderCell: (p) => <MetaCell>{formatDateTime(p.value)}</MetaCell>,
+    },
+    {
+      field: "status_label",
+      headerName: "Status",
+      flex: 0.7,
+      renderCell: (p) => {
+        const statusMeta = getRequestStatusMeta(p.row.status);
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 86,
+                px: 1.1,
+                height: 26,
+                borderRadius: "999px",
+                border: `1px solid ${statusMeta.border}`,
+                backgroundColor: statusMeta.bg,
+                color: statusMeta.color,
+                fontFamily: dm,
+                fontSize: "0.68rem",
+                fontWeight: 700,
+              }}
+            >
+              {statusMeta.label}
+            </Box>
+          </Box>
+        );
+      },
+    },
+    {
+      field: "actions",
+      headerName: "Action",
+      flex: 0.55,
+      sortable: false,
+      filterable: false,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Box
+            onClick={() => openRequestDetails(p.row.rawRequest)}
+            sx={{
+              px: 1.35,
+              height: 28,
+              borderRadius: "4px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              border: "1px solid #d5a308",
+              backgroundColor: GOLD,
+              color: "#1a1a1a",
+              fontFamily: dm,
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              transition: "background-color 0.15s, border-color 0.15s",
+              "&:hover": {
+                backgroundColor: "#e9b914",
+                borderColor: "#bf9000",
+              },
+            }}
+          >
+            View
+          </Box>
+        </Box>
+      ),
+    },
+  ];
+
   return (
     <Box
       sx={{
@@ -830,7 +1199,8 @@ export default function DutyScheduleView() {
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "hidden",
         position: "relative",
         fontFamily: dm,
       }}
@@ -1128,8 +1498,8 @@ export default function DutyScheduleView() {
             <Tab
               label={
                 <Badge
-                  badgeContent={pendingRequests.length}
-                  invisible={pendingRequests.length === 0}
+                  badgeContent={pendingRequestCount}
+                  invisible={pendingRequestCount === 0}
                   sx={{
                     "& .MuiBadge-badge": {
                       backgroundColor: GOLD,
@@ -1156,270 +1526,147 @@ export default function DutyScheduleView() {
         <Box
           sx={{
             mb: 2,
-            px: 2,
-            py: 1.75,
-            borderRadius: "10px",
-            border: `1px solid ${border}`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#ffffff",
             display: "flex",
-            flexDirection: "column",
-            gap: 0.75,
+            alignItems: "center",
+            gap: 1.5,
+            flexWrap: "nowrap",
+            overflowX: "auto",
             flexShrink: 0,
           }}
         >
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 1,
-              flexWrap: "wrap",
-            }}
-          >
-            <Box>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.86rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                }}
-              >
-                Pending Schedule Changes
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.75rem",
-                  color: "text.secondary",
-                  mt: 0.35,
-                }}
-              >
-                Review requested duty-day changes before they affect assignment
-                planning.
-              </Typography>
-            </Box>
-          </Box>
-
-          {pendingRequests.length === 0 ? (
-            <Box
+          <FormControl size="small" sx={{ flex: 1, minWidth: 280 }}>
+            <OutlinedInput
+              placeholder="Search requests"
+              value={requestSearchText}
+              onChange={(e) => setRequestSearchText(e.target.value)}
+              startAdornment={
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                </InputAdornment>
+              }
               sx={{
-                px: 2,
-                py: 2,
+                fontFamily: dm,
+                fontSize: "0.78rem",
                 borderRadius: "10px",
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.03)"
-                  : "#ffffff",
-                border: `1px solid ${border}`,
+                backgroundColor: "#f7f7f8",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(0,0,0,0.12)",
+                },
+              }}
+            />
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <Select
+              value={requestStatusFilter}
+              onChange={(e) => setRequestStatusFilter(e.target.value)}
+              IconComponent={UnfoldMoreIcon}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                borderRadius: "10px",
+                backgroundColor: "#f7f7f8",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(0,0,0,0.12)",
+                },
               }}
             >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  color: "text.secondary",
-                }}
-              >
-                No pending duty schedule change requests at the moment.
-              </Typography>
-            </Box>
-          ) : (
-            pendingRequests.map((request) => {
-              const staffName = request.staffer?.full_name || "Unknown Staffer";
-              const avatarColor = getAvatarColor(
-                request.staffer_id || request.id,
-              );
-              const avatarUrl = getAvatarUrl(request.staffer?.avatar_url);
-              const isBusy = requestActionId === request.id;
-              const reason = request.request_reason || "No reason provided.";
-              const isExpanded = !!expandedReasonById[request.id];
-              const isReasonLong = reason.length > REASON_PREVIEW_LIMIT;
-              const reasonPreview = isReasonLong
-                ? `${reason.slice(0, REASON_PREVIEW_LIMIT)}...`
-                : reason;
-
-              return (
-                <Box
-                  key={request.id}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1.5,
-                    flexWrap: "wrap",
-                    px: 1.25,
-                    py: 1.1,
-                    borderRadius: "10px",
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.03)"
-                      : "#ffffff",
-                    border: `1px solid ${border}`,
-                  }}
+              {["All", "Pending", "Approved", "Declined"].map((status) => (
+                <MenuItem
+                  key={status}
+                  value={status}
+                  sx={{ fontFamily: dm, fontSize: "0.78rem" }}
                 >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.1,
-                      minWidth: 0,
-                      flex: "1 1 360px",
-                    }}
-                  >
-                    <Avatar
-                      src={avatarUrl}
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        fontSize: "0.68rem",
-                        fontWeight: 700,
-                        backgroundColor: avatarColor.bg,
-                        color: avatarColor.color,
-                      }}
-                    >
-                      {!avatarUrl && getInitials(staffName)}
-                    </Avatar>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.8rem",
-                          fontWeight: 600,
-                          color: "text.primary",
-                        }}
-                      >
-                        {staffName}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.72rem",
-                          color: "text.secondary",
-                        }}
-                      >
-                        {request.staffer?.section || "No Section"}
-                        {request.staffer?.role
-                          ? ` • ${request.staffer.role}`
-                          : ""}
-                        {request.created_at
-                          ? ` • Requested ${formatDateTime(request.created_at)}`
-                          : ""}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.72rem",
-                          color: "text.secondary",
-                          mt: 0.5,
-                          whiteSpace: "pre-line",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {`Reason: ${isExpanded ? reason : reasonPreview}`}
-                      </Typography>
-                      {isReasonLong && (
-                        <Box
-                          onClick={() => toggleReasonExpanded(request.id)}
-                          sx={{
-                            mt: 0.35,
-                            display: "inline-flex",
-                            fontFamily: dm,
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            color: "#8a6a00",
-                            cursor: "pointer",
-                            userSelect: "none",
-                          }}
-                        >
-                          {isExpanded ? "View less" : "View more"}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
+                  {status}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <DayPill dayIndex={request.current_duty_day} />
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.72rem",
-                        color: "text.secondary",
-                        fontWeight: 700,
-                      }}
-                    >
-                      →
-                    </Typography>
-                    <DayPill dayIndex={request.requested_duty_day} accent />
-                  </Box>
+          <Box sx={{ flex: 1 }} />
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.8,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Box
-                      onClick={!isBusy ? () => openRejectDialog(request) : undefined}
-                      sx={{
-                        px: 1.5,
-                        height: 34,
-                        borderRadius: "10px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: isBusy ? "default" : "pointer",
-                        border: "1px solid rgba(220,38,38,0.18)",
-                        backgroundColor: isDark
-                          ? "rgba(220,38,38,0.12)"
-                          : "rgba(220,38,38,0.06)",
-                        color: "#dc2626",
-                        fontFamily: dm,
-                        fontSize: "0.76rem",
-                        fontWeight: 600,
-                        opacity: isBusy ? 0.6 : 1,
-                      }}
-                    >
-                      Reject
-                    </Box>
-                    <Box
-                      onClick={
-                        !isBusy ? () => handleApproveRequest(request) : undefined
-                      }
-                      sx={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 0.6,
-                        px: 1.5,
-                        height: 34,
-                        borderRadius: "10px",
-                        justifyContent: "center",
-                        cursor: isBusy ? "default" : "pointer",
-                        backgroundColor: GOLD,
-                        color: "#1a1a1a",
-                        fontFamily: dm,
-                        fontSize: "0.76rem",
-                        fontWeight: 700,
-                        opacity: isBusy ? 0.7 : 1,
-                      }}
-                    >
-                      {isBusy && (
-                        <CircularProgress size={12} sx={{ color: "#1a1a1a" }} />
-                      )}
-                      Approve
-                    </Box>
-                  </Box>
-                </Box>
-              );
-            })
-          )}
+          <IconButton
+            size="small"
+            onClick={() => setIsTableFullscreen(true)}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              border: "1px solid rgba(0,0,0,0.12)",
+              backgroundColor: "#f7f7f8",
+              width: ACTION_BTN_HEIGHT,
+              height: ACTION_BTN_HEIGHT,
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FullscreenIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+
+          <Box
+            onClick={handleExportRequestsCsv}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 1.5,
+              height: ACTION_BTN_HEIGHT,
+              borderRadius: "10px",
+              cursor: "pointer",
+              border: "1px solid rgba(0,0,0,0.12)",
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              backgroundColor: "#f7f7f8",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+            Export
+          </Box>
+        </Box>
+      )}
+
+      {activeSemester && activeTab === 1 && (
+        <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+          <Box
+            sx={{
+              minWidth: 600,
+              height: "100%",
+              bgcolor: "#f7f7f8",
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              overflow: "hidden",
+            }}
+          >
+            <DataGrid
+              rows={requestRows}
+              columns={requestColumns}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
+              disableRowSelectionOnClick
+              rowHeight={52}
+              enableSearch={false}
+              apiRef={requestGridApiRef}
+              slotProps={{
+                toolbar: {
+                  csvOptions: { disableToolbarButton: true },
+                  printOptions: { disableToolbarButton: true },
+                },
+              }}
+            />
+          </Box>
         </Box>
       )}
 
@@ -1703,256 +1950,344 @@ export default function DutyScheduleView() {
               transitionDelay: isTableFullscreen ? "0.1s" : "0s",
             }}
           >
-            {/* Day buttons - inline */}
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.8,
-                flexShrink: 0,
-              }}
-            >
-              {DAY_LABELS.map((day, i) => {
-                const label = ["M", "T", "W", "Th", "F"][i];
-                const cfg = DAY_CFG[i];
-                const isSelected = selectedDayFilter === i;
-                return (
-                  <Box
-                    key={day}
-                    onClick={() =>
-                      setSelectedDayFilter((current) =>
-                        current === i ? null : i,
-                      )
-                    }
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 0.3,
-                        cursor: "pointer",
+            {activeTab === 0 ? (
+              <>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.8,
+                    flexShrink: 0,
+                  }}
+                >
+                  {DAY_LABELS.map((day, i) => {
+                    const label = ["M", "T", "W", "Th", "F"][i];
+                    const cfg = DAY_CFG[i];
+                    const isSelected = selectedDayFilter === i;
+                    return (
+                      <Box
+                        key={day}
+                        onClick={() =>
+                          setSelectedDayFilter((current) =>
+                            current === i ? null : i,
+                          )
+                        }
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 0.3,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: "50%",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontFamily: dm,
+                            fontWeight: 700,
+                            fontSize: "0.75rem",
+                            border: `1px solid ${isSelected ? GOLD : border}`,
+                            backgroundColor: isSelected
+                              ? isDark
+                                ? "rgba(245,197,43,0.12)"
+                                : "rgba(245,197,43,0.08)"
+                              : "background.paper",
+                            color: isSelected ? "text.primary" : cfg.color,
+                            transition: "all 0.2s ease",
+                            "&:hover": {
+                              transform: "translateY(-1px)",
+                              boxShadow: isSelected
+                                ? "none"
+                                : "0 10px 20px rgba(0,0,0,0.04)",
+                            },
+                          }}
+                        >
+                          {label}
+                        </Box>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.62rem",
+                            color: isSelected ? GOLD : "text.secondary",
+                          }}
+                        >
+                          {dayCounts[i]}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+
+                  {selectedDayFilter !== null && (
+                    <IconButton
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openSlotDialog(selectedDayFilter);
                       }}
-                    >
-                    <Box
                       sx={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: "50%",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: dm,
-                        fontWeight: 700,
-                        fontSize: "0.75rem",
-                        border: `1px solid ${isSelected ? GOLD : border}`,
-                        backgroundColor: isSelected
-                          ? isDark
-                            ? "rgba(245,197,43,0.12)"
-                            : "rgba(245,197,43,0.08)"
-                          : "background.paper",
-                        color: isSelected ? "text.primary" : cfg.color,
-                        transition: "all 0.2s ease",
+                        width: 36,
+                        height: 36,
+                        borderRadius: "10px",
+                        color: "text.disabled",
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(53,53,53,0.06)",
                         "&:hover": {
-                          transform: "translateY(-1px)",
-                          boxShadow: isSelected
-                            ? "none"
-                            : "0 10px 20px rgba(0,0,0,0.04)",
+                          color: "text.primary",
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(53,53,53,0.1)",
                         },
                       }}
                     >
-                      {label}
-                    </Box>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.62rem",
-                        color: isSelected ? GOLD : "text.secondary",
-                      }}
-                    >
-                      {dayCounts[i]}
-                    </Typography>
-                  </Box>
-                );
-              })}
+                      <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  )}
+                </Box>
 
-              {selectedDayFilter !== null && (
-                <IconButton
-                  size="small"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openSlotDialog(selectedDayFilter);
-                  }}
+                <Box sx={{ flex: 1 }} />
+
+                <FormControl size="small" sx={{ minWidth: 250, flex: 1 }}>
+                  <OutlinedInput
+                    placeholder="Search"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                      </InputAdornment>
+                    }
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      borderRadius: "10px",
+                      backgroundColor: "#f7f7f8",
+                      "&.MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "rgba(0,0,0,0.12)" },
+                      },
+                    }}
+                  />
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <Select
+                    value={sectionFilter}
+                    onChange={(e) => setSectionFilter(e.target.value)}
+                    IconComponent={UnfoldMoreIcon}
+                    displayEmpty
+                    renderValue={(val) => (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {isSectionFiltered && (
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              backgroundColor: GOLD,
+                              flexShrink: 0,
+                            }}
+                          />
+                        )}
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.78rem",
+                            color: "text.primary",
+                          }}
+                        >
+                          {val}
+                        </Typography>
+                      </Box>
+                    )}
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      borderRadius: "10px",
+                      backgroundColor: "#f7f7f8",
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "rgba(0,0,0,0.12)",
+                      },
+                      "& .MuiSelect-icon": {
+                        fontSize: 18,
+                        color: "text.disabled",
+                      },
+                    }}
+                  >
+                    {["All", ...sectionOptions].map((sec) => {
+                      const count =
+                        sec === "All"
+                          ? schedules.length
+                          : schedules.filter((s) => s.staffer?.section === sec)
+                              .length;
+                      const isSelected = sectionFilter === sec;
+                      return (
+                        <MenuItem
+                          key={sec}
+                          value={sec}
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.78rem",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 2,
+                            fontWeight: isSelected ? 600 : 400,
+                          }}
+                        >
+                          {sec}
+                          <Box
+                            component="span"
+                            sx={{
+                              minWidth: 20,
+                              height: 18,
+                              borderRadius: "99px",
+                              px: 0.75,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: isSelected
+                                ? GOLD
+                                : count === 0
+                                  ? "transparent"
+                                  : isDark
+                                    ? "rgba(255,255,255,0.08)"
+                                    : "rgba(53,53,53,0.07)",
+                              fontSize: "0.62rem",
+                              fontWeight: 600,
+                              lineHeight: 1,
+                              color: isSelected
+                                ? "#000"
+                                : count === 0
+                                  ? "text.disabled"
+                                  : "text.secondary",
+                              opacity: count === 0 ? 0.4 : 1,
+                            }}
+                          >
+                            {count}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+
+                <Box
+                  onClick={handleExportCsv}
                   sx={{
-                    width: 36,
-                    height: 36,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    px: 1.5,
+                    height: ACTION_BTN_HEIGHT,
                     borderRadius: "10px",
-                    color: "text.disabled",
-                    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)",
+                    cursor: "pointer",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                    color: "text.secondary",
+                    backgroundColor: "#f7f7f8",
+                    transition: "all 0.15s",
+                    flexShrink: 0,
                     "&:hover": {
+                      borderColor: "rgba(53,53,53,0.3)",
                       color: "text.primary",
-                      backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.1)",
+                      backgroundColor: "#ededee",
                     },
                   }}
                 >
-                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              )}
-            </Box>
+                  <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                  Export
+                </Box>
+              </>
+            ) : (
+              <>
+                <FormControl size="small" sx={{ minWidth: 280, flex: 1 }}>
+                  <OutlinedInput
+                    placeholder="Search requests"
+                    value={requestSearchText}
+                    onChange={(e) => setRequestSearchText(e.target.value)}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                      </InputAdornment>
+                    }
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      borderRadius: "10px",
+                      backgroundColor: "#f7f7f8",
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "rgba(0,0,0,0.12)",
+                      },
+                    }}
+                  />
+                </FormControl>
 
-            {/* Spacer */}
-            <Box sx={{ flex: 1 }} />
-
-            {/* Search */}
-            <FormControl size="small" sx={{ minWidth: 250, flex: 1 }}>
-              <OutlinedInput
-                placeholder="Search"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                  </InputAdornment>
-                }
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.78rem",
-                  borderRadius: "10px",
-                  backgroundColor: "#f7f7f8",
-                  "&.MuiOutlinedInput-root": {
-                    "& fieldset": { borderColor: "rgba(0,0,0,0.12)" },
-                  },
-                }}
-              />
-            </FormControl>
-
-            {/* Section Filter */}
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <Select
-                value={sectionFilter}
-                onChange={(e) => setSectionFilter(e.target.value)}
-                IconComponent={UnfoldMoreIcon}
-                displayEmpty
-                renderValue={(val) => (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {isSectionFiltered && (
-                      <Box
-                        sx={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          backgroundColor: GOLD,
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        color: "text.primary",
-                      }}
-                    >
-                      {val}
-                    </Typography>
-                  </Box>
-                )}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.78rem",
-                  borderRadius: "10px",
-                  backgroundColor: "#f7f7f8",
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(0,0,0,0.12)",
-                  },
-                  "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
-                }}
-              >
-                {["All", ...sectionOptions].map((sec) => {
-                  const count =
-                    sec === "All"
-                      ? schedules.length
-                      : schedules.filter((s) => s.staffer?.section === sec)
-                          .length;
-                  const isSelected = sectionFilter === sec;
-                  return (
-                    <MenuItem
-                      key={sec}
-                      value={sec}
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 2,
-                        fontWeight: isSelected ? 600 : 400,
-                      }}
-                    >
-                      {sec}
-                      <Box
-                        component="span"
-                        sx={{
-                          minWidth: 20,
-                          height: 18,
-                          borderRadius: "99px",
-                          px: 0.75,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: isSelected
-                            ? GOLD
-                            : count === 0
-                              ? "transparent"
-                              : isDark
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(53,53,53,0.07)",
-                          fontSize: "0.62rem",
-                          fontWeight: 600,
-                          lineHeight: 1,
-                          color: isSelected
-                            ? "#000"
-                            : count === 0
-                              ? "text.disabled"
-                              : "text.secondary",
-                          opacity: count === 0 ? 0.4 : 1,
-                        }}
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <Select
+                    value={requestStatusFilter}
+                    onChange={(e) => setRequestStatusFilter(e.target.value)}
+                    IconComponent={UnfoldMoreIcon}
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      borderRadius: "10px",
+                      backgroundColor: "#f7f7f8",
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "rgba(0,0,0,0.12)",
+                      },
+                    }}
+                  >
+                    {["All", "Pending", "Approved", "Declined"].map((status) => (
+                      <MenuItem
+                        key={status}
+                        value={status}
+                        sx={{ fontFamily: dm, fontSize: "0.78rem" }}
                       >
-                        {count}
-                      </Box>
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+                        {status}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-            {/* Export */}
-          <Box
-            onClick={handleExportCsv}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1.5,
-              height: ACTION_BTN_HEIGHT,
-              borderRadius: "10px",
-              cursor: "pointer",
-              border: "1px solid rgba(0,0,0,0.12)",
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: 500,
-              color: "text.secondary",
-              backgroundColor: "#f7f7f8",
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
-            }}
-          >
-            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-            Export
-          </Box>
+                <Box sx={{ flex: 1 }} />
+
+                <Box
+                  onClick={handleExportRequestsCsv}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    px: 1.5,
+                    height: ACTION_BTN_HEIGHT,
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                    color: "text.secondary",
+                    backgroundColor: "#f7f7f8",
+                    transition: "all 0.15s",
+                    flexShrink: 0,
+                    "&:hover": {
+                      borderColor: "rgba(53,53,53,0.3)",
+                      color: "text.primary",
+                      backgroundColor: "#ededee",
+                    },
+                  }}
+                >
+                  <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                  Export
+                </Box>
+              </>
+            )}
           <IconButton
             size="small"
             onClick={() => setIsTableFullscreen(false)}
@@ -1995,7 +2330,7 @@ export default function DutyScheduleView() {
                 overflow: "hidden",
               }}
             >
-              {loading ? (
+              {loading && activeTab === 0 ? (
                 <Box
                   sx={{
                     height: "100%",
@@ -2008,14 +2343,14 @@ export default function DutyScheduleView() {
                 </Box>
               ) : (
                 <DataGrid
-                  rows={rows}
-                  columns={columns}
+                  rows={activeTab === 0 ? rows : requestRows}
+                  columns={activeTab === 0 ? columns : requestColumns}
                   pageSize={10}
                   rowsPerPageOptions={[10]}
                   disableRowSelectionOnClick
                   rowHeight={52}
                   enableSearch={false}
-                  apiRef={gridApiRef}
+                  apiRef={activeTab === 0 ? gridApiRef : requestGridApiRef}
                   slotProps={{
                     toolbar: {
                       csvOptions: { disableToolbarButton: true },
@@ -2028,6 +2363,271 @@ export default function DutyScheduleView() {
           </Box>
         </Box>
       )}
+
+      <Dialog
+        open={requestDetailsOpen}
+        onClose={closeRequestDetails}
+        PaperProps={{
+          sx: {
+            borderRadius: "10px",
+            width: 560,
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.92rem",
+              color: "text.primary",
+            }}
+          >
+            Pending Schedule Request
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={closeRequestDetails}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.25,
+          }}
+        >
+          <Box sx={{ pb: 0.25 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.84rem",
+                fontWeight: 700,
+                color: "text.primary",
+              }}
+            >
+              {requestDetailsTarget?.staffer?.full_name || "Unknown Staffer"}
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.73rem",
+                color: "text.secondary",
+                mt: 0.25,
+                opacity: 0.85,
+              }}
+            >
+              {(requestDetailsTarget?.staffer?.role
+                ? requestDetailsTarget.staffer.role.charAt(0).toUpperCase() +
+                  requestDetailsTarget.staffer.role.slice(1)
+                : "Staff") +
+                (requestDetailsTarget?.status
+                  ? ` • ${getRequestStatusMeta(requestDetailsTarget.status).label}`
+                  : "") +
+                (requestDetailsTarget?.created_at
+                  ? ` • Requested ${formatDateTime(requestDetailsTarget.created_at)}`
+                  : "")}
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              borderRadius: "10px",
+              border: "1px solid rgba(245,197,43,0.32)",
+              px: 1.35,
+              py: 1.1,
+              backgroundColor: isDark
+                ? "rgba(245,197,43,0.08)"
+                : "#fff9ec",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "#9a6b00",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                mb: 0.7,
+              }}
+            >
+              Change Day Requested
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexWrap: "wrap" }}>
+              <DayPill dayIndex={requestDetailsTarget?.current_duty_day} />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  color: "text.secondary",
+                  fontWeight: 700,
+                }}
+              >
+                →
+              </Typography>
+              <DayPill dayIndex={requestDetailsTarget?.requested_duty_day} accent />
+            </Box>
+          </Box>
+
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "text.secondary",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                mb: 0.65,
+              }}
+            >
+              Reason
+            </Typography>
+            <Box
+              sx={{
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                px: 1.25,
+                py: 1.05,
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.025)"
+                  : "#fafafa",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.79rem",
+                  color: "text.primary",
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-line",
+                  wordBreak: "break-word",
+                }}
+              >
+                {requestDetailsTarget?.request_reason || "No reason provided."}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            borderTop: `1px solid ${border}`,
+            display: "flex",
+            justifyContent:
+              requestDetailsTarget?.status === "pending" ? "flex-end" : "space-between",
+            alignItems: "center",
+            gap: 1,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.01)"
+              : "rgba(53,53,53,0.01)",
+          }}
+        >
+          {requestDetailsTarget?.status !== "pending" && (
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                color: "text.secondary",
+              }}
+            >
+              This request has already been {getRequestStatusMeta(requestDetailsTarget?.status).label.toLowerCase()}.
+            </Typography>
+          )}
+
+          {requestDetailsTarget?.status === "pending" && (
+            <>
+              <Box
+                onClick={
+                  requestActionId === requestDetailsTarget?.id
+                    ? undefined
+                    : () => openRejectDialog(requestDetailsTarget)
+                }
+                sx={{
+                  px: 1.75,
+                  py: 0.65,
+                  borderRadius: "10px",
+                  cursor:
+                    requestActionId === requestDetailsTarget?.id ? "default" : "pointer",
+                  border: "1px solid rgba(220,38,38,0.18)",
+                  backgroundColor: isDark
+                    ? "rgba(220,38,38,0.12)"
+                    : "rgba(220,38,38,0.06)",
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  color: "#dc2626",
+                  opacity: requestActionId === requestDetailsTarget?.id ? 0.5 : 1,
+                }}
+              >
+                Decline
+              </Box>
+              <Box
+                onClick={
+                  requestActionId === requestDetailsTarget?.id || !requestDetailsTarget
+                    ? undefined
+                    : () => handleApproveRequest(requestDetailsTarget)
+                }
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  px: 1.75,
+                  py: 0.65,
+                  borderRadius: "10px",
+                  cursor:
+                    requestActionId === requestDetailsTarget?.id || !requestDetailsTarget
+                      ? "default"
+                      : "pointer",
+                  backgroundColor: GOLD,
+                  color: "#1a1a1a",
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  opacity:
+                    requestActionId === requestDetailsTarget?.id || !requestDetailsTarget
+                      ? 0.7
+                      : 1,
+                }}
+              >
+                {requestActionId === requestDetailsTarget?.id && (
+                  <CircularProgress size={13} sx={{ color: "#1a1a1a" }} />
+                )}
+                Approve
+              </Box>
+            </>
+          )}
+        </Box>
+      </Dialog>
 
       <Dialog
         open={rejectDialogOpen}
@@ -2063,7 +2663,7 @@ export default function DutyScheduleView() {
               color: "text.primary",
             }}
           >
-            Reject Schedule Change
+            Decline Schedule Change
           </Typography>
           <IconButton
             size="small"
@@ -2098,12 +2698,12 @@ export default function DutyScheduleView() {
             }}
           >
             {rejectTarget
-              ? `Reject ${rejectTarget.staffer?.full_name || "this staff member"}'s request to move from ${DAY_LABELS[rejectTarget.current_duty_day]} to ${DAY_LABELS[rejectTarget.requested_duty_day]}?`
-              : "Reject this schedule change request?"}
+              ? `Decline ${rejectTarget.staffer?.full_name || "this staff member"}'s request to move from ${DAY_LABELS[rejectTarget.current_duty_day]} to ${DAY_LABELS[rejectTarget.requested_duty_day]}?`
+              : "Decline this schedule change request?"}
           </Typography>
 
           <TextField
-            label="Reason for rejection (optional)"
+            label="Reason for declining (optional)"
             placeholder="Add context for the staff member"
             size="small"
             multiline
@@ -2182,7 +2782,7 @@ export default function DutyScheduleView() {
             {requestActionId === rejectTarget?.id && (
               <CircularProgress size={13} sx={{ color: "#fff" }} />
             )}
-            Confirm Reject
+            Confirm Decline
           </Box>
         </Box>
       </Dialog>

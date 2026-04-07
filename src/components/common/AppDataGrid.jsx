@@ -373,7 +373,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
   // Selection (uncontrolled — MUI X v8 model is { ids: Set, type: 'include' })
   const useSelection = !!(selectionActions || checkboxSelectionProp);
   const _internalApiRef = useGridApiRef();
-  const internalApiRef = externalApiRef || _internalApiRef;
+  const resolvedApiRef = externalApiRef || _internalApiRef;
   const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
@@ -393,7 +393,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
 
   const handleClearSelection = () => {
     const empty = { type: 'include', ids: new Set() };
-    internalApiRef.current?.setRowSelectionModel(empty);
+    resolvedApiRef.current?.setRowSelectionModel(empty);
     setSelectedIds([]);
     onRowSelectionModelChange?.(empty);
   };
@@ -465,7 +465,6 @@ const AppDataGrid = forwardRef(function AppDataGrid(
         checkboxSelection: true,
         disableRowSelectionOnClick: true,
         disableRowSelectionExcludeModel: true,
-        apiRef: internalApiRef,
         rowSelectionModel: externalSelectionModel,
         onRowSelectionModelChange: handleSelectionChange,
       }
@@ -480,6 +479,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
       onFilterModelChange={handleFilterModelChange}
       onRowClick={handleRowClick}
       getRowClassName={handleGetRowClassName}
+      apiRef={resolvedApiRef}
       {...selectionProps}
       slots={{
         ...slots,
