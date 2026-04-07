@@ -28,6 +28,8 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -180,6 +182,8 @@ export default function DutyScheduleView() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestActionId, setRequestActionId] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [isTableFullscreen, setIsTableFullscreen] = useState(false);
+  const [selectedDayFilter, setSelectedDayFilter] = useState(null);
   const gridApiRef = useGridApiRef();
 
   const loadActiveSemester = useCallback(async () => {
@@ -281,20 +285,60 @@ export default function DutyScheduleView() {
       : schedules.filter((s) => s.staffer?.section === sectionFilter);
   const isSectionFiltered = sectionFilter !== "All";
 
+  const sectionOptions = useMemo(() => {
+    const uniqueSections = Array.from(
+      new Set(
+        schedules
+          .map((s) => s.staffer?.section)
+          .filter(Boolean),
+      ),
+    );
+
+    return [
+      ...COVERAGE_SECTIONS.filter((sec) => uniqueSections.includes(sec)),
+      ...uniqueSections.filter((sec) => !COVERAGE_SECTIONS.includes(sec)),
+    ];
+  }, [schedules]);
+
+  // Day counts should reflect section-filtered data (before search)
   const dayCounts = DAY_LABELS.map(
-    (_, i) => schedules.filter((s) => s.duty_day === i).length,
+    (_, i) => filtered.filter((s) => s.duty_day === i).length,
   );
+
+  // Apply search to section-filtered data
+  const searchTokens = searchText
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const filteredBySearch =
+    searchTokens.length === 0
+      ? filtered
+      : filtered.filter((s) => {
+          const content = [
+            s.staffer?.full_name,
+            s.staffer?.section,
+            s.staffer?.role,
+            s.staffer?.division,
+            DAY_LABELS[s.duty_day],
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return searchTokens.every((token) => content.includes(token));
+        });
+
+  // Apply day filter to search-filtered data
+  const filteredByDay =
+    selectedDayFilter === null
+      ? filteredBySearch
+      : filteredBySearch.filter((s) => s.duty_day === selectedDayFilter);
+
   const dayCapacities = SLOT_FIELDS.map((field) =>
     Math.max(0, Number(activeSemester?.[field] ?? 10) || 0),
   );
-
-  const externalFilterModel = useMemo(() => {
-    const tokens = searchText
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
-    return { items: [], quickFilterValues: tokens };
-  }, [searchText]);
 
   const handleExportCsv = () => {
     gridApiRef.current?.exportDataAsCsv({
@@ -537,7 +581,7 @@ export default function DutyScheduleView() {
     [loadPendingRequests],
   );
 
-  const rows = filtered.map((s) => ({
+  const rows = filteredByDay.map((s) => ({
     id: s.id,
     full_name: s.staffer?.full_name || "—",
     section: s.staffer?.section || "—",
@@ -733,6 +777,7 @@ export default function DutyScheduleView() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
+        position: "relative",
         fontFamily: dm,
       }}
     >
@@ -790,19 +835,37 @@ export default function DutyScheduleView() {
         >
           {DAY_LABELS.map((day, i) => {
             const cfg = DAY_CFG[i];
+            const isSelected = selectedDayFilter === i;
             return (
               <Box
                 key={day}
-                sx={{
-                  flex: "1 1 110px",
-                  minWidth: 100,
-                  px: 2,
-                  py: 1.5,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: "background.paper",
-                }}
-              >
+                onClick={() =>
+                  setSelectedDayFilter((current) =>
+                    current === i ? null : i,
+                  )
+                }
+                  sx={{
+                    flex: "1 1 110px",
+                    minWidth: 100,
+                    px: 2,
+                    py: 1.5,
+                    borderRadius: "10px",
+                    border: `1px solid ${isSelected ? GOLD : border}`,
+                    backgroundColor: isSelected
+                      ? isDark
+                        ? "rgba(245,197,43,0.12)"
+                        : "rgba(245,197,43,0.08)"
+                      : "background.paper",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      transform: "translateY(-1px)",
+                      boxShadow: isSelected
+                        ? "none"
+                        : "0 10px 20px rgba(0,0,0,0.04)",
+                    },
+                  }}
+                >
                 <Box
                   sx={{
                     display: "flex",
@@ -824,27 +887,58 @@ export default function DutyScheduleView() {
                   >
                     {day}
                   </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => openSlotDialog(i)}
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: "6px",
-                      color: "text.disabled",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "rgba(53,53,53,0.04)",
-                      "&:hover": {
-                        color: "text.primary",
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    {isSelected && (
+                      <IconButton
+                        size="small"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedDayFilter(null);
+                        }}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "6px",
+                          color: "text.disabled",
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.04)"
+                            : "rgba(53,53,53,0.04)",
+                          "&:hover": {
+                            color: "text.primary",
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.08)"
+                              : "rgba(53,53,53,0.08)",
+                          },
+                        }}
+                      >
+                        <CloseIcon sx={{ fontSize: 13 }} />
+                      </IconButton>
+                    )}
+                    <IconButton
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openSlotDialog(i);
+                      }}
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: "6px",
+                        color: "text.disabled",
                         backgroundColor: isDark
-                          ? "rgba(255,255,255,0.08)"
-                          : "rgba(53,53,53,0.08)",
-                      },
-                    }}
-                  >
-                    <EditOutlinedIcon sx={{ fontSize: 13 }} />
-                  </IconButton>
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(53,53,53,0.04)",
+                        "&:hover": {
+                          color: "text.primary",
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.08)"
+                            : "rgba(53,53,53,0.08)",
+                        },
+                      }}
+                    >
+                      <EditOutlinedIcon sx={{ fontSize: 13 }} />
+                    </IconButton>
+                  </Box>
                   {dayCounts[i] > dayCapacities[i] && (
                     <Typography
                       sx={{
@@ -981,8 +1075,20 @@ export default function DutyScheduleView() {
               label={
                 <Badge
                   badgeContent={pendingRequests.length}
-                  color="warning"
                   invisible={pendingRequests.length === 0}
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      backgroundColor: GOLD,
+                      color: "#000",
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      padding: "0 4px",
+                      lineHeight: 1,
+                    },
+                  }}
                 >
                   Requests
                 </Badge>
@@ -1000,17 +1106,17 @@ export default function DutyScheduleView() {
             py: 1.75,
             borderRadius: "10px",
             border: `1px solid ${border}`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#faf8ef",
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#ffffff",
             display: "flex",
             flexDirection: "column",
-            gap: 1.25,
+            gap: 0.75,
             flexShrink: 0,
           }}
         >
           <Box
             sx={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               justifyContent: "space-between",
               gap: 1,
               flexWrap: "wrap",
@@ -1020,7 +1126,7 @@ export default function DutyScheduleView() {
               <Typography
                 sx={{
                   fontFamily: dm,
-                  fontSize: "0.84rem",
+                  fontSize: "0.86rem",
                   fontWeight: 700,
                   color: "text.primary",
                 }}
@@ -1032,30 +1138,12 @@ export default function DutyScheduleView() {
                   fontFamily: dm,
                   fontSize: "0.75rem",
                   color: "text.secondary",
-                  mt: 0.25,
+                  mt: 0.35,
                 }}
               >
                 Review requested duty-day changes before they affect assignment
                 planning.
               </Typography>
-            </Box>
-            <Box
-              sx={{
-                minWidth: 24,
-                height: 22,
-                px: 1,
-                borderRadius: "999px",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: GOLD,
-                color: "#1a1a1a",
-                fontFamily: dm,
-                fontSize: "0.72rem",
-                fontWeight: 700,
-              }}
-            >
-              {pendingRequests.length}
             </Box>
           </Box>
 
@@ -1219,14 +1307,12 @@ export default function DutyScheduleView() {
                         !isBusy ? () => handleApproveRequest(request) : undefined
                       }
                       sx={{
-                        display: "flex",
+                        display: "inline-flex",
                         alignItems: "center",
                         gap: 0.6,
                         px: 1.5,
                         height: 34,
                         borderRadius: "10px",
-                        display: "inline-flex",
-                        alignItems: "center",
                         justifyContent: "center",
                         cursor: isBusy ? "default" : "pointer",
                         backgroundColor: GOLD,
@@ -1251,238 +1337,6 @@ export default function DutyScheduleView() {
       )}
 
       {/* ── Filter row: Search | Section | Export ── */}
-      {activeSemester && activeTab === 0 && (
-        <Box
-          sx={{
-            mb: 2,
-            px: 2,
-            py: 1.75,
-            borderRadius: "10px",
-            border: `1px solid ${border}`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#faf8ef",
-            display: "flex",
-            flexDirection: "column",
-            gap: 1.25,
-            flexShrink: 0,
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1,
-              flexWrap: "wrap",
-            }}
-          >
-            <Box>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.84rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                }}
-              >
-                Pending Schedule Changes
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.75rem",
-                  color: "text.secondary",
-                  mt: 0.25,
-                }}
-              >
-                Review requested duty-day changes before they affect assignment
-                planning.
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                minWidth: 24,
-                height: 22,
-                px: 1,
-                borderRadius: "999px",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: GOLD,
-                color: "#1a1a1a",
-                fontFamily: dm,
-                fontSize: "0.72rem",
-                fontWeight: 700,
-              }}
-            >
-              {pendingRequests.length}
-            </Box>
-          </Box>
-
-          {pendingRequests.map((request) => {
-            const staffName = request.staffer?.full_name || "Unknown Staffer";
-            const avatarColor = getAvatarColor(
-              request.staffer_id || request.id,
-            );
-            const avatarUrl = getAvatarUrl(request.staffer?.avatar_url);
-            const isBusy = requestActionId === request.id;
-
-            return (
-              <Box
-                key={request.id}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 1.5,
-                  flexWrap: "wrap",
-                  px: 1.25,
-                  py: 1.1,
-                  borderRadius: "10px",
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.03)"
-                    : "#ffffff",
-                  border: `1px solid ${border}`,
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.1,
-                    minWidth: 0,
-                    flex: "1 1 360px",
-                  }}
-                >
-                  <Avatar
-                    src={avatarUrl}
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      backgroundColor: avatarColor.bg,
-                      color: avatarColor.color,
-                    }}
-                  >
-                    {!avatarUrl && getInitials(staffName)}
-                  </Avatar>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                        color: "text.primary",
-                      }}
-                    >
-                      {staffName}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.72rem",
-                        color: "text.secondary",
-                      }}
-                    >
-                      {request.staffer?.section || "No Section"}
-                      {request.staffer?.role
-                        ? ` • ${request.staffer.role}`
-                        : ""}
-                      {request.created_at
-                        ? ` • Requested ${formatDateTime(request.created_at)}`
-                        : ""}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <DayPill dayIndex={request.current_duty_day} />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.72rem",
-                      color: "text.secondary",
-                      fontWeight: 700,
-                    }}
-                  >
-                    →
-                  </Typography>
-                  <DayPill dayIndex={request.requested_duty_day} accent />
-                </Box>
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.8,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Box
-                    onClick={
-                      !isBusy ? () => handleRejectRequest(request) : undefined
-                    }
-                    sx={{
-                      px: 1.5,
-                      height: 34,
-                      borderRadius: "10px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: isBusy ? "default" : "pointer",
-                      border: "1px solid rgba(220,38,38,0.18)",
-                      backgroundColor: isDark
-                        ? "rgba(220,38,38,0.12)"
-                        : "rgba(220,38,38,0.06)",
-                      color: "#dc2626",
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      fontWeight: 600,
-                      opacity: isBusy ? 0.6 : 1,
-                    }}
-                  >
-                    Reject
-                  </Box>
-                  <Box
-                    onClick={
-                      !isBusy ? () => handleApproveRequest(request) : undefined
-                    }
-                    sx={{
-                      px: 1.5,
-                      height: 34,
-                      borderRadius: "10px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: isBusy ? "default" : "pointer",
-                      backgroundColor: GOLD,
-                      color: "#1a1a1a",
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      fontWeight: 700,
-                      opacity: isBusy ? 0.7 : 1,
-                      gap: 0.6,
-                    }}
-                  >
-                    {isBusy && (
-                      <CircularProgress size={12} sx={{ color: "#1a1a1a" }} />
-                    )}
-                    Approve
-                  </Box>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
       {/* ── Filter row: Search | Section | Export ── */}
       {activeSemester && activeTab === 0 && (
         <Box
@@ -1561,7 +1415,7 @@ export default function DutyScheduleView() {
                 "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
               }}
             >
-              {["All", ...COVERAGE_SECTIONS].map((sec) => {
+              {["All", ...sectionOptions].map((sec) => {
                 const count =
                   sec === "All"
                     ? schedules.length
@@ -1620,6 +1474,29 @@ export default function DutyScheduleView() {
           </FormControl>
 
           <Box sx={{ flex: 1 }} />
+
+          {/* Expand Button */}
+          <IconButton
+            size="small"
+            onClick={() => setIsTableFullscreen(true)}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              border: "1px solid rgba(0,0,0,0.12)",
+              backgroundColor: "#f7f7f8",
+              width: ACTION_BTN_HEIGHT,
+              height: ACTION_BTN_HEIGHT,
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FullscreenIcon sx={{ fontSize: 16 }} />
+          </IconButton>
 
           {/* Export */}
           <Box
@@ -1687,7 +1564,6 @@ export default function DutyScheduleView() {
               rowHeight={52}
               enableSearch={false}
               apiRef={gridApiRef}
-              filterModel={externalFilterModel}
               slotProps={{
                 toolbar: {
                   csvOptions: { disableToolbarButton: true },
@@ -1698,6 +1574,372 @@ export default function DutyScheduleView() {
           )}
         </Box>
       </Box>
+      )}
+
+      {/* ── Fullscreen Table View ── */}
+      {isTableFullscreen && activeSemester && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "#fff",
+            zIndex: 1300,
+            boxShadow: isDark
+              ? "0 16px 40px rgba(0,0,0,0.35)"
+              : "0 10px 30px rgba(0,0,0,0.08)",
+            ...(!isDark && {}),
+            ...(isDark && { backgroundColor: "#121212" }),
+            opacity: isTableFullscreen ? 1 : 0,
+            transform: isTableFullscreen ? "scale(1)" : "scale(0.95)",
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            pointerEvents: isTableFullscreen ? "auto" : "none",
+          }}
+        >
+          {/* Header */}
+          <Box
+            sx={{
+              px: 4,
+              py: 2,
+              borderBottom: `1px solid ${border}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexShrink: 0,
+              transform: isTableFullscreen ? "translateY(0)" : "translateY(-10px)",
+              opacity: isTableFullscreen ? 1 : 0,
+              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+              transitionDelay: isTableFullscreen ? "0.1s" : "0s",
+            }}
+          >
+            {/* Day buttons - inline */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.8,
+                flexShrink: 0,
+              }}
+            >
+              {DAY_LABELS.map((day, i) => {
+                const label = ["M", "T", "W", "Th", "F"][i];
+                const cfg = DAY_CFG[i];
+                const isSelected = selectedDayFilter === i;
+                return (
+                  <Box
+                    key={day}
+                    onClick={() =>
+                      setSelectedDayFilter((current) =>
+                        current === i ? null : i,
+                      )
+                    }
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 0.3,
+                        cursor: "pointer",
+                      }}
+                    >
+                    <Box
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: dm,
+                        fontWeight: 700,
+                        fontSize: "0.75rem",
+                        border: `1px solid ${isSelected ? GOLD : border}`,
+                        backgroundColor: isSelected
+                          ? isDark
+                            ? "rgba(245,197,43,0.12)"
+                            : "rgba(245,197,43,0.08)"
+                          : "background.paper",
+                        color: isSelected ? "text.primary" : cfg.color,
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          transform: "translateY(-1px)",
+                          boxShadow: isSelected
+                            ? "none"
+                            : "0 10px 20px rgba(0,0,0,0.04)",
+                        },
+                      }}
+                    >
+                      {label}
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.62rem",
+                        color: isSelected ? GOLD : "text.secondary",
+                      }}
+                    >
+                      {dayCounts[i]}
+                    </Typography>
+                  </Box>
+                );
+              })}
+
+              {selectedDayFilter !== null && (
+                <IconButton
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openSlotDialog(selectedDayFilter);
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "10px",
+                    color: "text.disabled",
+                    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)",
+                    "&:hover": {
+                      color: "text.primary",
+                      backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.1)",
+                    },
+                  }}
+                >
+                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
+            </Box>
+
+            {/* Spacer */}
+            <Box sx={{ flex: 1 }} />
+
+            {/* Search */}
+            <FormControl size="small" sx={{ minWidth: 250, flex: 1 }}>
+              <OutlinedInput
+                placeholder="Search"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                  </InputAdornment>
+                }
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  borderRadius: "10px",
+                  backgroundColor: "#f7f7f8",
+                  "&.MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "rgba(0,0,0,0.12)" },
+                  },
+                }}
+              />
+            </FormControl>
+
+            {/* Section Filter */}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <Select
+                value={sectionFilter}
+                onChange={(e) => setSectionFilter(e.target.value)}
+                IconComponent={UnfoldMoreIcon}
+                displayEmpty
+                renderValue={(val) => (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {isSectionFiltered && (
+                      <Box
+                        sx={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          backgroundColor: GOLD,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        color: "text.primary",
+                      }}
+                    >
+                      {val}
+                    </Typography>
+                  </Box>
+                )}
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  borderRadius: "10px",
+                  backgroundColor: "#f7f7f8",
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "rgba(0,0,0,0.12)",
+                  },
+                  "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+                }}
+              >
+                {["All", ...sectionOptions].map((sec) => {
+                  const count =
+                    sec === "All"
+                      ? schedules.length
+                      : schedules.filter((s) => s.staffer?.section === sec)
+                          .length;
+                  const isSelected = sectionFilter === sec;
+                  return (
+                    <MenuItem
+                      key={sec}
+                      value={sec}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 2,
+                        fontWeight: isSelected ? 600 : 400,
+                      }}
+                    >
+                      {sec}
+                      <Box
+                        component="span"
+                        sx={{
+                          minWidth: 20,
+                          height: 18,
+                          borderRadius: "99px",
+                          px: 0.75,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: isSelected
+                            ? GOLD
+                            : count === 0
+                              ? "transparent"
+                              : isDark
+                                ? "rgba(255,255,255,0.08)"
+                                : "rgba(53,53,53,0.07)",
+                          fontSize: "0.62rem",
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          color: isSelected
+                            ? "#000"
+                            : count === 0
+                              ? "text.disabled"
+                              : "text.secondary",
+                          opacity: count === 0 ? 0.4 : 1,
+                        }}
+                      >
+                        {count}
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+
+            {/* Export */}
+          <Box
+            onClick={handleExportCsv}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 1.5,
+              height: ACTION_BTN_HEIGHT,
+              borderRadius: "10px",
+              cursor: "pointer",
+              border: "1px solid rgba(0,0,0,0.12)",
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              backgroundColor: "#f7f7f8",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+            Export
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => setIsTableFullscreen(false)}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <FullscreenExitIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+
+
+          {/* Table */}
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              width: "100%",
+              overflowX: "auto",
+              px: 4,
+              py: 2,
+              transform: isTableFullscreen ? "translateY(0)" : "translateY(20px)",
+              opacity: isTableFullscreen ? 1 : 0,
+              transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+              transitionDelay: isTableFullscreen ? "0.2s" : "0s",
+            }}
+          >
+            <Box
+              sx={{
+                minWidth: 600,
+                height: "100%",
+                bgcolor: "#f7f7f8",
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                overflow: "hidden",
+              }}
+            >
+              {loading ? (
+                <Box
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress size={26} sx={{ color: GOLD }} />
+                </Box>
+              ) : (
+                <DataGrid
+                  rows={rows}
+                  columns={columns}
+                  pageSize={10}
+                  rowsPerPageOptions={[10]}
+                  disableRowSelectionOnClick
+                  rowHeight={52}
+                  enableSearch={false}
+                  apiRef={gridApiRef}
+                  slotProps={{
+                    toolbar: {
+                      csvOptions: { disableToolbarButton: true },
+                      printOptions: { disableToolbarButton: true },
+                    },
+                  }}
+                />
+              )}
+            </Box>
+          </Box>
+        </Box>
       )}
 
       <Dialog
