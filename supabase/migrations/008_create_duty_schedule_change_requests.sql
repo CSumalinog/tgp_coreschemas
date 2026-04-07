@@ -4,6 +4,7 @@ create table if not exists public.duty_schedule_change_requests (
   semester_id uuid not null references public.semesters(id) on delete cascade,
   current_duty_day integer not null check (current_duty_day between 0 and 4),
   requested_duty_day integer not null check (requested_duty_day between 0 and 4),
+  request_reason text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'cancelled')),
   review_notes text,
   reviewed_at timestamptz,

@@ -23,6 +23,7 @@ import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
+import { notifySpecificStaff } from "../../services/NotificationService";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
@@ -134,6 +135,7 @@ const AVATAR_COLORS = [
 ];
 
 const ACTION_BTN_HEIGHT = 36;
+const REASON_PREVIEW_LIMIT = 88;
 
 const getSlotForm = (semester) => ({
   monday_slots: semester?.monday_slots ?? 10,
@@ -181,6 +183,10 @@ export default function DutyScheduleView() {
   const [slotDialogDayIndex, setSlotDialogDayIndex] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestActionId, setRequestActionId] = useState("");
+  const [expandedReasonById, setExpandedReasonById] = useState({});
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [isTableFullscreen, setIsTableFullscreen] = useState(false);
   const [selectedDayFilter, setSelectedDayFilter] = useState(null);
@@ -241,7 +247,7 @@ export default function DutyScheduleView() {
     const { data, error: fetchErr } = await supabase
       .from("duty_schedule_change_requests")
       .select(
-        `id, staffer_id, current_duty_day, requested_duty_day, status, created_at, staffer:staffer_id ( id, full_name, section, role, division, avatar_url )`,
+        `id, staffer_id, current_duty_day, requested_duty_day, request_reason, status, created_at, staffer:staffer_id ( id, full_name, section, role, division, avatar_url )`,
       )
       .eq("semester_id", activeSemester.id)
       .eq("status", "pending")
@@ -526,6 +532,15 @@ export default function DutyScheduleView() {
 
         if (reviewErr) throw reviewErr;
 
+        await notifySpecificStaff({
+          staffIds: [request.staffer_id],
+          type: "duty_schedule_change_approved",
+          title: "Duty Day Change Approved",
+          message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was approved.`,
+          requestId: null,
+          createdBy: user?.id || null,
+        });
+
         await loadSchedules();
         await loadPendingRequests();
       } catch (actionErr) {
@@ -547,7 +562,7 @@ export default function DutyScheduleView() {
   );
 
   const handleRejectRequest = useCallback(
-    async (request) => {
+    async (request, reason = "") => {
       if (!request?.id) return;
 
       setRequestActionId(request.id);
@@ -562,12 +577,22 @@ export default function DutyScheduleView() {
           .from("duty_schedule_change_requests")
           .update({
             status: "rejected",
+            review_notes: reason.trim() || null,
             reviewed_at: new Date().toISOString(),
             reviewed_by: user?.id || null,
           })
           .eq("id", request.id);
 
         if (reviewErr) throw reviewErr;
+
+        await notifySpecificStaff({
+          staffIds: [request.staffer_id],
+          type: "duty_schedule_change_rejected",
+          title: "Duty Day Change Rejected",
+          message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was rejected.${reason?.trim() ? ` Reason: ${reason.trim()}` : ""}`,
+          requestId: null,
+          createdBy: user?.id || null,
+        });
 
         await loadPendingRequests();
       } catch (actionErr) {
@@ -580,6 +605,35 @@ export default function DutyScheduleView() {
     },
     [loadPendingRequests],
   );
+
+  const openRejectDialog = useCallback((request) => {
+    if (!request?.id) return;
+    setRejectTarget(request);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  }, []);
+
+  const closeRejectDialog = useCallback(() => {
+    if (requestActionId) return;
+    setRejectDialogOpen(false);
+    setRejectTarget(null);
+    setRejectReason("");
+  }, [requestActionId]);
+
+  const confirmRejectRequest = useCallback(async () => {
+    if (!rejectTarget) return;
+    await handleRejectRequest(rejectTarget, rejectReason);
+    setRejectDialogOpen(false);
+    setRejectTarget(null);
+    setRejectReason("");
+  }, [handleRejectRequest, rejectReason, rejectTarget]);
+
+  const toggleReasonExpanded = useCallback((requestId) => {
+    setExpandedReasonById((prev) => ({
+      ...prev,
+      [requestId]: !prev[requestId],
+    }));
+  }, []);
 
   const rows = filteredByDay.map((s) => ({
     id: s.id,
@@ -1177,6 +1231,12 @@ export default function DutyScheduleView() {
               );
               const avatarUrl = getAvatarUrl(request.staffer?.avatar_url);
               const isBusy = requestActionId === request.id;
+              const reason = request.request_reason || "No reason provided.";
+              const isExpanded = !!expandedReasonById[request.id];
+              const isReasonLong = reason.length > REASON_PREVIEW_LIMIT;
+              const reasonPreview = isReasonLong
+                ? `${reason.slice(0, REASON_PREVIEW_LIMIT)}...`
+                : reason;
 
               return (
                 <Box
@@ -1244,6 +1304,35 @@ export default function DutyScheduleView() {
                           ? ` • Requested ${formatDateTime(request.created_at)}`
                           : ""}
                       </Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.secondary",
+                          mt: 0.5,
+                          whiteSpace: "pre-line",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {`Reason: ${isExpanded ? reason : reasonPreview}`}
+                      </Typography>
+                      {isReasonLong && (
+                        <Box
+                          onClick={() => toggleReasonExpanded(request.id)}
+                          sx={{
+                            mt: 0.35,
+                            display: "inline-flex",
+                            fontFamily: dm,
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            color: "#8a6a00",
+                            cursor: "pointer",
+                            userSelect: "none",
+                          }}
+                        >
+                          {isExpanded ? "View less" : "View more"}
+                        </Box>
+                      )}
                     </Box>
                   </Box>
 
@@ -1278,9 +1367,7 @@ export default function DutyScheduleView() {
                     }}
                   >
                     <Box
-                      onClick={
-                        !isBusy ? () => handleRejectRequest(request) : undefined
-                      }
+                      onClick={!isBusy ? () => openRejectDialog(request) : undefined}
                       sx={{
                         px: 1.5,
                         height: 34,
@@ -1943,6 +2030,164 @@ export default function DutyScheduleView() {
       )}
 
       <Dialog
+        open={rejectDialogOpen}
+        onClose={closeRejectDialog}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.92rem",
+              color: "text.primary",
+            }}
+          >
+            Reject Schedule Change
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={closeRejectDialog}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.25,
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.secondary",
+              lineHeight: 1.5,
+            }}
+          >
+            {rejectTarget
+              ? `Reject ${rejectTarget.staffer?.full_name || "this staff member"}'s request to move from ${DAY_LABELS[rejectTarget.current_duty_day]} to ${DAY_LABELS[rejectTarget.requested_duty_day]}?`
+              : "Reject this schedule change request?"}
+          </Typography>
+
+          <TextField
+            label="Reason for rejection (optional)"
+            placeholder="Add context for the staff member"
+            size="small"
+            multiline
+            minRows={3}
+            value={rejectReason}
+            onChange={(event) => setRejectReason(event.target.value)}
+            disabled={!!requestActionId}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                borderRadius: "10px",
+                "& fieldset": { borderColor: border },
+                "&:hover fieldset": { borderColor: "rgba(245,197,43,0.5)" },
+                "&.Mui-focused fieldset": { borderColor: GOLD },
+              },
+              "& .MuiInputLabel-root": { fontFamily: dm, fontSize: "0.8rem" },
+              "& .MuiInputLabel-root.Mui-focused": { color: "#b45309" },
+            }}
+          />
+        </Box>
+
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            borderTop: `1px solid ${border}`,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.01)"
+              : "rgba(53,53,53,0.01)",
+          }}
+        >
+          <Box
+            onClick={!requestActionId ? closeRejectDialog : undefined}
+            sx={{
+              px: 1.75,
+              py: 0.65,
+              borderRadius: "10px",
+              cursor: requestActionId ? "default" : "pointer",
+              border: `1px solid ${border}`,
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              opacity: requestActionId ? 0.5 : 1,
+              transition: "all 0.15s",
+            }}
+          >
+            Cancel
+          </Box>
+          <Box
+            onClick={!requestActionId ? confirmRejectRequest : undefined}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              px: 1.75,
+              py: 0.65,
+              borderRadius: "10px",
+              cursor: requestActionId ? "default" : "pointer",
+              backgroundColor: "#dc2626",
+              color: "#fff",
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              opacity: requestActionId ? 0.7 : 1,
+              transition: "background-color 0.15s",
+              "&:hover": {
+                backgroundColor: requestActionId ? "#dc2626" : "#b91c1c",
+              },
+            }}
+          >
+            {requestActionId === rejectTarget?.id && (
+              <CircularProgress size={13} sx={{ color: "#fff" }} />
+            )}
+            Confirm Reject
+          </Box>
+        </Box>
+      </Dialog>
+
+      <Dialog
         open={slotDialogOpen}
         onClose={closeSlotDialog}
         fullWidth
@@ -2155,8 +2400,8 @@ function DayPill({ dayIndex, accent = false }) {
         px: 1,
         py: 0.45,
         borderRadius: "999px",
-        backgroundColor: accent ? GOLD_08 : cfg.bg,
-        border: accent ? `1px solid ${GOLD}` : "none",
+        backgroundColor: accent ? "#fff9e6" : cfg.bg,
+        border: accent ? "1.5px solid #d4a718" : "none",
       }}
     >
       <Box
@@ -2173,7 +2418,7 @@ function DayPill({ dayIndex, accent = false }) {
           fontFamily: dm,
           fontSize: "0.68rem",
           fontWeight: 700,
-          color: accent ? "#8a6a00" : cfg.color,
+          color: accent ? "#704f00" : cfg.color,
           letterSpacing: "0.04em",
         }}
       >

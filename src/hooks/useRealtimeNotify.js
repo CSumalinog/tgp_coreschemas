@@ -26,32 +26,41 @@ if (typeof window !== "undefined") {
   });
 }
 
+function _playChimeNow(ctx) {
+  const now  = ctx.currentTime;
+  const gain = ctx.createGain();
+  gain.connect(ctx.destination);
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+
+  // Three-tone ascending chime: C5 -> E5 -> G5
+  [[523.25, 0], [659.25, 0.14], [783.99, 0.28]].forEach(([freq, delay]) => {
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + delay);
+    osc.connect(gain);
+    osc.start(now + delay);
+    osc.stop(now + delay + 1.0);
+  });
+}
+
 function playChime() {
   try {
     const ctx = getAudioContext();
 
-    // If still suspended (no user gesture yet), bail silently
+    // If suspended, try to resume and play immediately after.
     if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+      ctx
+        .resume()
+        .then(() => {
+          if (ctx.state === "running") _playChimeNow(ctx);
+        })
+        .catch(() => {});
       return;
     }
 
-    const now  = ctx.currentTime;
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
-
-    // Three-tone ascending chime: C5 → E5 → G5
-    [[523.25, 0], [659.25, 0.14], [783.99, 0.28]].forEach(([freq, delay]) => {
-      const osc = ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now + delay);
-      osc.connect(gain);
-      osc.start(now + delay);
-      osc.stop(now + delay + 1.0);
-    });
+    _playChimeNow(ctx);
   } catch (_) {}
 }
 

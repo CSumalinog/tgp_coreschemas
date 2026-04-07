@@ -5,15 +5,20 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  TextField,
+  Dialog,
   useTheme,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
+import { notifyAdmins } from "../../services/NotificationService";
 
-// ── Brand tokens ──────────────────────────────────────────────────────────────
+// -- Brand tokens -------------------------------------------------------------
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
 const CHARCOAL = "#353535";
@@ -58,10 +63,14 @@ export default function MySchedule() {
   const [slotCounts, setSlotCounts] = useState([0, 0, 0, 0, 0]);
   const [existingSchedule, setExistingSchedule] = useState(null);
   const [pendingRequest, setPendingRequest] = useState(null);
+  const [latestReviewedRequest, setLatestReviewedRequest] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [pendingSelection, setPendingSelection] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
+  const [requestReason, setRequestReason] = useState("");
+  const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadActiveSemester = useCallback(async () => {
@@ -96,17 +105,29 @@ export default function MySchedule() {
   const loadScheduleData = useCallback(async () => {
     if (!activeSemester?.id || !currentUser?.id) return;
     setLoading(true);
-    const [{ data: allSchedules }, { data: pendingRows }] = await Promise.all([
+    const [{ data: allSchedules }, { data: pendingRows }, { data: reviewedRows }] =
+      await Promise.all([
       supabase
         .from("duty_schedules")
         .select("duty_day, staffer_id")
         .eq("semester_id", activeSemester.id),
       supabase
         .from("duty_schedule_change_requests")
-        .select("id, current_duty_day, requested_duty_day, status, created_at")
+        .select("id, current_duty_day, requested_duty_day, request_reason, status, created_at")
         .eq("semester_id", activeSemester.id)
         .eq("staffer_id", currentUser.id)
         .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("duty_schedule_change_requests")
+        .select(
+          "id, current_duty_day, requested_duty_day, status, review_notes, reviewed_at, created_at",
+        )
+        .eq("semester_id", activeSemester.id)
+        .eq("staffer_id", currentUser.id)
+        .in("status", ["approved", "rejected", "cancelled"])
+        .order("reviewed_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(1),
     ]);
@@ -117,6 +138,8 @@ export default function MySchedule() {
     setSlotCounts(counts);
     const nextPending = pendingRows?.[0] || null;
     setPendingRequest(nextPending);
+    setLatestReviewedRequest(reviewedRows?.[0] || null);
+    if (nextPending) setSaveSuccess("");
     const myPick = (allSchedules || []).find(
       (s) => s.staffer_id === currentUser.id,
     );
@@ -137,23 +160,41 @@ export default function MySchedule() {
     loadScheduleData();
   }, [loadScheduleData]);
 
+  const refreshScheduleData = useCallback(() => {
+    loadScheduleData();
+    setTimeout(() => {
+      loadScheduleData();
+    }, 350);
+  }, [loadScheduleData]);
+
   // ─── Realtime subscription ────────────────────────────────────────────────
-  useRealtimeNotify("duty_schedules", loadScheduleData, null, {
+  useRealtimeNotify("duty_schedules", refreshScheduleData, null, {
     title: "Duty Schedule",
   });
   useRealtimeNotify(
     "duty_schedule_change_requests",
-    loadScheduleData,
+    refreshScheduleData,
     currentUser?.id ? `staffer_id=eq.${currentUser.id}` : null,
     {
       title: "Duty Schedule Change",
-      sound: false,
+      sound: true,
     },
   );
   useRealtimeNotify("semesters", loadActiveSemester, "is_active=eq.true", {
     title: "Duty Slots",
     sound: false,
   });
+  useRealtimeNotify(
+    "notifications",
+    refreshScheduleData,
+    currentUser?.id ? `user_id=eq.${currentUser.id}` : null,
+    {
+      title: "Schedule Notification",
+      sound: true,
+      toast: false,
+      tabFlash: false,
+    },
+  );
 
   const checkScheduleConflict = useCallback(async () => {
     if (!currentUser?.id || !existingSchedule) return [];
@@ -188,8 +229,8 @@ export default function MySchedule() {
       );
   }, [currentUser, existingSchedule]);
 
-  const handleSave = async () => {
-    if (selectedDay === null) return;
+  const handleSave = async (requestedDay = selectedDay) => {
+    if (requestedDay === null) return;
     if (pendingRequest) return;
     setSaving(true);
     setSaveError("");
@@ -208,22 +249,28 @@ export default function MySchedule() {
       const effectiveExistingSchedule =
         liveSchedule || existingSchedule || null;
 
-      const countForDay = slotCounts[selectedDay];
-      const capacityForDay = slotCapacities[selectedDay] ?? 10;
+      const countForDay = slotCounts[requestedDay];
+      const capacityForDay = slotCapacities[requestedDay] ?? 10;
       const isChanging =
         effectiveExistingSchedule &&
-        effectiveExistingSchedule.duty_day !== selectedDay;
+        effectiveExistingSchedule.duty_day !== requestedDay;
       const isNew = !effectiveExistingSchedule;
 
       if ((isNew || isChanging) && countForDay >= capacityForDay) {
         setSaveError(
-          `${DAY_LABELS[selectedDay]} is already full (${countForDay}/${capacityForDay}). Please pick another day.`,
+          `${DAY_LABELS[requestedDay]} is already full (${countForDay}/${capacityForDay}). Please pick another day.`,
         );
         setSaving(false);
         return;
       }
 
       if (isChanging) {
+        if (!requestReason.trim()) {
+          setSaveError("Please provide a reason for your change request.");
+          setSaving(false);
+          return;
+        }
+
         setExistingSchedule(effectiveExistingSchedule);
         const conflicts = await checkScheduleConflict();
         if (conflicts.length > 0) {
@@ -240,13 +287,25 @@ export default function MySchedule() {
             staffer_id: currentUser.id,
             semester_id: activeSemester.id,
             current_duty_day: effectiveExistingSchedule.duty_day,
-            requested_duty_day: selectedDay,
+            requested_duty_day: requestedDay,
+            request_reason: requestReason.trim(),
             status: "pending",
-          });
+          })
+          .select("id")
+          .single();
 
         if (requestErr) throw requestErr;
 
+        await notifyAdmins({
+          type: "duty_schedule_change_requested",
+          title: "Duty Day Change Requested",
+          message: `${currentUser?.full_name || "A staff member"} requested a duty day change from ${DAY_LABELS[effectiveExistingSchedule.duty_day]} to ${DAY_LABELS[requestedDay]}.`,
+          requestId: null,
+          createdBy: currentUser?.id || null,
+        });
+
         setSaveSuccess("Duty day change request submitted for approval.");
+        setRequestReason("");
       } else {
         const { error: upsertErr } = await supabase
           .from("duty_schedules")
@@ -254,13 +313,14 @@ export default function MySchedule() {
             {
               staffer_id: currentUser.id,
               semester_id: activeSemester.id,
-              duty_day: selectedDay,
+              duty_day: requestedDay,
             },
             { onConflict: "staffer_id,semester_id" },
           );
         if (upsertErr) throw upsertErr;
 
         setSaveSuccess("Duty day saved successfully!");
+        setRequestReason("");
       }
 
       await loadScheduleData();
@@ -271,12 +331,39 @@ export default function MySchedule() {
     }
   };
 
+  const handleDialogConfirm = async () => {
+    if (!requestReason.trim()) {
+      setSaveError("Please provide a reason for your change request.");
+      return;
+    }
+
+    setReasonDialogOpen(false);
+    await handleSave(pendingSelection);
+    setPendingSelection(null);
+  };
+
+  const handleDialogClose = () => {
+    if (pendingSelection !== null && existingSchedule) {
+      setSelectedDay(existingSchedule.duty_day);
+    }
+    setPendingSelection(null);
+    setReasonDialogOpen(false);
+    setSaveError("");
+  };
+
   const schedulingClosed = activeSemester && !activeSemester.scheduling_open;
   const noSemester = !loading && !activeSemester;
-  const hasChanged = selectedDay !== (existingSchedule?.duty_day ?? null);
+  const isInitialSetup = !existingSchedule && !pendingRequest;
   const slotCapacities = SLOT_FIELDS.map((field) =>
     Math.max(0, Number(activeSemester?.[field] ?? 10) || 0),
   );
+  const dialogTargetDay =
+    pendingSelection !== null ? pendingSelection : selectedDay;
+  const dialogCurrentDay = existingSchedule?.duty_day ?? null;
+  const dialogTargetCount =
+    dialogTargetDay !== null ? slotCounts[dialogTargetDay] : null;
+  const dialogTargetCapacity =
+    dialogTargetDay !== null ? slotCapacities[dialogTargetDay] ?? 10 : null;
 
   if (!currentUser || loading)
     return (
@@ -322,8 +409,9 @@ export default function MySchedule() {
             mt: 0.3,
           }}
         >
-          Pick one day — you'll be on duty every week of the semester on that
-          day.
+          {isInitialSetup
+            ? "Set your first weekly duty day for this semester."
+            : "Pick one day — you'll be on duty every week of the semester on that day."}
         </Typography>
       </Box>
 
@@ -423,12 +511,91 @@ export default function MySchedule() {
             </Box>
           </Box>
 
+          {isInitialSetup && !schedulingClosed && (
+            <Box
+              sx={{
+                mb: 2.5,
+                p: 2,
+                borderRadius: "10px",
+                border: `1px solid rgba(245,197,43,0.35)`,
+                backgroundColor: isDark ? GOLD_08 : "#fffdf5",
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "90px 1fr" },
+                gap: 1.5,
+                alignItems: "center",
+              }}
+            >
+              <Box
+                sx={{
+                  width: { xs: "100%", sm: 90 },
+                  height: { xs: 74, sm: 90 },
+                  borderRadius: "10px",
+                  border: `1px solid rgba(245,197,43,0.35)`,
+                  background:
+                    "linear-gradient(140deg, rgba(245,197,43,0.18), rgba(245,197,43,0.04))",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                }}
+              >
+                <CalendarTodayOutlinedIcon
+                  sx={{ fontSize: 24, color: "#b45309", opacity: 0.9 }}
+                />
+                <TaskAltOutlinedIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "#15803d",
+                    position: "absolute",
+                    right: 14,
+                    bottom: 14,
+                  }}
+                />
+              </Box>
+
+              <Box>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.84rem",
+                    fontWeight: 700,
+                    color: "text.primary",
+                  }}
+                >
+                  First-time duty day setup
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.76rem",
+                    color: "text.secondary",
+                    mt: 0.45,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  1. Choose a day from Monday to Friday. 2. Check slot
+                  availability. 3. Confirm your choice for the semester.
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.73rem",
+                    color: "#b45309",
+                    mt: 0.75,
+                    fontWeight: 600,
+                  }}
+                >
+                  After initial setup, day changes require admin approval.
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
           {/* ── Status alerts ── */}
           {schedulingClosed && (
             <Box
               sx={{
                 display: "flex",
-                alignItems: "center",
                 gap: 1,
                 px: 1.75,
                 py: 1.25,
@@ -458,7 +625,6 @@ export default function MySchedule() {
             <Box
               sx={{
                 display: "flex",
-                alignItems: "center",
                 gap: 1,
                 px: 1.75,
                 py: 1.25,
@@ -466,6 +632,8 @@ export default function MySchedule() {
                 borderRadius: "10px",
                 border: `1px solid rgba(245,197,43,0.35)`,
                 backgroundColor: isDark ? GOLD_08 : "#fefce8",
+                flexDirection: "column",
+                alignItems: "flex-start",
               }}
             >
               <Box
@@ -485,6 +653,66 @@ export default function MySchedule() {
                 to{" "}
                 <strong>{DAY_LABELS[pendingRequest.requested_duty_day]}</strong>{" "}
                 is pending admin approval.
+              </Typography>
+              {pendingRequest.request_reason && (
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.75rem",
+                    color: "text.secondary",
+                    mt: 0.5,
+                  }}
+                >
+                  Reason: {pendingRequest.request_reason}
+                </Typography>
+              )}
+            </Box>
+          ) : latestReviewedRequest?.status === "rejected" ? (
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                px: 1.75,
+                py: 1.25,
+                mb: 2.5,
+                borderRadius: "10px",
+                border: "1px solid rgba(220,38,38,0.25)",
+                backgroundColor: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
+                flexDirection: "column",
+                alignItems: "flex-start",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  backgroundColor: "#dc2626",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.78rem", color: "#b91c1c" }}
+              >
+                Your request to change from{" "}
+                <strong>
+                  {DAY_LABELS[latestReviewedRequest.current_duty_day]}
+                </strong>{" "}
+                to{" "}
+                <strong>
+                  {DAY_LABELS[latestReviewedRequest.requested_duty_day]}
+                </strong>{" "}
+                was not approved.
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mt: 0.5,
+                }}
+              >
+                Admin note: {latestReviewedRequest.review_notes || "No reason provided."}
               </Typography>
             </Box>
           ) : (
@@ -535,7 +763,7 @@ export default function MySchedule() {
               {saveError}
             </Alert>
           )}
-          {saveSuccess && (
+          {saveSuccess && !pendingRequest && (
             <Box
               sx={{
                 display: "flex",
@@ -623,7 +851,17 @@ export default function MySchedule() {
               return (
                 <Box
                   key={day}
-                  onClick={() => !isDisabled && setSelectedDay(i)}
+                  onClick={() => {
+                    if (isDisabled) return;
+                    if (existingSchedule && i !== existingSchedule.duty_day) {
+                      setSelectedDay(i);
+                      setPendingSelection(i);
+                      setSaveError("");
+                      setReasonDialogOpen(true);
+                    } else {
+                      setSelectedDay(i);
+                    }
+                  }}
                   sx={{
                     px: 1.5,
                     py: 2.5,
@@ -781,87 +1019,178 @@ export default function MySchedule() {
             })}
           </Box>
 
-          {/* ── Footer / save ── */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              pt: 0.5,
-              borderTop: `1px solid ${border}`,
+
+
+          <Dialog
+            open={reasonDialogOpen}
+            onClose={handleDialogClose}
+            PaperProps={{
+              sx: {
+                borderRadius: "10px",
+                width: 420,
+                p: 0,
+                fontFamily: dm,
+                bgcolor: "background.paper",
+              },
             }}
           >
             <Box
-              onClick={
-                !saving &&
-                selectedDay !== null &&
-                hasChanged &&
-                !schedulingClosed &&
-                !pendingRequest
-                  ? handleSave
-                  : undefined
-              }
               sx={{
+                px: 3,
+                py: 2.25,
                 display: "flex",
                 alignItems: "center",
-                gap: 0.75,
-                mt: 2,
-                px: 2,
-                py: 0.75,
-                borderRadius: "10px",
-                cursor:
-                  saving ||
-                  selectedDay === null ||
-                  !hasChanged ||
-                  schedulingClosed ||
-                  pendingRequest
-                    ? "not-allowed"
-                    : "pointer",
-                backgroundColor:
-                  saving ||
-                  selectedDay === null ||
-                  !hasChanged ||
-                  schedulingClosed ||
-                  pendingRequest
-                    ? isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(53,53,53,0.06)"
-                    : GOLD,
-                color:
-                  saving ||
-                  selectedDay === null ||
-                  !hasChanged ||
-                  schedulingClosed ||
-                  pendingRequest
-                    ? "text.disabled"
-                    : CHARCOAL,
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                transition: "background-color 0.15s",
-                "&:hover":
-                  !saving &&
-                  selectedDay !== null &&
-                  hasChanged &&
-                  !schedulingClosed &&
-                  !pendingRequest
-                    ? { backgroundColor: "#e6b920" }
-                    : {},
+                gap: 1.5,
+                borderBottom: `1px solid ${border}`,
               }}
             >
-              {saving ? (
-                <>
-                  <CircularProgress size={13} sx={{ color: "inherit" }} />{" "}
-                  Saving…
-                </>
-              ) : pendingRequest ? (
-                "Request Pending"
-              ) : existingSchedule ? (
-                "Submit Change Request"
-              ) : (
-                "Confirm My Day"
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "10px",
+                  backgroundColor: GOLD_08,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <AutorenewOutlinedIcon sx={{ fontSize: 17, color: GOLD }} />
+              </Box>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontWeight: 700,
+                  fontSize: "0.92rem",
+                  color: "text.primary",
+                }}
+              >
+                Confirm Duty Day Change
+              </Typography>
+            </Box>
+
+            <Box sx={{ px: 3, py: 2.25 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "text.secondary",
+                  lineHeight: 1.6,
+                  mb: 1.5,
+                }}
+              >
+                Change from <strong>{DAY_LABELS[dialogCurrentDay]}</strong> to{" "}
+                <strong>{DAY_LABELS[dialogTargetDay]}</strong>?
+              </Typography>
+
+              <Box
+                sx={{
+                  px: 1.25,
+                  py: 0.85,
+                  mb: 1.4,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.03)"
+                    : "rgba(53,53,53,0.02)",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.74rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  {DAY_LABELS[dialogTargetDay]} load: {dialogTargetCount}/
+                  {dialogTargetCapacity} slots
+                </Typography>
+              </Box>
+
+              <TextField
+                multiline
+                minRows={3}
+                fullWidth
+                autoFocus
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                label="Reason"
+                placeholder="e.g. I have a scheduling conflict on Thursdays."
+                size="small"
+              />
+
+              {saveError && (
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    color: "#dc2626",
+                    mt: 1,
+                  }}
+                >
+                  {saveError}
+                </Typography>
               )}
             </Box>
-          </Box>
+
+            <Box
+              sx={{
+                px: 3,
+                py: 2,
+                display: "flex",
+                gap: 1,
+                justifyContent: "flex-end",
+                borderTop: `1px solid ${border}`,
+              }}
+            >
+              <Box
+                onClick={!saving ? handleDialogClose : undefined}
+                sx={{
+                  px: 2,
+                  py: 0.8,
+                  borderRadius: "10px",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "text.secondary",
+                  border: `1px solid ${border}`,
+                  userSelect: "none",
+                  opacity: saving ? 0.7 : 1,
+                  transition: "all 0.15s",
+                }}
+              >
+                Cancel
+              </Box>
+              <Box
+                onClick={
+                  !saving && requestReason.trim() ? handleDialogConfirm : undefined
+                }
+                sx={{
+                  px: 2,
+                  py: 0.8,
+                  borderRadius: "10px",
+                  cursor:
+                    saving || !requestReason.trim() ? "not-allowed" : "pointer",
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  color: "#fff",
+                  backgroundColor: "#212121",
+                  opacity: saving || !requestReason.trim() ? 0.7 : 1,
+                  userSelect: "none",
+                  transition: "all 0.15s",
+                  "&:hover":
+                    !saving && requestReason.trim()
+                      ? { backgroundColor: "#333" }
+                      : {},
+                }}
+              >
+                {saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : "Submit request"}
+              </Box>
+            </Box>
+          </Dialog>
         </>
       )}
     </Box>
