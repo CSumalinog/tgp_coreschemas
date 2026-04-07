@@ -117,8 +117,21 @@ export default function ArchiveManagementBase({
     [adapter, ctx, notify, onStateChange, refresh],
   );
 
-  const openConfirm = (title, message, action, destructive = false, confirmLabel = "Confirm") =>
-    setConfirm({ open: true, title, message, destructive, action, confirmLabel });
+  const openConfirm = (
+    title,
+    message,
+    action,
+    destructive = false,
+    confirmLabel = "Confirm",
+  ) =>
+    setConfirm({
+      open: true,
+      title,
+      message,
+      destructive,
+      action,
+      confirmLabel,
+    });
 
   const closeConfirm = () => setConfirm((prev) => ({ ...prev, open: false }));
 
@@ -168,7 +181,13 @@ export default function ArchiveManagementBase({
         width: 170,
         renderCell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography sx={{ fontFamily: DM, fontSize: "0.78rem", color: "text.secondary" }}>
+            <Typography
+              sx={{
+                fontFamily: DM,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
               {buildEventDateDisplay(row)}
             </Typography>
           </Box>
@@ -180,7 +199,13 @@ export default function ArchiveManagementBase({
         width: 140,
         renderCell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography sx={{ fontFamily: DM, fontSize: "0.78rem", color: "text.secondary" }}>
+            <Typography
+              sx={{
+                fontFamily: DM,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
               {fmt(row.submitted_at)}
             </Typography>
           </Box>
@@ -199,7 +224,13 @@ export default function ArchiveManagementBase({
         width: 140,
         renderCell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography sx={{ fontFamily: DM, fontSize: "0.78rem", color: "text.secondary" }}>
+            <Typography
+              sx={{
+                fontFamily: DM,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
               {fmt(row.archived_at)}
             </Typography>
           </Box>
@@ -253,7 +284,14 @@ export default function ArchiveManagementBase({
           >
             Archive Management
           </Typography>
-          <Typography sx={{ fontFamily: DM, fontSize: "0.72rem", color: "text.secondary", mt: 0.3 }}>
+          <Typography
+            sx={{
+              fontFamily: DM,
+              fontSize: "0.72rem",
+              color: "text.secondary",
+              mt: 0.3,
+            }}
+          >
             View archived requests and restore or move them to trash.
           </Typography>
         </Box>
@@ -263,7 +301,13 @@ export default function ArchiveManagementBase({
         <Alert
           severity={msg.type}
           onClose={() => setMsg(null)}
-          sx={{ mb: 2, borderRadius: "10px", fontFamily: DM, fontSize: "0.78rem", py: 0.75 }}
+          sx={{
+            mb: 2,
+            borderRadius: "10px",
+            fontFamily: DM,
+            fontSize: "0.78rem",
+            py: 0.75,
+          }}
         >
           {msg.text}
         </Alert>
@@ -301,20 +345,41 @@ export default function ArchiveManagementBase({
         </Box>
 
         {archivedRequests.length === 0 ? (
-          <Box sx={{ py: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              py: 5,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <ArchiveOutlinedIcon
               sx={{
                 fontSize: 30,
                 color: isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.12)",
               }}
             />
-            <Typography sx={{ fontFamily: DM, fontSize: "0.82rem", color: "text.disabled" }}>
+            <Typography
+              sx={{
+                fontFamily: DM,
+                fontSize: "0.82rem",
+                color: "text.disabled",
+              }}
+            >
               No archived requests
             </Typography>
           </Box>
         ) : (
           <>
-            <Typography sx={{ fontFamily: DM, fontSize: "0.72rem", color: "text.disabled", mb: 1.5 }}>
+            <Typography
+              sx={{
+                fontFamily: DM,
+                fontSize: "0.72rem",
+                color: "text.disabled",
+                mb: 1.5,
+              }}
+            >
               {archivedRequests.length} request(s) archived.
             </Typography>
             <RequestBulkBar
@@ -351,20 +416,25 @@ export default function ArchiveManagementBase({
               pageSize={10}
               rowsPerPageOptions={[10, 25, 50]}
               checkboxSelection
-              rowSelectionModel={{ type: 'include', ids: new Set(selected) }}
+              rowSelectionModel={{ type: "include", ids: new Set(selected) }}
               onRowSelectionModelChange={(model) =>
                 setSelected(model?.ids instanceof Set ? [...model.ids] : [])
               }
               sx={{
                 "& .MuiDataGrid-row.Mui-selected": {
-                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(33,33,33,0.06)",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(33,33,33,0.06)",
                   "&:hover": {
-                    backgroundColor: isDark ? "rgba(255,255,255,0.09)" : "rgba(33,33,33,0.09)",
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.09)"
+                      : "rgba(33,33,33,0.09)",
                   },
                 },
-                "& .MuiCheckbox-root.Mui-checked, & .MuiCheckbox-root.MuiCheckbox-indeterminate": {
-                  color: isDark ? "#e0e0e0" : "#212121",
-                },
+                "& .MuiCheckbox-root.Mui-checked, & .MuiCheckbox-root.MuiCheckbox-indeterminate":
+                  {
+                    color: isDark ? "#e0e0e0" : "#212121",
+                  },
               }}
             />
           </>

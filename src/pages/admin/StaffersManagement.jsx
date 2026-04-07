@@ -182,8 +182,10 @@ export default function StaffersManagement() {
   const [createdAccountOpen, setCreatedAccountOpen] = useState(false);
   const [createdAccount, setCreatedAccount] = useState(null);
   const [createdCopyFeedback, setCreatedCopyFeedback] = useState("");
-  const [createdCredentialsCopied, setCreatedCredentialsCopied] = useState(false);
-  const [createdDismissConfirmOpen, setCreatedDismissConfirmOpen] = useState(false);
+  const [createdCredentialsCopied, setCreatedCredentialsCopied] =
+    useState(false);
+  const [createdDismissConfirmOpen, setCreatedDismissConfirmOpen] =
+    useState(false);
 
   const [toggleOpen, setToggleOpen] = useState(false);
   const [toggleTarget, setToggleTarget] = useState(null);
@@ -1184,7 +1186,13 @@ export default function StaffersManagement() {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.15 }}>
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.15,
+                      }}
+                    >
                       <Tooltip
                         title={copyFeedback || "Copy credentials"}
                         arrow
@@ -1196,7 +1204,11 @@ export default function StaffersManagement() {
                             onClick={handleCopyCredentials}
                             edge="end"
                             disabled={formLoading}
-                            sx={{ color: copyFeedback ? "#b45309" : "text.secondary" }}
+                            sx={{
+                              color: copyFeedback
+                                ? "#b45309"
+                                : "text.secondary",
+                            }}
                           >
                             <ContentCopyOutlinedIcon sx={{ fontSize: 15 }} />
                           </IconButton>
@@ -1409,7 +1421,9 @@ export default function StaffersManagement() {
                 px: 1.5,
                 py: 1,
                 borderBottom:
-                  idx === 6 ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)"}`,
+                  idx === 6
+                    ? "none"
+                    : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)"}`,
               }}
             >
               <Typography
@@ -1482,7 +1496,9 @@ export default function StaffersManagement() {
             lineHeight: 1.65,
           }}
         >
-          You have not copied the generated credentials yet. Once you close this dialog, you will not be able to view this password again. Continue only if you are sure.
+          You have not copied the generated credentials yet. Once you close this
+          dialog, you will not be able to view this password again. Continue
+          only if you are sure.
         </Typography>
       </BrandDialog>
 

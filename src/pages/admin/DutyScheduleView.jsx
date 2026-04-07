@@ -15,6 +15,9 @@ import {
   MenuItem,
   OutlinedInput,
   InputAdornment,
+  Tabs,
+  Tab,
+  Badge,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
@@ -176,6 +179,7 @@ export default function DutyScheduleView() {
   const [slotDialogDayIndex, setSlotDialogDayIndex] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestActionId, setRequestActionId] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
   const gridApiRef = useGridApiRef();
 
   const loadActiveSemester = useCallback(async () => {
@@ -280,8 +284,8 @@ export default function DutyScheduleView() {
   const dayCounts = DAY_LABELS.map(
     (_, i) => schedules.filter((s) => s.duty_day === i).length,
   );
-  const dayCapacities = SLOT_FIELDS.map(
-    (field) => Math.max(0, Number(activeSemester?.[field] ?? 10) || 0),
+  const dayCapacities = SLOT_FIELDS.map((field) =>
+    Math.max(0, Number(activeSemester?.[field] ?? 10) || 0),
   );
 
   const externalFilterModel = useMemo(() => {
@@ -376,7 +380,8 @@ export default function DutyScheduleView() {
     return (data || [])
       .map((row) => row.request)
       .filter(
-        (request) => request && ACTIVE_REQUEST_STATUSES.includes(request.status),
+        (request) =>
+          request && ACTIVE_REQUEST_STATUSES.includes(request.status),
       )
       .filter((request) =>
         getUpcomingRequestDates(request).some((date) => {
@@ -409,12 +414,16 @@ export default function DutyScheduleView() {
         if (scheduleErr) throw scheduleErr;
 
         if (!currentSchedule) {
-          setError("This staff member no longer has an approved duty day to update.");
+          setError(
+            "This staff member no longer has an approved duty day to update.",
+          );
           return;
         }
 
         if (currentSchedule.duty_day !== request.current_duty_day) {
-          setError("This request is stale because the staff member's approved duty day already changed.");
+          setError(
+            "This request is stale because the staff member's approved duty day already changed.",
+          );
           await loadPendingRequests();
           await loadSchedules();
           return;
@@ -476,12 +485,21 @@ export default function DutyScheduleView() {
         await loadSchedules();
         await loadPendingRequests();
       } catch (actionErr) {
-        setError(actionErr.message || "Failed to approve schedule change request.");
+        setError(
+          actionErr.message || "Failed to approve schedule change request.",
+        );
       } finally {
         setRequestActionId("");
       }
     },
-    [activeSemester, dayCapacities, findScheduleConflicts, loadPendingRequests, loadSchedules, schedules],
+    [
+      activeSemester,
+      dayCapacities,
+      findScheduleConflicts,
+      loadPendingRequests,
+      loadSchedules,
+      schedules,
+    ],
   );
 
   const handleRejectRequest = useCallback(
@@ -509,7 +527,9 @@ export default function DutyScheduleView() {
 
         await loadPendingRequests();
       } catch (actionErr) {
-        setError(actionErr.message || "Failed to reject schedule change request.");
+        setError(
+          actionErr.message || "Failed to reject schedule change request.",
+        );
       } finally {
         setRequestActionId("");
       }
@@ -783,7 +803,14 @@ export default function DutyScheduleView() {
                   backgroundColor: "background.paper",
                 }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                  }}
+                >
                   <Typography
                     sx={{
                       fontFamily: dm,
@@ -805,10 +832,14 @@ export default function DutyScheduleView() {
                       height: 24,
                       borderRadius: "6px",
                       color: "text.disabled",
-                      backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.04)",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(53,53,53,0.04)",
                       "&:hover": {
                         color: "text.primary",
-                        backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.08)",
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(53,53,53,0.08)",
                       },
                     }}
                   >
@@ -912,7 +943,56 @@ export default function DutyScheduleView() {
         </Alert>
       )}
 
-      {activeSemester && pendingRequests.length > 0 && (
+      {activeSemester && (
+        <Box
+          sx={{
+            mb: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            gap: 1,
+            flexWrap: "wrap",
+          }}
+        >
+          <Tabs
+            value={activeTab}
+            onChange={(event, value) => setActiveTab(value)}
+            textColor="primary"
+            indicatorColor="primary"
+            sx={{
+              minHeight: 44,
+              "& .MuiTab-root": {
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                textTransform: "none",
+                minHeight: 44,
+                py: 0.5,
+                px: 1.5,
+                borderRadius: "10px",
+              },
+              "& .MuiTabs-indicator": {
+                height: 3,
+                borderRadius: "3px",
+              },
+            }}
+          >
+            <Tab label="Schedule" />
+            <Tab
+              label={
+                <Badge
+                  badgeContent={pendingRequests.length}
+                  color="warning"
+                  invisible={pendingRequests.length === 0}
+                >
+                  Requests
+                </Badge>
+              }
+            />
+          </Tabs>
+        </Box>
+      )}
+
+      {activeSemester && activeTab === 1 && (
         <Box
           sx={{
             mb: 2,
@@ -955,7 +1035,267 @@ export default function DutyScheduleView() {
                   mt: 0.25,
                 }}
               >
-                Review requested duty-day changes before they affect assignment planning.
+                Review requested duty-day changes before they affect assignment
+                planning.
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                minWidth: 24,
+                height: 22,
+                px: 1,
+                borderRadius: "999px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: GOLD,
+                color: "#1a1a1a",
+                fontFamily: dm,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+              }}
+            >
+              {pendingRequests.length}
+            </Box>
+          </Box>
+
+          {pendingRequests.length === 0 ? (
+            <Box
+              sx={{
+                px: 2,
+                py: 2,
+                borderRadius: "10px",
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.03)"
+                  : "#ffffff",
+                border: `1px solid ${border}`,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "text.secondary",
+                }}
+              >
+                No pending duty schedule change requests at the moment.
+              </Typography>
+            </Box>
+          ) : (
+            pendingRequests.map((request) => {
+              const staffName = request.staffer?.full_name || "Unknown Staffer";
+              const avatarColor = getAvatarColor(
+                request.staffer_id || request.id,
+              );
+              const avatarUrl = getAvatarUrl(request.staffer?.avatar_url);
+              const isBusy = requestActionId === request.id;
+
+              return (
+                <Box
+                  key={request.id}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1.5,
+                    flexWrap: "wrap",
+                    px: 1.25,
+                    py: 1.1,
+                    borderRadius: "10px",
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.03)"
+                      : "#ffffff",
+                    border: `1px solid ${border}`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.1,
+                      minWidth: 0,
+                      flex: "1 1 360px",
+                    }}
+                  >
+                    <Avatar
+                      src={avatarUrl}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        backgroundColor: avatarColor.bg,
+                        color: avatarColor.color,
+                      }}
+                    >
+                      {!avatarUrl && getInitials(staffName)}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: "text.primary",
+                        }}
+                      >
+                        {staffName}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.secondary",
+                        }}
+                      >
+                        {request.staffer?.section || "No Section"}
+                        {request.staffer?.role
+                          ? ` • ${request.staffer.role}`
+                          : ""}
+                        {request.created_at
+                          ? ` • Requested ${formatDateTime(request.created_at)}`
+                          : ""}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <DayPill dayIndex={request.current_duty_day} />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        color: "text.secondary",
+                        fontWeight: 700,
+                      }}
+                    >
+                      →
+                    </Typography>
+                    <DayPill dayIndex={request.requested_duty_day} accent />
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.8,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Box
+                      onClick={
+                        !isBusy ? () => handleRejectRequest(request) : undefined
+                      }
+                      sx={{
+                        px: 1.5,
+                        height: 34,
+                        borderRadius: "10px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: isBusy ? "default" : "pointer",
+                        border: "1px solid rgba(220,38,38,0.18)",
+                        backgroundColor: isDark
+                          ? "rgba(220,38,38,0.12)"
+                          : "rgba(220,38,38,0.06)",
+                        color: "#dc2626",
+                        fontFamily: dm,
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        opacity: isBusy ? 0.6 : 1,
+                      }}
+                    >
+                      Reject
+                    </Box>
+                    <Box
+                      onClick={
+                        !isBusy ? () => handleApproveRequest(request) : undefined
+                      }
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.6,
+                        px: 1.5,
+                        height: 34,
+                        borderRadius: "10px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: isBusy ? "default" : "pointer",
+                        backgroundColor: GOLD,
+                        color: "#1a1a1a",
+                        fontFamily: dm,
+                        fontSize: "0.76rem",
+                        fontWeight: 700,
+                        opacity: isBusy ? 0.7 : 1,
+                      }}
+                    >
+                      {isBusy && (
+                        <CircularProgress size={12} sx={{ color: "#1a1a1a" }} />
+                      )}
+                      Approve
+                    </Box>
+                  </Box>
+                </Box>
+              );
+            })
+          )}
+        </Box>
+      )}
+
+      {/* ── Filter row: Search | Section | Export ── */}
+      {activeSemester && activeTab === 0 && (
+        <Box
+          sx={{
+            mb: 2,
+            px: 2,
+            py: 1.75,
+            borderRadius: "10px",
+            border: `1px solid ${border}`,
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#faf8ef",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.25,
+            flexShrink: 0,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.84rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
+              >
+                Pending Schedule Changes
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mt: 0.25,
+                }}
+              >
+                Review requested duty-day changes before they affect assignment
+                planning.
               </Typography>
             </Box>
             <Box
@@ -980,7 +1320,9 @@ export default function DutyScheduleView() {
 
           {pendingRequests.map((request) => {
             const staffName = request.staffer?.full_name || "Unknown Staffer";
-            const avatarColor = getAvatarColor(request.staffer_id || request.id);
+            const avatarColor = getAvatarColor(
+              request.staffer_id || request.id,
+            );
             const avatarUrl = getAvatarUrl(request.staffer?.avatar_url);
             const isBusy = requestActionId === request.id;
 
@@ -996,11 +1338,21 @@ export default function DutyScheduleView() {
                   px: 1.25,
                   py: 1.1,
                   borderRadius: "10px",
-                  backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#ffffff",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.03)"
+                    : "#ffffff",
                   border: `1px solid ${border}`,
                 }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.1, minWidth: 0, flex: "1 1 360px" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.1,
+                    minWidth: 0,
+                    flex: "1 1 360px",
+                  }}
+                >
                   <Avatar
                     src={avatarUrl}
                     sx={{
@@ -1033,13 +1385,24 @@ export default function DutyScheduleView() {
                       }}
                     >
                       {request.staffer?.section || "No Section"}
-                      {request.staffer?.role ? ` • ${request.staffer.role}` : ""}
-                      {request.created_at ? ` • Requested ${formatDateTime(request.created_at)}` : ""}
+                      {request.staffer?.role
+                        ? ` • ${request.staffer.role}`
+                        : ""}
+                      {request.created_at
+                        ? ` • Requested ${formatDateTime(request.created_at)}`
+                        : ""}
                     </Typography>
                   </Box>
                 </Box>
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <DayPill dayIndex={request.current_duty_day} />
                   <Typography
                     sx={{
@@ -1054,9 +1417,18 @@ export default function DutyScheduleView() {
                   <DayPill dayIndex={request.requested_duty_day} accent />
                 </Box>
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexShrink: 0 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.8,
+                    flexShrink: 0,
+                  }}
+                >
                   <Box
-                    onClick={!isBusy ? () => handleRejectRequest(request) : undefined}
+                    onClick={
+                      !isBusy ? () => handleRejectRequest(request) : undefined
+                    }
                     sx={{
                       px: 1.5,
                       height: 34,
@@ -1066,7 +1438,9 @@ export default function DutyScheduleView() {
                       justifyContent: "center",
                       cursor: isBusy ? "default" : "pointer",
                       border: "1px solid rgba(220,38,38,0.18)",
-                      backgroundColor: isDark ? "rgba(220,38,38,0.12)" : "rgba(220,38,38,0.06)",
+                      backgroundColor: isDark
+                        ? "rgba(220,38,38,0.12)"
+                        : "rgba(220,38,38,0.06)",
                       color: "#dc2626",
                       fontFamily: dm,
                       fontSize: "0.76rem",
@@ -1077,7 +1451,9 @@ export default function DutyScheduleView() {
                     Reject
                   </Box>
                   <Box
-                    onClick={!isBusy ? () => handleApproveRequest(request) : undefined}
+                    onClick={
+                      !isBusy ? () => handleApproveRequest(request) : undefined
+                    }
                     sx={{
                       px: 1.5,
                       height: 34,
@@ -1095,7 +1471,9 @@ export default function DutyScheduleView() {
                       gap: 0.6,
                     }}
                   >
-                    {isBusy && <CircularProgress size={12} sx={{ color: "#1a1a1a" }} />}
+                    {isBusy && (
+                      <CircularProgress size={12} sx={{ color: "#1a1a1a" }} />
+                    )}
                     Approve
                   </Box>
                 </Box>
@@ -1106,7 +1484,7 @@ export default function DutyScheduleView() {
       )}
 
       {/* ── Filter row: Search | Section | Export ── */}
-      {activeSemester && (
+      {activeSemester && activeTab === 0 && (
         <Box
           sx={{
             mb: 2,
@@ -1276,16 +1654,17 @@ export default function DutyScheduleView() {
       )}
 
       {/* ── Table ── */}
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
-        <Box
-          sx={{
-            minWidth: 600,
-            height: "100%",
-            bgcolor: "#f7f7f8",
-            borderRadius: "10px",
-            border: `1px solid ${border}`,
-            overflow: "hidden",
-          }}
+      {activeSemester && activeTab === 0 && (
+        <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+          <Box
+            sx={{
+              minWidth: 600,
+              height: "100%",
+              bgcolor: "#f7f7f8",
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              overflow: "hidden",
+            }}
         >
           {loading ? (
             <Box
@@ -1319,6 +1698,7 @@ export default function DutyScheduleView() {
           )}
         </Box>
       </Box>
+      )}
 
       <Dialog
         open={slotDialogOpen}
@@ -1384,7 +1764,15 @@ export default function DutyScheduleView() {
           </IconButton>
         </Box>
 
-        <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+          }}
+        >
           <Typography
             sx={{
               fontFamily: dm,
@@ -1442,7 +1830,9 @@ export default function DutyScheduleView() {
             display: "flex",
             justifyContent: "flex-end",
             gap: 1,
-            backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)",
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.01)"
+              : "rgba(53,53,53,0.01)",
           }}
         >
           <Box
@@ -1459,7 +1849,10 @@ export default function DutyScheduleView() {
               color: "text.secondary",
               opacity: slotSaving ? 0.5 : 1,
               transition: "all 0.15s",
-              "&:hover": { borderColor: "rgba(53,53,53,0.4)", color: "text.primary" },
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.4)",
+                color: "text.primary",
+              },
             }}
           >
             Cancel
@@ -1484,7 +1877,9 @@ export default function DutyScheduleView() {
               "&:hover": { backgroundColor: slotSaving ? GOLD : "#e6b722" },
             }}
           >
-            {slotSaving && <CircularProgress size={13} sx={{ color: "#1a1a1a" }} />}
+            {slotSaving && (
+              <CircularProgress size={13} sx={{ color: "#1a1a1a" }} />
+            )}
             Save Slots
           </Box>
         </Box>

@@ -515,75 +515,75 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
     >
       <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.35 }}>
         <Box sx={{ display: "flex", alignItems: "center" }}>
-        {visible.map((s, i) => {
-          const url = getAvatarUrl(s.avatar_url);
-          const clr = getAvatarColor(s.id);
-          return (
+          {visible.map((s, i) => {
+            const url = getAvatarUrl(s.avatar_url);
+            const clr = getAvatarColor(s.id);
+            return (
+              <Box
+                key={s.id || i}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  border: `2px solid ${isDark ? "#1e1e1e" : "#ffffff"}`,
+                  ml: i === 0 ? 0 : "-8px",
+                  zIndex: MAX_VISIBLE - i,
+                  position: "relative",
+                  flexShrink: 0,
+                  transition: "transform 0.15s",
+                  "&:hover": {
+                    transform: "translateY(-2px) scale(1.1)",
+                    zIndex: 20,
+                  },
+                }}
+              >
+                <Avatar
+                  src={url || undefined}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    fontSize: "0.6rem",
+                    fontWeight: 500,
+                    backgroundColor: clr.bg,
+                    color: clr.color,
+                  }}
+                >
+                  {!url && getInitials(s.full_name)}
+                </Avatar>
+              </Box>
+            );
+          })}
+          {overflow > 0 && (
             <Box
-              key={s.id || i}
               sx={{
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
                 border: `2px solid ${isDark ? "#1e1e1e" : "#ffffff"}`,
-                ml: i === 0 ? 0 : "-8px",
-                zIndex: MAX_VISIBLE - i,
-                position: "relative",
+                ml: "-8px",
+                zIndex: 0,
                 flexShrink: 0,
-                transition: "transform 0.15s",
-                "&:hover": {
-                  transform: "translateY(-2px) scale(1.1)",
-                  zIndex: 20,
-                },
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(53,53,53,0.07)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <Avatar
-                src={url || undefined}
+              <Typography
                 sx={{
-                  width: "100%",
-                  height: "100%",
+                  fontFamily: dm,
                   fontSize: "0.6rem",
-                  fontWeight: 500,
-                  backgroundColor: clr.bg,
-                  color: clr.color,
+                  fontWeight: 700,
+                  color: "text.secondary",
+                  lineHeight: 1,
                 }}
               >
-                {!url && getInitials(s.full_name)}
-              </Avatar>
+                +{overflow}
+              </Typography>
             </Box>
-          );
-        })}
-        {overflow > 0 && (
-          <Box
-            sx={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              border: `2px solid ${isDark ? "#1e1e1e" : "#ffffff"}`,
-              ml: "-8px",
-              zIndex: 0,
-              flexShrink: 0,
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(53,53,53,0.07)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.6rem",
-                fontWeight: 700,
-                color: "text.secondary",
-                lineHeight: 1,
-              }}
-            >
-              +{overflow}
-            </Typography>
-          </Box>
-        )}
+          )}
         </Box>
         <ChevronRightIcon
           sx={{
@@ -776,41 +776,41 @@ export default function SecHeadAssignmentManagement() {
         await Promise.all([
           applyHiddenFilter(
             supabase
-            .from("coverage_requests")
-            .select(baseSelect)
-            .in("status", ["Forwarded", "Assigned", "For Approval"])
-            .contains("forwarded_sections", [currentUser.section])
-            .order("forwarded_at", { ascending: false }),
+              .from("coverage_requests")
+              .select(baseSelect)
+              .in("status", ["Forwarded", "Assigned", "For Approval"])
+              .contains("forwarded_sections", [currentUser.section])
+              .order("forwarded_at", { ascending: false }),
           ),
           applyHiddenFilter(
             supabase
-            .from("coverage_requests")
-            .select(baseSelect)
-            .in("status", ["Assigned", "For Approval"])
-            .contains("forwarded_sections", [currentUser.section])
-            .order("event_date", { ascending: true }),
+              .from("coverage_requests")
+              .select(baseSelect)
+              .in("status", ["Assigned", "For Approval"])
+              .contains("forwarded_sections", [currentUser.section])
+              .order("event_date", { ascending: true }),
           ),
           applyHiddenFilter(
             supabase
-            .from("coverage_requests")
-            .select(baseSelect)
-            .eq("status", "On Going")
-            .contains("forwarded_sections", [currentUser.section])
-            .order("event_date", { ascending: true }),
+              .from("coverage_requests")
+              .select(baseSelect)
+              .eq("status", "On Going")
+              .contains("forwarded_sections", [currentUser.section])
+              .order("event_date", { ascending: true }),
           ),
           applyHiddenFilter(
             supabase
-            .from("coverage_requests")
-            .select(baseSelect)
-            .in("status", [
-              "Approved",
-              "Coverage Complete",
-              "Completed",
-              "No-show",
-              "Declined",
-            ])
-            .contains("forwarded_sections", [currentUser.section])
-            .order("event_date", { ascending: false }),
+              .from("coverage_requests")
+              .select(baseSelect)
+              .in("status", [
+                "Approved",
+                "Coverage Complete",
+                "Completed",
+                "No-show",
+                "Declined",
+              ])
+              .contains("forwarded_sections", [currentUser.section])
+              .order("event_date", { ascending: false }),
           ),
         ]);
 
@@ -939,46 +939,50 @@ export default function SecHeadAssignmentManagement() {
     if (!currentUser?.id || !row?.id) return;
     setError("");
     setToast((prev) => ({ ...prev, open: false, text: "" }));
-    const { error } = await supabase
-      .from("request_user_state")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          request_id: row.id,
-          archived_at: new Date().toISOString(),
-          trashed_at: null,
-          purged_at: null,
-        },
-        { onConflict: "user_id,request_id" },
-      );
+    const { error } = await supabase.from("request_user_state").upsert(
+      {
+        user_id: currentUser.id,
+        request_id: row.id,
+        archived_at: new Date().toISOString(),
+        trashed_at: null,
+        purged_at: null,
+      },
+      { onConflict: "user_id,request_id" },
+    );
     if (error) {
       setError(error.message);
       return;
     }
-    setToast({ open: true, text: "Request moved to archive.", severity: "success" });
+    setToast({
+      open: true,
+      text: "Request moved to archive.",
+      severity: "success",
+    });
     loadAll();
   };
   const handleTrash = async (row) => {
     if (!currentUser?.id || !row?.id) return;
     setError("");
     setToast((prev) => ({ ...prev, open: false, text: "" }));
-    const { error } = await supabase
-      .from("request_user_state")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          request_id: row.id,
-          archived_at: null,
-          trashed_at: new Date().toISOString(),
-          purged_at: null,
-        },
-        { onConflict: "user_id,request_id" },
-      );
+    const { error } = await supabase.from("request_user_state").upsert(
+      {
+        user_id: currentUser.id,
+        request_id: row.id,
+        archived_at: null,
+        trashed_at: new Date().toISOString(),
+        purged_at: null,
+      },
+      { onConflict: "user_id,request_id" },
+    );
     if (error) {
       setError(error.message);
       return;
     }
-    setToast({ open: true, text: "Request moved to trash.", severity: "success" });
+    setToast({
+      open: true,
+      text: "Request moved to trash.",
+      severity: "success",
+    });
     loadAll();
   };
 
@@ -1711,11 +1715,32 @@ export default function SecHeadAssignmentManagement() {
     if (viewFilter === "for-assignment")
       return [titleCol, typeCol, clientCol, eventDateCol, paxCol, actionCol];
     if (viewFilter === "assigned")
-      return [titleCol, typeCol, clientCol, eventDateCol, staffersCol, actionCol];
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        staffersCol,
+        actionCol,
+      ];
     if (viewFilter === "on-going")
-      return [titleCol, typeCol, clientCol, eventDateCol, onGoingStaffersCol, actionCol];
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        onGoingStaffersCol,
+        actionCol,
+      ];
     if (viewFilter === "completed")
-      return [titleCol, typeCol, clientCol, eventDateCol, completedStaffersCol, actionCol];
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        eventDateCol,
+        completedStaffersCol,
+        actionCol,
+      ];
     return [titleCol, typeCol, clientCol, eventDateCol, actionCol];
   };
 
@@ -2091,19 +2116,25 @@ export default function SecHeadAssignmentManagement() {
               onRowSelectionModelChange={handleRowSelectionModelChange}
               enableSearch={false}
               filterModel={externalFilterModel}
-              selectionActions={hasBulkSelection ? [
-                {
-                  label: "Archive",
-                  icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
-                  onClick: handleBulkArchive,
-                },
-                {
-                  label: "Move to Trash",
-                  icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
-                  onClick: handleBulkTrash,
-                  color: "error",
-                },
-              ] : []}
+              selectionActions={
+                hasBulkSelection
+                  ? [
+                      {
+                        label: "Archive",
+                        icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
+                        onClick: handleBulkArchive,
+                      },
+                      {
+                        label: "Move to Trash",
+                        icon: (
+                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />
+                        ),
+                        onClick: handleBulkTrash,
+                        color: "error",
+                      },
+                    ]
+                  : []
+              }
               slotProps={{
                 toolbar: {
                   csvOptions: { disableToolbarButton: true },
