@@ -22,6 +22,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifyAdmins } from "../../services/NotificationService";
 import { useDutyChangeRequestQuota } from "../../hooks/useDutyChangeRequestQuota";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { useLocation } from "react-router-dom";
 import BrandedLoader from "../../components/common/BrandedLoader";
 
@@ -121,15 +122,20 @@ export default function MySchedule() {
   const loadScheduleData = useCallback(async () => {
     if (!activeSemester?.id || !currentUser?.id) return;
     setLoading(true);
-    const [{ data: allSchedules }, { data: pendingRows }, { data: reviewedRows }] =
-      await Promise.all([
+    const [
+      { data: allSchedules },
+      { data: pendingRows },
+      { data: reviewedRows },
+    ] = await Promise.all([
       supabase
         .from("duty_schedules")
         .select("duty_day, staffer_id")
         .eq("semester_id", activeSemester.id),
       supabase
         .from("duty_schedule_change_requests")
-        .select("id, current_duty_day, requested_duty_day, request_reason, status, created_at")
+        .select(
+          "id, current_duty_day, requested_duty_day, request_reason, status, created_at",
+        )
         .eq("semester_id", activeSemester.id)
         .eq("staffer_id", currentUser.id)
         .eq("status", "pending")
@@ -267,7 +273,9 @@ export default function MySchedule() {
     // Check quota for duty day CHANGE requests (not initial setup)
     if (existingSchedule && existingSchedule.duty_day !== requestedDay) {
       if (quotaExhausted) {
-        setSaveError("You have reached your 3 duty day change limit for this semester. Contact admin for more.");
+        setSaveError(
+          "You have reached your 3 duty day change limit for this semester. Contact admin for more.",
+        );
         return;
       }
     }
@@ -406,7 +414,7 @@ export default function MySchedule() {
   const dialogTargetCount =
     dialogTargetDay !== null ? slotCounts[dialogTargetDay] : null;
   const dialogTargetCapacity =
-    dialogTargetDay !== null ? slotCapacities[dialogTargetDay] ?? 10 : null;
+    dialogTargetDay !== null ? (slotCapacities[dialogTargetDay] ?? 10) : null;
 
   if (!currentUser || loading)
     return <BrandedLoader size={84} minHeight="60vh" />;
@@ -516,7 +524,7 @@ export default function MySchedule() {
                 color: "text.primary",
               }}
             >
-              {activeSemester.name}
+              {getSemesterDisplayName(activeSemester)}
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
               <CalendarTodayOutlinedIcon
@@ -741,8 +749,14 @@ export default function MySchedule() {
                     }}
                   >
                     Your request to change from{" "}
-                    <strong>{DAY_LABELS[pendingRequest.current_duty_day]}</strong> to{" "}
-                    <strong>{DAY_LABELS[pendingRequest.requested_duty_day]}</strong> is pending admin approval.
+                    <strong>
+                      {DAY_LABELS[pendingRequest.current_duty_day]}
+                    </strong>{" "}
+                    to{" "}
+                    <strong>
+                      {DAY_LABELS[pendingRequest.requested_duty_day]}
+                    </strong>{" "}
+                    is pending admin approval.
                   </Typography>
                 </Box>
 
@@ -826,7 +840,8 @@ export default function MySchedule() {
                   mt: 0.5,
                 }}
               >
-                Admin note: {latestReviewedRequest.review_notes || "No reason provided."}
+                Admin note:{" "}
+                {latestReviewedRequest.review_notes || "No reason provided."}
               </Typography>
             </Box>
           ) : (
@@ -955,7 +970,8 @@ export default function MySchedule() {
               const isMyPick = existingSchedule?.duty_day === i;
               const isSelected = selectedDay === i;
               const isPendingTarget = pendingRequest?.requested_duty_day === i;
-              const isChangingDay = existingSchedule && i !== existingSchedule.duty_day;
+              const isChangingDay =
+                existingSchedule && i !== existingSchedule.duty_day;
               const isDisabled =
                 schedulingClosed ||
                 !!pendingRequest ||
@@ -1137,8 +1153,6 @@ export default function MySchedule() {
             })}
           </Box>
 
-
-
           <Dialog
             open={reasonDialogOpen}
             onClose={handleDialogClose}
@@ -1283,7 +1297,9 @@ export default function MySchedule() {
               </Box>
               <Box
                 onClick={
-                  !saving && requestReason.trim() ? handleDialogConfirm : undefined
+                  !saving && requestReason.trim()
+                    ? handleDialogConfirm
+                    : undefined
                 }
                 sx={{
                   px: 2,
@@ -1305,7 +1321,11 @@ export default function MySchedule() {
                       : {},
                 }}
               >
-                {saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : "Submit request"}
+                {saving ? (
+                  <CircularProgress size={14} sx={{ color: "#fff" }} />
+                ) : (
+                  "Submit request"
+                )}
               </Box>
             </Box>
           </Dialog>

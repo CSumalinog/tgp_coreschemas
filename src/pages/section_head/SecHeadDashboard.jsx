@@ -22,6 +22,7 @@ import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 
@@ -221,7 +222,12 @@ export default function SecHeadDashboard() {
           "id, status, title, event_date, venue, forwarded_at, entity:client_entities(name)",
         )
         .contains("forwarded_sections", [currentUser.section])
-        .in("status", ["Forwarded", "Assigned", "On Going", "Coverage Complete"])
+        .in("status", [
+          "Forwarded",
+          "Assigned",
+          "On Going",
+          "Coverage Complete",
+        ])
         .is("archived_at", null)
         .is("trashed_at", null)
         .order("forwarded_at", { ascending: false }),
@@ -232,19 +238,19 @@ export default function SecHeadDashboard() {
     ]);
 
     const hiddenIds = new Set((usResult.data || []).map((r) => r.request_id));
-    const allRequests = (reqResult.data || []).filter((r) => !hiddenIds.has(r.id));
+    const allRequests = (reqResult.data || []).filter(
+      (r) => !hiddenIds.has(r.id),
+    );
 
-    const pending = (allRequests).filter(
-      (r) => r.status === "Forwarded",
-    ).length;
-    const assigned = (allRequests).filter(
+    const pending = allRequests.filter((r) => r.status === "Forwarded").length;
+    const assigned = allRequests.filter(
       (r) => r.status === "Assigned" || r.status === "On Going",
     ).length;
-    const complete = (allRequests).filter(
+    const complete = allRequests.filter(
       (r) => r.status === "Coverage Complete",
     ).length;
     setStats({ pending, assigned, complete });
-    setRecentRequests((allRequests).slice(0, 5));
+    setRecentRequests(allRequests.slice(0, 5));
 
     if (activeSemester?.id) {
       // ── Only show regular staff in the same division, excluding sec heads ──
@@ -367,7 +373,7 @@ export default function SecHeadDashboard() {
           </Typography>
           {activeSemester && (
             <Chip
-              label={activeSemester.name}
+              label={getSemesterDisplayName(activeSemester)}
               size="small"
               sx={{
                 fontSize: "0.7rem",

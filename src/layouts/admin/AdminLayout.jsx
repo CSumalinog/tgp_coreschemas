@@ -100,12 +100,7 @@ function getInitials(name) {
 }
 
 // ── Profile dropdown ──────────────────────────────────────────────────────────
-function ProfileDropdown({
-  open,
-  currentUser,
-  onClose,
-  footerRef,
-}) {
+function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
   const navigate = useNavigate();
   const { isDark, toggleDark } = useThemeMode();
   const ref = useRef(null);

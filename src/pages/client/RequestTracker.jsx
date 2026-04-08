@@ -566,7 +566,9 @@ export default function RequestTracker() {
   const viewCounts = useMemo(() => {
     const nonDraft = trackerRequests.filter((r) => r.status !== "Draft");
     return {
-      pipeline: trackerRequests.filter((r) => PIPELINE_ACTIVE_STATUSES.includes(r.status)).length,
+      pipeline: trackerRequests.filter((r) =>
+        PIPELINE_ACTIVE_STATUSES.includes(r.status),
+      ).length,
       0: nonDraft.length,
       1: trackerRequests.filter((r) => r.status === "Pending").length,
       2: trackerRequests.filter((r) => r.status === "Approved").length,
@@ -1281,13 +1283,7 @@ function PipelineCard({ request, isDark, border, onClick }) {
 }
 
 // ── Grid Tabs ─────────────────────────────────────────────────────────────────
-function RequestsGrid({
-  rows,
-  columns,
-  border,
-  gridApiRef,
-  filterModel,
-}) {
+function RequestsGrid({ rows, columns, border, gridApiRef, filterModel }) {
   return (
     <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
       <Box
@@ -1618,7 +1614,13 @@ const toRow = (req) => ({
   _raw: req,
 });
 
-function AllRequestsTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
+function AllRequestsTab({
+  isDark,
+  border,
+  gridApiRef,
+  filterModel,
+  openRequestId,
+}) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1733,7 +1735,13 @@ function AllRequestsTab({ isDark, border, gridApiRef, filterModel, openRequestId
   );
 }
 
-function PendingTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
+function PendingTab({
+  isDark,
+  border,
+  gridApiRef,
+  filterModel,
+  openRequestId,
+}) {
   const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1835,7 +1843,13 @@ function PendingTab({ isDark, border, gridApiRef, filterModel, openRequestId }) 
   );
 }
 
-function ApprovedTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
+function ApprovedTab({
+  isDark,
+  border,
+  gridApiRef,
+  filterModel,
+  openRequestId,
+}) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -1937,7 +1951,13 @@ function ApprovedTab({ isDark, border, gridApiRef, filterModel, openRequestId })
   );
 }
 
-function DeclinedTab({ isDark, border, gridApiRef, filterModel, openRequestId }) {
+function DeclinedTab({
+  isDark,
+  border,
+  gridApiRef,
+  filterModel,
+  openRequestId,
+}) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   useRealtimeNotify("coverage_requests", refetch, null, {

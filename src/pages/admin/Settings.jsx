@@ -53,7 +53,11 @@ const STATUS_CONFIG = {
 const SECTIONS = [
   { key: "archive", label: "Archive", Icon: ArchiveOutlinedIcon },
   { key: "trash", label: "Trash", Icon: DeleteOutlineOutlinedIcon },
-  { key: "notifications", label: "Notifications", Icon: NotificationsNoneOutlinedIcon },
+  {
+    key: "notifications",
+    label: "Notifications",
+    Icon: NotificationsNoneOutlinedIcon,
+  },
 ];
 
 const fmt = (d) =>
@@ -90,7 +94,9 @@ const buildEventDateDisplay = (req) => {
       day: "numeric",
       year: "numeric",
     });
-    return sorted.length === 1 ? fmtDateStr(sorted[0].date) : `${first} \u2013 ${last}`;
+    return sorted.length === 1
+      ? fmtDateStr(sorted[0].date)
+      : `${first} \u2013 ${last}`;
   }
   return fmtDateStr(req.event_date);
 };
@@ -140,7 +146,15 @@ function StatusPill({ status, isDark }) {
 }
 
 // ── Confirm dialog ────────────────────────────────────────────────────────────
-function ConfirmDialog({ open, onClose, onConfirm, title, message, loading, destructive }) {
+function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  loading,
+  destructive,
+}) {
   return (
     <Dialog
       open={open}
@@ -275,8 +289,13 @@ export default function Settings() {
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
 
-  const [openSections, setOpenSections] = useState({ archive: true, trash: false, notifications: false });
-  const toggleSection = (key) => setOpenSections((p) => ({ ...p, [key]: !p[key] }));
+  const [openSections, setOpenSections] = useState({
+    archive: true,
+    trash: false,
+    notifications: false,
+  });
+  const toggleSection = (key) =>
+    setOpenSections((p) => ({ ...p, [key]: !p[key] }));
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -304,7 +323,9 @@ export default function Settings() {
   const fetchArchived = useCallback(async () => {
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, archived_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, archived_at, requester_id",
+      )
       .not("archived_at", "is", null)
       .is("trashed_at", null)
       .order("archived_at", { ascending: false });
@@ -314,7 +335,9 @@ export default function Settings() {
   const fetchTrashed = useCallback(async () => {
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, trashed_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, trashed_at, requester_id",
+      )
       .not("trashed_at", "is", null)
       .order("trashed_at", { ascending: false });
     if (!error) setTrashedRequests(data || []);
@@ -323,7 +346,9 @@ export default function Settings() {
   const fetchArchivable = useCallback(async () => {
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
+      )
       .in("status", ["Completed", "Declined", "Cancelled"])
       .is("archived_at", null)
       .is("trashed_at", null)
@@ -344,7 +369,12 @@ export default function Settings() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable(), fetchNotifStats()]);
+    await Promise.all([
+      fetchArchived(),
+      fetchTrashed(),
+      fetchArchivable(),
+      fetchNotifStats(),
+    ]);
     setLoading(false);
   }, [fetchArchived, fetchTrashed, fetchArchivable, fetchNotifStats]);
 
@@ -353,93 +383,116 @@ export default function Settings() {
   }, [loadAll]);
 
   // ── Actions ──────────────────────────────────────────────
-  const archiveRequests = useCallback(async (ids) => {
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from("coverage_requests")
-        .update({ archived_at: new Date().toISOString() })
-        .in("id", ids);
-      if (error) throw error;
-      setMsg({ type: "success", text: `${ids.length} request(s) archived.` });
-      setSelected([]);
-      await Promise.all([fetchArchived(), fetchArchivable()]);
-    } catch (err) {
-      setMsg({ type: "error", text: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }, [fetchArchived, fetchArchivable]);
+  const archiveRequests = useCallback(
+    async (ids) => {
+      setActionLoading(true);
+      try {
+        const { error } = await supabase
+          .from("coverage_requests")
+          .update({ archived_at: new Date().toISOString() })
+          .in("id", ids);
+        if (error) throw error;
+        setMsg({ type: "success", text: `${ids.length} request(s) archived.` });
+        setSelected([]);
+        await Promise.all([fetchArchived(), fetchArchivable()]);
+      } catch (err) {
+        setMsg({ type: "error", text: err.message });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchArchived, fetchArchivable],
+  );
 
-  const restoreFromArchive = useCallback(async (ids) => {
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from("coverage_requests")
-        .update({ archived_at: null })
-        .in("id", ids);
-      if (error) throw error;
-      setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
-      setSelected([]);
-      await Promise.all([fetchArchived(), fetchArchivable()]);
-    } catch (err) {
-      setMsg({ type: "error", text: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }, [fetchArchived, fetchArchivable]);
+  const restoreFromArchive = useCallback(
+    async (ids) => {
+      setActionLoading(true);
+      try {
+        const { error } = await supabase
+          .from("coverage_requests")
+          .update({ archived_at: null })
+          .in("id", ids);
+        if (error) throw error;
+        setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
+        setSelected([]);
+        await Promise.all([fetchArchived(), fetchArchivable()]);
+      } catch (err) {
+        setMsg({ type: "error", text: err.message });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchArchived, fetchArchivable],
+  );
 
-  const moveToTrash = useCallback(async (ids) => {
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from("coverage_requests")
-        .update({ trashed_at: new Date().toISOString() })
-        .in("id", ids);
-      if (error) throw error;
-      setMsg({ type: "success", text: `${ids.length} request(s) moved to trash.` });
-      setSelected([]);
-      await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
-    } catch (err) {
-      setMsg({ type: "error", text: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }, [fetchArchived, fetchTrashed, fetchArchivable]);
+  const moveToTrash = useCallback(
+    async (ids) => {
+      setActionLoading(true);
+      try {
+        const { error } = await supabase
+          .from("coverage_requests")
+          .update({ trashed_at: new Date().toISOString() })
+          .in("id", ids);
+        if (error) throw error;
+        setMsg({
+          type: "success",
+          text: `${ids.length} request(s) moved to trash.`,
+        });
+        setSelected([]);
+        await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
+      } catch (err) {
+        setMsg({ type: "error", text: err.message });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchArchived, fetchTrashed, fetchArchivable],
+  );
 
-  const restoreFromTrash = useCallback(async (ids) => {
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from("coverage_requests")
-        .update({ trashed_at: null, archived_at: null })
-        .in("id", ids);
-      if (error) throw error;
-      setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
-      setSelected([]);
-      await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
-    } catch (err) {
-      setMsg({ type: "error", text: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }, [fetchArchived, fetchTrashed, fetchArchivable]);
+  const restoreFromTrash = useCallback(
+    async (ids) => {
+      setActionLoading(true);
+      try {
+        const { error } = await supabase
+          .from("coverage_requests")
+          .update({ trashed_at: null, archived_at: null })
+          .in("id", ids);
+        if (error) throw error;
+        setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
+        setSelected([]);
+        await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
+      } catch (err) {
+        setMsg({ type: "error", text: err.message });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchArchived, fetchTrashed, fetchArchivable],
+  );
 
-  const deleteForever = useCallback(async (ids) => {
-    setActionLoading(true);
-    try {
-      const { error } = await supabase.rpc("admin_delete_requests", { request_ids: ids });
-      if (error) throw error;
+  const deleteForever = useCallback(
+    async (ids) => {
+      setActionLoading(true);
+      try {
+        const { error } = await supabase.rpc("admin_delete_requests", {
+          request_ids: ids,
+        });
+        if (error) throw error;
 
-      setMsg({ type: "success", text: `${ids.length} request(s) permanently deleted.` });
-      setSelected([]);
-      await fetchTrashed();
-    } catch (err) {
-      setMsg({ type: "error", text: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }, [fetchTrashed]);
+        setMsg({
+          type: "success",
+          text: `${ids.length} request(s) permanently deleted.`,
+        });
+        setSelected([]);
+        await fetchTrashed();
+      } catch (err) {
+        setMsg({ type: "error", text: err.message });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchTrashed],
+  );
 
   const emptyTrash = async () => {
     const ids = trashedRequests.map((r) => r.id);
@@ -455,7 +508,10 @@ export default function Settings() {
         .delete()
         .eq("is_read", true);
       if (error) throw error;
-      setMsg({ type: "success", text: `${notifStats.read} read notification(s) cleared.` });
+      setMsg({
+        type: "success",
+        text: `${notifStats.read} read notification(s) cleared.`,
+      });
       await fetchNotifStats();
     } catch (err) {
       setMsg({ type: "error", text: err.message });
@@ -467,190 +523,288 @@ export default function Settings() {
   // ── Confirm helpers ──────────────────────────────────────
   const openConfirm = (title, message, action, destructive = false) =>
     setConfirm({ open: true, title, message, destructive, action });
-  const closeConfirm = () =>
-    setConfirm((p) => ({ ...p, open: false }));
+  const closeConfirm = () => setConfirm((p) => ({ ...p, open: false }));
   const runConfirm = async () => {
     if (confirm.action) await confirm.action();
     closeConfirm();
   };
 
   // ── Column definitions ──────────────────────────────────
-  const requestColumns = useMemo(() => [
-    {
-      field: "title",
-      headerName: "Title",
-      flex: 1,
-      minWidth: 200,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography
+  const requestColumns = useMemo(
+    () => [
+      {
+        field: "title",
+        headerName: "Title",
+        flex: 1,
+        minWidth: 200,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                color: "text.primary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {row.title}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        width: 130,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <StatusPill status={row.status} isDark={isDark} />
+          </Box>
+        ),
+      },
+      {
+        field: "event_date",
+        headerName: "Event Date",
+        width: 170,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
+              {buildEventDateDisplay(row)}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "submitted_at",
+        headerName: "Submitted",
+        width: 140,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
+              {fmt(row.submitted_at)}
+            </Typography>
+          </Box>
+        ),
+      },
+    ],
+    [isDark],
+  );
+
+  const archiveColumns = useMemo(
+    () => [
+      ...requestColumns,
+      {
+        field: "archived_at",
+        headerName: "Archived",
+        width: 140,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
+              {fmt(row.archived_at)}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "",
+        width: 90,
+        sortable: false,
+        disableColumnMenu: true,
+        renderCell: ({ row }) => (
+          <Box
             sx={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              fontWeight: 600,
-              color: "text.primary",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              height: "100%",
             }}
           >
-            {row.title}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      width: 130,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <StatusPill status={row.status} isDark={isDark} />
-        </Box>
-      ),
-    },
-    {
-      field: "event_date",
-      headerName: "Event Date",
-      width: 170,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography
+            <Tooltip title="Restore" arrow>
+              <IconButton
+                size="small"
+                onClick={() => restoreFromArchive([row.id])}
+                sx={{
+                  borderRadius: "4px",
+                  width: 28,
+                  height: 28,
+                  color: "text.secondary",
+                  "&:hover": { backgroundColor: GOLD_08, color: GOLD },
+                }}
+              >
+                <UnarchiveOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Move to Trash" arrow>
+              <IconButton
+                size="small"
+                onClick={() =>
+                  openConfirm(
+                    "Move to Trash",
+                    `Move "${row.title}" to trash? You can restore it later.`,
+                    () => moveToTrash([row.id]),
+                  )
+                }
+                sx={{
+                  borderRadius: "4px",
+                  width: 28,
+                  height: 28,
+                  color: "text.secondary",
+                  "&:hover": { backgroundColor: RED_08, color: RED },
+                }}
+              >
+                <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [requestColumns, restoreFromArchive, moveToTrash],
+  );
+
+  const trashColumns = useMemo(
+    () => [
+      ...requestColumns,
+      {
+        field: "trashed_at",
+        headerName: "Trashed",
+        width: 140,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+              }}
+            >
+              {fmt(row.trashed_at)}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "",
+        width: 90,
+        sortable: false,
+        disableColumnMenu: true,
+        renderCell: ({ row }) => (
+          <Box
             sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              height: "100%",
             }}
           >
-            {buildEventDateDisplay(row)}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "submitted_at",
-      headerName: "Submitted",
-      width: 140,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
-            }}
-          >
-            {fmt(row.submitted_at)}
-          </Typography>
-        </Box>
-      ),
-    },
-  ], [isDark]);
+            <Tooltip title="Restore" arrow>
+              <IconButton
+                size="small"
+                onClick={() => restoreFromTrash([row.id])}
+                sx={{
+                  borderRadius: "4px",
+                  width: 28,
+                  height: 28,
+                  color: "text.secondary",
+                  "&:hover": { backgroundColor: GOLD_08, color: GOLD },
+                }}
+              >
+                <RestoreFromTrashOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete Forever" arrow>
+              <IconButton
+                size="small"
+                onClick={() =>
+                  openConfirm(
+                    "Delete Forever",
+                    `Permanently delete "${row.title}"? This cannot be undone.`,
+                    () => deleteForever([row.id]),
+                    true,
+                  )
+                }
+                sx={{
+                  borderRadius: "4px",
+                  width: 28,
+                  height: 28,
+                  color: "text.secondary",
+                  "&:hover": { backgroundColor: RED_08, color: RED },
+                }}
+              >
+                <DeleteForeverOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [requestColumns, restoreFromTrash, deleteForever],
+  );
 
-  const archiveColumns = useMemo(() => [
-    ...requestColumns,
-    {
-      field: "archived_at",
-      headerName: "Archived",
-      width: 140,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>
-            {fmt(row.archived_at)}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "",
-      width: 90,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, height: "100%" }}>
-          <Tooltip title="Restore" arrow>
-            <IconButton size="small" onClick={() => restoreFromArchive([row.id])}
-              sx={{ borderRadius: "4px", width: 28, height: 28, color: "text.secondary", "&:hover": { backgroundColor: GOLD_08, color: GOLD } }}>
-              <UnarchiveOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Move to Trash" arrow>
-            <IconButton size="small"
-              onClick={() => openConfirm("Move to Trash", `Move "${row.title}" to trash? You can restore it later.`, () => moveToTrash([row.id]))}
-              sx={{ borderRadius: "4px", width: 28, height: 28, color: "text.secondary", "&:hover": { backgroundColor: RED_08, color: RED } }}>
-              <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
-  ], [requestColumns, restoreFromArchive, moveToTrash]);
-
-  const trashColumns = useMemo(() => [
-    ...requestColumns,
-    {
-      field: "trashed_at",
-      headerName: "Trashed",
-      width: 140,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}>
-            {fmt(row.trashed_at)}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "",
-      width: 90,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, height: "100%" }}>
-          <Tooltip title="Restore" arrow>
-            <IconButton size="small" onClick={() => restoreFromTrash([row.id])}
-              sx={{ borderRadius: "4px", width: 28, height: 28, color: "text.secondary", "&:hover": { backgroundColor: GOLD_08, color: GOLD } }}>
-              <RestoreFromTrashOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete Forever" arrow>
-            <IconButton size="small"
-              onClick={() => openConfirm("Delete Forever", `Permanently delete "${row.title}"? This cannot be undone.`, () => deleteForever([row.id]), true)}
-              sx={{ borderRadius: "4px", width: 28, height: 28, color: "text.secondary", "&:hover": { backgroundColor: RED_08, color: RED } }}>
-              <DeleteForeverOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
-  ], [requestColumns, restoreFromTrash, deleteForever]);
-
-  const archivableColumns = useMemo(() => [
-    ...requestColumns,
-    {
-      field: "actions",
-      headerName: "",
-      width: 50,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: ({ row }) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Tooltip title="Archive" arrow>
-            <IconButton size="small" onClick={() => archiveRequests([row.id])}
-              sx={{ borderRadius: "4px", width: 28, height: 28, color: "text.secondary", "&:hover": { backgroundColor: GOLD_08, color: GOLD } }}>
-              <ArchiveOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
-  ], [requestColumns, archiveRequests]);
+  const archivableColumns = useMemo(
+    () => [
+      ...requestColumns,
+      {
+        field: "actions",
+        headerName: "",
+        width: 50,
+        sortable: false,
+        disableColumnMenu: true,
+        renderCell: ({ row }) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Tooltip title="Archive" arrow>
+              <IconButton
+                size="small"
+                onClick={() => archiveRequests([row.id])}
+                sx={{
+                  borderRadius: "4px",
+                  width: 28,
+                  height: 28,
+                  color: "text.secondary",
+                  "&:hover": { backgroundColor: GOLD_08, color: GOLD },
+                }}
+              >
+                <ArchiveOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [requestColumns, archiveRequests],
+  );
 
   // ── Section label ────────────────────────────────────────
   // eslint-disable-next-line no-unused-vars
-  const SectionLabel = ({ icon: Icon, label, iconColor = GOLD, iconBg = GOLD_08 }) => (
+  const SectionLabel = ({
+    icon: Icon,
+    label,
+    iconColor = GOLD,
+    iconBg = GOLD_08,
+  }) => (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
       <Box
         sx={{
@@ -725,7 +879,11 @@ export default function Settings() {
               fontSize: "0.75rem",
               fontWeight: 600,
               color: a.destructive ? RED : "text.primary",
-              backgroundColor: a.destructive ? RED_08 : isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.05)",
+              backgroundColor: a.destructive
+                ? RED_08
+                : isDark
+                  ? "rgba(255,255,255,0.06)"
+                  : "rgba(53,53,53,0.05)",
               border: `1px solid ${a.destructive ? "rgba(220,38,38,0.2)" : border}`,
               userSelect: "none",
               transition: "all 0.15s",
@@ -822,734 +980,775 @@ export default function Settings() {
       )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-
-      {/* ══════════════════════════════════════════════════════
+        {/* ══════════════════════════════════════════════════════
           ARCHIVE SECTION
        ══════════════════════════════════════════════════════ */}
-      {(() => {
-        const sec = SECTIONS[0];
-        const count = archivedRequests.length;
-        const isOpen = openSections.archive;
-        return (
-          <Card>
-            <Box
-              onClick={() => { toggleSection("archive"); setSelected([]); }}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                cursor: "pointer",
-                userSelect: "none",
-                py: 0.5,
-              }}
-            >
+        {(() => {
+          const sec = SECTIONS[0];
+          const count = archivedRequests.length;
+          const isOpen = openSections.archive;
+          return (
+            <Card>
               <Box
-                sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "10px",
-                  backgroundColor: GOLD_08,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                onClick={() => {
+                  toggleSection("archive");
+                  setSelected([]);
                 }}
-              >
-                <sec.Icon sx={{ fontSize: 14, color: GOLD }} />
-              </Box>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                  flex: 1,
-                }}
-              >
-                {sec.label}
-              </Typography>
-              {count > 0 && (
-                <Box
-                  sx={{
-                    px: 0.75,
-                    py: 0.1,
-                    borderRadius: "10px",
-                    backgroundColor: isOpen ? GOLD_08 : isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)",
-                    fontSize: "0.66rem",
-                    fontWeight: 700,
-                    fontFamily: dm,
-                    color: isOpen ? GOLD : "text.disabled",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {count}
-                </Box>
-              )}
-              <KeyboardArrowDownIcon
-                sx={{
-                  fontSize: 16,
-                  color: "text.secondary",
-                  transition: "transform 0.22s",
-                  transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                }}
-              />
-            </Box>
-
-            <Collapse in={isOpen} timeout="auto" unmountOnExit>
-              <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2.5 }}>
-          {/* ── Archivable requests (ready to archive) ── */}
-          {archivableRequests.length > 0 && (
-            <Box>
-              <Box
                 sx={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  mb: 2,
-                }}
-              >
-                <SectionLabel
-                  icon={DescriptionOutlinedIcon}
-                  label="Ready to Archive"
-                />
-                <Box
-                  onClick={
-                    !actionLoading
-                      ? () =>
-                          openConfirm(
-                            "Archive All",
-                            `Archive all ${archivableRequests.length} completed/declined/cancelled request(s)?`,
-                            () =>
-                              archiveRequests(
-                                archivableRequests.map((r) => r.id),
-                              ),
-                          )
-                      : undefined
-                  }
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: "4px",
-                    cursor: actionLoading ? "not-allowed" : "pointer",
-                    fontFamily: dm,
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    color: "#fff",
-                    backgroundColor: "#212121",
-                    userSelect: "none",
-                    transition: "all 0.15s",
-                    "&:hover": { backgroundColor: "#333" },
-                  }}
-                >
-                  <ArchiveOutlinedIcon sx={{ fontSize: 14 }} />
-                  Archive All
-                </Box>
-              </Box>
-
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.72rem",
-                  color: "text.disabled",
-                  mb: 1.5,
-                }}
-              >
-                {archivableRequests.length} request(s) with
-                Completed/Declined/Cancelled status ready to be archived.
-              </Typography>
-
-              <Box
-                sx={{
-                  height: Math.min(
-                    archivableRequests.length * 52 + 56,
-                    320,
-                  ),
-                  width: "100%",
-                }}
-              >
-                <DataGrid
-                  rows={archivableRequests}
-                  columns={archivableColumns}
-                  density="compact"
-                  pageSize={10}
-                  rowsPerPageOptions={[10, 25, 50]}
-                  disableSelectionOnClick
-                />
-              </Box>
-            </Box>
-          )}
-
-          {/* ── Archived requests ── */}
-          <Box
-            sx={{
-              borderTop: `1px solid ${border}`,
-              pt: 2,
-            }}
-          >
-            <SectionLabel
-              icon={ArchiveOutlinedIcon}
-              label="Archived Requests"
-            />
-
-            {archivedRequests.length === 0 ? (
-              <Box
-                sx={{
-                  py: 6,
-                  display: "flex",
-                  flexDirection: "column",
                   alignItems: "center",
                   gap: 1,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  py: 0.5,
                 }}
               >
-                <ArchiveOutlinedIcon
+                <Box
                   sx={{
-                    fontSize: 32,
-                    color: isDark
-                      ? "rgba(255,255,255,0.1)"
-                      : "rgba(53,53,53,0.12)",
+                    width: 28,
+                    height: 28,
+                    borderRadius: "10px",
+                    backgroundColor: GOLD_08,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
-                />
+                >
+                  <sec.Icon sx={{ fontSize: 14, color: GOLD }} />
+                </Box>
                 <Typography
                   sx={{
                     fontFamily: dm,
                     fontSize: "0.82rem",
-                    color: "text.disabled",
+                    fontWeight: 700,
+                    color: "text.primary",
+                    flex: 1,
                   }}
                 >
-                  No archived requests
+                  {sec.label}
                 </Typography>
-              </Box>
-            ) : (
-              <>
-                <BulkBar
-                  count={selected.length}
-                  actions={[
-                    {
-                      label: "Restore",
-                      icon: <UnarchiveOutlinedIcon sx={{ fontSize: 14 }} />,
-                      onClick: () => restoreFromArchive(selected),
-                    },
-                    {
-                      label: "Move to Trash",
-                      icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 14 }} />,
-                      onClick: () =>
-                        openConfirm(
-                          "Move to Trash",
-                          `Move ${selected.length} request(s) to trash?`,
-                          () => moveToTrash(selected),
-                        ),
-                      destructive: true,
-                    },
-                  ]}
+                {count > 0 && (
+                  <Box
+                    sx={{
+                      px: 0.75,
+                      py: 0.1,
+                      borderRadius: "10px",
+                      backgroundColor: isOpen
+                        ? GOLD_08
+                        : isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(53,53,53,0.06)",
+                      fontSize: "0.66rem",
+                      fontWeight: 700,
+                      fontFamily: dm,
+                      color: isOpen ? GOLD : "text.disabled",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {count}
+                  </Box>
+                )}
+                <KeyboardArrowDownIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "text.secondary",
+                    transition: "transform 0.22s",
+                    transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
                 />
+              </Box>
+
+              <Collapse in={isOpen} timeout="auto" unmountOnExit>
                 <Box
                   sx={{
-                    height: Math.min(
-                      archivedRequests.length * 52 + 56,
-                      420,
-                    ),
-                    width: "100%",
+                    pt: 2,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2.5,
                   }}
                 >
-                  <DataGrid
-                    rows={archivedRequests}
-                    columns={archiveColumns}
-                    density="compact"
-                    pageSize={10}
-                    rowsPerPageOptions={[10, 25, 50]}
-                    checkboxSelection
-                    onSelectionModelChange={(ids) => setSelected(ids)}
-                    selectionModel={selected}
-                  />
-                </Box>
-              </>
-            )}
-          </Box>
-              </Box>
-            </Collapse>
-          </Card>
-        );
-      })()}
+                  {/* ── Archivable requests (ready to archive) ── */}
+                  {archivableRequests.length > 0 && (
+                    <Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          mb: 2,
+                        }}
+                      >
+                        <SectionLabel
+                          icon={DescriptionOutlinedIcon}
+                          label="Ready to Archive"
+                        />
+                        <Box
+                          onClick={
+                            !actionLoading
+                              ? () =>
+                                  openConfirm(
+                                    "Archive All",
+                                    `Archive all ${archivableRequests.length} completed/declined/cancelled request(s)?`,
+                                    () =>
+                                      archiveRequests(
+                                        archivableRequests.map((r) => r.id),
+                                      ),
+                                  )
+                              : undefined
+                          }
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: "4px",
+                            cursor: actionLoading ? "not-allowed" : "pointer",
+                            fontFamily: dm,
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            color: "#fff",
+                            backgroundColor: "#212121",
+                            userSelect: "none",
+                            transition: "all 0.15s",
+                            "&:hover": { backgroundColor: "#333" },
+                          }}
+                        >
+                          <ArchiveOutlinedIcon sx={{ fontSize: 14 }} />
+                          Archive All
+                        </Box>
+                      </Box>
 
-      {/* ══════════════════════════════════════════════════════
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.disabled",
+                          mb: 1.5,
+                        }}
+                      >
+                        {archivableRequests.length} request(s) with
+                        Completed/Declined/Cancelled status ready to be
+                        archived.
+                      </Typography>
+
+                      <Box
+                        sx={{
+                          height: Math.min(
+                            archivableRequests.length * 52 + 56,
+                            320,
+                          ),
+                          width: "100%",
+                        }}
+                      >
+                        <DataGrid
+                          rows={archivableRequests}
+                          columns={archivableColumns}
+                          density="compact"
+                          pageSize={10}
+                          rowsPerPageOptions={[10, 25, 50]}
+                          disableSelectionOnClick
+                        />
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* ── Archived requests ── */}
+                  <Box
+                    sx={{
+                      borderTop: `1px solid ${border}`,
+                      pt: 2,
+                    }}
+                  >
+                    <SectionLabel
+                      icon={ArchiveOutlinedIcon}
+                      label="Archived Requests"
+                    />
+
+                    {archivedRequests.length === 0 ? (
+                      <Box
+                        sx={{
+                          py: 6,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
+                        <ArchiveOutlinedIcon
+                          sx={{
+                            fontSize: 32,
+                            color: isDark
+                              ? "rgba(255,255,255,0.1)"
+                              : "rgba(53,53,53,0.12)",
+                          }}
+                        />
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.82rem",
+                            color: "text.disabled",
+                          }}
+                        >
+                          No archived requests
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <>
+                        <BulkBar
+                          count={selected.length}
+                          actions={[
+                            {
+                              label: "Restore",
+                              icon: (
+                                <UnarchiveOutlinedIcon sx={{ fontSize: 14 }} />
+                              ),
+                              onClick: () => restoreFromArchive(selected),
+                            },
+                            {
+                              label: "Move to Trash",
+                              icon: (
+                                <DeleteOutlineOutlinedIcon
+                                  sx={{ fontSize: 14 }}
+                                />
+                              ),
+                              onClick: () =>
+                                openConfirm(
+                                  "Move to Trash",
+                                  `Move ${selected.length} request(s) to trash?`,
+                                  () => moveToTrash(selected),
+                                ),
+                              destructive: true,
+                            },
+                          ]}
+                        />
+                        <Box
+                          sx={{
+                            height: Math.min(
+                              archivedRequests.length * 52 + 56,
+                              420,
+                            ),
+                            width: "100%",
+                          }}
+                        >
+                          <DataGrid
+                            rows={archivedRequests}
+                            columns={archiveColumns}
+                            density="compact"
+                            pageSize={10}
+                            rowsPerPageOptions={[10, 25, 50]}
+                            checkboxSelection
+                            onSelectionModelChange={(ids) => setSelected(ids)}
+                            selectionModel={selected}
+                          />
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                </Box>
+              </Collapse>
+            </Card>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════
           TRASH SECTION
        ══════════════════════════════════════════════════════ */}
-      {(() => {
-        const sec = SECTIONS[1];
-        const count = trashedRequests.length;
-        const isOpen = openSections.trash;
-        return (
-          <Card>
-            <Box
-              onClick={() => { toggleSection("trash"); setSelected([]); }}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                cursor: "pointer",
-                userSelect: "none",
-                py: 0.5,
-              }}
-            >
+        {(() => {
+          const sec = SECTIONS[1];
+          const count = trashedRequests.length;
+          const isOpen = openSections.trash;
+          return (
+            <Card>
               <Box
+                onClick={() => {
+                  toggleSection("trash");
+                  setSelected([]);
+                }}
                 sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "10px",
-                  backgroundColor: RED_08,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  gap: 1,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  py: 0.5,
                 }}
               >
-                <sec.Icon sx={{ fontSize: 14, color: RED }} />
-              </Box>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                  flex: 1,
-                }}
-              >
-                {sec.label}
-              </Typography>
-              {count > 0 && (
                 <Box
                   sx={{
-                    px: 0.75,
-                    py: 0.1,
+                    width: 28,
+                    height: 28,
                     borderRadius: "10px",
-                    backgroundColor: isOpen ? RED_08 : isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)",
-                    fontSize: "0.66rem",
-                    fontWeight: 700,
-                    fontFamily: dm,
-                    color: isOpen ? RED : "text.disabled",
-                    lineHeight: 1.4,
+                    backgroundColor: RED_08,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  {count}
+                  <sec.Icon sx={{ fontSize: 14, color: RED }} />
                 </Box>
-              )}
-              <KeyboardArrowDownIcon
-                sx={{
-                  fontSize: 16,
-                  color: "text.secondary",
-                  transition: "transform 0.22s",
-                  transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                }}
-              />
-            </Box>
-
-            <Collapse in={isOpen} timeout="auto" unmountOnExit>
-              <Box sx={{ pt: 2 }}>
-          {trashedRequests.length > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-                mb: 1.5,
-              }}
-            >
-              <Box
-                onClick={() =>
-                  openConfirm(
-                    "Empty Trash",
-                    `Permanently delete all ${trashedRequests.length} trashed request(s)? This cannot be undone.`,
-                    emptyTrash,
-                    true,
-                  )
-                }
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontFamily: dm,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: RED,
-                  backgroundColor: RED_08,
-                  border: `1px solid rgba(220,38,38,0.2)`,
-                  userSelect: "none",
-                  transition: "all 0.15s",
-                  "&:hover": { backgroundColor: "rgba(220,38,38,0.15)" },
-                }}
-              >
-                <DeleteForeverOutlinedIcon sx={{ fontSize: 14 }} />
-                Empty Trash
-              </Box>
-            </Box>
-          )}
-
-          {trashedRequests.length === 0 ? (
-            <Box
-              sx={{
-                py: 6,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <DeleteOutlineOutlinedIcon
-                sx={{
-                  fontSize: 32,
-                  color: isDark
-                    ? "rgba(255,255,255,0.1)"
-                    : "rgba(53,53,53,0.12)",
-                }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  color: "text.disabled",
-                }}
-              >
-                Trash is empty
-              </Typography>
-            </Box>
-          ) : (
-            <>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.72rem",
-                  color: "text.disabled",
-                  mb: 1.5,
-                }}
-              >
-                {trashedRequests.length} request(s) in trash. Restore or
-                permanently delete.
-              </Typography>
-
-              <BulkBar
-                count={selected.length}
-                actions={[
-                  {
-                    label: "Restore",
-                    icon: (
-                      <RestoreFromTrashOutlinedIcon sx={{ fontSize: 14 }} />
-                    ),
-                    onClick: () => restoreFromTrash(selected),
-                  },
-                  {
-                    label: "Delete Forever",
-                    icon: (
-                      <DeleteForeverOutlinedIcon sx={{ fontSize: 14 }} />
-                    ),
-                    onClick: () =>
-                      openConfirm(
-                        "Delete Forever",
-                        `Permanently delete ${selected.length} request(s)? This cannot be undone.`,
-                        () => deleteForever(selected),
-                        true,
-                      ),
-                    destructive: true,
-                  },
-                ]}
-              />
-
-              <Box
-                sx={{
-                  height: Math.min(
-                    trashedRequests.length * 52 + 56,
-                    420,
-                  ),
-                  width: "100%",
-                }}
-              >
-                <DataGrid
-                  rows={trashedRequests}
-                  columns={trashColumns}
-                  density="compact"
-                  pageSize={10}
-                  rowsPerPageOptions={[10, 25, 50]}
-                  checkboxSelection
-                  onSelectionModelChange={(ids) => setSelected(ids)}
-                  selectionModel={selected}
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "text.primary",
+                    flex: 1,
+                  }}
+                >
+                  {sec.label}
+                </Typography>
+                {count > 0 && (
+                  <Box
+                    sx={{
+                      px: 0.75,
+                      py: 0.1,
+                      borderRadius: "10px",
+                      backgroundColor: isOpen
+                        ? RED_08
+                        : isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(53,53,53,0.06)",
+                      fontSize: "0.66rem",
+                      fontWeight: 700,
+                      fontFamily: dm,
+                      color: isOpen ? RED : "text.disabled",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {count}
+                  </Box>
+                )}
+                <KeyboardArrowDownIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "text.secondary",
+                    transition: "transform 0.22s",
+                    transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
                 />
               </Box>
-            </>
-          )}
-              </Box>
-            </Collapse>
-          </Card>
-        );
-      })()}
 
-      {/* ══════════════════════════════════════════════════════
+              <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                <Box sx={{ pt: 2 }}>
+                  {trashedRequests.length > 0 && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        mb: 1.5,
+                      }}
+                    >
+                      <Box
+                        onClick={() =>
+                          openConfirm(
+                            "Empty Trash",
+                            `Permanently delete all ${trashedRequests.length} trashed request(s)? This cannot be undone.`,
+                            emptyTrash,
+                            true,
+                          )
+                        }
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontFamily: dm,
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          color: RED,
+                          backgroundColor: RED_08,
+                          border: `1px solid rgba(220,38,38,0.2)`,
+                          userSelect: "none",
+                          transition: "all 0.15s",
+                          "&:hover": {
+                            backgroundColor: "rgba(220,38,38,0.15)",
+                          },
+                        }}
+                      >
+                        <DeleteForeverOutlinedIcon sx={{ fontSize: 14 }} />
+                        Empty Trash
+                      </Box>
+                    </Box>
+                  )}
+
+                  {trashedRequests.length === 0 ? (
+                    <Box
+                      sx={{
+                        py: 6,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <DeleteOutlineOutlinedIcon
+                        sx={{
+                          fontSize: 32,
+                          color: isDark
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(53,53,53,0.12)",
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.82rem",
+                          color: "text.disabled",
+                        }}
+                      >
+                        Trash is empty
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.disabled",
+                          mb: 1.5,
+                        }}
+                      >
+                        {trashedRequests.length} request(s) in trash. Restore or
+                        permanently delete.
+                      </Typography>
+
+                      <BulkBar
+                        count={selected.length}
+                        actions={[
+                          {
+                            label: "Restore",
+                            icon: (
+                              <RestoreFromTrashOutlinedIcon
+                                sx={{ fontSize: 14 }}
+                              />
+                            ),
+                            onClick: () => restoreFromTrash(selected),
+                          },
+                          {
+                            label: "Delete Forever",
+                            icon: (
+                              <DeleteForeverOutlinedIcon
+                                sx={{ fontSize: 14 }}
+                              />
+                            ),
+                            onClick: () =>
+                              openConfirm(
+                                "Delete Forever",
+                                `Permanently delete ${selected.length} request(s)? This cannot be undone.`,
+                                () => deleteForever(selected),
+                                true,
+                              ),
+                            destructive: true,
+                          },
+                        ]}
+                      />
+
+                      <Box
+                        sx={{
+                          height: Math.min(
+                            trashedRequests.length * 52 + 56,
+                            420,
+                          ),
+                          width: "100%",
+                        }}
+                      >
+                        <DataGrid
+                          rows={trashedRequests}
+                          columns={trashColumns}
+                          density="compact"
+                          pageSize={10}
+                          rowsPerPageOptions={[10, 25, 50]}
+                          checkboxSelection
+                          onSelectionModelChange={(ids) => setSelected(ids)}
+                          selectionModel={selected}
+                        />
+                      </Box>
+                    </>
+                  )}
+                </Box>
+              </Collapse>
+            </Card>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════
           NOTIFICATIONS SECTION
        ══════════════════════════════════════════════════════ */}
-      {(() => {
-        const sec = SECTIONS[2];
-        const count = notifStats.read;
-        const isOpen = openSections.notifications;
-        return (
-          <Card>
-            <Box
-              onClick={() => toggleSection("notifications")}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                cursor: "pointer",
-                userSelect: "none",
-                py: 0.5,
-              }}
-            >
+        {(() => {
+          const sec = SECTIONS[2];
+          const count = notifStats.read;
+          const isOpen = openSections.notifications;
+          return (
+            <Card>
               <Box
+                onClick={() => toggleSection("notifications")}
                 sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "10px",
-                  backgroundColor: GOLD_08,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  gap: 1,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  py: 0.5,
                 }}
               >
-                <sec.Icon sx={{ fontSize: 14, color: GOLD }} />
-              </Box>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                  flex: 1,
-                }}
-              >
-                Notification Cleanup
-              </Typography>
-              {count > 0 && (
                 <Box
                   sx={{
-                    px: 0.75,
-                    py: 0.1,
+                    width: 28,
+                    height: 28,
                     borderRadius: "10px",
-                    backgroundColor: isOpen ? GOLD_08 : isDark ? "rgba(255,255,255,0.06)" : "rgba(53,53,53,0.06)",
-                    fontSize: "0.66rem",
-                    fontWeight: 700,
-                    fontFamily: dm,
-                    color: isOpen ? GOLD : "text.disabled",
-                    lineHeight: 1.4,
+                    backgroundColor: GOLD_08,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  {count}
+                  <sec.Icon sx={{ fontSize: 14, color: GOLD }} />
                 </Box>
-              )}
-              <KeyboardArrowDownIcon
-                sx={{
-                  fontSize: 16,
-                  color: "text.secondary",
-                  transition: "transform 0.22s",
-                  transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                }}
-              />
-            </Box>
-
-            <Collapse in={isOpen} timeout="auto" unmountOnExit>
-              <Box sx={{ pt: 2 }}>
-
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            {/* Stats row */}
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  flex: 1,
-                  p: 2,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(53,53,53,0.02)",
-                }}
-              >
                 <Typography
                   sx={{
                     fontFamily: dm,
-                    fontSize: "0.66rem",
-                    fontWeight: 700,
-                    color: "text.disabled",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    mb: 0.5,
-                  }}
-                >
-                  Total Notifications
-                </Typography>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "1.4rem",
+                    fontSize: "0.82rem",
                     fontWeight: 700,
                     color: "text.primary",
+                    flex: 1,
                   }}
                 >
-                  {notifStats.total.toLocaleString()}
+                  Notification Cleanup
                 </Typography>
+                {count > 0 && (
+                  <Box
+                    sx={{
+                      px: 0.75,
+                      py: 0.1,
+                      borderRadius: "10px",
+                      backgroundColor: isOpen
+                        ? GOLD_08
+                        : isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(53,53,53,0.06)",
+                      fontSize: "0.66rem",
+                      fontWeight: 700,
+                      fontFamily: dm,
+                      color: isOpen ? GOLD : "text.disabled",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {count}
+                  </Box>
+                )}
+                <KeyboardArrowDownIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "text.secondary",
+                    transition: "transform 0.22s",
+                    transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
               </Box>
-              <Box
-                sx={{
-                  flex: 1,
-                  p: 2,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(53,53,53,0.02)",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.66rem",
-                    fontWeight: 700,
-                    color: "text.disabled",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    mb: 0.5,
-                  }}
-                >
-                  Read (Clearable)
-                </Typography>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "1.4rem",
-                    fontWeight: 700,
-                    color: notifStats.read > 0 ? GOLD : "text.primary",
-                  }}
-                >
-                  {notifStats.read.toLocaleString()}
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  flex: 1,
-                  p: 2,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(53,53,53,0.02)",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.66rem",
-                    fontWeight: 700,
-                    color: "text.disabled",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    mb: 0.5,
-                  }}
-                >
-                  Unread
-                </Typography>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "1.4rem",
-                    fontWeight: 700,
-                    color: "text.primary",
-                  }}
-                >
-                  {(notifStats.total - notifStats.read).toLocaleString()}
-                </Typography>
-              </Box>
-            </Box>
 
-            {/* Purge action */}
-            <Box
-              onClick={
-                notifStats.read > 0 && !notifLoading
-                  ? () =>
-                      openConfirm(
-                        "Clear Read Notifications",
-                        `Delete ${notifStats.read} read notification(s) across all users? This cannot be undone.`,
-                        purgeReadNotifications,
-                        true,
-                      )
-                  : undefined
-              }
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 1,
-                py: 1,
-                borderRadius: "4px",
-                cursor:
-                  notifStats.read > 0 && !notifLoading
-                    ? "pointer"
-                    : "not-allowed",
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                fontWeight: 700,
-                color: notifStats.read > 0 ? "#fff" : "text.disabled",
-                backgroundColor:
-                  notifStats.read > 0 ? "#212121" : isDark ? "rgba(255,255,255,0.04)" : "rgba(53,53,53,0.06)",
-                opacity: notifLoading ? 0.7 : 1,
-                userSelect: "none",
-                transition: "all 0.15s",
-                "&:hover":
-                  notifStats.read > 0 && !notifLoading
-                    ? { backgroundColor: "#333" }
-                    : {},
-              }}
-            >
-              {notifLoading ? (
-                <CircularProgress size={16} sx={{ color: "#fff" }} />
-              ) : (
-                <>
-                  <CleaningServicesOutlinedIcon sx={{ fontSize: 16 }} />
-                  Clear All Read Notifications
-                </>
-              )}
-            </Box>
+              <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                <Box sx={{ pt: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 2,
+                    }}
+                  >
+                    {/* Stats row */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 2,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          flex: 1,
+                          p: 2,
+                          borderRadius: "10px",
+                          border: `1px solid ${border}`,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.02)"
+                            : "rgba(53,53,53,0.02)",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.66rem",
+                            fontWeight: 700,
+                            color: "text.disabled",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            mb: 0.5,
+                          }}
+                        >
+                          Total Notifications
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "1.4rem",
+                            fontWeight: 700,
+                            color: "text.primary",
+                          }}
+                        >
+                          {notifStats.total.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          p: 2,
+                          borderRadius: "10px",
+                          border: `1px solid ${border}`,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.02)"
+                            : "rgba(53,53,53,0.02)",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.66rem",
+                            fontWeight: 700,
+                            color: "text.disabled",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            mb: 0.5,
+                          }}
+                        >
+                          Read (Clearable)
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "1.4rem",
+                            fontWeight: 700,
+                            color: notifStats.read > 0 ? GOLD : "text.primary",
+                          }}
+                        >
+                          {notifStats.read.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          p: 2,
+                          borderRadius: "10px",
+                          border: `1px solid ${border}`,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.02)"
+                            : "rgba(53,53,53,0.02)",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.66rem",
+                            fontWeight: 700,
+                            color: "text.disabled",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            mb: 0.5,
+                          }}
+                        >
+                          Unread
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "1.4rem",
+                            fontWeight: 700,
+                            color: "text.primary",
+                          }}
+                        >
+                          {(
+                            notifStats.total - notifStats.read
+                          ).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    </Box>
 
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                color: "text.disabled",
-                textAlign: "center",
-              }}
-            >
-              Only read notifications will be removed. Unread notifications are
-              preserved.
-            </Typography>
-          </Box>
-              </Box>
-            </Collapse>
-          </Card>
-        );
-      })()}
+                    {/* Purge action */}
+                    <Box
+                      onClick={
+                        notifStats.read > 0 && !notifLoading
+                          ? () =>
+                              openConfirm(
+                                "Clear Read Notifications",
+                                `Delete ${notifStats.read} read notification(s) across all users? This cannot be undone.`,
+                                purgeReadNotifications,
+                                true,
+                              )
+                          : undefined
+                      }
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 1,
+                        py: 1,
+                        borderRadius: "4px",
+                        cursor:
+                          notifStats.read > 0 && !notifLoading
+                            ? "pointer"
+                            : "not-allowed",
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        fontWeight: 700,
+                        color: notifStats.read > 0 ? "#fff" : "text.disabled",
+                        backgroundColor:
+                          notifStats.read > 0
+                            ? "#212121"
+                            : isDark
+                              ? "rgba(255,255,255,0.04)"
+                              : "rgba(53,53,53,0.06)",
+                        opacity: notifLoading ? 0.7 : 1,
+                        userSelect: "none",
+                        transition: "all 0.15s",
+                        "&:hover":
+                          notifStats.read > 0 && !notifLoading
+                            ? { backgroundColor: "#333" }
+                            : {},
+                      }}
+                    >
+                      {notifLoading ? (
+                        <CircularProgress size={16} sx={{ color: "#fff" }} />
+                      ) : (
+                        <>
+                          <CleaningServicesOutlinedIcon sx={{ fontSize: 16 }} />
+                          Clear All Read Notifications
+                        </>
+                      )}
+                    </Box>
 
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.68rem",
+                        color: "text.disabled",
+                        textAlign: "center",
+                      }}
+                    >
+                      Only read notifications will be removed. Unread
+                      notifications are preserved.
+                    </Typography>
+                  </Box>
+                </Box>
+              </Collapse>
+            </Card>
+          );
+        })()}
       </Box>
 
       {/* ── Confirm Dialog ── */}

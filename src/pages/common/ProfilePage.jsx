@@ -290,8 +290,7 @@ export default function ProfilePage() {
     }
   }
 
-  if (!user)
-    return <BrandedLoader size={86} minHeight="60vh" />;
+  if (!user) return <BrandedLoader size={86} minHeight="60vh" />;
 
   return (
     <Box
@@ -584,7 +583,6 @@ export default function ProfilePage() {
           )}
         </Box>
       </Card>
-
     </Box>
   );
 }

@@ -211,7 +211,8 @@ function DefaultGridToolbar({
 
   // No selection active — check if there's anything to show
   const hasSearch = showSearch;
-  const hasExport = !csvOptions?.disableToolbarButton || !printOptions?.disableToolbarButton;
+  const hasExport =
+    !csvOptions?.disableToolbarButton || !printOptions?.disableToolbarButton;
 
   // If both search and export are hidden, don't render the toolbar at all
   if (!hasSearch && !hasExport) return null;
@@ -392,7 +393,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
   };
 
   const handleClearSelection = () => {
-    const empty = { type: 'include', ids: new Set() };
+    const empty = { type: "include", ids: new Set() };
     resolvedApiRef.current?.setRowSelectionModel(empty);
     setSelectedIds([]);
     onRowSelectionModelChange?.(empty);

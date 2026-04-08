@@ -49,37 +49,55 @@ export async function fetchAllStaffers() {
 }
 
 export async function createStafferAccount({
-  full_name, email, password, role, division, section, position, designation,
+  full_name,
+  email,
+  password,
+  role,
+  division,
+  section,
+  position,
+  designation,
 }) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  const { data, error } = await supabase.functions.invoke("create-staff-account", {
-    headers: {
-      Authorization: `Bearer ${session?.access_token}`,
+  const { data, error } = await supabase.functions.invoke(
+    "create-staff-account",
+    {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: {
+        full_name,
+        email,
+        password,
+        role,
+        division: division || null,
+        section: section || null,
+        position: position || null,
+        designation: designation || null,
+      },
     },
-    body: {
-      full_name, email, password, role,
-      division:    division    || null,
-      section:     section     || null,
-      position:    position    || null,
-      designation: designation || null,
-    },
-  });
+  );
 
   if (error) throw new Error(`Failed to create account: ${error.message}`);
   if (data?.error) throw new Error(data.error);
   return data?.userId;
 }
 
-export async function updateStafferProfile(userId, { full_name, role, division, section, position, designation }) {
+export async function updateStafferProfile(
+  userId,
+  { full_name, role, division, section, position, designation },
+) {
   const { error } = await supabase
     .from("profiles")
     .update({
       full_name,
       role,
-      division:    division    || null,
-      section:     section     || null,
-      position:    position    || null,
+      division: division || null,
+      section: section || null,
+      position: position || null,
       designation: designation || null,
     })
     .eq("id", userId);
@@ -107,10 +125,7 @@ export async function toggleStafferStatus(userId, isActive) {
 }
 
 export async function deleteStafferAccount(userId) {
-  const { error } = await supabase
-    .from("profiles")
-    .delete()
-    .eq("id", userId);
+  const { error } = await supabase.from("profiles").delete().eq("id", userId);
 
   if (error) throw new Error(`Failed to delete account: ${error.message}`);
   return true;
@@ -122,12 +137,15 @@ export async function fetchTrashedStaffers() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role, division, section, position, designation, is_active, avatar_url, created_at, trashed_at")
+    .select(
+      "id, full_name, role, division, section, position, designation, is_active, avatar_url, created_at, trashed_at",
+    )
     .in("role", ["admin", "sec_head", "staff"])
     .not("trashed_at", "is", null)
     .order("trashed_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch trashed staffers: ${error.message}`);
+  if (error)
+    throw new Error(`Failed to fetch trashed staffers: ${error.message}`);
   return data || [];
 }
 
@@ -143,7 +161,8 @@ export async function moveStaffersToTrash(userIds) {
         .in("id", userIds)
     : await supabase.from("profiles").delete().in("id", userIds);
 
-  if (error) throw new Error(`Failed to move staffers to trash: ${error.message}`);
+  if (error)
+    throw new Error(`Failed to move staffers to trash: ${error.message}`);
   return true;
 }
 
@@ -158,6 +177,7 @@ export async function restoreTrashedStaffers(userIds) {
     .update({ trashed_at: null })
     .in("id", userIds);
 
-  if (error) throw new Error(`Failed to restore trashed staffers: ${error.message}`);
+  if (error)
+    throw new Error(`Failed to restore trashed staffers: ${error.message}`);
   return true;
 }

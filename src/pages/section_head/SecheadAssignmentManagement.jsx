@@ -38,6 +38,7 @@ import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -1206,7 +1207,10 @@ export default function SecHeadAssignmentManagement() {
     ];
 
     const matchEntry = sources
-      .map(([view, rows]) => [view, rows.find((request) => request.id === openRequestId)])
+      .map(([view, rows]) => [
+        view,
+        rows.find((request) => request.id === openRequestId),
+      ])
       .find(([, request]) => !!request);
 
     if (!matchEntry) return;
@@ -1928,7 +1932,9 @@ export default function SecHeadAssignmentManagement() {
                   <NumberBadge
                     count={triggerCount}
                     active={isViewFiltered}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     fontFamily={dm}
                     fontSize="0.56rem"
                     sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
@@ -1959,7 +1965,9 @@ export default function SecHeadAssignmentManagement() {
                   <NumberBadge
                     count={count}
                     active={isSelected}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     fontFamily={dm}
                     fontSize="0.56rem"
                     sx={{ opacity: count === 0 ? 0.5 : 1 }}
@@ -1989,7 +1997,7 @@ export default function SecHeadAssignmentManagement() {
                 value={s.id}
                 sx={{ fontFamily: dm, fontSize: "0.78rem" }}
               >
-                {s.name}
+                {getSemesterDisplayName(s)}
                 {s.is_active ? " (Active)" : ""}
               </MenuItem>
             ))}

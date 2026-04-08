@@ -932,7 +932,9 @@ export default function StaffersManagement() {
                   <NumberBadge
                     count={triggerCount}
                     active={isDivisionFiltered}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     fontFamily={dm}
                     fontSize="0.56rem"
                     sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
@@ -973,7 +975,9 @@ export default function StaffersManagement() {
                   <NumberBadge
                     count={count}
                     active={isSelected}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     fontFamily={dm}
                     fontSize="0.56rem"
                     sx={{ opacity: count === 0 ? 0.5 : 1 }}
@@ -1151,7 +1155,9 @@ export default function StaffersManagement() {
           }}
         >
           <ListItemIcon sx={{ minWidth: "auto !important" }}>
-            <DeleteOutlineOutlinedIcon sx={{ fontSize: 15, color: "#dc2626" }} />
+            <DeleteOutlineOutlinedIcon
+              sx={{ fontSize: 15, color: "#dc2626" }}
+            />
           </ListItemIcon>
           <ListItemText
             primaryTypographyProps={{
@@ -1260,8 +1266,12 @@ export default function StaffersManagement() {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-            <Typography sx={{ fontFamily: dm, fontSize: "0.95rem", fontWeight: 700 }}>
+            <SettingsOutlinedIcon
+              sx={{ fontSize: 16, color: "text.secondary" }}
+            />
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.95rem", fontWeight: 700 }}
+            >
               Manage Staff Records
             </Typography>
           </Box>
@@ -1341,7 +1351,13 @@ export default function StaffersManagement() {
                       : "rgba(53,53,53,0.14)",
                   }}
                 />
-                <Typography sx={{ fontFamily: dm, fontSize: "0.92rem", color: "text.disabled" }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.92rem",
+                    color: "text.disabled",
+                  }}
+                >
                   No deactivated staff records
                 </Typography>
               </Box>
@@ -1368,14 +1384,32 @@ export default function StaffersManagement() {
                       gap: 1,
                     }}
                   >
-                    <Avatar src={getAvatarUrl(s.avatar_url)} sx={{ width: 30, height: 30, fontSize: "0.62rem" }}>
+                    <Avatar
+                      src={getAvatarUrl(s.avatar_url)}
+                      sx={{ width: 30, height: 30, fontSize: "0.62rem" }}
+                    >
                       {getInitials(s.full_name)}
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {s.full_name}
                       </Typography>
-                      <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.7rem",
+                          color: "text.secondary",
+                        }}
+                      >
                         {s.role} {s.section ? `· ${s.section}` : ""}
                       </Typography>
                     </Box>
@@ -1422,7 +1456,13 @@ export default function StaffersManagement() {
                     : "rgba(53,53,53,0.14)",
                 }}
               />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.92rem", color: "text.disabled" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.92rem",
+                  color: "text.disabled",
+                }}
+              >
                 No trashed staff records
               </Typography>
             </Box>
@@ -1449,15 +1489,34 @@ export default function StaffersManagement() {
                     gap: 1,
                   }}
                 >
-                  <Avatar src={getAvatarUrl(s.avatar_url)} sx={{ width: 30, height: 30, fontSize: "0.62rem" }}>
+                  <Avatar
+                    src={getAvatarUrl(s.avatar_url)}
+                    sx={{ width: 30, height: 30, fontSize: "0.62rem" }}
+                  >
                     {getInitials(s.full_name)}
                   </Avatar>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {s.full_name}
                     </Typography>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}>
-                      Trashed {new Date(s.trashed_at).toLocaleDateString("en-US")}
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.7rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Trashed{" "}
+                      {new Date(s.trashed_at).toLocaleDateString("en-US")}
                     </Typography>
                   </Box>
                   <Box
@@ -2132,7 +2191,9 @@ export default function StaffersManagement() {
                 opacity: bulkDeactivateLoading ? 0.7 : 1,
                 transition: "background-color 0.15s",
                 "&:hover": {
-                  backgroundColor: bulkDeactivateLoading ? "#1f2937" : "#111827",
+                  backgroundColor: bulkDeactivateLoading
+                    ? "#1f2937"
+                    : "#111827",
                 },
               }}
             >

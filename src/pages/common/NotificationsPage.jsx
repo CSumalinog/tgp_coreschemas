@@ -70,8 +70,14 @@ const TYPE_CONFIG = {
   request_cancelled: { dot: "#ef4444", icon: CancelOutlinedIcon },
   request_rescheduled: { dot: "#3b82f6", icon: AddCircleOutlineIcon },
   assignment_cancelled: { dot: "#ef4444", icon: CancelOutlinedIcon },
-  duty_schedule_change_requested: { dot: "#f59e0b", icon: HowToRegOutlinedIcon },
-  duty_schedule_change_approved: { dot: "#22c55e", icon: CheckCircleOutlineIcon },
+  duty_schedule_change_requested: {
+    dot: "#f59e0b",
+    icon: HowToRegOutlinedIcon,
+  },
+  duty_schedule_change_approved: {
+    dot: "#22c55e",
+    icon: CheckCircleOutlineIcon,
+  },
   duty_schedule_change_rejected: { dot: "#ef4444", icon: CancelOutlinedIcon },
   default: { dot: GOLD, icon: InfoOutlinedIcon },
 };
@@ -116,7 +122,10 @@ function buildCoverageRequestMessage(notification, requesterName) {
     return notification.message;
   }
 
-  const requestLabel = getCoverageRequestLabel(notification.message, notification.title);
+  const requestLabel = getCoverageRequestLabel(
+    notification.message,
+    notification.title,
+  );
   const section = getSectionFromCoverageMessage(notification.message);
   const fromClause = section ? ` from ${section}` : "";
 
@@ -129,7 +138,9 @@ function getReasonFromMessage(message) {
 }
 
 function getRescheduleDateFromMessage(message) {
-  const dateMatch = String(message || "").match(/rescheduled\s+to\s+(.+?)(?:\.|$)/i);
+  const dateMatch = String(message || "").match(
+    /rescheduled\s+to\s+(.+?)(?:\.|$)/i,
+  );
   return dateMatch?.[1]?.trim() || "";
 }
 
@@ -138,7 +149,10 @@ function buildRequestCancelledMessage(notification, actorLabel) {
     return notification.message;
   }
 
-  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const requestLabel = getRequestLabel(
+    notification.message,
+    notification.title,
+  );
   const reason = getReasonFromMessage(notification.message);
 
   return `${actorLabel} cancelled the request for "${requestLabel}".${reason ? ` Reason: ${reason}` : ""}`;
@@ -149,7 +163,10 @@ function buildRequestRescheduledMessage(notification, actorLabel) {
     return notification.message;
   }
 
-  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const requestLabel = getRequestLabel(
+    notification.message,
+    notification.title,
+  );
   const nextDate = getRescheduleDateFromMessage(notification.message);
   const reason = getReasonFromMessage(notification.message);
   const dateClause = nextDate ? ` to ${nextDate}` : "";
@@ -162,7 +179,10 @@ function buildForwardedMessage(notification, actorLabel) {
     return notification.message;
   }
 
-  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const requestLabel = getRequestLabel(
+    notification.message,
+    notification.title,
+  );
   return `${actorLabel} forwarded "${requestLabel}" for staff assignment.`;
 }
 
@@ -172,7 +192,9 @@ function buildDutyChangeRejectedMessage(notification, actorLabel) {
   }
 
   const message = String(notification.message || "");
-  const changeMatch = message.match(/change\s+from\s+(.+?)\s+to\s+(.+?)\s+was\s+rejected/i);
+  const changeMatch = message.match(
+    /change\s+from\s+(.+?)\s+to\s+(.+?)\s+was\s+rejected/i,
+  );
   const reasonMatch = message.match(/Reason:\s*(.+)$/i);
 
   if (!changeMatch) {
@@ -241,7 +263,9 @@ export default function NotificationsPage() {
   }, [filters, filter]);
 
   const loadRequesterProfiles = useCallback(async (rows) => {
-    const requesterIds = [...new Set(rows.map((row) => row.created_by).filter(Boolean))];
+    const requesterIds = [
+      ...new Set(rows.map((row) => row.created_by).filter(Boolean)),
+    ];
 
     if (!requesterIds.length) {
       setRequesterProfiles({});
@@ -266,29 +290,32 @@ export default function NotificationsPage() {
     setRequesterProfiles(profileMap);
   }, []);
 
-  const loadNotifications = useCallback(async (currentUserId) => {
-    if (!currentUserId) return;
+  const loadNotifications = useCallback(
+    async (currentUserId) => {
+      if (!currentUserId) return;
 
-    setLoading(true);
-    setError("");
+      setLoading(true);
+      setError("");
 
-    const { data, error: fetchError } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", currentUserId)
-      .order("created_at", { ascending: false })
-      .limit(200);
+      const { data, error: fetchError } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", currentUserId)
+        .order("created_at", { ascending: false })
+        .limit(200);
 
-    if (fetchError) {
-      setError(fetchError.message);
-    } else {
-      const rows = data || [];
-      setNotifications(rows);
-      loadRequesterProfiles(rows);
-    }
+      if (fetchError) {
+        setError(fetchError.message);
+      } else {
+        const rows = data || [];
+        setNotifications(rows);
+        loadRequesterProfiles(rows);
+      }
 
-    setLoading(false);
-  }, [loadRequesterProfiles]);
+      setLoading(false);
+    },
+    [loadRequesterProfiles],
+  );
 
   useEffect(() => {
     async function loadUser() {
@@ -503,7 +530,8 @@ export default function NotificationsPage() {
                 mt: 0.35,
               }}
             >
-              Review updates, manage your inbox, and jump straight to the item that needs attention.
+              Review updates, manage your inbox, and jump straight to the item
+              that needs attention.
             </Typography>
           </Box>
 
@@ -609,7 +637,11 @@ export default function NotificationsPage() {
               sx={{ fontSize: 32, color: "text.disabled" }}
             />
             <Typography
-              sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "text.secondary",
+              }}
             >
               No notifications in this view.
             </Typography>
@@ -617,249 +649,287 @@ export default function NotificationsPage() {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
             {filteredNotifications.map((notification) => {
-            const unread = !notification.is_read;
-            const navigable = isNotificationNavigable(notification);
-            const requester = requesterProfiles[notification.created_by] || null;
-            const requesterName = requester?.full_name || "Unknown requester";
-            const requesterSection = requester?.section || "";
-            const requesterDesignation = requester?.designation || requesterSection;
-            const actorLabel =
-              requesterName === "Unknown requester"
-                ? requesterName
-                : `${requesterName}${requesterSection ? ` from ${requesterSection}` : ""}`;
-            const forwardedActorLabel =
-              requesterName === "Unknown requester"
-                ? requesterName
-                : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
-            const reviewerActorLabel =
-              requesterName === "Unknown requester"
-                ? requesterName
-                : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
-            const requesterAvatarUrl = getAvatarUrl(requester?.avatar_url);
-            const typeCfg = getTypeCfg(notification.type);
-            const TypeIcon = typeCfg.icon;
-            const isCoverageRequest = notification.type === "new_request";
-            const isRequestCancelled = notification.type === "request_cancelled";
-            const isRequestRescheduled = notification.type === "request_rescheduled";
-            const isForwarded = notification.type === "forwarded";
-            const isDutyChangeRejected =
-              notification.type === "duty_schedule_change_rejected";
+              const unread = !notification.is_read;
+              const navigable = isNotificationNavigable(notification);
+              const requester =
+                requesterProfiles[notification.created_by] || null;
+              const requesterName = requester?.full_name || "Unknown requester";
+              const requesterSection = requester?.section || "";
+              const requesterDesignation =
+                requester?.designation || requesterSection;
+              const actorLabel =
+                requesterName === "Unknown requester"
+                  ? requesterName
+                  : `${requesterName}${requesterSection ? ` from ${requesterSection}` : ""}`;
+              const forwardedActorLabel =
+                requesterName === "Unknown requester"
+                  ? requesterName
+                  : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
+              const reviewerActorLabel =
+                requesterName === "Unknown requester"
+                  ? requesterName
+                  : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
+              const requesterAvatarUrl = getAvatarUrl(requester?.avatar_url);
+              const typeCfg = getTypeCfg(notification.type);
+              const TypeIcon = typeCfg.icon;
+              const isCoverageRequest = notification.type === "new_request";
+              const isRequestCancelled =
+                notification.type === "request_cancelled";
+              const isRequestRescheduled =
+                notification.type === "request_rescheduled";
+              const isForwarded = notification.type === "forwarded";
+              const isDutyChangeRejected =
+                notification.type === "duty_schedule_change_rejected";
 
-            let displayMessage = notification.message;
-            if (isCoverageRequest) {
-              displayMessage = buildCoverageRequestMessage(notification, requesterName);
-            } else if (isRequestCancelled) {
-              displayMessage = buildRequestCancelledMessage(notification, actorLabel);
-            } else if (isRequestRescheduled) {
-              displayMessage = buildRequestRescheduledMessage(notification, actorLabel);
-            } else if (isForwarded) {
-              displayMessage = buildForwardedMessage(notification, forwardedActorLabel);
-            } else if (isDutyChangeRejected) {
-              displayMessage = buildDutyChangeRejectedMessage(notification, reviewerActorLabel);
-            }
+              let displayMessage = notification.message;
+              if (isCoverageRequest) {
+                displayMessage = buildCoverageRequestMessage(
+                  notification,
+                  requesterName,
+                );
+              } else if (isRequestCancelled) {
+                displayMessage = buildRequestCancelledMessage(
+                  notification,
+                  actorLabel,
+                );
+              } else if (isRequestRescheduled) {
+                displayMessage = buildRequestRescheduledMessage(
+                  notification,
+                  actorLabel,
+                );
+              } else if (isForwarded) {
+                displayMessage = buildForwardedMessage(
+                  notification,
+                  forwardedActorLabel,
+                );
+              } else if (isDutyChangeRejected) {
+                displayMessage = buildDutyChangeRejectedMessage(
+                  notification,
+                  reviewerActorLabel,
+                );
+              }
 
-            const shouldShowRequesterLine =
-              !startsWithRequesterName(displayMessage, requesterName);
+              const shouldShowRequesterLine = !startsWithRequesterName(
+                displayMessage,
+                requesterName,
+              );
 
-            return (
-              <Box
-                key={notification.id}
-                onClick={() => handleOpen(notification)}
-                sx={{
-                  p: 2,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  boxShadow: unread ? `inset 3px 0 0 ${GOLD}` : "none",
-                  backgroundColor: unread ? GOLD_08 : "#ffffff",
-                  cursor: navigable ? "pointer" : "default",
-                  transition: "background-color 0.15s, border-color 0.15s",
-                  "&:hover": {
-                    backgroundColor: navigable
-                      ? isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : HOVER_BG
-                      : unread
-                        ? GOLD_08
-                        : "#ffffff",
-                  },
-                }}
-              >
+              return (
                 <Box
+                  key={notification.id}
+                  onClick={() => handleOpen(notification)}
                   sx={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: 1.5,
+                    p: 2,
+                    borderRadius: "10px",
+                    border: `1px solid ${border}`,
+                    boxShadow: unread ? `inset 3px 0 0 ${GOLD}` : "none",
+                    backgroundColor: unread ? GOLD_08 : "#ffffff",
+                    cursor: navigable ? "pointer" : "default",
+                    transition: "background-color 0.15s, border-color 0.15s",
+                    "&:hover": {
+                      backgroundColor: navigable
+                        ? isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : HOVER_BG
+                        : unread
+                          ? GOLD_08
+                          : "#ffffff",
+                    },
                   }}
                 >
                   <Box
                     sx={{
-                      minWidth: 0,
-                      flex: 1,
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: 1.3,
+                      justifyContent: "space-between",
+                      gap: 1.5,
                     }}
                   >
                     <Box
                       sx={{
-                        position: "relative",
-                        mt: 0.1,
-                        flexShrink: 0,
-                        width: 42,
-                        height: 42,
+                        minWidth: 0,
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 1.3,
                       }}
                     >
-                      <Tooltip title={requesterName} arrow>
-                        <Avatar
-                          src={requesterAvatarUrl || undefined}
-                          sx={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: "50%",
-                            fontFamily: dm,
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            backgroundColor: isDark
-                              ? "rgba(255,255,255,0.12)"
-                              : "rgba(53,53,53,0.14)",
-                            color: isDark ? "#ffffff" : "#212121",
-                          }}
-                        >
-                          {!requesterAvatarUrl && getInitials(requester?.full_name)}
-                        </Avatar>
-                      </Tooltip>
-
                       <Box
                         sx={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: "50%",
-                          position: "absolute",
-                          right: -3,
-                          bottom: -3,
-                          backgroundColor: "#ffffff",
-                          zIndex: 1,
-                          pointerEvents: "none",
-                        }}
-                      />
-
-                      <Box
-                        sx={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: "50%",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          position: "absolute",
-                          right: -2,
-                          bottom: -2,
-                          backgroundColor: `${typeCfg.dot}18`,
-                          border: `1px solid ${typeCfg.dot}44`,
-                          zIndex: 2,
+                          position: "relative",
+                          mt: 0.1,
+                          flexShrink: 0,
+                          width: 42,
+                          height: 42,
                         }}
                       >
-                        <TypeIcon
+                        <Tooltip title={requesterName} arrow>
+                          <Avatar
+                            src={requesterAvatarUrl || undefined}
+                            sx={{
+                              width: 42,
+                              height: 42,
+                              borderRadius: "50%",
+                              fontFamily: dm,
+                              fontSize: "0.8rem",
+                              fontWeight: 700,
+                              backgroundColor: isDark
+                                ? "rgba(255,255,255,0.12)"
+                                : "rgba(53,53,53,0.14)",
+                              color: isDark ? "#ffffff" : "#212121",
+                            }}
+                          >
+                            {!requesterAvatarUrl &&
+                              getInitials(requester?.full_name)}
+                          </Avatar>
+                        </Tooltip>
+
+                        <Box
                           sx={{
-                            fontSize: 11,
-                            color: typeCfg.dot,
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            position: "absolute",
+                            right: -3,
+                            bottom: -3,
+                            backgroundColor: "#ffffff",
+                            zIndex: 1,
+                            pointerEvents: "none",
                           }}
                         />
+
+                        <Box
+                          sx={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: "50%",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            position: "absolute",
+                            right: -2,
+                            bottom: -2,
+                            backgroundColor: `${typeCfg.dot}18`,
+                            border: `1px solid ${typeCfg.dot}44`,
+                            zIndex: 2,
+                          }}
+                        >
+                          <TypeIcon
+                            sx={{
+                              fontSize: 11,
+                              color: typeCfg.dot,
+                            }}
+                          />
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 1,
+                            mb: 0.4,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.82rem",
+                              fontWeight: unread ? 700 : 600,
+                              color: "text.primary",
+                            }}
+                          >
+                            {notification.title}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.68rem",
+                              color: "text.disabled",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {timeAgo(notification.created_at)}
+                          </Typography>
+                        </Box>
+
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.66rem",
+                            color: "text.disabled",
+                            mb: 0.35,
+                            display: shouldShowRequesterLine ? "block" : "none",
+                          }}
+                        >
+                          {requesterName}
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.74rem",
+                            lineHeight: 1.6,
+                            color: unread ? "text.secondary" : "text.disabled",
+                          }}
+                        >
+                          {displayMessage}
+                        </Typography>
                       </Box>
                     </Box>
 
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 1,
-                        mb: 0.4,
-                      }}
+                      sx={{ display: "flex", alignItems: "center", gap: 0.25 }}
                     >
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.82rem",
-                          fontWeight: unread ? 700 : 600,
-                          color: "text.primary",
-                        }}
+                      <Tooltip
+                        title={
+                          notification.is_read
+                            ? "Mark as unread"
+                            : "Mark as read"
+                        }
+                        arrow
                       >
-                        {notification.title}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.68rem",
-                          color: "text.disabled",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {timeAgo(notification.created_at)}
-                      </Typography>
-                    </Box>
-
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.66rem",
-                        color: "text.disabled",
-                        mb: 0.35,
-                        display: shouldShowRequesterLine ? "block" : "none",
-                      }}
-                    >
-                      {requesterName}
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.74rem",
-                        lineHeight: 1.6,
-                        color: unread ? "text.secondary" : "text.disabled",
-                      }}
-                    >
-                      {displayMessage}
-                    </Typography>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
-                    <Tooltip title={notification.is_read ? "Mark as unread" : "Mark as read"} arrow>
-                      <IconButton
-                        size="small"
-                        onClick={(event) => handleToggleRead(event, notification)}
-                        sx={{ borderRadius: "10px" }}
-                      >
-                        {notification.is_read ? (
-                          <MarkunreadOutlinedIcon sx={{ fontSize: 17 }} />
-                        ) : (
-                          <DraftsOutlinedIcon sx={{ fontSize: 17 }} />
-                        )}
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete" arrow>
-                      <IconButton
-                        size="small"
-                        onClick={(event) => handleDelete(event, notification.id)}
-                        sx={{ borderRadius: "10px" }}
-                      >
-                        <DeleteOutlineOutlinedIcon sx={{ fontSize: 17 }} />
-                      </IconButton>
-                    </Tooltip>
-                    {navigable && (
-                      <Tooltip title="Open target" arrow>
-                        <IconButton size="small" sx={{ borderRadius: "10px" }}>
-                          <ArrowOutwardIcon sx={{ fontSize: 17 }} />
+                        <IconButton
+                          size="small"
+                          onClick={(event) =>
+                            handleToggleRead(event, notification)
+                          }
+                          sx={{ borderRadius: "10px" }}
+                        >
+                          {notification.is_read ? (
+                            <MarkunreadOutlinedIcon sx={{ fontSize: 17 }} />
+                          ) : (
+                            <DraftsOutlinedIcon sx={{ fontSize: 17 }} />
+                          )}
                         </IconButton>
                       </Tooltip>
-                    )}
+                      <Tooltip title="Delete" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={(event) =>
+                            handleDelete(event, notification.id)
+                          }
+                          sx={{ borderRadius: "10px" }}
+                        >
+                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </Tooltip>
+                      {navigable && (
+                        <Tooltip title="Open target" arrow>
+                          <IconButton
+                            size="small"
+                            sx={{ borderRadius: "10px" }}
+                          >
+                            <ArrowOutwardIcon sx={{ fontSize: 17 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            );
+              );
             })}
           </Box>
         )}

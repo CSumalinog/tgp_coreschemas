@@ -38,6 +38,7 @@ import {
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
@@ -251,7 +252,16 @@ function DetailSection({ label, icon, children }) {
 }
 
 // ── Assignment Card ───────────────────────────────────────────────────────────
-function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete, onArchive, onTrash }) {
+function AssignmentCard({
+  a,
+  isDark,
+  border,
+  onView,
+  onTimeIn,
+  onComplete,
+  onArchive,
+  onTrash,
+}) {
   const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
   const req = a.request;
   const state = a.status === "Approved" ? getTimeInState(req) : null;
@@ -309,12 +319,80 @@ function AssignmentCard({ a, isDark, border, onView, onTimeIn, onComplete, onArc
           <StatusPill status={a.status} isDark={isDark} />
           {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
           <Box sx={{ flex: 1 }} />
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); }} sx={{ mr: -0.5 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+            }}
+            sx={{ mr: -0.5 }}
+          >
             <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
-          <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={(e) => { e.stopPropagation(); setMenuAnchor(null); }} onClick={(e) => e.stopPropagation()} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }} slotProps={{ paper: { sx: { minWidth: 160, borderRadius: "10px", mt: 0.5, boxShadow: "0 4px 24px rgba(0,0,0,0.10)" } } }}>
-            <MenuItem onClick={() => { onArchive(req?.id); setMenuAnchor(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}><ListItemIcon><ArchiveOutlinedIcon sx={{ fontSize: 18 }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>Archive</ListItemText></MenuItem>
-            <MenuItem onClick={() => { onTrash(req?.id); setMenuAnchor(null); }} sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1, color: "#dc2626" }}><ListItemIcon><DeleteOutlineOutlinedIcon sx={{ fontSize: 18, color: "#dc2626" }} /></ListItemIcon><ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem", color: "#dc2626" }}>Move to Trash</ListItemText></MenuItem>
+          <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(null);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            slotProps={{
+              paper: {
+                sx: {
+                  minWidth: 160,
+                  borderRadius: "10px",
+                  mt: 0.5,
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+                },
+              },
+            }}
+          >
+            <MenuItem
+              onClick={() => {
+                onArchive(req?.id);
+                setMenuAnchor(null);
+              }}
+              sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+            >
+              <ListItemIcon>
+                <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
+              <ListItemText
+                primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+              >
+                Archive
+              </ListItemText>
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                onTrash(req?.id);
+                setMenuAnchor(null);
+              }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                gap: 1,
+                color: "#dc2626",
+              }}
+            >
+              <ListItemIcon>
+                <DeleteOutlineOutlinedIcon
+                  sx={{ fontSize: 18, color: "#dc2626" }}
+                />
+              </ListItemIcon>
+              <ListItemText
+                primaryTypographyProps={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "#dc2626",
+                }}
+              >
+                Move to Trash
+              </ListItemText>
+            </MenuItem>
           </Menu>
         </Box>
         <Typography
@@ -1339,7 +1417,9 @@ export default function MyAssignment() {
     if (assignResult.error) setError(assignResult.error.message);
     else {
       const hiddenIds = new Set((usResult.data || []).map((r) => r.request_id));
-      setAssignments((assignResult.data || []).filter((a) => !hiddenIds.has(a.request?.id)));
+      setAssignments(
+        (assignResult.data || []).filter((a) => !hiddenIds.has(a.request?.id)),
+      );
     }
     setLoading(false);
   }, [currentUser]);
@@ -1352,7 +1432,9 @@ export default function MyAssignment() {
     const openRequestId = location.state?.openRequestId;
     if (!openRequestId || assignments.length === 0) return;
 
-    const match = assignments.find((assignment) => assignment.request?.id === openRequestId);
+    const match = assignments.find(
+      (assignment) => assignment.request?.id === openRequestId,
+    );
     if (!match) return;
 
     queueMicrotask(() => {
@@ -1370,13 +1452,35 @@ export default function MyAssignment() {
   const handleArchive = async (requestId) => {
     if (!requestId || !currentUser?.id) return;
     const ts = new Date().toISOString();
-    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: requestId, archived_at: ts, trashed_at: null, purged_at: null }, { onConflict: "user_id,request_id" });
+    await supabase
+      .from("request_user_state")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          request_id: requestId,
+          archived_at: ts,
+          trashed_at: null,
+          purged_at: null,
+        },
+        { onConflict: "user_id,request_id" },
+      );
     loadAssignments();
   };
   const handleTrash = async (requestId) => {
     if (!requestId || !currentUser?.id) return;
     const ts = new Date().toISOString();
-    await supabase.from("request_user_state").upsert({ user_id: currentUser.id, request_id: requestId, archived_at: null, trashed_at: ts, purged_at: null }, { onConflict: "user_id,request_id" });
+    await supabase
+      .from("request_user_state")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          request_id: requestId,
+          archived_at: null,
+          trashed_at: ts,
+          purged_at: null,
+        },
+        { onConflict: "user_id,request_id" },
+      );
     loadAssignments();
   };
 
@@ -1731,7 +1835,9 @@ export default function MyAssignment() {
                     count={tab.count}
                     active={isActive}
                     activeBg={GOLD}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     textColor="#ffffff"
                     fontFamily={dm}
                     fontSize="0.6rem"
@@ -1889,7 +1995,7 @@ export default function MyAssignment() {
                                 fontWeight: selectedSem === s.id ? 600 : 400,
                               }}
                             >
-                              {s.name}
+                              {getSemesterDisplayName(s)}
                             </Typography>
                             {selectedSem === s.id && (
                               <Box
@@ -2181,21 +2287,50 @@ export default function MyAssignment() {
         }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, pt: 2.5, pb: 1.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2.5,
+              pt: 2.5,
+              pb: 1.5,
+            }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-              <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.88rem", color: "text.primary", letterSpacing: "-0.01em" }}>
+              <SettingsOutlinedIcon
+                sx={{ fontSize: 16, color: "text.secondary" }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontWeight: 700,
+                  fontSize: "0.88rem",
+                  color: "text.primary",
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 Request Settings
               </Typography>
             </Box>
-            <IconButton size="small" onClick={() => setSettingsOpen(false)} sx={{ color: "text.secondary" }}>
+            <IconButton
+              size="small"
+              onClick={() => setSettingsOpen(false)}
+              sx={{ color: "text.secondary" }}
+            >
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
           <Box sx={{ display: "flex", gap: "6px", px: 2.5, pb: 2 }}>
             {[
-              { label: "Archive", icon: <ArchiveOutlinedIcon sx={{ fontSize: 13 }} /> },
-              { label: "Trash", icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} /> },
+              {
+                label: "Archive",
+                icon: <ArchiveOutlinedIcon sx={{ fontSize: 13 }} />,
+              },
+              {
+                label: "Trash",
+                icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />,
+              },
             ].map((t, idx) => {
               const active = settingsTab === idx;
               return (
@@ -2203,13 +2338,26 @@ export default function MyAssignment() {
                   key={t.label}
                   onClick={() => setSettingsTab(idx)}
                   sx={{
-                    display: "inline-flex", alignItems: "center", gap: 0.5, px: 1.5, py: 0.55, borderRadius: "10px", cursor: "pointer",
-                    fontFamily: dm, fontSize: "0.78rem", fontWeight: active ? 600 : 400,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    px: 1.5,
+                    py: 0.55,
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    fontWeight: active ? 600 : 400,
                     color: active ? "#fff" : "text.secondary",
                     border: `1px solid ${active ? "#212121" : border}`,
                     backgroundColor: active ? "#212121" : "transparent",
                     transition: "all 0.12s",
-                    "&:hover": active ? {} : { borderColor: "rgba(53,53,53,0.3)", color: isDark ? "#f5f5f5" : CHARCOAL },
+                    "&:hover": active
+                      ? {}
+                      : {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: isDark ? "#f5f5f5" : CHARCOAL,
+                        },
                   }}
                 >
                   {t.icon} {t.label}
@@ -2218,7 +2366,9 @@ export default function MyAssignment() {
             })}
           </Box>
           <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pb: 2.5 }}>
-            {settingsTab === 0 && <RoleArchiveManagement role="staff" embedded />}
+            {settingsTab === 0 && (
+              <RoleArchiveManagement role="staff" embedded />
+            )}
             {settingsTab === 1 && <RoleTrashManagement role="staff" embedded />}
           </Box>
         </Box>

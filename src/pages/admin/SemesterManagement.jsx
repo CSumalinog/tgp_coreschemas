@@ -10,6 +10,8 @@ import {
   TextField,
   Switch,
   FormControlLabel,
+  RadioGroup,
+  Radio,
   useTheme,
   GlobalStyles,
   Menu,
@@ -17,6 +19,10 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { format as formatDate } from "date-fns";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
@@ -25,15 +31,20 @@ import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
-import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "../../lib/supabaseClient";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import {
+  inferSemesterChoice,
+  inferAcademicYearStart,
+  buildSemesterName,
+  getAcademicYearLabel,
+  getSemesterDisplayName,
+} from "../../utils/semesterLabel";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
-const GOLD_18 = "rgba(245,197,43,0.18)";
 const CHARCOAL = "#353535";
 const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
@@ -41,11 +52,81 @@ const HOVER_BG = "rgba(53,53,53,0.03)";
 const dm = "'Inter', sans-serif";
 
 const EMPTY_FORM = {
-  name: "",
+  semester: "1st",
+  academic_year_start: "",
   start_date: "",
   end_date: "",
   is_active: false,
   scheduling_open: false,
+};
+
+const SEMESTER_STATES = {
+  DRAFT: "draft",
+  ACTIVE_OPEN: "active_open",
+  ACTIVE_CLOSED: "active_closed",
+  COMPLETED: "completed",
+};
+
+const SEMESTER_STATE_RULES = {
+  [SEMESTER_STATES.DRAFT]: {
+    label: "Draft",
+    isCurrent: false,
+    canSetActive: true,
+  },
+  [SEMESTER_STATES.ACTIVE_OPEN]: {
+    label: "Current",
+    isCurrent: true,
+    canSetActive: false,
+    schedulingLabel: "Open",
+    schedulingColor: "#1d4ed8",
+    schedulingBg: "#eff6ff",
+    schedulingBorder: "rgba(29,78,216,0.18)",
+  },
+  [SEMESTER_STATES.ACTIVE_CLOSED]: {
+    label: "Current",
+    isCurrent: true,
+    canSetActive: false,
+    schedulingLabel: "Closed",
+    schedulingColor: "text.secondary",
+    schedulingBgLight: "rgba(53,53,53,0.04)",
+    schedulingBgDark: "rgba(255,255,255,0.04)",
+  },
+  [SEMESTER_STATES.COMPLETED]: {
+    label: "Completed",
+    isCurrent: false,
+    canSetActive: true,
+  },
+};
+
+const getSemesterState = (row) => {
+  if (!row) return SEMESTER_STATES.DRAFT;
+  if (row.is_active) {
+    return row.scheduling_open
+      ? SEMESTER_STATES.ACTIVE_OPEN
+      : SEMESTER_STATES.ACTIVE_CLOSED;
+  }
+
+  if (row.end_date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(`${row.end_date}T00:00:00`);
+    if (!Number.isNaN(endDate.getTime()) && endDate < today) {
+      return SEMESTER_STATES.COMPLETED;
+    }
+  }
+
+  return SEMESTER_STATES.DRAFT;
+};
+
+const parseDateValue = (value) => {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getCurrentAcademicYearStart = (date = new Date()) => {
+  const year = date.getFullYear();
+  return date.getMonth() >= 6 ? year : year - 1;
 };
 
 const fmt = (d) =>
@@ -139,6 +220,31 @@ export default function SemesterManagement() {
   const [saveError, setSaveError] = useState("");
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmingAction, setConfirmingAction] = useState(false);
+  const currentAcademicYearStart = getCurrentAcademicYearStart();
+  const editAcademicYearStart = editTarget
+    ? Number.parseInt(
+        inferAcademicYearStart({
+          name: editTarget.name,
+          start_date: editTarget.start_date,
+          semester: inferSemesterChoice(editTarget.name),
+        }),
+        10,
+      )
+    : null;
+  const minAcademicYearStart =
+    editAcademicYearStart && !Number.isNaN(editAcademicYearStart)
+      ? Math.min(currentAcademicYearStart, editAcademicYearStart)
+      : currentAcademicYearStart;
+  const parsedAcademicYearStart = Number.parseInt(form.academic_year_start, 10);
+  const hasPastAcademicYear =
+    form.academic_year_start.length === 4 &&
+    !Number.isNaN(parsedAcademicYearStart) &&
+    parsedAcademicYearStart < minAcademicYearStart;
+  const academicYearErrorMessage = hasPastAcademicYear
+    ? `Minimum allowed is ${minAcademicYearStart}`
+    : "";
 
   const loadSemesters = useCallback(async () => {
     setLoading(true);
@@ -162,9 +268,15 @@ export default function SemesterManagement() {
     setDialogOpen(true);
   };
   const openEdit = (row) => {
+    const semester = inferSemesterChoice(row.name);
     setEditTarget(row);
     setForm({
-      name: row.name,
+      semester,
+      academic_year_start: inferAcademicYearStart({
+        name: row.name,
+        start_date: row.start_date,
+        semester,
+      }),
       start_date: row.start_date,
       end_date: row.end_date,
       is_active: row.is_active,
@@ -175,8 +287,16 @@ export default function SemesterManagement() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.start_date || !form.end_date) {
+    if (!form.semester || !form.academic_year_start || !form.start_date || !form.end_date) {
       setSaveError("Please fill in all fields.");
+      return;
+    }
+    if (!/^\d{4}$/.test(form.academic_year_start)) {
+      setSaveError("Academic year must start with a valid 4-digit year.");
+      return;
+    }
+    if (parsedAcademicYearStart < minAcademicYearStart) {
+      setSaveError(`Academic year cannot be earlier than ${minAcademicYearStart}.`);
       return;
     }
     if (form.start_date >= form.end_date) {
@@ -186,19 +306,36 @@ export default function SemesterManagement() {
     setSaving(true);
     setSaveError("");
     try {
-      if (form.is_active)
-        await supabase
+      const payload = {
+        name: buildSemesterName(form),
+        start_date: form.start_date,
+        end_date: form.end_date,
+        is_active: form.is_active,
+        scheduling_open: form.scheduling_open,
+      };
+
+      if (form.is_active) {
+        let deactivateQuery = supabase
           .from("semesters")
           .update({ is_active: false })
-          .neq("id", editTarget?.id ?? "");
+          .eq("is_active", true);
+
+        if (editTarget?.id) {
+          deactivateQuery = deactivateQuery.neq("id", editTarget.id);
+        }
+
+        const { error: deactivateError } = await deactivateQuery;
+        if (deactivateError) throw deactivateError;
+      }
+
       if (editTarget) {
         const { error: e } = await supabase
           .from("semesters")
-          .update(form)
+          .update(payload)
           .eq("id", editTarget.id);
         if (e) throw e;
       } else {
-        const { error: e } = await supabase.from("semesters").insert(form);
+        const { error: e } = await supabase.from("semesters").insert(payload);
         if (e) throw e;
       }
       setDialogOpen(false);
@@ -211,26 +348,116 @@ export default function SemesterManagement() {
   };
 
   const toggleScheduling = async (row) => {
-    await supabase
+    if (!row?.id) return false;
+
+    setError("");
+    const { error: toggleErr } = await supabase
       .from("semesters")
       .update({ scheduling_open: !row.scheduling_open })
       .eq("id", row.id);
-    loadSemesters();
+
+    if (toggleErr) {
+      setError(toggleErr.message || "Failed to update scheduling state.");
+      return false;
+    }
+
+    await loadSemesters();
+    return true;
   };
+
   const toggleActive = async (row) => {
-    if (!row.is_active)
-      await supabase
+    if (!row?.id) return false;
+
+    setError("");
+
+    if (!row.is_active) {
+      const { error: clearErr } = await supabase
         .from("semesters")
         .update({ is_active: false })
         .neq("id", row.id);
-    await supabase
+
+      if (clearErr) {
+        setError(clearErr.message || "Failed to update active semester.");
+        return false;
+      }
+    }
+
+    const { error: toggleErr } = await supabase
       .from("semesters")
       .update({ is_active: !row.is_active })
       .eq("id", row.id);
-    loadSemesters();
+
+    if (toggleErr) {
+      setError(toggleErr.message || "Failed to update active semester.");
+      return false;
+    }
+
+    await loadSemesters();
+    return true;
   };
 
-  const activeSemester = semesters.find((s) => s.is_active);
+  const openSchedulingConfirm = (row) => {
+    setConfirmAction({ type: "scheduling", row });
+  };
+
+  const openActiveConfirm = (row) => {
+    setConfirmAction({ type: "active", row });
+  };
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return;
+    setConfirmAction(null);
+  };
+
+  const getRuleForRow = (row) => {
+    const state = getSemesterState(row);
+    return (
+      SEMESTER_STATE_RULES[state] || SEMESTER_STATE_RULES[SEMESTER_STATES.DRAFT]
+    );
+  };
+
+  const confirmTargetRule = confirmAction?.row
+    ? getRuleForRow(confirmAction.row)
+    : null;
+
+  const confirmActionLabel =
+    confirmAction?.type === "scheduling"
+      ? confirmAction?.row?.scheduling_open
+        ? "Close Scheduling"
+        : "Open Scheduling"
+      : confirmAction?.type === "active"
+        ? confirmAction?.row?.is_active
+          ? "Deactivate Semester"
+          : "Set Active"
+        : "Confirm Action";
+
+  const confirmActionDescription =
+    confirmAction?.type === "scheduling"
+      ? confirmAction?.row?.scheduling_open
+        ? "Closing scheduling prevents regular staff from submitting or changing duty-day requests. Pending requests can still be reviewed by admins."
+        : "Opening scheduling allows regular staff to submit and update duty-day requests for this semester."
+      : confirmAction?.type === "active"
+        ? confirmTargetRule?.isCurrent
+          ? "This will remove the active status from this semester. Active-semester dependent screens may no longer show semester-scoped data until another semester is set active."
+          : "This semester will become active and the current active semester will be automatically deactivated."
+        : "";
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction?.row) return;
+
+    setConfirmingAction(true);
+
+    try {
+      if (confirmAction.type === "scheduling") {
+        await toggleScheduling(confirmAction.row);
+      } else if (confirmAction.type === "active") {
+        await toggleActive(confirmAction.row);
+      }
+    } finally {
+      setConfirmingAction(false);
+      setConfirmAction(null);
+    }
+  };
 
   const columns = [
     {
@@ -238,54 +465,58 @@ export default function SemesterManagement() {
       headerName: "Semester",
       flex: 1.2,
       minWidth: 160,
-      renderCell: (p) => (
-        <Box
-          sx={{ display: "flex", alignItems: "center", gap: 1, height: "100%" }}
-        >
-          <Typography
+      renderCell: (p) => {
+        const rowRule = getRuleForRow(p.row);
+
+        return (
+          <Box
             sx={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              fontWeight: 500,
-              color: "text.primary",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              height: "100%",
             }}
           >
-            {p.value}
-          </Typography>
-          {p.row.is_active && (
-            <Box
+            <Typography
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                px: 1,
-                py: 0.25,
-                borderRadius: "10px",
-                backgroundColor: GOLD_08,
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                fontWeight: 500,
+                color: "text.primary",
               }}
             >
+              {getSemesterDisplayName(p.row)}
+            </Typography>
+            {rowRule.isCurrent && (
               <Box
                 sx={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: "50%",
-                  backgroundColor: GOLD,
-                }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.62rem",
-                  fontWeight: 700,
-                  color: "#b45309",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.45,
+                  px: 0.8,
+                  py: 0.18,
+                  borderRadius: "10px",
+                  border: "1px solid rgba(21,128,61,0.14)",
+                  backgroundColor: "rgba(34,197,94,0.06)",
+                  color: "#15803d",
                 }}
               >
-                Active
-              </Typography>
-            </Box>
-          )}
-        </Box>
-      ),
+                <CheckCircleOutlineIcon sx={{ fontSize: 10 }} />
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.62rem",
+                    fontWeight: 600,
+                    color: "#15803d",
+                  }}
+                >
+                  {rowRule.label}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        );
+      },
     },
     {
       field: "start_date",
@@ -306,44 +537,65 @@ export default function SemesterManagement() {
       headerName: "Scheduling",
       flex: 0.8,
       minWidth: 120,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.6,
-              px: 1.25,
-              py: 0.35,
-              borderRadius: "10px",
-              backgroundColor: p.value
-                ? "#eff6ff"
-                : isDark
-                  ? "rgba(255,255,255,0.04)"
-                  : "rgba(53,53,53,0.04)",
-            }}
-          >
-            {p.value ? (
-              <LockOpenOutlinedIcon sx={{ fontSize: 11, color: "#1d4ed8" }} />
-            ) : (
-              <LockOutlinedIcon
-                sx={{ fontSize: 11, color: "text.secondary" }}
-              />
-            )}
-            <Typography
+      renderCell: (p) => {
+        const rowRule = getRuleForRow(p.row);
+        const isOpen = p.value;
+        const chipColor = isOpen
+          ? rowRule.schedulingColor || "#1d4ed8"
+          : rowRule.schedulingColor || "text.secondary";
+        const chipBg = isOpen
+          ? rowRule.schedulingBg || "#eff6ff"
+          : isDark
+            ? rowRule.schedulingBgDark || "rgba(255,255,255,0.04)"
+            : rowRule.schedulingBgLight || "rgba(53,53,53,0.04)";
+
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Box
+              onClick={() => openSchedulingConfirm(p.row)}
               sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                fontWeight: 600,
-                color: p.value ? "#1d4ed8" : "text.secondary",
-                letterSpacing: "0.04em",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.6,
+                px: 1.25,
+                py: 0.35,
+                borderRadius: "10px",
+                border: `1px solid ${isOpen ? rowRule.schedulingBorder || "rgba(29,78,216,0.18)" : border}`,
+                backgroundColor: chipBg,
+                cursor: "pointer",
+                transition: "all 0.15s",
+                "&:hover": {
+                  borderColor: isOpen
+                    ? "rgba(29,78,216,0.35)"
+                    : "rgba(53,53,53,0.2)",
+                  backgroundColor: isOpen
+                    ? "#e7f0ff"
+                    : isDark
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(53,53,53,0.08)",
+                },
               }}
             >
-              {p.value ? "Open" : "Closed"}
-            </Typography>
+              {isOpen ? (
+                <LockOpenOutlinedIcon sx={{ fontSize: 11, color: chipColor }} />
+              ) : (
+                <LockOutlinedIcon sx={{ fontSize: 11, color: chipColor }} />
+              )}
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  color: chipColor,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {isOpen ? rowRule.schedulingLabel || "Open" : "Closed"}
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-      ),
+        );
+      },
     },
     {
       field: "actions",
@@ -364,22 +616,18 @@ export default function SemesterManagement() {
             pr: 0.5,
           }}
         >
-          <ActionChip
-            active={p.row.is_active}
-            onClick={() => toggleActive(p.row)}
-            activeColor="#15803d"
-            activeBg="#f0fdf4"
-            icon={
-              p.row.is_active ? (
-                <CheckCircleOutlineIcon sx={{ fontSize: 12 }} />
-              ) : (
-                <RadioButtonUncheckedIcon sx={{ fontSize: 12 }} />
-              )
-            }
-            border={border}
-          >
-            {p.row.is_active ? "Active" : "Set Active"}
-          </ActionChip>
+          {getRuleForRow(p.row).canSetActive && (
+            <ActionChip
+              active={false}
+              onClick={() => openActiveConfirm(p.row)}
+              activeColor="#15803d"
+              activeBg="rgba(34,197,94,0.08)"
+              icon={<RadioButtonUncheckedIcon sx={{ fontSize: 12 }} />}
+              border={border}
+            >
+              Set Active
+            </ActionChip>
+          )}
           <IconButton
             size="small"
             onClick={(e) => {
@@ -470,124 +718,6 @@ export default function SemesterManagement() {
         </Box>
       </Box>
 
-      {/* ── Active semester banner ── */}
-      {activeSemester && (
-        <Box
-          sx={{
-            mb: 3,
-            px: 2.5,
-            py: 1.75,
-            borderRadius: "10px",
-            border: `1px solid rgba(245,197,43,0.35)`,
-            backgroundColor: isDark ? GOLD_08 : "#fefce8",
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-            flexWrap: "wrap",
-            flexShrink: 0,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box
-              sx={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                backgroundColor: GOLD,
-                boxShadow: `0 0 6px ${GOLD}`,
-                animation: "blink 2s ease-in-out infinite",
-                "@keyframes blink": {
-                  "0%,100%": { opacity: 1 },
-                  "50%": { opacity: 0.35 },
-                },
-              }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.65rem",
-                fontWeight: 700,
-                color: "#b45309",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              Active Semester
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              width: "1px",
-              height: 24,
-              backgroundColor: "rgba(245,197,43,0.3)",
-            }}
-          />
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.88rem",
-                color: "text.primary",
-              }}
-            >
-              {activeSemester.name}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
-            <CalendarTodayOutlinedIcon
-              sx={{ fontSize: 12, color: "text.secondary" }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.76rem",
-                color: "text.secondary",
-              }}
-            >
-              {fmt(activeSemester.start_date)} — {fmt(activeSemester.end_date)}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.6,
-              px: 1.25,
-              py: 0.35,
-              borderRadius: "10px",
-              backgroundColor: activeSemester.scheduling_open
-                ? "#eff6ff"
-                : isDark
-                  ? "rgba(255,255,255,0.04)"
-                  : "rgba(53,53,53,0.04)",
-            }}
-          >
-            {activeSemester.scheduling_open ? (
-              <LockOpenOutlinedIcon sx={{ fontSize: 11, color: "#1d4ed8" }} />
-            ) : (
-              <LockOutlinedIcon
-                sx={{ fontSize: 11, color: "text.secondary" }}
-              />
-            )}
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.68rem",
-                fontWeight: 600,
-                color: activeSemester.scheduling_open
-                  ? "#1d4ed8"
-                  : "text.secondary",
-              }}
-            >
-              {activeSemester.scheduling_open
-                ? "Scheduling Open"
-                : "Scheduling Closed"}
-            </Typography>
-          </Box>
-        </Box>
-      )}
-
       {error && (
         <Alert
           severity="error"
@@ -643,7 +773,10 @@ export default function SemesterManagement() {
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
-        onClose={() => { setMenuAnchor(null); setMenuRow(null); }}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         slotProps={{
@@ -660,27 +793,6 @@ export default function SemesterManagement() {
         {menuRow && (
           <MenuItem
             onClick={() => {
-              toggleScheduling(menuRow);
-              setMenuAnchor(null);
-              setMenuRow(null);
-            }}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-          >
-            <ListItemIcon>
-              {menuRow.scheduling_open ? (
-                <LockOutlinedIcon sx={{ fontSize: 18 }} />
-              ) : (
-                <LockOpenOutlinedIcon sx={{ fontSize: 18 }} />
-              )}
-            </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>
-              {menuRow.scheduling_open ? "Close Scheduling" : "Open Scheduling"}
-            </ListItemText>
-          </MenuItem>
-        )}
-        {menuRow && (
-          <MenuItem
-            onClick={() => {
               openEdit(menuRow);
               setMenuAnchor(null);
               setMenuRow(null);
@@ -690,7 +802,9 @@ export default function SemesterManagement() {
             <ListItemIcon>
               <EditOutlinedIcon sx={{ fontSize: 18 }} />
             </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}>
+            <ListItemText
+              primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+            >
               Edit
             </ListItemText>
           </MenuItem>
@@ -700,7 +814,10 @@ export default function SemesterManagement() {
       {/* ── Create / Edit Dialog ── */}
       <Dialog
         open={dialogOpen}
-        onClose={() => !saving && setDialogOpen(false)}
+        onClose={() => {
+          if (saving) return;
+          setDialogOpen(false);
+        }}
         fullWidth
         maxWidth="sm"
         PaperProps={{
@@ -776,41 +893,119 @@ export default function SemesterManagement() {
               {saveError}
             </Alert>
           )}
-          <TextField
-            label="Semester Name"
-            placeholder='e.g. "1st Sem 2025-2026"'
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            size="small"
-            fullWidth
-            sx={inputSx(border)}
-          />
-          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-            <TextField
-              label="Start Date"
-              type="date"
-              value={form.start_date}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, start_date: e.target.value }))
-              }
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              sx={{ ...inputSx(border), flex: "1 1 140px" }}
-            />
-            <TextField
-              label="End Date"
-              type="date"
-              value={form.end_date}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, end_date: e.target.value }))
-              }
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              sx={{ ...inputSx(border), flex: "1 1 140px" }}
-            />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+            <Typography sx={{ fontSize: "0.875rem", fontWeight: 500 }}>
+              Semester:
+            </Typography>
+            <RadioGroup
+              row
+              value={form.semester ?? "1st"}
+              onChange={(e) => setForm((f) => ({ ...f, semester: e.target.value }))}
+              sx={{
+                gap: 2,
+                "& .MuiFormControlLabel-label": {
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  fontFamily: dm,
+                  color: "text.primary",
+                },
+              }}
+            >
+              <FormControlLabel
+                value="1st"
+                control={<Radio size="small" />}
+                label="1st Semester"
+              />
+              <FormControlLabel
+                value="2nd"
+                control={<Radio size="small" />}
+                label="2nd Semester"
+              />
+            </RadioGroup>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
+                <TextField
+                  label="A.Y. Start"
+                  value={form.academic_year_start}
+                  onChange={(e) => {
+                    const nextValue = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setForm((f) => ({ ...f, academic_year_start: nextValue }));
+                  }}
+                  error={hasPastAcademicYear}
+                  size="small"
+                  placeholder="2026"
+                  slotProps={{
+                    htmlInput: {
+                      inputMode: "numeric",
+                      pattern: "[0-9]*",
+                      maxLength: 4,
+                    },
+                  }}
+                  sx={{
+                    ...inputSx(border),
+                    width: 118,
+                    "& .MuiOutlinedInput-root": {
+                      ...inputSx(border)["& .MuiOutlinedInput-root"],
+                      fontSize: "0.8rem",
+                    },
+                  }}
+                />
+                <Typography
+                  sx={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    fontFamily: dm,
+                    color: "text.secondary",
+                  }}
+                >
+                  {getAcademicYearLabel(form)}
+                </Typography>
+              </Box>
+              {academicYearErrorMessage && (
+                <Typography
+                  sx={{
+                    fontSize: "0.74rem",
+                    fontWeight: 500,
+                    fontFamily: dm,
+                    color: "error.main",
+                    ml: 0.25,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {academicYearErrorMessage}
+                </Typography>
+              )}
+            </Box>
           </Box>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+              <DatePicker
+                label="Start Date"
+                format="dd/MM/yyyy"
+                value={parseDateValue(form.start_date)}
+                onChange={(nextDate) => {
+                  setForm((f) => ({
+                    ...f,
+                    start_date: nextDate ? formatDate(nextDate, "yyyy-MM-dd") : "",
+                  }));
+                }}
+                slotProps={datePickerSlotProps(border)}
+              />
+
+              <DatePicker
+                label="End Date"
+                format="dd/MM/yyyy"
+                value={parseDateValue(form.end_date)}
+                onChange={(nextDate) => {
+                  setForm((f) => ({
+                    ...f,
+                    end_date: nextDate ? formatDate(nextDate, "yyyy-MM-dd") : "",
+                  }));
+                }}
+                slotProps={datePickerSlotProps(border)}
+              />
+            </Box>
+          </LocalizationProvider>
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", pt: 0.5 }}>
             <FormControlLabel
               control={
@@ -973,6 +1168,138 @@ export default function SemesterManagement() {
           </Box>
         </Box>
       </Dialog>
+
+      <Dialog
+        open={Boolean(confirmAction)}
+        onClose={closeConfirmDialog}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              color: "text.primary",
+            }}
+          >
+            {confirmActionLabel}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={closeConfirmDialog}
+            disabled={confirmingAction}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": { backgroundColor: HOVER_BG },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ px: 2.5, py: 2 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              color: "text.secondary",
+              lineHeight: 1.6,
+            }}
+          >
+            {confirmActionDescription}
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            borderTop: `1px solid ${border}`,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.01)"
+              : "rgba(53,53,53,0.01)",
+          }}
+        >
+          <Box
+            onClick={closeConfirmDialog}
+            sx={{
+              px: 1.5,
+              py: 0.6,
+              borderRadius: "10px",
+              cursor: confirmingAction ? "default" : "pointer",
+              border: `1px solid ${border}`,
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              opacity: confirmingAction ? 0.5 : 1,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.2)",
+                color: "text.primary",
+                backgroundColor: HOVER_BG,
+              },
+            }}
+          >
+            Cancel
+          </Box>
+
+          <Box
+            onClick={!confirmingAction ? handleConfirmAction : undefined}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.65,
+              px: 1.5,
+              py: 0.6,
+              borderRadius: "10px",
+              cursor: confirmingAction ? "default" : "pointer",
+              backgroundColor: "#212121",
+              color: "#fff",
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              opacity: confirmingAction ? 0.7 : 1,
+              "&:hover": {
+                backgroundColor: confirmingAction ? "#212121" : "#333",
+              },
+            }}
+          >
+            {confirmingAction ? (
+              <>
+                <CircularProgress size={13} sx={{ color: "#fff" }} />
+                Applying...
+              </>
+            ) : (
+              "Confirm"
+            )}
+          </Box>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
@@ -993,6 +1320,9 @@ function MetaCell({ children }) {
 function ActionChip({
   children,
   onClick,
+  disabled = false,
+  compact = false,
+  subtle = false,
   active,
   activeColor,
   activeBg,
@@ -1006,21 +1336,36 @@ function ActionChip({
         display: "flex",
         alignItems: "center",
         gap: 0.5,
-        px: 1.25,
-        py: 0.45,
+        px: subtle ? 0.85 : 1.25,
+        py: subtle ? 0.22 : compact ? 0.35 : 0.45,
         borderRadius: "10px",
-        cursor: "pointer",
-        border: `1px solid ${active ? `${activeColor}30` : border}`,
+        cursor: disabled ? "default" : "pointer",
+        border: `1px solid ${active ? (subtle ? `${activeColor}20` : `${activeColor}30`) : border}`,
         backgroundColor: active ? activeBg : "transparent",
         fontFamily: dm,
-        fontSize: "0.72rem",
-        fontWeight: 500,
+        fontSize: subtle ? "0.64rem" : compact ? "0.68rem" : "0.72rem",
+        fontWeight: subtle ? 600 : compact ? 600 : 500,
         color: active ? activeColor : "text.secondary",
         transition: "all 0.15s",
         whiteSpace: "nowrap",
+        opacity: disabled ? (subtle ? 1 : 0.9) : 1,
         "&:hover": {
-          borderColor: active ? activeColor : "rgba(53,53,53,0.2)",
-          backgroundColor: active ? activeBg : HOVER_BG,
+          borderColor: disabled
+            ? active
+              ? subtle
+                ? `${activeColor}20`
+                : `${activeColor}30`
+              : border
+            : active
+              ? activeColor
+              : "rgba(53,53,53,0.2)",
+          backgroundColor: disabled
+            ? active
+              ? activeBg
+              : "transparent"
+            : active
+              ? activeBg
+              : HOVER_BG,
         },
       }}
     >
@@ -1042,5 +1387,41 @@ function inputSx(border) {
     },
     "& .MuiInputLabel-root": { fontFamily: dm, fontSize: "0.8rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: "#b45309" },
+  };
+}
+
+function datePickerSlotProps(border) {
+  return {
+    textField: {
+      size: "small",
+      fullWidth: true,
+      sx: { ...inputSx(border), flex: "1 1 140px" },
+    },
+    desktopPaper: {
+      sx: {
+        borderRadius: "12px",
+        "& .MuiPickersCalendarHeader-label": {
+          fontFamily: dm,
+          fontSize: "0.88rem",
+          fontWeight: 600,
+        },
+        "& .MuiDayCalendar-weekDayLabel": {
+          fontFamily: dm,
+          fontSize: "0.72rem",
+          fontWeight: 500,
+        },
+        "& .MuiPickersDay-root": {
+          fontFamily: dm,
+          fontSize: "0.82rem",
+        },
+        "& .MuiPickersYear-yearButton, & .MuiPickersMonth-monthButton": {
+          fontFamily: dm,
+          fontSize: "0.82rem",
+        },
+        "& .MuiPickersArrowSwitcher-button": {
+          transform: "scale(0.9)",
+        },
+      },
+    },
   };
 }

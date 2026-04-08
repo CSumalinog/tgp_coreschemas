@@ -22,6 +22,7 @@ import {
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
@@ -1419,7 +1420,7 @@ export default function AdminRequestManagement() {
                 value={s.id}
                 sx={{ fontFamily: dm, fontSize: "0.78rem" }}
               >
-                {s.name}
+                {getSemesterDisplayName(s)}
               </MenuItem>
             ))}
           </Select>
@@ -1580,7 +1581,7 @@ export default function AdminRequestManagement() {
                 statusFilter === "Forwarded"
                   ? ({ model }) => {
                       const s = model.forwardedTo?.length || 1;
-                    if (s <= 1) return 56;
+                      if (s <= 1) return 56;
                       if (s === 2) return 68;
                       return 88;
                     }

@@ -23,6 +23,7 @@ import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifySpecificStaff } from "../../services/NotificationService";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import NumberBadge from "../../components/common/NumberBadge";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
@@ -195,7 +196,9 @@ const getAvatarColor = (key) => {
 
 const getRequestStatusMeta = (status) =>
   REQUEST_STATUS_META[status] || {
-    label: status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown",
+    label: status
+      ? status.charAt(0).toUpperCase() + status.slice(1)
+      : "Unknown",
     bg: "rgba(53,53,53,0.06)",
     color: "#525252",
     border: "rgba(53,53,53,0.12)",
@@ -332,9 +335,11 @@ export default function DutyScheduleView() {
       : schedules.filter((s) => s.staffer?.section === sectionFilter);
   const isSectionFiltered = sectionFilter !== "All";
   const pendingRequestCount = useMemo(
-    () => pendingRequests.filter((request) => request.status === "pending").length,
+    () =>
+      pendingRequests.filter((request) => request.status === "pending").length,
     [pendingRequests],
   );
+  const canApprovePendingRequests = Boolean(activeSemester?.scheduling_open);
 
   // Count total APPROVED requests per staffer for quota display
   const requestCountPerStaffer = useMemo(() => {
@@ -388,14 +393,17 @@ export default function DutyScheduleView() {
   useEffect(() => {
     const openRequestId = location.state?.openDutyChangeRequestId;
     const openStafferId = location.state?.openDutyChangeRequestStafferId;
-    if ((!openRequestId && !openStafferId) || pendingRequests.length === 0) return;
+    if ((!openRequestId && !openStafferId) || pendingRequests.length === 0)
+      return;
 
     const match = openRequestId
       ? pendingRequests.find((request) => request.id === openRequestId)
       : pendingRequests.find(
           (request) =>
-            request.staffer_id === openStafferId && request.status === "pending",
-        ) || pendingRequests.find((request) => request.staffer_id === openStafferId);
+            request.staffer_id === openStafferId &&
+            request.status === "pending",
+        ) ||
+        pendingRequests.find((request) => request.staffer_id === openStafferId);
 
     if (!match) return;
 
@@ -414,11 +422,7 @@ export default function DutyScheduleView() {
 
   const sectionOptions = useMemo(() => {
     const uniqueSections = Array.from(
-      new Set(
-        schedules
-          .map((s) => s.staffer?.section)
-          .filter(Boolean),
-      ),
+      new Set(schedules.map((s) => s.staffer?.section).filter(Boolean)),
     );
 
     return [
@@ -573,6 +577,13 @@ export default function DutyScheduleView() {
   const handleApproveRequest = useCallback(
     async (request) => {
       if (!activeSemester?.id || !request?.id) return;
+
+      if (!activeSemester.scheduling_open) {
+        setError(
+          "Scheduling is closed for the active semester. Re-open scheduling to approve duty day changes.",
+        );
+        return;
+      }
 
       setRequestActionId(request.id);
       setError("");
@@ -987,10 +998,15 @@ export default function DutyScheduleView() {
       renderCell: (p) => {
         const url = getAvatarUrl(p.row.staffer_avatar_url);
         const avatarColor = getAvatarColor(p.row.staffer_id || p.row.id);
-        const count = p.row.request_count || 0;
-        const isQuotaExhausted = count >= 3;
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.85, height: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.85,
+              height: "100%",
+            }}
+          >
             <Avatar
               src={url}
               sx={{
@@ -1017,27 +1033,33 @@ export default function DutyScheduleView() {
                 {p.value}
               </Typography>
             </Box>
-            <Box
+          </Box>
+        );
+      },
+    },
+    {
+      field: "request_count",
+      headerName: "Changes Used",
+      width: 112,
+      align: "center",
+      headerAlign: "center",
+      sortable: false,
+      renderCell: (p) => {
+        const count = p.value || 0;
+        const isQuotaExhausted = count >= 3;
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
               sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: 32,
-                px: 0.7,
-                py: 0.3,
-                borderRadius: "999px",
-                border: `1px solid ${isQuotaExhausted ? "#dc2626" : "rgba(245,197,43,0.5)"}`,
-                backgroundColor: isQuotaExhausted
-                  ? "rgba(220,38,38,0.08)"
-                  : isDark ? "rgba(245,197,43,0.08)" : "rgba(245,197,43,0.06)",
-                color: isQuotaExhausted ? "#b91c1c" : "#b45309",
                 fontFamily: dm,
-                fontSize: "0.65rem",
-                fontWeight: 700,
+                fontSize: "0.72rem",
+                fontWeight: 500,
+                color: isQuotaExhausted ? "#b91c1c" : "#b45309",
+                letterSpacing: "0.01em",
               }}
             >
               {count}/3
-            </Box>
+            </Typography>
           </Box>
         );
       },
@@ -1234,19 +1256,54 @@ export default function DutyScheduleView() {
         >
           Duty Schedule
         </Typography>
-        <Typography
+        <Box
           sx={{
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            color: "text.secondary",
-            whiteSpace: { xs: "normal", md: "nowrap" },
-            textAlign: { xs: "left", md: "right" },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            flexDirection: "row",
+            gap: 0.75,
+            flexWrap: "nowrap",
           }}
         >
-          {activeSemester
-            ? `Showing duty schedules for ${activeSemester.name}`
-            : "No active semester. Create and activate one in Semester Management."}
-        </Typography>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.secondary",
+              whiteSpace: "nowrap",
+              textAlign: "right",
+            }}
+          >
+            {activeSemester
+              ? `Showing duty schedules for ${getSemesterDisplayName(activeSemester)}`
+              : "No active semester. Create and activate one in Semester Management."}
+          </Typography>
+
+          {activeSemester && !canApprovePendingRequests && (
+            <Box
+              sx={{
+                px: 1,
+                py: 0.28,
+                borderRadius: "10px",
+                border: "1px solid rgba(245,197,43,0.45)",
+                backgroundColor: isDark ? "rgba(245,197,43,0.14)" : "#fefce8",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  fontWeight: 700,
+                  color: "#9a6b00",
+                  letterSpacing: "0.03em",
+                }}
+              >
+                APPROVALS LOCKED (SCHEDULING CLOSED)
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {!activeSemester && !loading && (
@@ -1281,32 +1338,30 @@ export default function DutyScheduleView() {
               <Box
                 key={day}
                 onClick={() =>
-                  setSelectedDayFilter((current) =>
-                    current === i ? null : i,
-                  )
+                  setSelectedDayFilter((current) => (current === i ? null : i))
                 }
-                  sx={{
-                    flex: "1 1 110px",
-                    minWidth: 100,
-                    px: 2,
-                    py: 1.5,
-                    borderRadius: "10px",
-                    border: `1px solid ${isSelected ? GOLD : border}`,
-                    backgroundColor: isSelected
-                      ? isDark
-                        ? "rgba(245,197,43,0.12)"
-                        : "rgba(245,197,43,0.08)"
-                      : "background.paper",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      transform: "translateY(-1px)",
-                      boxShadow: isSelected
-                        ? "none"
-                        : "0 10px 20px rgba(0,0,0,0.04)",
-                    },
-                  }}
-                >
+                sx={{
+                  flex: "1 1 110px",
+                  minWidth: 100,
+                  px: 2,
+                  py: 1.5,
+                  borderRadius: "10px",
+                  border: `1px solid ${isSelected ? GOLD : border}`,
+                  backgroundColor: isSelected
+                    ? isDark
+                      ? "rgba(245,197,43,0.12)"
+                      : "rgba(245,197,43,0.08)"
+                    : "background.paper",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    transform: "translateY(-1px)",
+                    boxShadow: isSelected
+                      ? "none"
+                      : "0 10px 20px rgba(0,0,0,0.04)",
+                  },
+                }}
+              >
                 <Box
                   sx={{
                     display: "flex",
@@ -1534,9 +1589,15 @@ export default function DutyScheduleView() {
                     active={active}
                     size={15}
                     activeBg={GOLD}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     textColor="#ffffff"
-                    sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.62rem" }}
+                    sx={{
+                      fontFamily: dm,
+                      fontWeight: 700,
+                      fontSize: "0.62rem",
+                    }}
                   />
                 ) : null}
               </Box>
@@ -1551,7 +1612,7 @@ export default function DutyScheduleView() {
             mb: 2,
             display: "flex",
             alignItems: "center",
-            gap: FILTER_ROW_GAP,
+            gap: FILTER_GROUP_GAP,
             flexWrap: "nowrap",
             overflowX: "auto",
             flexShrink: 0,
@@ -1744,7 +1805,8 @@ export default function DutyScheduleView() {
                 const triggerCount =
                   val === "All"
                     ? schedules.length
-                    : schedules.filter((s) => s.staffer?.section === val).length;
+                    : schedules.filter((s) => s.staffer?.section === val)
+                        .length;
                 return (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Typography
@@ -1759,7 +1821,11 @@ export default function DutyScheduleView() {
                     <NumberBadge
                       count={triggerCount}
                       active={isSectionFiltered}
-                      inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                      inactiveBg={
+                        isDark
+                          ? "rgba(255,255,255,0.28)"
+                          : "rgba(53,53,53,0.45)"
+                      }
                       fontFamily={dm}
                       fontSize="0.56rem"
                       sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
@@ -1804,7 +1870,11 @@ export default function DutyScheduleView() {
                     <NumberBadge
                       count={count}
                       active={isSelected}
-                      inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                      inactiveBg={
+                        isDark
+                          ? "rgba(255,255,255,0.28)"
+                          : "rgba(53,53,53,0.45)"
+                      }
                       fontFamily={dm}
                       fontSize="0.56rem"
                       sx={{ opacity: count === 0 ? 0.5 : 1 }}
@@ -1884,38 +1954,38 @@ export default function DutyScheduleView() {
               border: `1px solid ${border}`,
               overflow: "hidden",
             }}
-        >
-          {loading ? (
-            <Box
-              sx={{
-                height: 300,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BrandedLoader size={44} inline />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              pageSize={10}
-              rowsPerPageOptions={[10]}
-              disableRowSelectionOnClick
-              rowHeight={56}
-              enableSearch={false}
-              apiRef={gridApiRef}
-              slotProps={{
-                toolbar: {
-                  csvOptions: { disableToolbarButton: true },
-                  printOptions: { disableToolbarButton: true },
-                },
-              }}
-            />
-          )}
+          >
+            {loading ? (
+              <Box
+                sx={{
+                  height: 300,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <BrandedLoader size={44} inline />
+              </Box>
+            ) : (
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10]}
+                disableRowSelectionOnClick
+                rowHeight={56}
+                enableSearch={false}
+                apiRef={gridApiRef}
+                slotProps={{
+                  toolbar: {
+                    csvOptions: { disableToolbarButton: true },
+                    printOptions: { disableToolbarButton: true },
+                  },
+                }}
+              />
+            )}
+          </Box>
         </Box>
-      </Box>
       )}
 
       {/* ── Fullscreen Table View ── */}
@@ -1950,9 +2020,11 @@ export default function DutyScheduleView() {
               borderBottom: `1px solid ${border}`,
               display: "flex",
               alignItems: "center",
-              gap: 2,
+              gap: FILTER_GROUP_GAP,
               flexShrink: 0,
-              transform: isTableFullscreen ? "translateY(0)" : "translateY(-10px)",
+              transform: isTableFullscreen
+                ? "translateY(0)"
+                : "translateY(-10px)",
               opacity: isTableFullscreen ? 1 : 0,
               transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
               transitionDelay: isTableFullscreen ? "0.1s" : "0s",
@@ -2067,7 +2139,9 @@ export default function DutyScheduleView() {
                     onChange={(e) => setSearchText(e.target.value)}
                     startAdornment={
                       <InputAdornment position="start">
-                        <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        <SearchIcon
+                          sx={{ fontSize: 16, color: "text.disabled" }}
+                        />
                       </InputAdornment>
                     }
                     sx={{
@@ -2092,9 +2166,12 @@ export default function DutyScheduleView() {
                       const triggerCount =
                         val === "All"
                           ? schedules.length
-                          : schedules.filter((s) => s.staffer?.section === val).length;
+                          : schedules.filter((s) => s.staffer?.section === val)
+                              .length;
                       return (
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
                           <Typography
                             sx={{
                               fontFamily: dm,
@@ -2107,7 +2184,11 @@ export default function DutyScheduleView() {
                           <NumberBadge
                             count={triggerCount}
                             active={isSectionFiltered}
-                            inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                            inactiveBg={
+                              isDark
+                                ? "rgba(255,255,255,0.28)"
+                                : "rgba(53,53,53,0.45)"
+                            }
                             fontFamily={dm}
                             fontSize="0.56rem"
                             sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
@@ -2154,7 +2235,11 @@ export default function DutyScheduleView() {
                           <NumberBadge
                             count={count}
                             active={isSelected}
-                            inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                            inactiveBg={
+                              isDark
+                                ? "rgba(255,255,255,0.28)"
+                                : "rgba(53,53,53,0.45)"
+                            }
                             fontFamily={dm}
                             fontSize="0.56rem"
                             sx={{ opacity: count === 0 ? 0.5 : 1 }}
@@ -2203,7 +2288,9 @@ export default function DutyScheduleView() {
                     onChange={(e) => setRequestSearchText(e.target.value)}
                     startAdornment={
                       <InputAdornment position="start">
-                        <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        <SearchIcon
+                          sx={{ fontSize: 16, color: "text.disabled" }}
+                        />
                       </InputAdornment>
                     }
                     sx={{
@@ -2233,15 +2320,17 @@ export default function DutyScheduleView() {
                       },
                     }}
                   >
-                    {["All", "Pending", "Approved", "Declined"].map((status) => (
-                      <MenuItem
-                        key={status}
-                        value={status}
-                        sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                      >
-                        {status}
-                      </MenuItem>
-                    ))}
+                    {["All", "Pending", "Approved", "Declined"].map(
+                      (status) => (
+                        <MenuItem
+                          key={status}
+                          value={status}
+                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                        >
+                          {status}
+                        </MenuItem>
+                      ),
+                    )}
                   </Select>
                 </FormControl>
 
@@ -2277,22 +2366,20 @@ export default function DutyScheduleView() {
                 </Box>
               </>
             )}
-          <IconButton
-            size="small"
-            onClick={() => setIsTableFullscreen(false)}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
-            <FullscreenExitIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </Box>
-
-
+            <IconButton
+              size="small"
+              onClick={() => setIsTableFullscreen(false)}
+              sx={{
+                borderRadius: "10px",
+                color: "text.secondary",
+                "&:hover": {
+                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                },
+              }}
+            >
+              <FullscreenExitIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
 
           {/* Table */}
           <Box
@@ -2303,7 +2390,9 @@ export default function DutyScheduleView() {
               overflowX: "auto",
               px: 4,
               py: 2,
-              transform: isTableFullscreen ? "translateY(0)" : "translateY(20px)",
+              transform: isTableFullscreen
+                ? "translateY(0)"
+                : "translateY(20px)",
               opacity: isTableFullscreen ? 1 : 0,
               transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
               transitionDelay: isTableFullscreen ? "0.2s" : "0s",
@@ -2451,9 +2540,7 @@ export default function DutyScheduleView() {
               border: "1px solid rgba(245,197,43,0.32)",
               px: 1.35,
               py: 1.1,
-              backgroundColor: isDark
-                ? "rgba(245,197,43,0.08)"
-                : "#fff9ec",
+              backgroundColor: isDark ? "rgba(245,197,43,0.08)" : "#fff9ec",
             }}
           >
             <Typography
@@ -2469,7 +2556,14 @@ export default function DutyScheduleView() {
             >
               Change Day Requested
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexWrap: "wrap" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.8,
+                flexWrap: "wrap",
+              }}
+            >
               <DayPill dayIndex={requestDetailsTarget?.current_duty_day} />
               <Typography
                 sx={{
@@ -2481,7 +2575,10 @@ export default function DutyScheduleView() {
               >
                 →
               </Typography>
-              <DayPill dayIndex={requestDetailsTarget?.requested_duty_day} accent />
+              <DayPill
+                dayIndex={requestDetailsTarget?.requested_duty_day}
+                accent
+              />
             </Box>
           </Box>
 
@@ -2505,9 +2602,7 @@ export default function DutyScheduleView() {
                 border: `1px solid ${border}`,
                 px: 1.25,
                 py: 1.05,
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.025)"
-                  : "#fafafa",
+                backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
               }}
             >
               <Typography
@@ -2533,7 +2628,9 @@ export default function DutyScheduleView() {
             borderTop: `1px solid ${border}`,
             display: "flex",
             justifyContent:
-              requestDetailsTarget?.status === "pending" ? "flex-end" : "space-between",
+              requestDetailsTarget?.status === "pending"
+                ? "flex-end"
+                : "space-between",
             alignItems: "center",
             gap: 1,
             backgroundColor: isDark
@@ -2549,12 +2646,29 @@ export default function DutyScheduleView() {
                 color: "text.secondary",
               }}
             >
-              This request has already been {getRequestStatusMeta(requestDetailsTarget?.status).label.toLowerCase()}.
+              This request has already been{" "}
+              {getRequestStatusMeta(
+                requestDetailsTarget?.status,
+              ).label.toLowerCase()}
+              .
             </Typography>
           )}
 
           {requestDetailsTarget?.status === "pending" && (
             <>
+              {!canApprovePendingRequests && (
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.74rem",
+                    color: "#b45309",
+                    mr: "auto",
+                  }}
+                >
+                  Scheduling is closed. You can still decline this request, but
+                  approval is disabled.
+                </Typography>
+              )}
               <Box
                 onClick={
                   requestActionId === requestDetailsTarget?.id
@@ -2566,7 +2680,9 @@ export default function DutyScheduleView() {
                   py: 0.65,
                   borderRadius: "10px",
                   cursor:
-                    requestActionId === requestDetailsTarget?.id ? "default" : "pointer",
+                    requestActionId === requestDetailsTarget?.id
+                      ? "default"
+                      : "pointer",
                   border: "1px solid rgba(220,38,38,0.18)",
                   backgroundColor: isDark
                     ? "rgba(220,38,38,0.12)"
@@ -2575,14 +2691,17 @@ export default function DutyScheduleView() {
                   fontSize: "0.8rem",
                   fontWeight: 600,
                   color: "#dc2626",
-                  opacity: requestActionId === requestDetailsTarget?.id ? 0.5 : 1,
+                  opacity:
+                    requestActionId === requestDetailsTarget?.id ? 0.5 : 1,
                 }}
               >
                 Decline
               </Box>
               <Box
                 onClick={
-                  requestActionId === requestDetailsTarget?.id || !requestDetailsTarget
+                  requestActionId === requestDetailsTarget?.id ||
+                  !requestDetailsTarget ||
+                  !canApprovePendingRequests
                     ? undefined
                     : () => handleApproveRequest(requestDetailsTarget)
                 }
@@ -2594,7 +2713,9 @@ export default function DutyScheduleView() {
                   py: 0.65,
                   borderRadius: "10px",
                   cursor:
-                    requestActionId === requestDetailsTarget?.id || !requestDetailsTarget
+                    requestActionId === requestDetailsTarget?.id ||
+                    !requestDetailsTarget ||
+                    !canApprovePendingRequests
                       ? "default"
                       : "pointer",
                   backgroundColor: GOLD,
@@ -2603,7 +2724,9 @@ export default function DutyScheduleView() {
                   fontSize: "0.8rem",
                   fontWeight: 700,
                   opacity:
-                    requestActionId === requestDetailsTarget?.id || !requestDetailsTarget
+                    requestActionId === requestDetailsTarget?.id ||
+                    !requestDetailsTarget ||
+                    !canApprovePendingRequests
                       ? 0.7
                       : 1,
                 }}
@@ -2856,7 +2979,7 @@ export default function DutyScheduleView() {
               color: "text.secondary",
             }}
           >
-            {`Adjust the slot capacity for ${DAY_LABELS[slotDialogDayIndex] || "this day"} in ${activeSemester?.name || "the active semester"}.`}
+            {`Adjust the slot capacity for ${DAY_LABELS[slotDialogDayIndex] || "this day"} in ${activeSemester ? getSemesterDisplayName(activeSemester) : "the active semester"}.`}
           </Typography>
 
           {slotError && (

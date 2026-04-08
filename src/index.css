@@ -19,7 +19,11 @@ body,
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 20% 20%, rgba(245, 197, 43, 0.2), transparent 42%),
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(245, 197, 43, 0.2),
+      transparent 42%
+    ),
     radial-gradient(circle at 80% 80%, rgba(53, 53, 53, 0.16), transparent 42%),
     #ffffff;
   opacity: 1;
@@ -142,10 +146,18 @@ body,
   animation: startup-trace-draw 1.8s ease-in-out infinite;
 }
 
-.branded-loader__trace-shape:nth-child(2) { animation-delay: 0.12s; }
-.branded-loader__trace-shape:nth-child(3) { animation-delay: 0.24s; }
-.branded-loader__trace-shape:nth-child(4) { animation-delay: 0.36s; }
-.branded-loader__trace-shape:nth-child(5) { animation-delay: 0.48s; }
+.branded-loader__trace-shape:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.branded-loader__trace-shape:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.branded-loader__trace-shape:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.branded-loader__trace-shape:nth-child(5) {
+  animation-delay: 0.48s;
+}
 
 .branded-loader__logo {
   position: relative;

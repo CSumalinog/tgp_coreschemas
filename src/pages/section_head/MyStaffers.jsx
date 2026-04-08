@@ -18,6 +18,7 @@ import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -573,7 +574,7 @@ export default function MyStaffers() {
             }}
           >
             {activeSemester
-              ? `${currentUser.division} division — ${activeSemester.name}`
+              ? `${currentUser.division} division — ${getSemesterDisplayName(activeSemester)}`
               : `${currentUser.division} division`}
           </Typography>
         </Box>

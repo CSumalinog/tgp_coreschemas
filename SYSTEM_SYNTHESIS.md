@@ -845,6 +845,128 @@ RLS policies ensure proper access:
 - **Insert Access**: Staff can only insert their own pending requests
 - **Update Access**: Only admins can update (approve/reject) requests
 
+### 9.24 Brand Identity and Layout Standardization (v2.4)
+
+#### 9.24.1 New Brand Assets
+
+The system received a complete brand identity refresh with new logo assets:
+
+- **Primary Logo**: `cs-logo.png` - Main institutional logo
+- **Fallback SVG**: `cs-logo.svg` - Scalable vector alternative
+- **Favicon**: `favicon.svg` - Browser tab icon
+- Legacy `tgp.png` logo was removed as part of the refresh
+
+#### 9.24.2 Layout Tokens ([`layoutTokens.js`](src/utils/layoutTokens.js:1))
+
+A new shared utility provides consistent layout spacing and sizing across all pages:
+
+- **Page Padding**: Compact (1.5/2/2.5) and Standard (2/3) variants for responsive spacing
+- **Content Width**: Max width of 1240px with 0.5/1rem inner gutters
+- **Control Rhythm**: Shared tokens for filter/toolbar consistency:
+  - `CONTROL_RADIUS`: 10px border radius
+  - `FILTER_INPUT_HEIGHT`: 38px
+  - `FILTER_BUTTON_HEIGHT`: 38px
+  - `FILTER_ROW_GAP`: 1rem
+  - `FILTER_GROUP_GAP`: 0.75rem
+
+#### 9.24.3 NumberBadge Component ([`NumberBadge.jsx`](src/components/common/NumberBadge.jsx:1))
+
+A reusable circular badge component for displaying counts:
+
+- Configurable size (default 15px), active/inactive backgrounds
+- Gold (#F5C52B) for active states, charcoal gray for inactive
+- Used throughout the system for notification counts, tab badges, and statistics
+
+#### 9.24.4 Loading Components
+
+- **BrandedLoader** ([`BrandedLoader.jsx`](src/components/common/BrandedLoader.jsx:1)): Reusable branded loading spinner
+- **StartupLoader** ([`StartupLoader.jsx`](src/components/common/StartupLoader.jsx:1)): Initial app loading screen with logo
+
+#### 9.24.5 Layout Enhancements
+
+All four role-based layouts received consistent updates:
+
+- **AdminLayout**: New branding, navigation restructuring
+- **ClientLayout**: Updated navigation with client-specific items
+- **RegularStaffLayout**: Staff-focused navigation and branding
+- **SectionHeadLayout**: Section head specific navigation
+
+### 9.25 Enhanced Semester Management with Scheduling Control (v2.4)
+
+The [`SemesterManagement`](src/pages/admin/SemesterManagement.jsx:1) component received major UI enhancements:
+
+#### Scheduling Open/Close Toggle
+
+- New `scheduling_open` boolean field on semesters
+- Controls when staffers can pick/modify their duty days
+- Visual lock/unlock icon indicators (LockOpenOutlinedIcon / LockOutlinedIcon)
+- Blue styling (#1d4ed8) for "Open" state
+- Toggled via row action menu
+
+#### Enhanced UI
+
+- Active semester banner with pulsing gold indicator
+- Scheduling status displayed inline in both banner and table
+- Row actions menu with Edit and Scheduling toggle options
+- Full CRUD dialog with scheduling toggle switch
+- Dark mode adaptive column menu styling
+
+#### Confirmation Dialogs
+
+- Toggle confirmation dialogs for both scheduling and active status changes
+- Descriptive explanations of what each action does
+- Loading states during apply operations
+
+### 9.26 Database Schema Enhancements
+
+#### Per-Day Slot Capacities
+
+Migration `007_add_duty_slot_fields_to_semesters.sql` added per-day slot capacity fields:
+
+- `monday_slots` through `friday_slots` (integer, default 10)
+- Constraints ensuring non-negative values
+- Controls maximum number of staffers allowed on duty per day
+
+#### Profile Soft Delete Support
+
+Migration `011_add_trashed_at_to_profiles.sql` added:
+
+- `trashed_at`: Timestamp for soft-delete functionality
+- Enables future trash/restore features for staff profiles
+
+### 9.27 Duty Schedule View - Day Slot Capacities and Requests Management (v2.4)
+
+The [`DutyScheduleView`](src/pages/admin/DutyScheduleView.jsx:1) component received major enhancements:
+
+#### Per-Day Slot Capacity Management
+
+- **Slot Summary Cards**: Each weekday (Monday-Friday) displays current staffing count vs. capacity
+- **Inline Edit**: Click the edit icon on any day card to adjust its slot capacity
+- **Progress Visualization**: Visual progress bars show capacity usage with over-capacity warnings
+- **Dynamic Capacity Display**: Capacities stored per-semester (monday_slots through friday_slots fields)
+
+#### Requests Tab Integration
+
+- **Tabbed Interface**: "Schedule" tab for duty roster, "Requests" tab for change requests
+- **Badge Notification**: Pending request count displayed on the Requests tab
+- **Search & Filter**: Full-text search across staffer names, sections, and reasons
+- **Status Filtering**: Filter by Pending, Approved, or Declined requests
+- **Fullscreen Mode**: Toggle fullscreen for better data visibility
+- **CSV Export**: Export both schedule and requests data
+
+#### Approval Workflow Enhancements
+
+- **Scheduling Lock**: When `scheduling_open` is false, approvals are blocked with visual indicator
+- **Quota Tracking**: Each staffer's used quota displayed (X/3 approved changes per semester)
+- **Conflict Detection**: Prevents approval if staffer has active assignments on current duty day
+- **Capacity Validation**: Rejects if target day would exceed slot capacity
+
+#### Real-time Updates
+
+- Subscriptions to both `duty_schedules` and `duty_schedule_change_requests` tables
+- Toast notifications for schedule changes
+- Auto-refresh on external modifications
+
 ---
 
 ## 10. Conclusion

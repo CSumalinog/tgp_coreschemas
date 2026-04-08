@@ -22,6 +22,7 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
@@ -744,7 +745,7 @@ export default function GlobalSearch({
                     <ResultItem
                       key={s.id}
                       icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />}
-                      primary={s.name}
+                      primary={getSemesterDisplayName(s)}
                       secondary={s.is_active ? "Active" : "Inactive"}
                       path="/admin/semester-management"
                       globalIndex={gIdx++}

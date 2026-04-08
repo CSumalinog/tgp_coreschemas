@@ -15,6 +15,7 @@ import CancelOutlinedIcon             from "@mui/icons-material/CancelOutlined";
 import TrendingUpOutlinedIcon         from "@mui/icons-material/TrendingUpOutlined";
 import AccessTimeOutlinedIcon         from "@mui/icons-material/AccessTimeOutlined";
 import { supabase }                   from "../../lib/supabaseClient";
+import { getSemesterDisplayName }     from "../../utils/semesterLabel";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -48,6 +49,9 @@ function addPageIfNeeded(doc, y, needed = 20) {
 export default function ReportGenerator({ selectedSemester, isAllTime }) {
   const theme  = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const selectedSemesterLabel = selectedSemester
+    ? getSemesterDisplayName(selectedSemester)
+    : "—";
 
   const [fetching,   setFetching]   = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -136,7 +140,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
       const clientList = Object.entries(clientMap).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.total - a.total);
 
       setPreview({
-        period: isAllTime ? "All Time" : selectedSemester?.name,
+        period: isAllTime ? "All Time" : selectedSemesterLabel,
         generatedAt: new Date().toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }),
         stats: { total, approved, declined, covered, pending, forwarded, declineRate, completionRate, avgTurnaround },
         sectionWorkload, stafferList, approvedRequests, declinedRequests, pendingRequests, unassignedEvents, clientList,
@@ -266,7 +270,9 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
         doc.text("Coverage Operations Report — Confidential", MARGIN, PAGE_H - 8);
       }
 
-      const filename = isAllTime ? "coverage-report-all-time.pdf" : `coverage-report-${(selectedSemester?.name || "report").replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      const filename = isAllTime
+        ? "coverage-report-all-time.pdf"
+        : `coverage-report-${(selectedSemester ? getSemesterDisplayName(selectedSemester) : "report").replace(/\s+/g, "-").toLowerCase()}.pdf`;
       doc.save(filename);
     } catch (err) {
       setError("Failed to generate PDF: " + err.message);
@@ -305,7 +311,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
         <Box>
           <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: textPrimary }}>Report Generation</Typography>
           <Typography sx={{ fontSize: "0.78rem", color: textSecondary, mt: 0.3 }}>
-            Generate a PDF coverage operations report · {isAllTime ? "All time" : selectedSemester?.name || "—"} · A4
+            Generate a PDF coverage operations report · {isAllTime ? "All time" : selectedSemesterLabel} · A4
           </Typography>
         </Box>
         <Button
@@ -329,7 +335,7 @@ export default function ReportGenerator({ selectedSemester, isAllTime }) {
           <AssignmentOutlinedIcon sx={{ fontSize: 36, color: isDark ? "#444" : "#e0e0e0", mb: 1 }} />
           <Typography sx={{ fontSize: "0.82rem", color: textSecondary }}>
             Click "Preview Report" to generate a summary for{" "}
-            {isAllTime ? "all time" : selectedSemester?.name || "the selected semester"}.
+            {isAllTime ? "all time" : selectedSemesterLabel || "the selected semester"}.
           </Typography>
         </Box>
       )}
