@@ -43,6 +43,7 @@ import {
   deleteStafferAccount,
 } from "../../services/StafferService";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -1080,7 +1081,7 @@ export default function StaffersManagement() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={26} sx={{ color: GOLD }} />
+              <BrandedLoader size={44} inline />
             </Box>
           ) : (
             <DataGrid

@@ -60,6 +60,7 @@ import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { generateConfirmationPDF } from "../../utils/generateConfirmationPDF";
+import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   cancelRequest,
   rescheduleRequest,
@@ -3860,7 +3861,7 @@ function MetaCell({ children }) {
 function Loader() {
   return (
     <Box sx={{ py: 10, display: "flex", justifyContent: "center" }}>
-      <CircularProgress size={26} sx={{ color: GOLD }} />
+      <BrandedLoader size={44} inline />
     </Box>
   );
 }

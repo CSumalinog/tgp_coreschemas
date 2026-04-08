@@ -14,6 +14,7 @@ import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import BrandedLoader from "../common/BrandedLoader";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -328,7 +329,7 @@ export default function QRScanCompleteDialog({
                   gap: 1,
                 }}
               >
-                <CircularProgress size={24} sx={{ color: GOLD }} />
+                <BrandedLoader size={40} inline />
                 <Typography
                   sx={{
                     fontFamily: dm,

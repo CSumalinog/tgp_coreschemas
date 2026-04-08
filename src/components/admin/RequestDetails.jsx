@@ -34,6 +34,7 @@ import {
   approveRequest,
 } from "../../services/adminRequestService";
 import { useRequestAssistant } from "../../hooks/RequestAssistant";
+import BrandedLoader from "../common/BrandedLoader";
 
 const ALL_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
@@ -1352,7 +1353,7 @@ export default function RequestDetails({
 
             {!checks || checks.loading ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <CircularProgress size={12} sx={{ color: "#f5c52b" }} />
+                <BrandedLoader size={20} inline />
                 <Typography
                   sx={{ fontSize: "0.78rem", color: "text.secondary" }}
                 >
@@ -2096,7 +2097,7 @@ export default function RequestDetails({
           )}
           {secHeadsLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <CircularProgress size={20} sx={{ color: "#f5c52b" }} />
+              <BrandedLoader size={34} inline />
             </Box>
           ) : (
             <FormGroup sx={{ gap: 1 }}>

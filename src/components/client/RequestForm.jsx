@@ -44,6 +44,7 @@ import {
   submitCoverageRequest,
   updateDraftRequest,
 } from "../../services/coverageRequestService";
+import BrandedLoader from "../common/BrandedLoader";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -1723,7 +1724,7 @@ export default function CoverageRequestDialog({
           )}
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-              <CircularProgress size={20} sx={{ color: "#f5c52b" }} />
+              <BrandedLoader size={34} inline />
             </Box>
           )}
         </DialogContent>

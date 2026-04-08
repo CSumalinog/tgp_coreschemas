@@ -17,6 +17,7 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -520,7 +521,7 @@ export default function MyStaffers() {
           height: "100%",
         }}
       >
-        <CircularProgress size={26} sx={{ color: GOLD }} />
+        <BrandedLoader size={44} inline />
       </Box>
     );
 
@@ -725,7 +726,7 @@ export default function MyStaffers() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={26} sx={{ color: GOLD }} />
+              <BrandedLoader size={44} inline />
             </Box>
           ) : staffers.length === 0 ? (
             <Box

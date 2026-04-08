@@ -24,6 +24,7 @@ import CleaningServicesOutlinedIcon from "@mui/icons-material/CleaningServicesOu
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { supabase } from "../../lib/supabaseClient";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -771,7 +772,7 @@ export default function Settings() {
           height: "60vh",
         }}
       >
-        <CircularProgress size={28} sx={{ color: GOLD }} />
+        <BrandedLoader size={46} inline />
       </Box>
     );
   }

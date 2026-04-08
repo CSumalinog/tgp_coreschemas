@@ -13,6 +13,7 @@ import {
   notifyClient,
   notifySecHeads,
 } from "../../services/NotificationService";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 const GOLD = "#F5C52B";
 const DARK = "#212121";
@@ -297,19 +298,7 @@ export default function TimeoutPage() {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (!currentUser || loading)
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: DARK,
-        }}
-      >
-        <CircularProgress sx={{ color: GOLD }} />
-      </Box>
-    );
+    return <BrandedLoader size={92} fullScreen darkBackground />;
 
   // ── Error / not found ─────────────────────────────────────────────────────
   if (error || !request)

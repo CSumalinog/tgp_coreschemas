@@ -28,6 +28,7 @@ import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "../../lib/supabaseClient";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -622,7 +623,7 @@ export default function SemesterManagement() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={26} sx={{ color: GOLD }} />
+              <BrandedLoader size={44} inline />
             </Box>
           ) : (
             <DataGrid

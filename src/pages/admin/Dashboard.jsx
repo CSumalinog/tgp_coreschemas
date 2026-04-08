@@ -36,6 +36,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import ReportGenerator from "../../components/admin/ReportGenerator";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const GOLD     = "#f5c52b";
@@ -357,9 +358,7 @@ export default function Dashboard() {
       {showReports && <Box sx={{ mb: 2 }}><ReportGenerator selectedSemester={selectedSemester} isAllTime={isAllTime} /></Box>}
 
       {loading ? (
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "40vh" }}>
-          <CircularProgress size={26} sx={{ color: GOLD }} />
-        </Box>
+        <BrandedLoader size={84} minHeight="40vh" />
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
 

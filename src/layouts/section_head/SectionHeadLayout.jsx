@@ -28,7 +28,7 @@ import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import brandLogo from "../../assets/img/cs-logo.svg";
+import brandLogo from "../../assets/img/cs-logo.png";
 
 const SIDEBAR_W = 228;
 const GOLD = "#F5C52B";
@@ -75,7 +75,6 @@ function getInitials(name) {
 function ProfileDropdown({
   open,
   currentUser,
-  userProfile,
   onClose,
   footerRef,
 }) {
@@ -95,7 +94,7 @@ function ProfileDropdown({
       if (footerRef?.current?.contains(e.target)) return;
       if (ref.current && !ref.current.contains(e.target)) onClose();
     }
-  }, [open, onClose]);
+  }, [open, onClose, footerRef]);
   if (!open) return null;
   const row = (onClick, children, danger = false) => (
     <Box
@@ -239,13 +238,7 @@ function ProfileDropdown({
   );
 }
 
-function SidebarContent({
-  currentUser,
-  userProfile,
-  avatarUrl,
-  onClose,
-  isMobile,
-}) {
+function SidebarContent({ onClose, isMobile }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({});
   const toggleGroup = (label) =>
@@ -393,15 +386,7 @@ function SidebarContent({
   );
 }
 
-function NavItem({
-  label,
-  Icon,
-  to,
-  onClick,
-  isActive,
-  isChild,
-  trailing,
-}) {
+function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
   const location = useLocation();
   const routeActive = to ? location.pathname.includes(to) : false;
   const active = isActive || routeActive;

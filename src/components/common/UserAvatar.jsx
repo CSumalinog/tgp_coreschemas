@@ -10,6 +10,7 @@ import LogoutIcon                 from "@mui/icons-material/Logout";
 import DarkModeOutlinedIcon       from "@mui/icons-material/DarkModeOutlined";
 import { supabase }               from "../../lib/supabaseClient";
 import { useThemeMode }           from "../../context/ThemeContext";
+import BrandedLoader              from "./BrandedLoader";
 
 const dm = "'Inter', sans-serif";
 
@@ -145,7 +146,9 @@ export default function UserAvatar({ profileRoute = "profile" }) {
           borderBottom: "1px solid rgba(255,255,255,0.07)",
         }}>
           {loading ? (
-            <CircularProgress size={34} sx={{ color: "#f5c52b", flexShrink: 0 }} />
+            <Box sx={{ flexShrink: 0 }}>
+              <BrandedLoader size={34} inline />
+            </Box>
           ) : (
             <Avatar
               src={avatarUrl || undefined}

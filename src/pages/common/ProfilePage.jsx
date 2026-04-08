@@ -23,6 +23,7 @@ import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens (mirrors ThemeContext + CalendarManagement) ─────────────────
 const GOLD = "#F5C52B";
@@ -290,18 +291,7 @@ export default function ProfilePage() {
   }
 
   if (!user)
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "60vh",
-        }}
-      >
-        <CircularProgress size={28} sx={{ color: GOLD }} />
-      </Box>
-    );
+    return <BrandedLoader size={86} minHeight="60vh" />;
 
   return (
     <Box

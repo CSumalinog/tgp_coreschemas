@@ -23,6 +23,7 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const BRAND = {
@@ -303,18 +304,7 @@ export default function SecHeadDashboard() {
   };
 
   if (!currentUser || loading)
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "60vh",
-        }}
-      >
-        <CircularProgress size={32} sx={{ color: BRAND.gold }} />
-      </Box>
-    );
+    return <BrandedLoader size={88} minHeight="60vh" />;
 
   const kpiCards = [
     {

@@ -12,6 +12,7 @@ import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { DataGrid } from "../../../components/common/AppDataGrid";
 import RequestBulkBar from "./RequestBulkBar";
 import RequestConfirmDialog from "./RequestConfirmDialog";
+import BrandedLoader from "../../../components/common/BrandedLoader";
 import {
   BORDER,
   BORDER_DARK,
@@ -264,7 +265,7 @@ export default function ArchiveManagementBase({
           height: embedded ? "40vh" : "60vh",
         }}
       >
-        <CircularProgress size={28} sx={{ color: GOLD }} />
+        <BrandedLoader size={46} inline />
       </Box>
     );
   }

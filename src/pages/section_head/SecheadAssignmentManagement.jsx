@@ -52,6 +52,7 @@ import ViewActionButton from "../../components/common/ViewActionButton";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   RoleArchiveManagement,
   RoleTrashManagement,
@@ -1800,7 +1801,7 @@ export default function SecHeadAssignmentManagement() {
           height: "100%",
         }}
       >
-        <CircularProgress size={26} sx={{ color: GOLD }} />
+        <BrandedLoader size={44} inline />
       </Box>
     );
 
@@ -2138,7 +2139,7 @@ export default function SecHeadAssignmentManagement() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={24} sx={{ color: GOLD }} />
+              <BrandedLoader size={40} inline />
             </Box>
           ) : (
             <DataGrid
@@ -3511,7 +3512,7 @@ function AssignmentDialog({
 
           {staffersLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-              <CircularProgress size={18} sx={{ color: GOLD }} />
+              <BrandedLoader size={28} inline />
             </Box>
           ) : !activeDateStr ? null : activePrimary.length === 0 &&
             activeOthers.length === 0 ? (

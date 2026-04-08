@@ -21,6 +21,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CalendarEventDialog from "../../components/admin/CalendarAvailabilitySetter";
 import { supabase } from "../../lib/supabaseClient";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -493,7 +494,7 @@ function BlockedDatesPanel({
         >
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-              <CircularProgress size={20} sx={{ color: GOLD }} />
+              <BrandedLoader size={34} inline />
             </Box>
           ) : events.length === 0 ? (
             <Box sx={{ textAlign: "center", py: 5 }}>
@@ -1075,7 +1076,7 @@ export default function CalendarManagement() {
                   height: 300,
                 }}
               >
-                <CircularProgress size={26} sx={{ color: GOLD }} />
+                <BrandedLoader size={44} inline />
               </Box>
             ) : (
               <Box

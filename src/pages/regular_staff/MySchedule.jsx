@@ -23,6 +23,7 @@ import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifyAdmins } from "../../services/NotificationService";
 import { useDutyChangeRequestQuota } from "../../hooks/useDutyChangeRequestQuota";
 import { useLocation } from "react-router-dom";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // -- Brand tokens -------------------------------------------------------------
 const GOLD = "#F5C52B";
@@ -408,18 +409,7 @@ export default function MySchedule() {
     dialogTargetDay !== null ? slotCapacities[dialogTargetDay] ?? 10 : null;
 
   if (!currentUser || loading)
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "60vh",
-        }}
-      >
-        <CircularProgress size={26} sx={{ color: GOLD }} />
-      </Box>
-    );
+    return <BrandedLoader size={84} minHeight="60vh" />;
 
   return (
     <Box

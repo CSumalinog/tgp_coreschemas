@@ -35,6 +35,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   RoleArchiveManagement,
   RoleTrashManagement,
@@ -1539,7 +1540,7 @@ export default function AdminRequestManagement() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={24} sx={{ color: GOLD }} />
+              <BrandedLoader size={40} inline />
             </Box>
           ) : (
             <DataGrid

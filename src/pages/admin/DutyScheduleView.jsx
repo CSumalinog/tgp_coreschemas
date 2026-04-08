@@ -24,6 +24,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifySpecificStaff } from "../../services/NotificationService";
+import BrandedLoader from "../../components/common/BrandedLoader";
 import { useLocation } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -1886,7 +1887,7 @@ export default function DutyScheduleView() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={26} sx={{ color: GOLD }} />
+              <BrandedLoader size={44} inline />
             </Box>
           ) : (
             <DataGrid
@@ -2339,7 +2340,7 @@ export default function DutyScheduleView() {
                     justifyContent: "center",
                   }}
                 >
-                  <CircularProgress size={26} sx={{ color: GOLD }} />
+                  <BrandedLoader size={44} inline />
                 </Box>
               ) : (
                 <DataGrid

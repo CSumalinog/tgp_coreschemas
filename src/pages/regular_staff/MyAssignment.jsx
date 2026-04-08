@@ -50,6 +50,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { useLocation } from "react-router-dom";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 import {
   TimeInModal,
@@ -1626,7 +1627,7 @@ export default function MyAssignment() {
           height: "60vh",
         }}
       >
-        <CircularProgress size={28} sx={{ color: GOLD }} />
+        <BrandedLoader size={46} inline />
       </Box>
     );
 

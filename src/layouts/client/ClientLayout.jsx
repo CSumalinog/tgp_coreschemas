@@ -34,7 +34,7 @@ import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import brandLogo from "../../assets/img/cs-logo.svg";
+import brandLogo from "../../assets/img/cs-logo.png";
 
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
   const l = document.createElement("link");
@@ -99,7 +99,7 @@ function HelpPopover({ open, onClose, anchorRef }) {
       if (anchorRef?.current?.contains(e.target)) return;
       if (ref.current && !ref.current.contains(e.target)) onClose();
     }
-  }, [open, onClose]);
+  }, [open, onClose, anchorRef]);
   if (!open) return null;
   return (
     <Box
@@ -254,7 +254,6 @@ function HelpPopover({ open, onClose, anchorRef }) {
 function ProfileDropdown({
   open,
   currentUser,
-  userProfile,
   onClose,
   footerRef,
 }) {
@@ -274,7 +273,7 @@ function ProfileDropdown({
       if (footerRef?.current?.contains(e.target)) return;
       if (ref.current && !ref.current.contains(e.target)) onClose();
     }
-  }, [open, onClose]);
+  }, [open, onClose, footerRef]);
   if (!open) return null;
   const row = (onClick, children, danger = false) => (
     <Box
@@ -419,13 +418,7 @@ function ProfileDropdown({
 }
 
 // ── Sidebar content ───────────────────────────────────────────────────────────
-function SidebarContent({
-  currentUser,
-  userProfile,
-  avatarUrl,
-  onClose,
-  isMobile,
-}) {
+function SidebarContent({ onClose, isMobile }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef(null);
 

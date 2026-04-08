@@ -27,6 +27,7 @@ import {
 } from "../../services/coverageRequestService";
 import { supabase } from "../../lib/supabaseClient";
 import CoverageRequestDialog from "../../components/client/RequestForm";
+import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -366,7 +367,7 @@ export default function Draft() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={26} sx={{ color: GOLD }} />
+              <BrandedLoader size={44} inline />
             </Box>
           ) : (
             <DataGrid

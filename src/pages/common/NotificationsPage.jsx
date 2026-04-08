@@ -25,6 +25,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   getNotificationDestination,
   getRoleFromPathname,
@@ -605,7 +606,7 @@ export default function NotificationsPage() {
               justifyContent: "center",
             }}
           >
-            <CircularProgress size={26} sx={{ color: GOLD }} />
+            <BrandedLoader size={44} inline />
           </Box>
         ) : filteredNotifications.length === 0 ? (
           <Box
