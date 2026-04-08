@@ -25,4 +25,8 @@ dist-ssr
 
 .env.local
 .vercel
-.
+
+# Local TLS/dev cert artifacts
+*.pem
+*.key
+mkcert-*.exe
