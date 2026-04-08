@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
+import NumberBadge from "../../components/common/NumberBadge";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
@@ -36,6 +37,12 @@ import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+} from "../../utils/layoutTokens";
 import {
   RoleArchiveManagement,
   RoleTrashManagement,
@@ -644,7 +651,13 @@ export default function AdminRequestManagement() {
           pr: 0.5,
         }}
       >
-        <ViewActionButton onClick={() => handleOpenRequest(p.row)} />
+        <ViewActionButton
+          disabled={isBulkSelectionActive}
+          onClick={() => {
+            if (isBulkSelectionActive) return;
+            handleOpenRequest(p.row);
+          }}
+        />
         <IconButton
           size="small"
           disabled={isBulkSelectionActive}
@@ -1224,7 +1237,8 @@ export default function AdminRequestManagement() {
   const selectSx = {
     fontFamily: dm,
     fontSize: "0.78rem",
-    borderRadius: "10px",
+    borderRadius: CONTROL_RADIUS,
+    height: FILTER_INPUT_HEIGHT,
     backgroundColor: isDark ? "transparent" : "#f7f7f8",
     "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,0.12)" },
     "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
@@ -1279,7 +1293,7 @@ export default function AdminRequestManagement() {
           mb: 2,
           display: "flex",
           alignItems: "center",
-          gap: 1,
+          gap: FILTER_ROW_GAP,
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
@@ -1303,7 +1317,8 @@ export default function AdminRequestManagement() {
             sx={{
               fontFamily: dm,
               fontSize: "0.78rem",
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
               backgroundColor: isDark ? "transparent" : "#f7f7f8",
               "& .MuiOutlinedInput-notchedOutline": {
                 borderColor: "rgba(0,0,0,0.12)",
@@ -1320,22 +1335,12 @@ export default function AdminRequestManagement() {
             IconComponent={UnfoldMoreIcon}
             displayEmpty
             inputProps={{ "aria-label": "Status filter" }}
-            // ✅ Clean trigger: just the label + a small dot when a filter is active
+            // Trigger uses label + numeric badge for consistency with global count badges
             renderValue={(val) => {
               const opt = STATUS_OPTIONS.find((o) => o.key === val);
+              const triggerCount = getStatusCount(val);
               return (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  {isStatusFiltered && (
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        backgroundColor: GOLD,
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
                   <Typography
                     sx={{
                       fontFamily: dm,
@@ -1345,6 +1350,16 @@ export default function AdminRequestManagement() {
                   >
                     {opt?.label || "All Statuses"}
                   </Typography>
+                  <NumberBadge
+                    count={triggerCount}
+                    active={isStatusFiltered}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                    sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
+                  />
                 </Box>
               );
             }}
@@ -1369,38 +1384,16 @@ export default function AdminRequestManagement() {
                 >
                   <span>{o.label}</span>
                   {/* Count badge — shown for all items so users can scan totals */}
-                  <Box
-                    component="span"
-                    sx={{
-                      minWidth: 20,
-                      height: 18,
-                      borderRadius: "99px",
-                      px: 0.75,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      // gold if selected, muted gray if zero, light gray otherwise
-                      backgroundColor: isSelected
-                        ? GOLD
-                        : count === 0
-                          ? "transparent"
-                          : isDark
-                            ? "rgba(255,255,255,0.08)"
-                            : "rgba(53,53,53,0.07)",
-                      fontSize: "0.62rem",
-                      fontWeight: 600,
-                      lineHeight: 1,
-                      color: isSelected
-                        ? "#000"
-                        : count === 0
-                          ? "text.disabled"
-                          : "text.secondary",
-                      border: count === 0 ? "none" : "none",
-                      opacity: count === 0 ? 0.4 : 1,
-                    }}
-                  >
-                    {count}
-                  </Box>
+                  <NumberBadge
+                    count={count}
+                    active={isSelected}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                    sx={{ opacity: count === 0 ? 0.5 : 1 }}
+                  />
                 </MenuItem>
               );
             })}
@@ -1467,8 +1460,8 @@ export default function AdminRequestManagement() {
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: 38,
-            borderRadius: "10px",
+            height: FILTER_BUTTON_HEIGHT,
+            borderRadius: CONTROL_RADIUS,
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
             fontFamily: dm,
@@ -1498,10 +1491,10 @@ export default function AdminRequestManagement() {
               setSettingsOpen(true);
             }}
             sx={{
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
               p: 0.7,
-              height: 38,
-              width: 38,
+              height: FILTER_BUTTON_HEIGHT,
+              width: FILTER_BUTTON_HEIGHT,
               border: "1px solid rgba(0,0,0,0.12)",
               color: "text.secondary",
               backgroundColor: isDark ? "transparent" : "#f7f7f8",
@@ -1581,13 +1574,13 @@ export default function AdminRequestManagement() {
                 },
               }}
               rowHeight={
-                ["On Going", "Completed"].includes(statusFilter) ? 60 : 52
+                ["On Going", "Completed"].includes(statusFilter) ? 60 : 56
               }
               getRowHeight={
                 statusFilter === "Forwarded"
                   ? ({ model }) => {
                       const s = model.forwardedTo?.length || 1;
-                      if (s <= 1) return 52;
+                    if (s <= 1) return 56;
                       if (s === 2) return 68;
                       return 88;
                     }

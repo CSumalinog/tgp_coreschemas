@@ -49,6 +49,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ViewActionButton from "../../components/common/ViewActionButton";
+import NumberBadge from "../../components/common/NumberBadge";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -1912,19 +1913,9 @@ export default function SecHeadAssignmentManagement() {
             inputProps={{ "aria-label": "Assignment view filter" }}
             renderValue={(val) => {
               const opt = VIEW_OPTIONS.find((o) => o.key === val);
+              const triggerCount = getViewCount(val);
               return (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  {isViewFiltered && (
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        backgroundColor: GOLD,
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
                   <Typography
                     sx={{
                       fontFamily: dm,
@@ -1934,6 +1925,14 @@ export default function SecHeadAssignmentManagement() {
                   >
                     {opt?.label || "For Assignment"}
                   </Typography>
+                  <NumberBadge
+                    count={triggerCount}
+                    active={isViewFiltered}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                    sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
+                  />
                 </Box>
               );
             }}
@@ -1957,36 +1956,14 @@ export default function SecHeadAssignmentManagement() {
                   }}
                 >
                   <span>{o.label}</span>
-                  <Box
-                    component="span"
-                    sx={{
-                      minWidth: 20,
-                      height: 18,
-                      borderRadius: "99px",
-                      px: 0.75,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isSelected
-                        ? GOLD
-                        : count === 0
-                          ? "transparent"
-                          : isDark
-                            ? "rgba(255,255,255,0.08)"
-                            : "rgba(53,53,53,0.07)",
-                      fontSize: "0.62rem",
-                      fontWeight: 600,
-                      lineHeight: 1,
-                      color: isSelected
-                        ? "#000"
-                        : count === 0
-                          ? "text.disabled"
-                          : "text.secondary",
-                      opacity: count === 0 ? 0.4 : 1,
-                    }}
-                  >
-                    {count}
-                  </Box>
+                  <NumberBadge
+                    count={count}
+                    active={isSelected}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                    sx={{ opacity: count === 0 ? 0.5 : 1 }}
+                  />
                 </MenuItem>
               );
             })}
@@ -2179,7 +2156,7 @@ export default function SecHeadAssignmentManagement() {
                 },
               }}
               rowHeight={
-                ["on-going", "completed"].includes(viewFilter) ? 60 : 52
+                ["on-going", "completed"].includes(viewFilter) ? 60 : 56
               }
               getRowClassName={(params) =>
                 highlight && params.row.title?.toLowerCase().includes(highlight)

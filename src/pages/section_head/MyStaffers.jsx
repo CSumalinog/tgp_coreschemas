@@ -754,7 +754,7 @@ export default function MyStaffers() {
               pageSize={10}
               rowsPerPageOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick
-              rowHeight={52}
+              rowHeight={56}
               showToolbar={false}
               enableSearch={false}
             />

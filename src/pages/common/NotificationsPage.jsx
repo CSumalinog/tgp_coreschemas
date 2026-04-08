@@ -26,6 +26,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import NumberBadge from "../../components/common/NumberBadge";
 import {
   getNotificationDestination,
   getRoleFromPathname,
@@ -540,7 +541,7 @@ export default function NotificationsPage() {
                 sx={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 0.55,
+                  gap: 1,
                   px: 1.25,
                   py: 0.55,
                   borderRadius: "10px",
@@ -555,30 +556,12 @@ export default function NotificationsPage() {
               >
                 {item.label}
                 {item.key === "unread" && unreadCount > 0 && (
-                  <Box
-                    sx={{
-                      minWidth: 16,
-                      height: 16,
-                      borderRadius: "10px",
-                      px: 0.5,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: active ? "rgba(255,255,255,0.14)" : GOLD_08,
-                      color: active ? "#ffffff" : "#7a5c00",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {unreadCount}
-                    </Typography>
-                  </Box>
+                  <NumberBadge
+                    count={unreadCount}
+                    active={active}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                  />
                 )}
               </Box>
             );

@@ -377,7 +377,7 @@ export default function Draft() {
               rowsPerPageOptions={[10]}
               showToolbar={false}
               disableRowSelectionOnClick
-              rowHeight={52}
+              rowHeight={56}
             />
           )}
         </Box>

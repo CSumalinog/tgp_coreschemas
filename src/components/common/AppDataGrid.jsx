@@ -156,7 +156,6 @@ function DefaultGridToolbar({
   showSearch,
   selectedCount,
   selectionActions,
-  onClearSelection,
 }) {
   if (selectedCount > 0 && selectionActions?.length) {
     return (
@@ -279,6 +278,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
     rowSelectionModel: externalSelectionModel,
     onRowSelectionModelChange,
     apiRef: externalApiRef,
+    rowHeight = 56,
     sx: userSx,
     ...props
   },
@@ -480,6 +480,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
       onRowClick={handleRowClick}
       getRowClassName={handleGetRowClassName}
       apiRef={resolvedApiRef}
+      rowHeight={rowHeight}
       {...selectionProps}
       slots={{
         ...slots,

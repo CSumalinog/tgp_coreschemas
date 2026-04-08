@@ -15,9 +15,6 @@ import {
   MenuItem,
   OutlinedInput,
   InputAdornment,
-  Tabs,
-  Tab,
-  Badge,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
@@ -25,6 +22,14 @@ import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifySpecificStaff } from "../../services/NotificationService";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import NumberBadge from "../../components/common/NumberBadge";
+import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_GROUP_GAP,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+} from "../../utils/layoutTokens";
 import { useLocation } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -136,7 +141,7 @@ const AVATAR_COLORS = [
   { bg: "#FBEAF0", color: "#72243E" },
 ];
 
-const ACTION_BTN_HEIGHT = 36;
+const ACTION_BTN_HEIGHT = FILTER_BUTTON_HEIGHT;
 const REASON_PREVIEW_LIMIT = 88;
 
 const REQUEST_STATUS_META = {
@@ -1207,7 +1212,17 @@ export default function DutyScheduleView() {
       }}
     >
       {/* ── Header ── */}
-      <Box sx={{ mb: 3, flexShrink: 0 }}>
+      <Box
+        sx={{
+          mb: 3,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: 1,
+          flexWrap: "wrap",
+        }}
+      >
         <Typography
           sx={{
             fontFamily: dm,
@@ -1224,7 +1239,8 @@ export default function DutyScheduleView() {
             fontFamily: dm,
             fontSize: "0.78rem",
             color: "text.secondary",
-            mt: 0.3,
+            whiteSpace: { xs: "normal", md: "nowrap" },
+            textAlign: { xs: "left", md: "right" },
           }}
         >
           {activeSemester
@@ -1469,57 +1485,63 @@ export default function DutyScheduleView() {
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
-            gap: 1,
+            gap: FILTER_GROUP_GAP,
             flexWrap: "wrap",
           }}
         >
-          <Tabs
-            value={activeTab}
-            onChange={(event, value) => setActiveTab(value)}
-            textColor="primary"
-            indicatorColor="primary"
-            sx={{
-              minHeight: 44,
-              "& .MuiTab-root": {
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                textTransform: "none",
-                minHeight: 44,
-                py: 0.5,
-                px: 1.5,
-                borderRadius: "10px",
-              },
-              "& .MuiTabs-indicator": {
-                height: 3,
-                borderRadius: "3px",
-              },
-            }}
-          >
-            <Tab label="Schedule" />
-            <Tab
-              label={
-                <Badge
-                  badgeContent={pendingRequestCount}
-                  invisible={pendingRequestCount === 0}
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      backgroundColor: GOLD,
-                      color: "#000",
-                      minWidth: 16,
-                      height: 16,
-                      borderRadius: "50%",
-                      fontSize: "0.65rem",
-                      fontWeight: 700,
-                      padding: "0 4px",
-                      lineHeight: 1,
-                    },
-                  }}
-                >
-                  Requests
-                </Badge>
-              }
-            />
-          </Tabs>
+          {[
+            { key: 0, label: "Schedule" },
+            { key: 1, label: "Requests", showBadge: true },
+          ].map((item) => {
+            const active = activeTab === item.key;
+            return (
+              <Box
+                key={item.key}
+                component="button"
+                type="button"
+                onClick={() => setActiveTab(item.key)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: item.showBadge ? 1 : 0,
+                  px: 1.35,
+                  height: FILTER_BUTTON_HEIGHT,
+                  borderRadius: CONTROL_RADIUS,
+                  border: `1px solid ${active ? "#212121" : "rgba(53,53,53,0.12)"}`,
+                  backgroundColor: active ? "#212121" : "transparent",
+                  color: active ? "#ffffff" : "text.secondary",
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  fontWeight: active ? 600 : 500,
+                  lineHeight: 1.15,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  transition: "all 0.15s ease",
+                  "&:hover": {
+                    borderColor: active ? "#212121" : "rgba(53,53,53,0.22)",
+                    color: active ? "#ffffff" : "text.primary",
+                    backgroundColor: active ? "#212121" : "rgba(53,53,53,0.03)",
+                  },
+                }}
+              >
+                <Box component="span" sx={{ lineHeight: 1 }}>
+                  {item.label}
+                </Box>
+                {item.showBadge && pendingRequestCount > 0 ? (
+                  <NumberBadge
+                    count={pendingRequestCount}
+                    active={active}
+                    size={15}
+                    activeBg={GOLD}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    textColor="#ffffff"
+                    sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.62rem" }}
+                  />
+                ) : null}
+              </Box>
+            );
+          })}
         </Box>
       )}
 
@@ -1529,7 +1551,7 @@ export default function DutyScheduleView() {
             mb: 2,
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
+            gap: FILTER_ROW_GAP,
             flexWrap: "nowrap",
             overflowX: "auto",
             flexShrink: 0,
@@ -1548,7 +1570,8 @@ export default function DutyScheduleView() {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.78rem",
-                borderRadius: "10px",
+                borderRadius: CONTROL_RADIUS,
+                height: FILTER_INPUT_HEIGHT,
                 backgroundColor: "#f7f7f8",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "rgba(0,0,0,0.12)",
@@ -1565,7 +1588,8 @@ export default function DutyScheduleView() {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.78rem",
-                borderRadius: "10px",
+                borderRadius: CONTROL_RADIUS,
+                height: FILTER_INPUT_HEIGHT,
                 backgroundColor: "#f7f7f8",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "rgba(0,0,0,0.12)",
@@ -1590,7 +1614,7 @@ export default function DutyScheduleView() {
             size="small"
             onClick={() => setIsTableFullscreen(true)}
             sx={{
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
               color: "text.secondary",
               border: "1px solid rgba(0,0,0,0.12)",
               backgroundColor: "#f7f7f8",
@@ -1616,7 +1640,7 @@ export default function DutyScheduleView() {
               gap: 0.5,
               px: 1.5,
               height: ACTION_BTN_HEIGHT,
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
               cursor: "pointer",
               border: "1px solid rgba(0,0,0,0.12)",
               fontFamily: dm,
@@ -1657,7 +1681,7 @@ export default function DutyScheduleView() {
               pageSize={10}
               rowsPerPageOptions={[10]}
               disableRowSelectionOnClick
-              rowHeight={52}
+              rowHeight={56}
               enableSearch={false}
               apiRef={requestGridApiRef}
               slotProps={{
@@ -1679,7 +1703,7 @@ export default function DutyScheduleView() {
             mb: 2,
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
+            gap: FILTER_ROW_GAP,
             flexWrap: "nowrap",
             overflowX: "auto",
             flexShrink: 0,
@@ -1699,7 +1723,8 @@ export default function DutyScheduleView() {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.78rem",
-                borderRadius: "10px",
+                borderRadius: CONTROL_RADIUS,
+                height: FILTER_INPUT_HEIGHT,
                 backgroundColor: "#f7f7f8",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "rgba(0,0,0,0.12)",
@@ -1715,34 +1740,38 @@ export default function DutyScheduleView() {
               onChange={(e) => setSectionFilter(e.target.value)}
               IconComponent={UnfoldMoreIcon}
               displayEmpty
-              renderValue={(val) => (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  {isSectionFiltered && (
-                    <Box
+              renderValue={(val) => {
+                const triggerCount =
+                  val === "All"
+                    ? schedules.length
+                    : schedules.filter((s) => s.staffer?.section === val).length;
+                return (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography
                       sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        backgroundColor: GOLD,
-                        flexShrink: 0,
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        color: "text.primary",
                       }}
+                    >
+                      {val}
+                    </Typography>
+                    <NumberBadge
+                      count={triggerCount}
+                      active={isSectionFiltered}
+                      inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                      fontFamily={dm}
+                      fontSize="0.56rem"
+                      sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
                     />
-                  )}
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      color: "text.primary",
-                    }}
-                  >
-                    {val}
-                  </Typography>
-                </Box>
-              )}
+                  </Box>
+                );
+              }}
               sx={{
                 fontFamily: dm,
                 fontSize: "0.78rem",
-                borderRadius: "10px",
+                borderRadius: CONTROL_RADIUS,
+                height: FILTER_INPUT_HEIGHT,
                 backgroundColor: "#f7f7f8",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "rgba(0,0,0,0.12)",
@@ -1772,36 +1801,14 @@ export default function DutyScheduleView() {
                     }}
                   >
                     {sec}
-                    <Box
-                      component="span"
-                      sx={{
-                        minWidth: 20,
-                        height: 18,
-                        borderRadius: "99px",
-                        px: 0.75,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: isSelected
-                          ? GOLD
-                          : count === 0
-                            ? "transparent"
-                            : isDark
-                              ? "rgba(255,255,255,0.08)"
-                              : "rgba(53,53,53,0.07)",
-                        fontSize: "0.62rem",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        color: isSelected
-                          ? "#000"
-                          : count === 0
-                            ? "text.disabled"
-                            : "text.secondary",
-                        opacity: count === 0 ? 0.4 : 1,
-                      }}
-                    >
-                      {count}
-                    </Box>
+                    <NumberBadge
+                      count={count}
+                      active={isSelected}
+                      inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                      fontFamily={dm}
+                      fontSize="0.56rem"
+                      sx={{ opacity: count === 0 ? 0.5 : 1 }}
+                    />
                   </MenuItem>
                 );
               })}
@@ -1815,7 +1822,7 @@ export default function DutyScheduleView() {
             size="small"
             onClick={() => setIsTableFullscreen(true)}
             sx={{
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
               color: "text.secondary",
               border: "1px solid rgba(0,0,0,0.12)",
               backgroundColor: "#f7f7f8",
@@ -1842,7 +1849,7 @@ export default function DutyScheduleView() {
               gap: 0.5,
               px: 1.5,
               height: ACTION_BTN_HEIGHT,
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
               cursor: "pointer",
               border: "1px solid rgba(0,0,0,0.12)",
               fontFamily: dm,
@@ -1896,7 +1903,7 @@ export default function DutyScheduleView() {
               pageSize={10}
               rowsPerPageOptions={[10]}
               disableRowSelectionOnClick
-              rowHeight={52}
+              rowHeight={56}
               enableSearch={false}
               apiRef={gridApiRef}
               slotProps={{
@@ -2081,30 +2088,33 @@ export default function DutyScheduleView() {
                     onChange={(e) => setSectionFilter(e.target.value)}
                     IconComponent={UnfoldMoreIcon}
                     displayEmpty
-                    renderValue={(val) => (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {isSectionFiltered && (
-                          <Box
+                    renderValue={(val) => {
+                      const triggerCount =
+                        val === "All"
+                          ? schedules.length
+                          : schedules.filter((s) => s.staffer?.section === val).length;
+                      return (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography
                             sx={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: "50%",
-                              backgroundColor: GOLD,
-                              flexShrink: 0,
+                              fontFamily: dm,
+                              fontSize: "0.78rem",
+                              color: "text.primary",
                             }}
+                          >
+                            {val}
+                          </Typography>
+                          <NumberBadge
+                            count={triggerCount}
+                            active={isSectionFiltered}
+                            inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                            fontFamily={dm}
+                            fontSize="0.56rem"
+                            sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
                           />
-                        )}
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.78rem",
-                            color: "text.primary",
-                          }}
-                        >
-                          {val}
-                        </Typography>
-                      </Box>
-                    )}
+                        </Box>
+                      );
+                    }}
                     sx={{
                       fontFamily: dm,
                       fontSize: "0.78rem",
@@ -2141,36 +2151,14 @@ export default function DutyScheduleView() {
                           }}
                         >
                           {sec}
-                          <Box
-                            component="span"
-                            sx={{
-                              minWidth: 20,
-                              height: 18,
-                              borderRadius: "99px",
-                              px: 0.75,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              backgroundColor: isSelected
-                                ? GOLD
-                                : count === 0
-                                  ? "transparent"
-                                  : isDark
-                                    ? "rgba(255,255,255,0.08)"
-                                    : "rgba(53,53,53,0.07)",
-                              fontSize: "0.62rem",
-                              fontWeight: 600,
-                              lineHeight: 1,
-                              color: isSelected
-                                ? "#000"
-                                : count === 0
-                                  ? "text.disabled"
-                                  : "text.secondary",
-                              opacity: count === 0 ? 0.4 : 1,
-                            }}
-                          >
-                            {count}
-                          </Box>
+                          <NumberBadge
+                            count={count}
+                            active={isSelected}
+                            inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                            fontFamily={dm}
+                            fontSize="0.56rem"
+                            sx={{ opacity: count === 0 ? 0.5 : 1 }}
+                          />
                         </MenuItem>
                       );
                     })}
@@ -2349,7 +2337,7 @@ export default function DutyScheduleView() {
                   pageSize={10}
                   rowsPerPageOptions={[10]}
                   disableRowSelectionOnClick
-                  rowHeight={52}
+                  rowHeight={56}
                   enableSearch={false}
                   apiRef={activeTab === 0 ? gridApiRef : requestGridApiRef}
                   slotProps={{

@@ -51,6 +51,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { useLocation } from "react-router-dom";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import NumberBadge from "../../components/common/NumberBadge";
 
 import {
   TimeInModal,
@@ -1703,7 +1704,7 @@ export default function MyAssignment() {
                 sx={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 0.6,
+                  gap: 1,
                   px: 1.5,
                   py: 0.65,
                   borderRadius: "10px",
@@ -1726,35 +1727,16 @@ export default function MyAssignment() {
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <Box
-                    sx={{
-                      minWidth: 17,
-                      height: 17,
-                      borderRadius: "10px",
-                      px: 0.5,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isActive
-                        ? "rgba(255,255,255,0.18)"
-                        : isDark
-                          ? "rgba(255,255,255,0.1)"
-                          : "rgba(53,53,53,0.08)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        color: isActive ? "#fff" : "text.secondary",
-                      }}
-                    >
-                      {tab.count}
-                    </Typography>
-                  </Box>
+                  <NumberBadge
+                    count={tab.count}
+                    active={isActive}
+                    activeBg={GOLD}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    textColor="#ffffff"
+                    fontFamily={dm}
+                    fontSize="0.6rem"
+                    sx={{ flexShrink: 0 }}
+                  />
                 )}
               </Box>
             );
@@ -1770,7 +1752,7 @@ export default function MyAssignment() {
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 0.6,
+                  gap: 1,
                   px: 1.25,
                   py: 0.55,
                   borderRadius: "10px",
@@ -1793,29 +1775,14 @@ export default function MyAssignment() {
                 <FilterListIcon sx={{ fontSize: 15 }} />
                 Filter
                 {activeFilterCount > 0 && (
-                  <Box
-                    sx={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: "10px",
-                      backgroundColor: GOLD,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
-                        color: CHARCOAL,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {activeFilterCount}
-                    </Typography>
-                  </Box>
+                  <NumberBadge
+                    count={activeFilterCount}
+                    active
+                    activeBg={GOLD}
+                    textColor="#ffffff"
+                    fontFamily={dm}
+                    fontSize="0.6rem"
+                  />
                 )}
               </Box>
               {filterOpen && (

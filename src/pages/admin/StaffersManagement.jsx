@@ -19,6 +19,9 @@ import {
   FormControl,
   Select,
   OutlinedInput,
+  Drawer,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
@@ -34,16 +37,28 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import { useSearchParams } from "react-router-dom";
 import {
   fetchAllStaffers,
+  fetchTrashedStaffers,
   createStafferAccount,
   updateStafferProfile,
   toggleStafferStatus,
+  moveStaffersToTrash,
+  restoreTrashedStaffers,
   deleteStafferAccount,
 } from "../../services/StafferService";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import NumberBadge from "../../components/common/NumberBadge";
+import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+} from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -140,8 +155,6 @@ const AVATAR_COLORS = [
   { bg: "#FBEAF0", color: "#72243E" },
 ];
 
-const ACTION_BTN_HEIGHT = 36;
-
 const getInitials = (name) =>
   (name || "?")
     .split(" ")
@@ -199,8 +212,33 @@ export default function StaffersManagement() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteIds, setBulkDeleteIds] = useState([]);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [bulkDeactivateOpen, setBulkDeactivateOpen] = useState(false);
+  const [bulkDeactivateIds, setBulkDeactivateIds] = useState([]);
+  const [bulkDeactivateLoading, setBulkDeactivateLoading] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuRow, setMenuRow] = useState(null);
+  const [recordsDrawerOpen, setRecordsDrawerOpen] = useState(false);
+  const [recordsTab, setRecordsTab] = useState("deactivated");
+  const [trashedStaffers, setTrashedStaffers] = useState([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
   const gridApiRef = useGridApiRef();
+  const [rowSelectionModel, setRowSelectionModel] = useState({
+    type: "include",
+    ids: new Set(),
+  });
+
+  const selectedRowCount =
+    rowSelectionModel?.ids instanceof Set ? rowSelectionModel.ids.size : 0;
+  const isBulkSelectionActive = selectedRowCount > 1;
+
+  useEffect(() => {
+    if (!isBulkSelectionActive || !menuAnchor) return;
+    queueMicrotask(() => {
+      setMenuAnchor(null);
+      setMenuRow(null);
+    });
+  }, [isBulkSelectionActive, menuAnchor]);
 
   const loadStaffers = useCallback(async () => {
     setLoading(true);
@@ -217,6 +255,21 @@ export default function StaffersManagement() {
     loadStaffers();
   }, [loadStaffers]);
 
+  const loadTrashedStaffersList = useCallback(async () => {
+    setRecordsLoading(true);
+    try {
+      setTrashedStaffers(await fetchTrashedStaffers());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRecordsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTrashedStaffersList();
+  }, [loadTrashedStaffersList]);
+
   const filteredRows = useMemo(
     () =>
       staffers
@@ -231,6 +284,10 @@ export default function StaffersManagement() {
       : staffers.filter((s) => s.division === tab).length;
 
   const isDivisionFiltered = activeTab !== "All";
+  const deactivatedRows = useMemo(
+    () => staffers.filter((s) => !s.is_active),
+    [staffers],
+  );
 
   const externalFilterModel = useMemo(() => {
     const tokens = searchText
@@ -441,10 +498,10 @@ export default function StaffersManagement() {
   const handleConfirmDelete = async () => {
     setDeleteLoading(true);
     try {
-      await deleteStafferAccount(deleteTarget.id);
+      await moveStaffersToTrash([deleteTarget.id]);
       setDeleteOpen(false);
       setDeleteTarget(null);
-      loadStaffers();
+      await Promise.all([loadStaffers(), loadTrashedStaffersList()]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -455,14 +512,53 @@ export default function StaffersManagement() {
   const handleBulkDeleteConfirm = async () => {
     setBulkDeleteLoading(true);
     try {
-      await Promise.all(bulkDeleteIds.map((id) => deleteStafferAccount(id)));
+      await moveStaffersToTrash(bulkDeleteIds);
       setBulkDeleteOpen(false);
       setBulkDeleteIds([]);
-      loadStaffers();
+      setRowSelectionModel({ type: "include", ids: new Set() });
+      await Promise.all([loadStaffers(), loadTrashedStaffersList()]);
     } catch (err) {
       setError(err.message);
     } finally {
       setBulkDeleteLoading(false);
+    }
+  };
+
+  const handleBulkDeactivateConfirm = async () => {
+    setBulkDeactivateLoading(true);
+    try {
+      const targets = staffers.filter(
+        (s) => bulkDeactivateIds.includes(s.id) && s.is_active,
+      );
+      await Promise.all(
+        targets.map((staffer) => toggleStafferStatus(staffer.id, false)),
+      );
+      setBulkDeactivateOpen(false);
+      setBulkDeactivateIds([]);
+      setRowSelectionModel({ type: "include", ids: new Set() });
+      await Promise.all([loadStaffers(), loadTrashedStaffersList()]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkDeactivateLoading(false);
+    }
+  };
+
+  const handleRestoreFromTrash = async (id) => {
+    try {
+      await restoreTrashedStaffers([id]);
+      await Promise.all([loadStaffers(), loadTrashedStaffersList()]);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeletePermanently = async (id) => {
+    try {
+      await deleteStafferAccount(id);
+      await loadTrashedStaffersList();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -687,139 +783,44 @@ export default function StaffersManagement() {
         sortable: false,
         align: "center",
         headerAlign: "center",
-        renderCell: (p) => {
-          const [anchorEl, setAnchorEl] = React.useState(null);
-          const open = Boolean(anchorEl);
-          return (
-            <Box
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <IconButton
+              size="small"
+              disabled={isBulkSelectionActive}
+              onClick={(e) => {
+                if (isBulkSelectionActive) return;
+                e.stopPropagation();
+                setMenuAnchor(e.currentTarget);
+                setMenuRow(p.row);
+              }}
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100%",
+                borderRadius: "4px",
+                p: 0.4,
+                color: "text.secondary",
+                opacity: isBulkSelectionActive ? 0.4 : 1,
+                transition: "all 0.15s",
+                "&:hover": {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(53,53,53,0.06)",
+                },
               }}
             >
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAnchorEl(e.currentTarget);
-                }}
-                sx={{
-                  borderRadius: "4px",
-                  p: 0.4,
-                  color: "text.secondary",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(53,53,53,0.06)",
-                  },
-                }}
-              >
-                <MoreVertIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={open}
-                onClose={() => setAnchorEl(null)}
-                onClick={() => setAnchorEl(null)}
-                transformOrigin={{ horizontal: "right", vertical: "top" }}
-                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-                slotProps={{
-                  paper: {
-                    sx: {
-                      minWidth: 160,
-                      borderRadius: "10px",
-                      fontFamily: dm,
-                      mt: 0.5,
-                      boxShadow: isDark
-                        ? "0 8px 24px rgba(0,0,0,0.4)"
-                        : "0 8px 24px rgba(0,0,0,0.08)",
-                    },
-                  },
-                }}
-              >
-                <MenuItem
-                  onClick={() => handleOpenEdit(p.row)}
-                  sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}
-                >
-                  <ListItemIcon sx={{ minWidth: "auto !important" }}>
-                    <EditOutlinedIcon
-                      sx={{ fontSize: 15, color: "text.secondary" }}
-                    />
-                  </ListItemIcon>
-                  <ListItemText
-                    primaryTypographyProps={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                    }}
-                  >
-                    Edit
-                  </ListItemText>
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    setToggleTarget(p.row);
-                    setToggleOpen(true);
-                  }}
-                  sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}
-                >
-                  <ListItemIcon sx={{ minWidth: "auto !important" }}>
-                    {p.row.is_active ? (
-                      <BlockOutlinedIcon
-                        sx={{ fontSize: 15, color: "#f97316" }}
-                      />
-                    ) : (
-                      <CheckCircleOutlineIcon
-                        sx={{ fontSize: 15, color: "#22c55e" }}
-                      />
-                    )}
-                  </ListItemIcon>
-                  <ListItemText
-                    primaryTypographyProps={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                    }}
-                  >
-                    {p.row.is_active ? "Deactivate" : "Reactivate"}
-                  </ListItemText>
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    setDeleteTarget(p.row);
-                    setDeleteOpen(true);
-                  }}
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    gap: 1,
-                    py: 0.75,
-                    color: "#dc2626",
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: "auto !important" }}>
-                    <DeleteOutlineOutlinedIcon
-                      sx={{ fontSize: 15, color: "#dc2626" }}
-                    />
-                  </ListItemIcon>
-                  <ListItemText
-                    primaryTypographyProps={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      color: "#dc2626",
-                    }}
-                  >
-                    Delete
-                  </ListItemText>
-                </MenuItem>
-              </Menu>
-            </Box>
-          );
-        },
+              <MoreVertIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        ),
       },
     ],
-    [activeTab, border, isDark],
+    [isBulkSelectionActive, isDark],
   );
 
   const availableSections = formData.division
@@ -878,7 +879,7 @@ export default function StaffersManagement() {
           mb: 2,
           display: "flex",
           alignItems: "center",
-          gap: 1.5,
+          gap: FILTER_ROW_GAP,
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
@@ -898,7 +899,8 @@ export default function StaffersManagement() {
             sx={{
               fontFamily: dm,
               fontSize: "0.78rem",
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
               backgroundColor: "#f7f7f8",
               "& .MuiOutlinedInput-notchedOutline": {
                 borderColor: "rgba(0,0,0,0.12)",
@@ -914,34 +916,35 @@ export default function StaffersManagement() {
             onChange={(e) => setActiveTab(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
-            renderValue={(val) => (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                {isDivisionFiltered && (
-                  <Box
+            renderValue={(val) => {
+              const triggerCount = getCount(val);
+              return (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography
                     sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      backgroundColor: GOLD,
-                      flexShrink: 0,
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      color: "text.primary",
                     }}
+                  >
+                    {val}
+                  </Typography>
+                  <NumberBadge
+                    count={triggerCount}
+                    active={isDivisionFiltered}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                    sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
                   />
-                )}
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    color: "text.primary",
-                  }}
-                >
-                  {val}
-                </Typography>
-              </Box>
-            )}
+                </Box>
+              );
+            }}
             sx={{
               fontFamily: dm,
               fontSize: "0.78rem",
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
               backgroundColor: "#f7f7f8",
               "& .MuiOutlinedInput-notchedOutline": {
                 borderColor: "rgba(0,0,0,0.12)",
@@ -967,36 +970,14 @@ export default function StaffersManagement() {
                   }}
                 >
                   {tab}
-                  <Box
-                    component="span"
-                    sx={{
-                      minWidth: 20,
-                      height: 18,
-                      borderRadius: "99px",
-                      px: 0.75,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: isSelected
-                        ? GOLD
-                        : count === 0
-                          ? "transparent"
-                          : isDark
-                            ? "rgba(255,255,255,0.08)"
-                            : "rgba(53,53,53,0.07)",
-                      fontSize: "0.62rem",
-                      fontWeight: 600,
-                      lineHeight: 1,
-                      color: isSelected
-                        ? "#000"
-                        : count === 0
-                          ? "text.disabled"
-                          : "text.secondary",
-                      opacity: count === 0 ? 0.4 : 1,
-                    }}
-                  >
-                    {count}
-                  </Box>
+                  <NumberBadge
+                    count={count}
+                    active={isSelected}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                    sx={{ opacity: count === 0 ? 0.5 : 1 }}
+                  />
                 </MenuItem>
               );
             })}
@@ -1004,6 +985,31 @@ export default function StaffersManagement() {
         </FormControl>
 
         <Box sx={{ flex: 1 }} />
+
+        {/* Add Member */}
+        <Box
+          onClick={handleOpenCreate}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            px: 1.75,
+            height: FILTER_BUTTON_HEIGHT,
+            borderRadius: CONTROL_RADIUS,
+            cursor: "pointer",
+            backgroundColor: GOLD,
+            color: "#1a1a1a",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            transition: "background-color 0.15s",
+            flexShrink: 0,
+            "&:hover": { backgroundColor: "#e6b722" },
+          }}
+        >
+          <AddOutlinedIcon sx={{ fontSize: 15 }} />
+          Add Member
+        </Box>
 
         {/* Export */}
         <Box
@@ -1013,8 +1019,8 @@ export default function StaffersManagement() {
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: ACTION_BTN_HEIGHT,
-            borderRadius: "10px",
+            height: FILTER_BUTTON_HEIGHT,
+            borderRadius: CONTROL_RADIUS,
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
             fontFamily: dm,
@@ -1035,31 +1041,129 @@ export default function StaffersManagement() {
           Export
         </Box>
 
-        {/* Add Member */}
-        <Box
-          onClick={handleOpenCreate}
+        {/* Manage Records */}
+        <Tooltip title="Manage Staff Records" arrow>
+          <IconButton
+            onClick={() => setRecordsDrawerOpen(true)}
+            size="small"
+            sx={{
+              borderRadius: CONTROL_RADIUS,
+              p: 0.7,
+              height: FILTER_BUTTON_HEIGHT,
+              width: FILTER_BUTTON_HEIGHT,
+              border: "1px solid rgba(0,0,0,0.12)",
+              color: "text.secondary",
+              backgroundColor: "#f7f7f8",
+              transition: "all 0.15s",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* ── Row action menu ── */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        onClick={() => {
+          setMenuAnchor(null);
+          setMenuRow(null);
+        }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 160,
+              borderRadius: "10px",
+              fontFamily: dm,
+              mt: 0.5,
+              boxShadow: isDark
+                ? "0 8px 24px rgba(0,0,0,0.4)"
+                : "0 8px 24px rgba(0,0,0,0.08)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => menuRow && handleOpenEdit(menuRow)}
+          sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}
+        >
+          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+            <EditOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+            }}
+          >
+            Edit
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuRow) return;
+            setToggleTarget(menuRow);
+            setToggleOpen(true);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.78rem", gap: 1, py: 0.75 }}
+        >
+          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+            {menuRow?.is_active ? (
+              <BlockOutlinedIcon sx={{ fontSize: 15, color: "#f97316" }} />
+            ) : (
+              <CheckCircleOutlineIcon sx={{ fontSize: 15, color: "#22c55e" }} />
+            )}
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+            }}
+          >
+            {menuRow?.is_active ? "Deactivate" : "Reactivate"}
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuRow) return;
+            setDeleteTarget(menuRow);
+            setDeleteOpen(true);
+          }}
           sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.75,
-            px: 1.75,
-            height: ACTION_BTN_HEIGHT,
-            borderRadius: "10px",
-            cursor: "pointer",
-            backgroundColor: GOLD,
-            color: "#1a1a1a",
             fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            transition: "background-color 0.15s",
-            flexShrink: 0,
-            "&:hover": { backgroundColor: "#e6b722" },
+            fontSize: "0.78rem",
+            gap: 1,
+            py: 0.75,
+            color: "#dc2626",
           }}
         >
-          <AddOutlinedIcon sx={{ fontSize: 15 }} />
-          Add Member
-        </Box>
-      </Box>
+          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+            <DeleteOutlineOutlinedIcon sx={{ fontSize: 15, color: "#dc2626" }} />
+          </ListItemIcon>
+          <ListItemText
+            primaryTypographyProps={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "#dc2626",
+            }}
+          >
+            Delete
+          </ListItemText>
+        </MenuItem>
+      </Menu>
 
       <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
         <Box
@@ -1094,6 +1198,8 @@ export default function StaffersManagement() {
               rowHeight={56}
               enableSearch={false}
               apiRef={gridApiRef}
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={setRowSelectionModel}
               filterModel={externalFilterModel}
               slotProps={{
                 toolbar: {
@@ -1103,7 +1209,16 @@ export default function StaffersManagement() {
               }}
               selectionActions={[
                 {
+                  label: `Deactivate selected`,
+                  icon: <BlockOutlinedIcon sx={{ fontSize: 20 }} />,
+                  onClick: (ids) => {
+                    setBulkDeactivateIds(ids);
+                    setBulkDeactivateOpen(true);
+                  },
+                },
+                {
                   label: `Delete selected`,
+                  icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
                   color: "error",
                   onClick: (ids) => {
                     setBulkDeleteIds(ids);
@@ -1121,6 +1236,268 @@ export default function StaffersManagement() {
           )}
         </Box>
       </Box>
+
+      <Drawer
+        anchor="right"
+        open={recordsDrawerOpen}
+        onClose={() => setRecordsDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 520, md: 600 },
+            borderLeft: `1px solid ${border}`,
+            backgroundColor: isDark ? "#171717" : "#ffffff",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <SettingsOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            <Typography sx={{ fontFamily: dm, fontSize: "0.95rem", fontWeight: 700 }}>
+              Manage Staff Records
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setRecordsDrawerOpen(false)}>
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${border}` }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            {[
+              {
+                key: "deactivated",
+                label: `Deactivated (${deactivatedRows.length})`,
+                Icon: BlockOutlinedIcon,
+              },
+              {
+                key: "trash",
+                label: `Trash (${trashedStaffers.length})`,
+                Icon: DeleteOutlineOutlinedIcon,
+              },
+            ].map((item) => {
+              const active = recordsTab === item.key;
+              return (
+                <Box
+                  key={item.key}
+                  onClick={() => setRecordsTab(item.key)}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.6,
+                    px: 1.35,
+                    py: 0.5,
+                    borderRadius: "10px",
+                    border: `1px solid ${active ? "#212121" : border}`,
+                    backgroundColor: active ? "#212121" : "transparent",
+                    color: active ? "#ffffff" : "text.secondary",
+                    fontFamily: dm,
+                    fontSize: "0.82rem",
+                    fontWeight: active ? 600 : 500,
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  <item.Icon sx={{ fontSize: 14 }} />
+                  {item.label}
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+
+        <Box sx={{ p: 2.5, overflowY: "auto", flex: 1 }}>
+          {recordsLoading ? (
+            <Box sx={{ py: 5, display: "flex", justifyContent: "center" }}>
+              <BrandedLoader size={36} inline />
+            </Box>
+          ) : recordsTab === "deactivated" ? (
+            deactivatedRows.length === 0 ? (
+              <Box
+                sx={{
+                  border: `1px solid ${border}`,
+                  borderRadius: "10px",
+                  minHeight: 220,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 1,
+                }}
+              >
+                <ArchiveOutlinedIcon
+                  sx={{
+                    fontSize: 28,
+                    color: isDark
+                      ? "rgba(255,255,255,0.14)"
+                      : "rgba(53,53,53,0.14)",
+                  }}
+                />
+                <Typography sx={{ fontFamily: dm, fontSize: "0.92rem", color: "text.disabled" }}>
+                  No deactivated staff records
+                </Typography>
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  border: `1px solid ${border}`,
+                  borderRadius: "10px",
+                  p: 1.25,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                {deactivatedRows.map((s) => (
+                  <Box
+                    key={s.id}
+                    sx={{
+                      border: `1px solid ${border}`,
+                      borderRadius: "10px",
+                      p: 1.2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <Avatar src={getAvatarUrl(s.avatar_url)} sx={{ width: 30, height: 30, fontSize: "0.62rem" }}>
+                      {getInitials(s.full_name)}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {s.full_name}
+                      </Typography>
+                      <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}>
+                        {s.role} {s.section ? `· ${s.section}` : ""}
+                      </Typography>
+                    </Box>
+                    <Box
+                      onClick={async () => {
+                        await toggleStafferStatus(s.id, true);
+                        await loadStaffers();
+                      }}
+                      sx={{
+                        px: 1.1,
+                        py: 0.4,
+                        borderRadius: "10px",
+                        fontFamily: dm,
+                        fontSize: "0.7rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        border: "1px solid rgba(0,0,0,0.12)",
+                      }}
+                    >
+                      Reactivate
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            )
+          ) : trashedStaffers.length === 0 ? (
+            <Box
+              sx={{
+                border: `1px solid ${border}`,
+                borderRadius: "10px",
+                minHeight: 220,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+              }}
+            >
+              <DeleteOutlineOutlinedIcon
+                sx={{
+                  fontSize: 28,
+                  color: isDark
+                    ? "rgba(255,255,255,0.14)"
+                    : "rgba(53,53,53,0.14)",
+                }}
+              />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.92rem", color: "text.disabled" }}>
+                No trashed staff records
+              </Typography>
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                border: `1px solid ${border}`,
+                borderRadius: "10px",
+                p: 1.25,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+              }}
+            >
+              {trashedStaffers.map((s) => (
+                <Box
+                  key={s.id}
+                  sx={{
+                    border: `1px solid ${border}`,
+                    borderRadius: "10px",
+                    p: 1.2,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <Avatar src={getAvatarUrl(s.avatar_url)} sx={{ width: 30, height: 30, fontSize: "0.62rem" }}>
+                    {getInitials(s.full_name)}
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {s.full_name}
+                    </Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}>
+                      Trashed {new Date(s.trashed_at).toLocaleDateString("en-US")}
+                    </Typography>
+                  </Box>
+                  <Box
+                    onClick={() => handleRestoreFromTrash(s.id)}
+                    sx={{
+                      px: 1,
+                      py: 0.35,
+                      borderRadius: "10px",
+                      fontFamily: dm,
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                    }}
+                  >
+                    Restore
+                  </Box>
+                  <Box
+                    onClick={() => handleDeletePermanently(s.id)}
+                    sx={{
+                      px: 1,
+                      py: 0.35,
+                      borderRadius: "10px",
+                      fontFamily: dm,
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      color: "#dc2626",
+                      border: "1px solid rgba(220,38,38,0.35)",
+                      backgroundColor: "rgba(220,38,38,0.04)",
+                    }}
+                  >
+                    Delete
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Drawer>
 
       {/* ── Create / Edit Dialog ── */}
       <BrandDialog
@@ -1557,7 +1934,7 @@ export default function StaffersManagement() {
       <BrandDialog
         open={deleteOpen}
         onClose={() => !deleteLoading && setDeleteOpen(false)}
-        title="Delete Account"
+        title="Move Account to Trash"
         isDark={isDark}
         border={border}
         footer={
@@ -1592,7 +1969,7 @@ export default function StaffersManagement() {
               {deleteLoading && (
                 <CircularProgress size={13} sx={{ color: "#fff" }} />
               )}
-              Delete Permanently
+              Move to Trash
             </Box>
           </>
         }
@@ -1606,9 +1983,9 @@ export default function StaffersManagement() {
             mb: 1.5,
           }}
         >
-          Are you sure you want to permanently delete{" "}
+          Are you sure you want to move{" "}
           <strong style={{ color: CHARCOAL }}>{deleteTarget?.full_name}</strong>
-          's account? This action cannot be undone.
+          's account to trash? You can restore it from Manage Staff Records.
         </Typography>
         <Box
           sx={{
@@ -1639,7 +2016,7 @@ export default function StaffersManagement() {
       <BrandDialog
         open={bulkDeleteOpen}
         onClose={() => !bulkDeleteLoading && setBulkDeleteOpen(false)}
-        title="Delete Accounts"
+        title="Move Accounts to Trash"
         isDark={isDark}
         border={border}
         footer={
@@ -1674,7 +2051,7 @@ export default function StaffersManagement() {
               {bulkDeleteLoading && (
                 <CircularProgress size={13} sx={{ color: "#fff" }} />
               )}
-              Delete {bulkDeleteIds.length} Account
+              Move {bulkDeleteIds.length} Account
               {bulkDeleteIds.length !== 1 ? "s" : ""}
             </Box>
           </>
@@ -1689,12 +2066,12 @@ export default function StaffersManagement() {
             mb: 1.5,
           }}
         >
-          You are about to permanently delete{" "}
+          You are about to move{" "}
           <strong style={{ color: CHARCOAL }}>
             {bulkDeleteIds.length} account
             {bulkDeleteIds.length !== 1 ? "s" : ""}
           </strong>
-          . This action cannot be undone.
+          . You can restore them from Manage Staff Records.
         </Typography>
         <Box
           sx={{
@@ -1715,8 +2092,96 @@ export default function StaffersManagement() {
               lineHeight: 1.6,
             }}
           >
-            Use this only for graduates or members who have permanently left
-            TGP. For temporary deactivation, use the deactivate option instead.
+            Use this when members should be removed from the active roster while
+            keeping a recovery option in trash.
+          </Typography>
+        </Box>
+      </BrandDialog>
+
+      {/* ── Bulk Deactivate Dialog ── */}
+      <BrandDialog
+        open={bulkDeactivateOpen}
+        onClose={() => !bulkDeactivateLoading && setBulkDeactivateOpen(false)}
+        title="Deactivate Accounts"
+        isDark={isDark}
+        border={border}
+        footer={
+          <>
+            <CancelBtn
+              onClick={() => setBulkDeactivateOpen(false)}
+              disabled={bulkDeactivateLoading}
+              border={border}
+            />
+            <Box
+              onClick={
+                !bulkDeactivateLoading ? handleBulkDeactivateConfirm : undefined
+              }
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                px: 1.75,
+                py: 0.65,
+                borderRadius: "10px",
+                cursor: bulkDeactivateLoading ? "default" : "pointer",
+                backgroundColor: "#1f2937",
+                color: "#fff",
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                opacity: bulkDeactivateLoading ? 0.7 : 1,
+                transition: "background-color 0.15s",
+                "&:hover": {
+                  backgroundColor: bulkDeactivateLoading ? "#1f2937" : "#111827",
+                },
+              }}
+            >
+              {bulkDeactivateLoading && (
+                <CircularProgress size={13} sx={{ color: "#fff" }} />
+              )}
+              Deactivate {bulkDeactivateIds.length} Account
+              {bulkDeactivateIds.length !== 1 ? "s" : ""}
+            </Box>
+          </>
+        }
+      >
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.82rem",
+            color: "text.secondary",
+            lineHeight: 1.65,
+            mb: 1.5,
+          }}
+        >
+          You are about to deactivate{" "}
+          <strong style={{ color: CHARCOAL }}>
+            {bulkDeactivateIds.length} account
+            {bulkDeactivateIds.length !== 1 ? "s" : ""}
+          </strong>
+          . Deactivated members can be reactivated later.
+        </Typography>
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1.25,
+            borderRadius: "10px",
+            backgroundColor: isDark
+              ? "rgba(31,41,55,0.16)"
+              : "rgba(31,41,55,0.06)",
+            border: "1px solid rgba(31,41,55,0.2)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              color: isDark ? "rgba(255,255,255,0.75)" : "#374151",
+              lineHeight: 1.6,
+            }}
+          >
+            This is a reversible action and is recommended for members who are
+            temporarily inactive.
           </Typography>
         </Box>
       </BrandDialog>

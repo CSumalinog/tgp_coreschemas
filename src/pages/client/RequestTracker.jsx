@@ -53,8 +53,14 @@ import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 
-import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
+import {
+  DataGrid,
+  useGridApiRef,
+  GridLogicOperator,
+  gridFilteredSortedRowIdsSelector,
+} from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
+import NumberBadge from "../../components/common/NumberBadge";
 import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { supabase } from "../../lib/supabaseClient";
@@ -171,6 +177,16 @@ const RESCHEDULABLE_STATUSES = [
   "On Going",
 ];
 
+const PIPELINE_ACTIVE_STATUSES = [
+  "Pending",
+  "Forwarded",
+  "Assigned",
+  "For Approval",
+  "Approved",
+  "On Going",
+  "Completed",
+];
+
 // ── Pipeline stages ───────────────────────────────────────────────────────────
 const PIPELINE_STAGES = [
   {
@@ -258,6 +274,39 @@ const TABS = [
   { label: "Declined", Icon: BlockOutlinedIcon },
 ];
 
+const VIEW_BADGE_CONFIG = {
+  pipeline: {
+    label: "Pipeline",
+    bg: "#eef2ff",
+    color: "#4338ca",
+    dot: "#6366f1",
+  },
+  0: {
+    label: "All Requests",
+    bg: "#f3f4f6",
+    color: "#4b5563",
+    dot: "#9ca3af",
+  },
+  1: {
+    label: "Pending",
+    bg: "#fef9ec",
+    color: "#b45309",
+    dot: "#f59e0b",
+  },
+  2: {
+    label: "Approved",
+    bg: "#f0fdf4",
+    color: "#15803d",
+    dot: "#22c55e",
+  },
+  3: {
+    label: "Declined",
+    bg: "#fef2f2",
+    color: "#dc2626",
+    dot: "#ef4444",
+  },
+};
+
 const SILENT = { sound: false, toast: false, tabFlash: false };
 
 function resolveTrackerTab(tab) {
@@ -267,6 +316,43 @@ function resolveTrackerTab(tab) {
   if (tab === "approved" || tab === 2) return 2;
   if (tab === "declined" || tab === 3) return 3;
   return "pipeline";
+}
+
+function ViewFilterBadge({ value, count, active = false, spread = false }) {
+  const cfg = VIEW_BADGE_CONFIG[value] || {
+    label: "Select view",
+    bg: "#f3f4f6",
+    color: "#4b5563",
+    dot: "#9ca3af",
+  };
+
+  return (
+    <Box
+      sx={{
+        width: spread ? "100%" : "auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: spread ? "space-between" : "flex-start",
+        gap: 1,
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.84rem",
+          fontWeight: 400,
+          color: "text.primary",
+          lineHeight: 1.2,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {cfg.label}
+      </Typography>
+      <NumberBadge count={count} active={active} fontFamily={dm} />
+    </Box>
+  );
 }
 
 function useAutoOpenRequest(rows, openRequestId, onOpen) {
@@ -436,31 +522,57 @@ export default function RequestTracker() {
   const location = useLocation();
   const [tab, setTab] = useState(() => resolveTrackerTab(location.state?.tab));
   const [searchText, setSearchText] = useState("");
+  const { requests: trackerRequests } = useClientRequests();
   const gridApiRef = useGridApiRef();
   const border = isDark ? BORDER_DARK : BORDER;
   const openRequestId = location.state?.openRequestId || null;
-
-  const isPipeline = tab === "pipeline";
+  const lastSyncedLocationTabRef = useRef(location.state?.tab);
 
   const externalFilterModel = useMemo(() => {
     const tokens = searchText
       .split(/\s+/)
       .map((t) => t.trim())
       .filter(Boolean);
-    return { items: [], quickFilterValues: tokens };
+    return {
+      items: [],
+      quickFilterValues: tokens,
+      quickFilterLogicOperator: GridLogicOperator.Or,
+    };
   }, [searchText]);
 
   const handleExportCsv = () => {
+    if (tab === "pipeline") {
+      return;
+    }
+
     gridApiRef.current?.exportDataAsCsv({
       utf8WithBom: true,
       fileName: "request-tracker-export",
+      getRowsToExport: ({ apiRef }) => gridFilteredSortedRowIdsSelector(apiRef),
     });
   };
 
   useEffect(() => {
-    const nextTab = resolveTrackerTab(location.state?.tab);
-    if (nextTab !== tab) setTab(nextTab);
-  }, [location.state?.tab, tab]);
+    const locationTab = location.state?.tab;
+    if (locationTab === lastSyncedLocationTabRef.current) return;
+
+    lastSyncedLocationTabRef.current = locationTab;
+    queueMicrotask(() => setTab(resolveTrackerTab(locationTab)));
+  }, [location.state?.tab]);
+
+  const isPipeline = tab === "pipeline";
+  const filterControlHeight = 40;
+
+  const viewCounts = useMemo(() => {
+    const nonDraft = trackerRequests.filter((r) => r.status !== "Draft");
+    return {
+      pipeline: trackerRequests.filter((r) => PIPELINE_ACTIVE_STATUSES.includes(r.status)).length,
+      0: nonDraft.length,
+      1: trackerRequests.filter((r) => r.status === "Pending").length,
+      2: trackerRequests.filter((r) => r.status === "Approved").length,
+      3: trackerRequests.filter((r) => r.status === "Declined").length,
+    };
+  }, [trackerRequests]);
 
   return (
     <Box
@@ -528,6 +640,7 @@ export default function RequestTracker() {
               </InputAdornment>
             }
             sx={{
+              height: filterControlHeight,
               fontFamily: dm,
               fontSize: "0.78rem",
               borderRadius: "10px",
@@ -547,12 +660,11 @@ export default function RequestTracker() {
             IconComponent={UnfoldMoreIcon}
             displayEmpty
             inputProps={{ "aria-label": "Request view filter" }}
-            renderValue={(v) => {
-              if (v === "pipeline") return "Pipeline";
-              if (v === "") return "Select view";
-              return TABS[v]?.label || "";
-            }}
+            renderValue={(v) => (
+              <ViewFilterBadge value={v} count={viewCounts[v]} active />
+            )}
             sx={{
+              height: filterControlHeight,
               fontFamily: dm,
               fontSize: "0.78rem",
               borderRadius: "10px",
@@ -565,17 +677,37 @@ export default function RequestTracker() {
           >
             <MenuItem
               value="pipeline"
-              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                fontWeight: 400,
+                "&.Mui-selected": { fontWeight: 400 },
+              }}
             >
-              Pipeline
+              <ViewFilterBadge
+                value="pipeline"
+                count={viewCounts.pipeline}
+                active={tab === "pipeline"}
+                spread
+              />
             </MenuItem>
             {TABS.map(({ label }, idx) => (
               <MenuItem
                 key={label}
                 value={idx}
-                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  fontWeight: 400,
+                  "&.Mui-selected": { fontWeight: 400 },
+                }}
               >
-                {label}
+                <ViewFilterBadge
+                  value={idx}
+                  count={viewCounts[idx]}
+                  active={tab === idx}
+                  spread
+                />
               </MenuItem>
             ))}
           </Select>
@@ -591,7 +723,7 @@ export default function RequestTracker() {
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: 40,
+            height: filterControlHeight,
             borderRadius: "10px",
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
@@ -602,6 +734,8 @@ export default function RequestTracker() {
             backgroundColor: "#f7f7f8",
             transition: "all 0.15s",
             flexShrink: 0,
+            opacity: isPipeline ? 0.5 : 1,
+            pointerEvents: isPipeline ? "none" : "auto",
             "&:hover": {
               borderColor: "rgba(53,53,53,0.3)",
               color: "text.primary",
@@ -676,15 +810,7 @@ function PipelineTab({ isDark, border, openRequestId }) {
   });
 
   const active = requests.filter((r) =>
-    [
-      "Pending",
-      "Forwarded",
-      "Assigned",
-      "For Approval",
-      "Approved",
-      "On Going",
-      "Completed",
-    ].includes(r.status),
+    PIPELINE_ACTIVE_STATUSES.includes(r.status),
   );
 
   useAutoOpenRequest(active, openRequestId, setSelected);
@@ -1158,7 +1284,6 @@ function PipelineCard({ request, isDark, border, onClick }) {
 function RequestsGrid({
   rows,
   columns,
-  isDark,
   border,
   gridApiRef,
   filterModel,
@@ -1181,7 +1306,7 @@ function RequestsGrid({
           pageSize={10}
           rowsPerPageOptions={[10]}
           disableRowSelectionOnClick
-          rowHeight={52}
+          rowHeight={56}
           enableSearch={false}
           apiRef={gridApiRef}
           filterModel={filterModel}
@@ -1312,8 +1437,6 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
 
 // ── Shared grid columns hook ──────────────────────────────────────────────────
 function useGridColumns(isDark, { onView, onReschedule, onCancel } = {}) {
-  const border = isDark ? BORDER_DARK : BORDER;
-
   const titleCol = {
     field: "eventTitle",
     headerName: "Event Title",

@@ -30,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "./UserAvatar";
 import BrandedLoader from "./BrandedLoader";
+import { getMuiNumberBadgeSx } from "./numberBadgeStyles";
 import {
   getNotificationDestination,
   getNotificationPagePath,
@@ -139,7 +140,10 @@ function buildCoverageRequestMessage(notification, requesterName) {
     return notification.message;
   }
 
-  const requestLabel = getCoverageRequestLabel(notification.message, notification.title);
+  const requestLabel = getCoverageRequestLabel(
+    notification.message,
+    notification.title,
+  );
   const section = getSectionFromCoverageMessage(notification.message);
   const fromClause = section ? ` from ${section}` : "";
 
@@ -152,7 +156,9 @@ function getReasonFromMessage(message) {
 }
 
 function getRescheduleDateFromMessage(message) {
-  const dateMatch = String(message || "").match(/rescheduled\s+to\s+(.+?)(?:\.|$)/i);
+  const dateMatch = String(message || "").match(
+    /rescheduled\s+to\s+(.+?)(?:\.|$)/i,
+  );
   return dateMatch?.[1]?.trim() || "";
 }
 
@@ -161,7 +167,10 @@ function buildRequestCancelledMessage(notification, actorLabel) {
     return notification.message;
   }
 
-  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const requestLabel = getRequestLabel(
+    notification.message,
+    notification.title,
+  );
   const reason = getReasonFromMessage(notification.message);
 
   return `${actorLabel} cancelled the request for "${requestLabel}".${reason ? ` Reason: ${reason}` : ""}`;
@@ -172,7 +181,10 @@ function buildRequestRescheduledMessage(notification, actorLabel) {
     return notification.message;
   }
 
-  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const requestLabel = getRequestLabel(
+    notification.message,
+    notification.title,
+  );
   const nextDate = getRescheduleDateFromMessage(notification.message);
   const reason = getReasonFromMessage(notification.message);
   const dateClause = nextDate ? ` to ${nextDate}` : "";
@@ -185,7 +197,10 @@ function buildForwardedMessage(notification, actorLabel) {
     return notification.message;
   }
 
-  const requestLabel = getRequestLabel(notification.message, notification.title);
+  const requestLabel = getRequestLabel(
+    notification.message,
+    notification.title,
+  );
   return `${actorLabel} forwarded "${requestLabel}" for staff assignment.`;
 }
 
@@ -195,7 +210,9 @@ function buildDutyChangeRejectedMessage(notification, actorLabel) {
   }
 
   const message = String(notification.message || "");
-  const changeMatch = message.match(/change\s+from\s+(.+?)\s+to\s+(.+?)\s+was\s+rejected/i);
+  const changeMatch = message.match(
+    /change\s+from\s+(.+?)\s+to\s+(.+?)\s+was\s+rejected/i,
+  );
   const reasonMatch = message.match(/Reason:\s*(.+)$/i);
 
   if (!changeMatch) {
@@ -432,16 +449,24 @@ export default function NotificationBell({ userId }) {
             <Badge
               badgeContent={unreadCount}
               invisible={unreadCount === 0}
-              sx={{
-                "& .MuiBadge-badge": {
-                  fontSize: "0.6rem",
-                  height: 15,
-                  minWidth: 15,
-                  backgroundColor: "#c62828",
-                  color: "#fff",
+              sx={[
+                getMuiNumberBadgeSx({
+                  size: 15,
+                  bgColor: GOLD,
+                  textColor: "#ffffff",
                   fontFamily: dm,
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                }),
+                {
+                  "& .MuiBadge-badge": {
+                    top: 0,
+                    right: 0,
+                    transform: "translate(55%, -55%)",
+                    boxShadow: `0 0 0 2px ${isDark ? "#1a1a1a" : "#ffffff"}`,
+                  },
                 },
-              }}
+              ]}
             >
               <NotificationsNoneOutlinedIcon sx={{ fontSize: 18 }} />
             </Badge>
@@ -487,7 +512,14 @@ export default function NotificationBell({ userId }) {
                 flexShrink: 0,
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                }}
+              >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Box
                     sx={{
@@ -549,7 +581,14 @@ export default function NotificationBell({ userId }) {
                 </IconButton>
               </Box>
 
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.7 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 0.7,
+                }}
+              >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.7 }}>
                   {[
                     { key: "all", label: "All" },
@@ -666,9 +705,11 @@ export default function NotificationBell({ userId }) {
                   const unread = !notif.is_read;
                   const navigable = isNotificationNavigable(notif);
                   const requester = requesterProfiles[notif.created_by] || null;
-                  const requesterName = requester?.full_name || "Unknown requester";
+                  const requesterName =
+                    requester?.full_name || "Unknown requester";
                   const requesterSection = requester?.section || "";
-                  const requesterDesignation = requester?.designation || requesterSection;
+                  const requesterDesignation =
+                    requester?.designation || requesterSection;
                   const actorLabel =
                     requesterName === "Unknown requester"
                       ? requesterName
@@ -677,25 +718,43 @@ export default function NotificationBell({ userId }) {
                     requesterName === "Unknown requester"
                       ? requesterName
                       : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
-                  const requesterAvatarUrl = getAvatarUrl(requester?.avatar_url);
+                  const requesterAvatarUrl = getAvatarUrl(
+                    requester?.avatar_url,
+                  );
                   const isCoverageRequest = notif.type === "new_request";
                   const isRequestCancelled = notif.type === "request_cancelled";
-                  const isRequestRescheduled = notif.type === "request_rescheduled";
+                  const isRequestRescheduled =
+                    notif.type === "request_rescheduled";
                   const isForwarded = notif.type === "forwarded";
                   const isDutyChangeRejected =
                     notif.type === "duty_schedule_change_rejected";
 
                   let displayMessage = notif.message;
                   if (isCoverageRequest) {
-                    displayMessage = buildCoverageRequestMessage(notif, requesterName);
+                    displayMessage = buildCoverageRequestMessage(
+                      notif,
+                      requesterName,
+                    );
                   } else if (isRequestCancelled) {
-                    displayMessage = buildRequestCancelledMessage(notif, actorLabel);
+                    displayMessage = buildRequestCancelledMessage(
+                      notif,
+                      actorLabel,
+                    );
                   } else if (isRequestRescheduled) {
-                    displayMessage = buildRequestRescheduledMessage(notif, actorLabel);
+                    displayMessage = buildRequestRescheduledMessage(
+                      notif,
+                      actorLabel,
+                    );
                   } else if (isForwarded) {
-                    displayMessage = buildForwardedMessage(notif, forwardedActorLabel);
+                    displayMessage = buildForwardedMessage(
+                      notif,
+                      forwardedActorLabel,
+                    );
                   } else if (isDutyChangeRejected) {
-                    displayMessage = buildDutyChangeRejectedMessage(notif, forwardedActorLabel);
+                    displayMessage = buildDutyChangeRejectedMessage(
+                      notif,
+                      forwardedActorLabel,
+                    );
                   }
 
                   return (
@@ -852,7 +911,6 @@ export default function NotificationBell({ userId }) {
                         >
                           {displayMessage}
                         </Typography>
-
                       </Box>
 
                       {navigable && (
@@ -928,7 +986,9 @@ export default function NotificationBell({ userId }) {
                 sx={{ fontFamily: dm, fontSize: "0.76rem" }}
               >
                 <ListItemIcon sx={{ minWidth: 28 }}>
-                  <DoneAllOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                  <DoneAllOutlinedIcon
+                    sx={{ fontSize: 16, color: "text.secondary" }}
+                  />
                 </ListItemIcon>
                 Mark all as read
               </MenuItem>
@@ -940,7 +1000,9 @@ export default function NotificationBell({ userId }) {
                 sx={{ fontFamily: dm, fontSize: "0.76rem" }}
               >
                 <ListItemIcon sx={{ minWidth: 28 }}>
-                  <RefreshOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                  <RefreshOutlinedIcon
+                    sx={{ fontSize: 16, color: "text.secondary" }}
+                  />
                 </ListItemIcon>
                 Refresh
               </MenuItem>

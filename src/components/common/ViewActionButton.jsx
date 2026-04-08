@@ -3,12 +3,17 @@ import Button from "@mui/material/Button";
 
 const dm = "'Inter', sans-serif";
 
-export default function ViewActionButton({ onClick, children = "View" }) {
+export default function ViewActionButton({
+  onClick,
+  children = "View",
+  disabled = false,
+}) {
   return (
     <Button
       variant="contained"
       size="small"
       onClick={onClick}
+      disabled={disabled}
       sx={{
         minWidth: 72,
         px: 1.5,

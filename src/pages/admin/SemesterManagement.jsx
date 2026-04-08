@@ -631,7 +631,7 @@ export default function SemesterManagement() {
               columns={columns}
               pageSize={10}
               rowsPerPageOptions={[10]}
-              rowHeight={52}
+              rowHeight={56}
               disableRowSelectionOnClick
               showToolbar={false}
             />
