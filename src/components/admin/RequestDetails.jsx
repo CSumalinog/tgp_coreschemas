@@ -153,7 +153,7 @@ function ServiceRow({
   // Filter assignments by service section.
   // An assignment belongs to this service if the assigner (section head) is from the section that manages this service.
   // For example, Photo Documentation is managed by Photojournalism head, so we match assignments where assigner.section === "Photojournalism"
-  const colStaffers = staffers.filter((a) => {
+  const sectionStaffers = staffers.filter((a) => {
     // Match based on assigner's section (who created the assignment)
     if (a.assigner?.section === section) return true;
 
@@ -162,6 +162,16 @@ function ServiceRow({
     if (!a.assigner && a.staffer?.section === section) return true;
 
     return false;
+  });
+
+  // Avoid inflating counts when duplicate assignment rows exist for the same staffer.
+  const seenStaffers = new Set();
+  const colStaffers = sectionStaffers.filter((a) => {
+    const key = a.assigned_to || a.staffer?.id;
+    if (!key) return false;
+    if (seenStaffers.has(key)) return false;
+    seenStaffers.add(key);
+    return true;
   });
   const assigned = colStaffers.length;
   const total = paxRequested || 0;
@@ -615,11 +625,14 @@ export default function RequestDetails({
       const pax = request.services?.[svc.key] || 0;
       if (pax === 0) return;
       // Filter by assigner's section (who created the assignment), matching ServiceRow logic
-      const filled = assignedStaffers.filter(
+      const matching = assignedStaffers.filter(
         (a) =>
           a.assigner?.section === svc.section ||
           (a.staffer?.section === svc.section && !a.assigner),
-      ).length;
+      );
+      const filled = new Set(
+        matching.map((a) => a.assigned_to || a.staffer?.id).filter(Boolean),
+      ).size;
       if (filled === 0) zeros.push({ label: svc.label, pax });
     });
     return zeros;
@@ -633,11 +646,14 @@ export default function RequestDetails({
       const pax = request.services?.[svc.key] || 0;
       if (pax === 0) return;
       // Filter by assigner's section (who created the assignment), matching ServiceRow logic
-      const filled = assignedStaffers.filter(
+      const matching = assignedStaffers.filter(
         (a) =>
           a.assigner?.section === svc.section ||
           (a.staffer?.section === svc.section && !a.assigner),
-      ).length;
+      );
+      const filled = new Set(
+        matching.map((a) => a.assigned_to || a.staffer?.id).filter(Boolean),
+      ).size;
       if (filled > 0 && filled < pax)
         partial.push({ label: svc.label, filled, pax });
     });
@@ -797,13 +813,14 @@ export default function RequestDetails({
     }
   };
 
-  // Hard block (staff not satisfied) takes priority over soft warning (assessment flags).
+  // Hard block only when a requested service has zero assignees.
+  // Partial staffing is allowed to proceed to approval.
   // They are shown in separate dialogs — never mixed.
   const [approveSoftWarnOpen, setApproveSoftWarnOpen] = useState(false);
 
   const handleApproveClick = () => {
     setError("");
-    if (unfilledSlots.length > 0 || partialSlots.length > 0) {
+    if (unfilledSlots.length > 0) {
       setApproveWarningOpen(true); // hard block dialog — staff issues only
     } else if (assessmentFlags.length > 0) {
       setApproveSoftWarnOpen(true); // soft warning dialog — assessment flags only
@@ -1761,7 +1778,7 @@ export default function RequestDetails({
             <Typography
               sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}
             >
-              All requested services must have at least one staff assigned.
+              All requested services must have at least one staff assigned before approval.
             </Typography>
           </Box>
         </Box>

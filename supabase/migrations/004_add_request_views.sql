@@ -8,17 +8,19 @@ CREATE TABLE IF NOT EXISTS request_views (
 );
 
 -- Fast lookups by user
-CREATE INDEX idx_request_views_user ON request_views (user_id);
+CREATE INDEX IF NOT EXISTS idx_request_views_user ON request_views (user_id);
 -- Fast lookups by request
-CREATE INDEX idx_request_views_request ON request_views (request_id);
+CREATE INDEX IF NOT EXISTS idx_request_views_request ON request_views (request_id);
 
 -- RLS
 ALTER TABLE request_views ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own views" ON request_views;
 CREATE POLICY "Users can view own views"
   ON request_views FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own views" ON request_views;
 CREATE POLICY "Users can insert own views"
   ON request_views FOR INSERT
   WITH CHECK (auth.uid() = user_id);

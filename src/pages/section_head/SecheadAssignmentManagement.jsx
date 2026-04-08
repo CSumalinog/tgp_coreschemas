@@ -682,6 +682,7 @@ export default function SecHeadAssignmentManagement() {
   // ── Assign dialog state ───────────────────────────────────────────────────
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignRequest, setAssignRequest] = useState(null);
+  const [postAssignReview, setPostAssignReview] = useState(null);
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
   const [dayStaffers, setDayStaffers] = useState({});
   const [daySelected, setDaySelected] = useState({});
@@ -853,11 +854,8 @@ export default function SecHeadAssignmentManagement() {
           (a) => a.section === mySection,
         );
         if (!req.is_multiday) return myAssignments.length > 0;
-        const assignedDates = new Set(
-          myAssignments.map((a) => a.assignment_date),
-        );
-        const allDates = (req.event_days || []).map((d) => d.date);
-        return allDates.every((d) => assignedDates.has(d));
+        const assignedDates = new Set(myAssignments.map((a) => a.assignment_date));
+        return assignedDates.size > 0;
       });
 
       const assignedMap = new Map();
@@ -1167,7 +1165,8 @@ export default function SecHeadAssignmentManagement() {
         .select(
           "assigned_to, assignment_date, staffer:profiles!assigned_to ( full_name, section )",
         )
-        .eq("request_id", req._raw?.id || req.id);
+        .eq("request_id", req._raw?.id || req.id)
+        .eq("section", currentUser?.section);
 
       const byDate = {};
       dates.forEach((d) => {
@@ -1176,12 +1175,18 @@ export default function SecHeadAssignmentManagement() {
       (existing || []).forEach((a) => {
         const key = a.assignment_date || dates[0];
         if (!byDate[key]) byDate[key] = [];
-        byDate[key].push(a);
+
+        // Multi-service assignments can create multiple rows for one staffer/day.
+        // Keep one entry per staffer per date for UI state and selection gating.
+        const alreadyTracked = byDate[key].some(
+          (row) => row.assigned_to === a.assigned_to,
+        );
+        if (!alreadyTracked) byDate[key].push(a);
       });
       setDayAssigned(byDate);
       await loadStaffersForDate(dates[0]);
     },
-    [loadStaffersForDate],
+    [loadStaffersForDate, currentUser?.section],
   );
 
   const handleSelectDay = useCallback(
@@ -1259,6 +1264,11 @@ export default function SecHeadAssignmentManagement() {
       setAssignDialogOpen(false);
       await loadAll();
       setViewFilter("assigned");
+      setToast({
+        open: true,
+        text: "Assignment already saved and visible under Assigned.",
+        severity: "success",
+      });
       return;
     }
 
@@ -1267,20 +1277,14 @@ export default function SecHeadAssignmentManagement() {
     try {
       const rows = [];
       const buildRows = (stafferIds, dateStr, fromTime, toTime) => {
-        const dayData = dayStaffers[dateStr] || { primary: [], others: [] };
-        const allForDay = [
-          ...(dayData.primary || []),
-          ...(dayData.others || []),
-        ];
         stafferIds.forEach((stafferId) => {
-          const stafferProfile = allForDay.find((s) => s.id === stafferId);
           const serviceKeys = getServiceKeysForAssignment(req);
           if (serviceKeys.length === 0) {
             rows.push({
               request_id: req.id,
               assigned_to: stafferId,
               assigned_by: currentUser.id,
-              section: stafferProfile?.section || currentUser.section,
+              section: currentUser.section,
               assignment_date: dateStr,
               from_time: fromTime,
               to_time: toTime,
@@ -1291,7 +1295,7 @@ export default function SecHeadAssignmentManagement() {
                 request_id: req.id,
                 assigned_to: stafferId,
                 assigned_by: currentUser.id,
-                section: stafferProfile?.section || currentUser.section,
+                section: currentUser.section,
                 service_key: serviceKey,
                 assignment_date: dateStr,
                 from_time: fromTime,
@@ -1327,6 +1331,25 @@ export default function SecHeadAssignmentManagement() {
         .insert(rows);
       if (assignErr) throw assignErr;
 
+      const totalDays = isMultiDay ? req.event_days.length : 1;
+      const previouslyCoveredDates = new Set(
+        Object.entries(dayAssigned)
+          .filter(([, assigned]) => (assigned || []).length > 0)
+          .map(([date]) => date),
+      );
+      const newlyCoveredDates = new Set(
+        Object.entries(daySelected)
+          .filter(([, selected]) => (selected || []).length > 0)
+          .map(([date]) => date),
+      );
+      const coveredDateCount = new Set([
+        ...previouslyCoveredDates,
+        ...newlyCoveredDates,
+      ]).size;
+      const mySectionFullyAssigned = isMultiDay
+        ? coveredDateCount >= totalDays
+        : coveredDateCount > 0;
+
       const forwardedSections = req.forwarded_sections || [];
       let allAssigned = forwardedSections.length === 0;
       if (!allAssigned) {
@@ -1345,7 +1368,47 @@ export default function SecHeadAssignmentManagement() {
           .update({ status: "Assigned" })
           .eq("id", req.id);
 
+      // Build staffers-by-day for the post-assign review dialog
+      const staffersByDay = {};
+      if (isMultiDay) {
+        req.event_days.forEach((dayObj) => {
+          const ids = daySelected[dayObj.date] || [];
+          if (ids.length > 0) {
+            const allForDay = [
+              ...((dayStaffers[dayObj.date] || {}).primary || []),
+              ...((dayStaffers[dayObj.date] || {}).others || []),
+            ];
+            staffersByDay[dayObj.date] = ids
+              .map((id) => allForDay.find((s) => s.id === id))
+              .filter(Boolean);
+          }
+        });
+      } else {
+        const dateStr = req.event_date;
+        const ids = daySelected[dateStr] || [];
+        const allForDay = [
+          ...((dayStaffers[dateStr] || {}).primary || []),
+          ...((dayStaffers[dateStr] || {}).others || []),
+        ];
+        staffersByDay[dateStr] = ids
+          .map((id) => allForDay.find((s) => s.id === id))
+          .filter(Boolean);
+      }
+
       setAssignDialogOpen(false);
+      setPostAssignReview({
+        requestId: req.id,
+        title: req.title,
+        isMultiDay,
+        eventDate: req.event_date,
+        eventDays: req.event_days || [],
+        fromTime: req.from_time,
+        toTime: req.to_time,
+        staffersByDay,
+        coveredDateCount,
+        totalDays,
+        mySectionFullyAssigned,
+      });
       await loadAll();
       setViewFilter("assigned");
     } catch (err) {
@@ -1411,7 +1474,16 @@ export default function SecHeadAssignmentManagement() {
         }
       }
       setConfirmRequest(null);
-      loadAll();
+      setPostAssignReview(null);
+      await loadAll();
+      setViewFilter("assigned");
+      setToast({
+        open: true,
+        text: allSectionsSubmitted
+          ? "Submitted for approval. All sections are complete and the request is now queued for admin review."
+          : "Submission saved for your section. This request stays in Assigned until all forwarded sections submit.",
+        severity: "success",
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2512,6 +2584,17 @@ export default function SecHeadAssignmentManagement() {
         onConfirm={() =>
           handleSubmitForApproval(confirmRequest._raw?.id || confirmRequest.id)
         }
+      />
+
+      {/* ── Post-Assign Review Dialog ── */}
+      <PostAssignReviewDialog
+        open={!!postAssignReview}
+        review={postAssignReview}
+        isDark={isDark}
+        border={border}
+        loading={submitLoading}
+        onClose={() => !submitLoading && setPostAssignReview(null)}
+        onSubmit={() => handleSubmitForApproval(postAssignReview?.requestId)}
       />
     </Box>
   );
@@ -3817,6 +3900,307 @@ function InfoGrid({ rows }) {
     </Box>
   );
 }
+
+// ── Post-Assign Review Dialog ─────────────────────────────────────────────────
+function PostAssignReviewDialog({
+  open,
+  review,
+  isDark,
+  border,
+  loading,
+  onClose,
+  onSubmit,
+}) {
+  if (!review) return null;
+  const {
+    title,
+    isMultiDay,
+    eventDate,
+    eventDays,
+    fromTime,
+    toTime,
+    staffersByDay,
+  } = review;
+
+  const fmtDate = (dateStr) =>
+    new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+  const fmtTime = (t) => {
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const hr = h % 12 || 12;
+    return `${hr}:${String(m).padStart(2, "0")} ${ampm}`;
+  };
+
+  const hasEntries = Object.values(staffersByDay).some((s) => s.length > 0);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => !loading && onClose()}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: "14px",
+          backgroundColor: "background.paper",
+          border: `1px solid ${border}`,
+          boxShadow: isDark
+            ? "0 24px 64px rgba(0,0,0,0.6)"
+            : "0 8px 40px rgba(53,53,53,0.12)",
+        },
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: `1px solid ${border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: "8px",
+              backgroundColor: "rgba(34,197,94,0.10)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <CheckCircleOutlinedIcon sx={{ fontSize: 17, color: "#22c55e" }} />
+          </Box>
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                color: "text.primary",
+              }}
+            >
+              Assignment Saved
+            </Typography>
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}
+            >
+              Review the assigned staff before submitting for admin approval.
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          disabled={loading}
+          sx={{
+            borderRadius: "8px",
+            color: "text.secondary",
+            "&:hover": { backgroundColor: HOVER_BG },
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Box>
+
+      {/* Body */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2.5,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          maxHeight: "60vh",
+          overflowY: "auto",
+        }}
+      >
+        {/* Request info */}
+        <Box
+          sx={{
+            px: 1.75,
+            py: 1.25,
+            borderRadius: "8px",
+            border: `1px solid ${border}`,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.02)"
+              : "rgba(53,53,53,0.02)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.84rem",
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
+            {title}
+          </Typography>
+          {!isMultiDay && (
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.73rem",
+                color: "text.secondary",
+                mt: 0.3,
+              }}
+            >
+              {fmtDate(eventDate)}
+              {fromTime ? ` · ${fmtTime(fromTime)} – ${fmtTime(toTime)}` : ""}
+            </Typography>
+          )}
+          {isMultiDay && (
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.73rem",
+                color: "text.secondary",
+                mt: 0.3,
+              }}
+            >
+              {eventDays.length}-day event
+            </Typography>
+          )}
+        </Box>
+
+        {/* Staffers by day */}
+        {hasEntries &&
+          Object.entries(staffersByDay)
+            .filter(([, staffers]) => staffers.length > 0)
+            .map(([dateStr, staffers]) => (
+              <Box key={dateStr}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.62rem",
+                    fontWeight: 700,
+                    color: "text.disabled",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.09em",
+                    mb: 0.75,
+                  }}
+                >
+                  {isMultiDay ? fmtDate(dateStr) : "Staffers assigned"}
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
+                  {staffers.map((s) => {
+                    const url = getAvatarUrl(s.avatar_url);
+                    const clr = getAvatarColor(s.id);
+                    return (
+                      <Box
+                        key={s.id}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.25,
+                          px: 1.25,
+                          py: 0.9,
+                          borderRadius: "8px",
+                          border: `1px solid ${border}`,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.02)"
+                            : "rgba(53,53,53,0.01)",
+                        }}
+                      >
+                        <Avatar
+                          src={url || undefined}
+                          sx={{
+                            width: 28,
+                            height: 28,
+                            fontSize: "0.65rem",
+                            fontWeight: 600,
+                            backgroundColor: clr.bg,
+                            color: clr.color,
+                            border: `1.5px solid ${border}`,
+                          }}
+                        >
+                          {!url && s.full_name
+                            ? s.full_name.charAt(0).toUpperCase()
+                            : ""}
+                        </Avatar>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                            color: "text.primary",
+                          }}
+                        >
+                          {s.full_name}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            ))}
+
+        {/* Warning */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            px: 1.5,
+            py: 1.25,
+            borderRadius: "8px",
+            backgroundColor: isDark ? GOLD_08 : "rgba(245,197,43,0.07)",
+            border: "1px solid rgba(245,197,43,0.3)",
+          }}
+        >
+          <WarningAmberOutlinedIcon
+            sx={{ fontSize: 14, color: "#b45309", flexShrink: 0, mt: 0.1 }}
+          />
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              color: "#b45309",
+              lineHeight: 1.55,
+            }}
+          >
+            Once submitted, staffers will be locked in and the admin will be
+            notified. This cannot be undone.
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 3,
+          py: 1.75,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1,
+          backgroundColor: isDark
+            ? "rgba(255,255,255,0.01)"
+            : "rgba(53,53,53,0.01)",
+        }}
+      >
+        <CancelBtn onClick={onClose} disabled={loading} border={border} />
+        <PrimaryBtn onClick={onSubmit} loading={loading}>
+          {!loading && <CheckCircleOutlinedIcon sx={{ fontSize: 14 }} />}
+          Submit for Approval
+        </PrimaryBtn>
+      </Box>
+    </Dialog>
+  );
+}
+
 function CancelBtn({ onClick, disabled, border }) {
   return (
     <Box

@@ -156,6 +156,26 @@ const getTimeInState = (request) => {
   return "passed";
 };
 
+const getAssignmentCardKey = (assignment) => {
+  const requestId = assignment?.request?.id || "no-request";
+  const dayKey = assignment?.assignment_date || assignment?.request?.event_date || "no-date";
+  const fromKey = assignment?.request?.from_time || "no-from";
+  const toKey = assignment?.request?.to_time || "no-to";
+  return `${requestId}|${dayKey}|${fromKey}|${toKey}`;
+};
+
+const dedupeAssignments = (list = []) => {
+  const seen = new Set();
+  const out = [];
+  list.forEach((assignment) => {
+    const key = getAssignmentCardKey(assignment);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(assignment);
+  });
+  return out;
+};
+
 // ── Status pill ───────────────────────────────────────────────────────────────
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CFG[status] || {
@@ -1392,7 +1412,7 @@ export default function MyAssignment() {
         .from("coverage_assignments")
         .select(
           `
-        id, status, section, assigned_at, timed_in_at,
+        id, status, section, assignment_date, assigned_at, timed_in_at,
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
           id, title, description, event_date, from_time, to_time,
@@ -1417,9 +1437,10 @@ export default function MyAssignment() {
     if (assignResult.error) setError(assignResult.error.message);
     else {
       const hiddenIds = new Set((usResult.data || []).map((r) => r.request_id));
-      setAssignments(
-        (assignResult.data || []).filter((a) => !hiddenIds.has(a.request?.id)),
+      const visible = (assignResult.data || []).filter(
+        (a) => !hiddenIds.has(a.request?.id),
       );
+      setAssignments(dedupeAssignments(visible));
     }
     setLoading(false);
   }, [currentUser]);
@@ -1573,19 +1594,24 @@ export default function MyAssignment() {
 
   const filtered = useMemo(
     () =>
-      applyFilters(
-        statusFilter === "All"
-          ? assignments
-          : assignments.filter((a) => a.status === statusFilter),
+      dedupeAssignments(
+        applyFilters(
+          statusFilter === "All"
+            ? assignments
+            : assignments.filter((a) => a.status === statusFilter),
+        ),
       ),
     [assignments, statusFilter, applyFilters],
   );
   const allFiltered = useMemo(
-    () => applyFilters(assignments),
+    () => dedupeAssignments(applyFilters(assignments)),
     [assignments, applyFilters],
   );
   const completedFiltered = useMemo(
-    () => applyFilters(assignments.filter((a) => a.status === "Completed")),
+    () =>
+      dedupeAssignments(
+        applyFilters(assignments.filter((a) => a.status === "Completed")),
+      ),
     [assignments, applyFilters],
   );
 

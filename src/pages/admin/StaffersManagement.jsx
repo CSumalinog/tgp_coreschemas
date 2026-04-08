@@ -195,6 +195,7 @@ export default function StaffersManagement() {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [createdAccountOpen, setCreatedAccountOpen] = useState(false);
   const [createdAccount, setCreatedAccount] = useState(null);
+  const [createdShowPassword, setCreatedShowPassword] = useState(false);
   const [createdCopyFeedback, setCreatedCopyFeedback] = useState("");
   const [createdCredentialsCopied, setCreatedCredentialsCopied] =
     useState(false);
@@ -383,6 +384,10 @@ export default function StaffersManagement() {
   const handleCopyCreated = async (mode = "all") => {
     if (!createdAccount) return;
 
+    if (mode === "all") {
+      setCreatedShowPassword(false);
+    }
+
     const text =
       mode === "email"
         ? createdAccount.email
@@ -417,6 +422,7 @@ export default function StaffersManagement() {
     setCreatedAccountOpen(false);
     setCreatedDismissConfirmOpen(false);
     setCreatedAccount(null);
+    setCreatedShowPassword(false);
     setCreatedCopyFeedback("");
     setCreatedCredentialsCopied(false);
   };
@@ -466,6 +472,7 @@ export default function StaffersManagement() {
           section: payload.section,
           position: payload.position,
         });
+        setCreatedShowPassword(false);
         setCreatedCopyFeedback("");
         setCreatedCredentialsCopied(false);
         setCreatedAccountOpen(true);
@@ -1882,7 +1889,37 @@ export default function StaffersManagement() {
                   wordBreak: "break-word",
                 }}
               >
-                {value}
+                {label === "Password" ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
+                    }}
+                  >
+                    <Box component="span" sx={{ letterSpacing: createdShowPassword ? 0 : "0.04em" }}>
+                      {createdShowPassword
+                        ? value
+                        : value === "—"
+                          ? "—"
+                          : "•".repeat(String(value).length)}
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => setCreatedShowPassword((prev) => !prev)}
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {createdShowPassword ? (
+                        <VisibilityOffOutlinedIcon sx={{ fontSize: 16 }} />
+                      ) : (
+                        <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+                      )}
+                    </IconButton>
+                  </Box>
+                ) : (
+                  value
+                )}
               </Typography>
             </Box>
           ))}

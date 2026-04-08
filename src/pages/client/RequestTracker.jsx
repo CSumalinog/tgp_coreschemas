@@ -20,6 +20,8 @@ import {
   Select,
   OutlinedInput,
   InputAdornment,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
@@ -37,14 +39,14 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import { useLocation } from "react-router-dom";
 
-// ── Tab icons ─────────────────────────────────────────────────────────────────
+// G��G�� Tab icons G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import ListAltOutlinedIcon from "@mui/icons-material/ListAltOutlined";
 import HourglassEmptyOutlinedIcon from "@mui/icons-material/HourglassEmptyOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 
-// ── Pipeline stage icons ──────────────────────────────────────────────────────
+// G��G�� Pipeline stage icons G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import ManageSearchOutlinedIcon from "@mui/icons-material/ManageSearchOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
@@ -71,12 +73,10 @@ import {
   cancelRequest,
   rescheduleRequest,
 } from "../../services/coverageRequestService";
-import {
-  checkConflictForDate,
-  checkLateSubmissionForDate,
-} from "../../hooks/RequestAssistant";
+import CancelConfirmDialog from "../../components/client/CancelConfirmDialog";
+import RescheduleDialog from "../../components/client/RescheduleDialog";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// G��G�� Helpers G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 const getFileName = (filePath) => {
   if (!filePath) return null;
   return filePath.split("/").pop().replace(/^\d+_/, "");
@@ -117,12 +117,12 @@ function fmtTime(t) {
 }
 
 function fmtDate(d, opts = { month: "long", day: "numeric", year: "numeric" }) {
-  if (!d) return "—";
+  if (!d) return "N/A";
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
 }
 
 function buildEventDateDisplay(req) {
-  if (!req) return "—";
+  if (!req) return "N/A";
   if (req.is_multiday && req.event_days?.length > 0) {
     const sorted = [...req.event_days].sort((a, b) =>
       a.date.localeCompare(b.date),
@@ -133,7 +133,7 @@ function buildEventDateDisplay(req) {
       day: "numeric",
       year: "numeric",
     });
-    return sorted.length === 1 ? fmtDate(sorted[0].date) : `${first} – ${last}`;
+    return sorted.length === 1 ? fmtDate(sorted[0].date) : `${first} - ${last}`;
   }
   return req.event_date
     ? new Date(req.event_date).toLocaleDateString("en-US", {
@@ -141,10 +141,10 @@ function buildEventDateDisplay(req) {
         day: "numeric",
         year: "numeric",
       })
-    : "—";
+    : "N/A";
 }
 
-// ── Brand tokens ──────────────────────────────────────────────────────────────
+// G��G�� Brand tokens G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
 const CHARCOAL = "#353535";
@@ -153,7 +153,7 @@ const BORDER_DARK = "rgba(255,255,255,0.08)";
 const HOVER_BG = "rgba(53,53,53,0.03)";
 const dm = "'Inter', sans-serif";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// G��G�� Constants G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 const SECTION_COLORS = {
   News: { bg: "#e3f2fd", color: "#1565c0" },
   Photojournalism: { bg: "#f3e5f5", color: "#7b1fa2" },
@@ -187,7 +187,7 @@ const PIPELINE_ACTIVE_STATUSES = [
   "Completed",
 ];
 
-// ── Pipeline stages ───────────────────────────────────────────────────────────
+// G��G�� Pipeline stages G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 const PIPELINE_STAGES = [
   {
     key: "Pending",
@@ -266,7 +266,7 @@ const getStageIndex = (status) => {
   return map[status] ?? -1;
 };
 
-// ── Tabs config ───────────────────────────────────────────────────────────────
+// G��G�� Tabs config G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 const TABS = [
   { label: "All Requests", Icon: ListAltOutlinedIcon },
   { label: "Pending", Icon: HourglassEmptyOutlinedIcon },
@@ -374,7 +374,7 @@ function useAutoOpenRequest(rows, openRequestId, onOpen) {
   }, [openRequestId, onOpen, rows]);
 }
 
-// ── Event Type Pill (mirrors AdminRequestManagement) ──────────────────────────
+// G��G�� Event Type Pill (mirrors AdminRequestManagement) G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function EventTypePill({ isMultiDay, isDark }) {
   return isMultiDay ? (
     <Box
@@ -451,7 +451,7 @@ function EventTypePill({ isMultiDay, isDark }) {
   );
 }
 
-// ── Column menu GlobalStyles ──────────────────────────────────────────────────
+// G��G�� Column menu GlobalStyles G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function ColumnMenuStyles({ isDark, border }) {
   const paperBg = isDark ? "#1e1e1e" : "#ffffff";
   const shadow = isDark
@@ -515,13 +515,15 @@ function ColumnMenuStyles({ isDark, border }) {
   );
 }
 
-// ── Root ──────────────────────────────────────────────────────────────────────
+// G��G�� Root G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 export default function RequestTracker() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
   const [tab, setTab] = useState(() => resolveTrackerTab(location.state?.tab));
   const [searchText, setSearchText] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [actionErrorOpen, setActionErrorOpen] = useState(false);
   const { requests: trackerRequests } = useClientRequests();
   const gridApiRef = useGridApiRef();
   const border = isDark ? BORDER_DARK : BORDER;
@@ -563,6 +565,11 @@ export default function RequestTracker() {
   const isPipeline = tab === "pipeline";
   const filterControlHeight = 40;
 
+  const handleActionError = (message) => {
+    setActionError(message || "Something went wrong. Please try again.");
+    setActionErrorOpen(true);
+  };
+
   const viewCounts = useMemo(() => {
     const nonDraft = trackerRequests.filter((r) => r.status !== "Draft");
     return {
@@ -591,7 +598,23 @@ export default function RequestTracker() {
     >
       <ColumnMenuStyles isDark={isDark} border={border} />
 
-      {/* ── Header ── */}
+      <Snackbar
+        open={actionErrorOpen}
+        autoHideDuration={5000}
+        onClose={() => setActionErrorOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setActionErrorOpen(false)}
+          severity="error"
+          variant="filled"
+          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+        >
+          {actionError}
+        </Alert>
+      </Snackbar>
+
+      {/* G��G�� Header G��G�� */}
       <Box sx={{ mb: 2.5, flexShrink: 0 }}>
         <Typography
           sx={{
@@ -617,7 +640,7 @@ export default function RequestTracker() {
         </Typography>
       </Box>
 
-      {/* ── Filter row: Search | View | Export ── */}
+      {/* G��G�� Filter row: Search | View | Export G��G�� */}
       <Box
         sx={{
           mb: 2,
@@ -756,6 +779,7 @@ export default function RequestTracker() {
             isDark={isDark}
             border={border}
             openRequestId={openRequestId}
+            onActionError={handleActionError}
           />
         </Box>
       )}
@@ -766,6 +790,7 @@ export default function RequestTracker() {
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
           openRequestId={openRequestId}
+          onActionError={handleActionError}
         />
       )}
       {tab === 1 && (
@@ -775,6 +800,7 @@ export default function RequestTracker() {
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
           openRequestId={openRequestId}
+          onActionError={handleActionError}
         />
       )}
       {tab === 2 && (
@@ -784,6 +810,7 @@ export default function RequestTracker() {
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
           openRequestId={openRequestId}
+          onActionError={handleActionError}
         />
       )}
       {tab === 3 && (
@@ -793,14 +820,15 @@ export default function RequestTracker() {
           gridApiRef={gridApiRef}
           filterModel={externalFilterModel}
           openRequestId={openRequestId}
+          onActionError={handleActionError}
         />
       )}
     </Box>
   );
 }
 
-// ── Pipeline Tab ──────────────────────────────────────────────────────────────
-function PipelineTab({ isDark, border, openRequestId }) {
+// G��G�� Pipeline Tab G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
+function PipelineTab({ isDark, border, openRequestId, onActionError }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
   useRealtimeNotify("coverage_requests", refetch, null, {
@@ -848,6 +876,7 @@ function PipelineTab({ isDark, border, openRequestId }) {
         request={selected}
         isDark={isDark}
         border={border}
+        onActionError={onActionError}
         onCancelSuccess={() => {
           setSelected(null);
           refetch();
@@ -861,7 +890,7 @@ function PipelineTab({ isDark, border, openRequestId }) {
   );
 }
 
-// ── Pipeline Card ─────────────────────────────────────────────────────────────
+// G��G�� Pipeline Card G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function PipelineCard({ request, isDark, border, onClick }) {
   const currentIdx = getStageIndex(request.status);
   const isDeclined = request.status === "Declined";
@@ -1083,7 +1112,7 @@ function PipelineCard({ request, isDark, border, onClick }) {
         }}
       >
         {buildEventDateDisplay(request)}
-        {request.venue ? ` · ${request.venue}` : ""}
+        {request.venue ? ` -+ ${request.venue}` : ""}
       </Typography>
 
       {/* Pipeline or declined */}
@@ -1282,7 +1311,7 @@ function PipelineCard({ request, isDark, border, onClick }) {
   );
 }
 
-// ── Grid Tabs ─────────────────────────────────────────────────────────────────
+// G��G�� Grid Tabs G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function RequestsGrid({ rows, columns, border, gridApiRef, filterModel }) {
   return (
     <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
@@ -1318,7 +1347,7 @@ function RequestsGrid({ rows, columns, border, gridApiRef, filterModel }) {
   );
 }
 
-// ── Row-level action menu cell ────────────────────────────────────────────────
+// G��G�� Row-level action menu cell G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
   const [anchor, setAnchor] = useState(null);
   const border = isDark ? BORDER_DARK : BORDER;
@@ -1431,7 +1460,7 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
   );
 }
 
-// ── Shared grid columns hook ──────────────────────────────────────────────────
+// G��G�� Shared grid columns hook G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function useGridColumns(isDark, { onView, onReschedule, onCancel } = {}) {
   const titleCol = {
     field: "eventTitle",
@@ -1457,7 +1486,7 @@ function useGridColumns(isDark, { onView, onReschedule, onCancel } = {}) {
     ),
   };
 
-  // ── Event Type column — mirrors AdminRequestManagement ──
+  // G��G�� Event Type column G�� mirrors AdminRequestManagement G��G��
   const typeCol = {
     field: "eventType",
     headerName: "Type",
@@ -1593,7 +1622,7 @@ const toRow = (req) => ({
         day: "numeric",
         year: "numeric",
       })
-    : "—",
+    : "N/A",
   eventDate: buildEventDateDisplay(req),
   eventType: !!(req.is_multiday && req.event_days?.length > 0), // used by EventTypePill
   status: req.status,
@@ -1603,14 +1632,14 @@ const toRow = (req) => ({
         day: "numeric",
         year: "numeric",
       })
-    : "—",
+    : "N/A",
   dateDeclined: req.declined_at
     ? new Date(req.declined_at).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
       })
-    : "—",
+    : "N/A",
   _raw: req,
 });
 
@@ -1620,6 +1649,7 @@ function AllRequestsTab({
   gridApiRef,
   filterModel,
   openRequestId,
+  onActionError,
 }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
@@ -1666,7 +1696,9 @@ function AllRequestsTab({
       refetch();
     } catch (err) {
       console.error("Cancel failed:", err);
-      alert(err.message || "Failed to cancel the request. Please try again.");
+      onActionError?.(
+        err.message || "Failed to cancel the request. Please try again.",
+      );
     } finally {
       setCancelLoading(false);
     }
@@ -1680,7 +1712,7 @@ function AllRequestsTab({
       refetch();
     } catch (err) {
       console.error("Reschedule failed:", err);
-      alert(
+      onActionError?.(
         err.message || "Failed to reschedule the request. Please try again.",
       );
     } finally {
@@ -1705,6 +1737,7 @@ function AllRequestsTab({
         request={selected}
         isDark={isDark}
         border={border}
+        onActionError={onActionError}
         onCancelSuccess={() => {
           setSelected(null);
           refetch();
@@ -1741,6 +1774,7 @@ function PendingTab({
   gridApiRef,
   filterModel,
   openRequestId,
+  onActionError,
 }) {
   const { pending, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
@@ -1774,7 +1808,9 @@ function PendingTab({
       refetch();
     } catch (err) {
       console.error("Cancel failed:", err);
-      alert(err.message || "Failed to cancel the request. Please try again.");
+      onActionError?.(
+        err.message || "Failed to cancel the request. Please try again.",
+      );
     } finally {
       setCancelLoading(false);
     }
@@ -1788,7 +1824,7 @@ function PendingTab({
       refetch();
     } catch (err) {
       console.error("Reschedule failed:", err);
-      alert(
+      onActionError?.(
         err.message || "Failed to reschedule the request. Please try again.",
       );
     } finally {
@@ -1813,6 +1849,7 @@ function PendingTab({
         request={selected}
         isDark={isDark}
         border={border}
+        onActionError={onActionError}
         onCancelSuccess={() => {
           setSelected(null);
           refetch();
@@ -1849,6 +1886,7 @@ function ApprovedTab({
   gridApiRef,
   filterModel,
   openRequestId,
+  onActionError,
 }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
@@ -1882,7 +1920,9 @@ function ApprovedTab({
       refetch();
     } catch (err) {
       console.error("Cancel failed:", err);
-      alert(err.message || "Failed to cancel the request. Please try again.");
+      onActionError?.(
+        err.message || "Failed to cancel the request. Please try again.",
+      );
     } finally {
       setCancelLoading(false);
     }
@@ -1896,7 +1936,7 @@ function ApprovedTab({
       refetch();
     } catch (err) {
       console.error("Reschedule failed:", err);
-      alert(
+      onActionError?.(
         err.message || "Failed to reschedule the request. Please try again.",
       );
     } finally {
@@ -1921,6 +1961,7 @@ function ApprovedTab({
         request={selected}
         isDark={isDark}
         border={border}
+        onActionError={onActionError}
         onCancelSuccess={() => {
           setSelected(null);
           refetch();
@@ -1957,6 +1998,7 @@ function DeclinedTab({
   gridApiRef,
   filterModel,
   openRequestId,
+  onActionError,
 }) {
   const { requests, loading, refetch } = useClientRequests();
   const [selected, setSelected] = useState(null);
@@ -1990,6 +2032,7 @@ function DeclinedTab({
         request={selected}
         isDark={isDark}
         border={border}
+        onActionError={onActionError}
         onCancelSuccess={() => {
           setSelected(null);
           refetch();
@@ -2003,937 +2046,14 @@ function DeclinedTab({
   );
 }
 
-// ── Cancel Confirmation Dialog ────────────────────────────────────────────────
-function CancelConfirmDialog({
-  open,
-  onClose,
-  onConfirm,
-  loading,
-  isDark,
-  border,
-}) {
-  const [reason, setReason] = useState("");
-  const handleConfirm = () => onConfirm(reason.trim());
-  const handleClose = () => {
-    setReason("");
-    onClose();
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      fullWidth
-      maxWidth="xs"
-      PaperProps={{
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
-        },
-      }}
-    >
-      <Box
-        sx={{
-          px: 3,
-          pt: 3,
-          pb: 2,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: "10px",
-              backgroundColor: isDark ? "rgba(239,68,68,0.1)" : "#fef2f2",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <CancelOutlinedIcon sx={{ fontSize: 18, color: "#ef4444" }} />
-          </Box>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "text.primary",
-              }}
-            >
-              Cancel Request
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.72rem",
-                color: "text.secondary",
-                mt: 0.15,
-              }}
-            >
-              This action cannot be undone.
-            </Typography>
-          </Box>
-        </Box>
-        <IconButton
-          onClick={handleClose}
-          size="small"
-          sx={{
-            color: "text.secondary",
-            borderRadius: "10px",
-            "&:hover": {
-              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-            },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 17 }} />
-        </IconButton>
-      </Box>
-      <DialogContent sx={{ px: 3, pt: 0, pb: 3 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.82rem",
-            color: "text.secondary",
-            mb: 2,
-            lineHeight: 1.6,
-          }}
-        >
-          Are you sure you want to cancel this request? All assigned staff will
-          be notified and their assignments will be removed.
-        </Typography>
-        <TextField
-          fullWidth
-          multiline
-          minRows={3}
-          placeholder="Reason for cancellation (optional)"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          disabled={loading}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              borderRadius: "10px",
-              "& fieldset": { borderColor: border },
-              "&:hover fieldset": { borderColor: GOLD },
-              "&.Mui-focused fieldset": { borderColor: GOLD },
-            },
-            "& .MuiInputBase-input::placeholder": {
-              color: "text.disabled",
-              opacity: 1,
-            },
-          }}
-        />
-        <Box sx={{ display: "flex", gap: 1.25, mt: 2.5 }}>
-          <Button
-            fullWidth
-            onClick={handleClose}
-            disabled={loading}
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              fontWeight: 500,
-              borderRadius: "10px",
-              py: 1,
-              textTransform: "none",
-              border: `1px solid ${border}`,
-              color: "text.secondary",
-              backgroundColor: "transparent",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
-                borderColor: "text.secondary",
-              },
-            }}
-          >
-            Keep Request
-          </Button>
-          <Button
-            fullWidth
-            onClick={handleConfirm}
-            disabled={loading}
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              fontWeight: 600,
-              borderRadius: "10px",
-              py: 1,
-              textTransform: "none",
-              backgroundColor: "#ef4444",
-              color: "#fff",
-              "&:hover": { backgroundColor: "#dc2626" },
-              "&:disabled": { backgroundColor: "#fca5a5", color: "#fff" },
-            }}
-          >
-            {loading ? (
-              <CircularProgress size={16} sx={{ color: "#fff" }} />
-            ) : (
-              "Yes, Cancel Request"
-            )}
-          </Button>
-        </Box>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Reschedule Dialog ─────────────────────────────────────────────────────────
-function RescheduleDialog({
-  open,
-  onClose,
-  onConfirm,
-  loading,
-  isDark,
-  border,
-  request,
-}) {
-  const [multiDay, setMultiDay] = useState(false);
-  const [singleDate, setSingleDate] = useState("");
-  const [fromTime, setFromTime] = useState("");
-  const [toTime, setToTime] = useState("");
-  const [days, setDays] = useState([{ date: "", from_time: "", to_time: "" }]);
-  const [reason, setReason] = useState("");
-  const [validating, setValidating] = useState(false);
-  const [validationIssues, setValidationIssues] = useState([]);
-  const [showWarningStep, setShowWarningStep] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      const wasMultiDay = !!(
-        request?.is_multiday && request?.event_days?.length > 0
-      );
-      setMultiDay(wasMultiDay);
-      setSingleDate("");
-      setFromTime(request?.from_time || "");
-      setToTime(request?.to_time || "");
-      setDays(
-        wasMultiDay
-          ? request.event_days.map((d) => ({
-              date: "",
-              from_time: d.from_time || "",
-              to_time: d.to_time || "",
-            }))
-          : [{ date: "", from_time: "", to_time: "" }],
-      );
-      setReason("");
-      setValidationIssues([]);
-      setShowWarningStep(false);
-    }
-  }, [open, request]);
-
-  const addDay = () =>
-    setDays((p) => [...p, { date: "", from_time: "", to_time: "" }]);
-  const removeDay = (i) => setDays((p) => p.filter((_, idx) => idx !== i));
-  const updateDay = (i, field, val) =>
-    setDays((p) => p.map((d, idx) => (idx === i ? { ...d, [field]: val } : d)));
-
-  const getPrimaryDate = () => {
-    if (multiDay) {
-      const filled = days
-        .filter((d) => d.date)
-        .sort((a, b) => a.date.localeCompare(b.date));
-      return filled[0]?.date || null;
-    }
-    return singleDate || null;
-  };
-
-  const buildPayload = () => {
-    if (multiDay) {
-      const sorted = [...days]
-        .filter((d) => d.date)
-        .sort((a, b) => a.date.localeCompare(b.date));
-      return {
-        is_multiday: true,
-        event_date: sorted[0]?.date || null,
-        end_date: sorted[sorted.length - 1]?.date || null,
-        from_time: sorted[0]?.from_time || null,
-        to_time: sorted[0]?.to_time || null,
-        event_days: sorted,
-      };
-    }
-    return {
-      is_multiday: false,
-      event_date: singleDate,
-      end_date: null,
-      from_time: fromTime || null,
-      to_time: toTime || null,
-      event_days: [],
-    };
-  };
-
-  const handleValidate = async () => {
-    const primaryDate = getPrimaryDate();
-    if (!primaryDate) return;
-    setValidating(true);
-    setValidationIssues([]);
-    const issues = [];
-    try {
-      const lateResult = await checkLateSubmissionForDate(primaryDate);
-      if (lateResult.type === "error")
-        issues.push({ severity: "error", message: lateResult.message });
-      else if (lateResult.type === "warning")
-        issues.push({ severity: "warning", message: lateResult.message });
-      const conflictResult = await checkConflictForDate(
-        primaryDate,
-        request?.id,
-      );
-      if (conflictResult.hasConflict) {
-        const msgs = conflictResult.conflicts.map(
-          (c) =>
-            `"${c.title}" (${c.status}${c.from_time ? ` · ${fmtTime(c.from_time)}–${fmtTime(c.to_time)}` : ""})`,
-        );
-        issues.push({
-          severity: "warning",
-          message: `Scheduling conflict${msgs.length > 1 ? "s" : ""} on this date: ${msgs.join("; ")}`,
-        });
-      }
-    } catch (err) {
-      console.error("Validation error:", err);
-    } finally {
-      setValidating(false);
-    }
-    if (issues.length > 0) {
-      setValidationIssues(issues);
-      setShowWarningStep(true);
-    } else onConfirm(buildPayload(), reason.trim());
-  };
-
-  const handleProceedDespiteWarnings = () =>
-    onConfirm(buildPayload(), reason.trim());
-  const handleBack = () => {
-    setShowWarningStep(false);
-    setValidationIssues([]);
-  };
-  const handleClose = () => {
-    if (loading) return;
-    setShowWarningStep(false);
-    setValidationIssues([]);
-    onClose();
-  };
-
-  const primaryDate = getPrimaryDate();
-  const canSubmit = !!primaryDate;
-  const hasHardError = validationIssues.some((i) => i.severity === "error");
-
-  const inputSx = {
-    "& .MuiOutlinedInput-root": {
-      fontFamily: dm,
-      fontSize: "0.82rem",
-      borderRadius: "10px",
-      "& fieldset": { borderColor: border },
-      "&:hover fieldset": { borderColor: GOLD },
-      "&.Mui-focused fieldset": { borderColor: GOLD },
-    },
-    "& .MuiInputLabel-root": { fontFamily: dm, fontSize: "0.82rem" },
-    "& .MuiInputLabel-root.Mui-focused": { color: GOLD },
-    "& .MuiInputBase-input": { fontFamily: dm },
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      fullWidth
-      maxWidth="sm"
-      PaperProps={{
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
-          maxHeight: "90vh",
-        },
-      }}
-    >
-      <Box
-        sx={{
-          px: 3,
-          pt: 3,
-          pb: 2,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          borderBottom: `1px solid ${border}`,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: "10px",
-              backgroundColor: isDark ? "rgba(245,197,43,0.1)" : GOLD_08,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <EventRepeatOutlinedIcon sx={{ fontSize: 18, color: GOLD }} />
-          </Box>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "text.primary",
-              }}
-            >
-              {showWarningStep ? "Review Issues" : "Reschedule Request"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.72rem",
-                color: "text.secondary",
-                mt: 0.15,
-              }}
-            >
-              {showWarningStep
-                ? "Please review the issues below before proceeding."
-                : "Status will reset to Under Review for staff reassignment."}
-            </Typography>
-          </Box>
-        </Box>
-        <IconButton
-          onClick={handleClose}
-          disabled={loading}
-          size="small"
-          sx={{
-            color: "text.secondary",
-            borderRadius: "10px",
-            "&:hover": {
-              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-            },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 17 }} />
-        </IconButton>
-      </Box>
-
-      <DialogContent sx={{ px: 3, py: 2.5, overflowY: "auto" }}>
-        {showWarningStep ? (
-          <Box>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 1.25,
-                mb: 3,
-              }}
-            >
-              {validationIssues.map((issue, idx) => {
-                const isError = issue.severity === "error";
-                return (
-                  <Box
-                    key={idx}
-                    sx={{
-                      display: "flex",
-                      gap: 1.25,
-                      p: 1.5,
-                      borderRadius: "10px",
-                      backgroundColor: isError
-                        ? isDark
-                          ? "rgba(239,68,68,0.08)"
-                          : "#fef2f2"
-                        : isDark
-                          ? "rgba(245,158,11,0.08)"
-                          : "#fffbeb",
-                      border: `1px solid ${isError ? (isDark ? "rgba(239,68,68,0.2)" : "#fecaca") : isDark ? "rgba(245,158,11,0.2)" : "#fde68a"}`,
-                    }}
-                  >
-                    {isError ? (
-                      <ErrorOutlineOutlinedIcon
-                        sx={{
-                          fontSize: 17,
-                          color: "#ef4444",
-                          flexShrink: 0,
-                          mt: 0.1,
-                        }}
-                      />
-                    ) : (
-                      <WarningAmberOutlinedIcon
-                        sx={{
-                          fontSize: 17,
-                          color: "#f59e0b",
-                          flexShrink: 0,
-                          mt: 0.1,
-                        }}
-                      />
-                    )}
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.8rem",
-                        color: isError ? "#dc2626" : "#92400e",
-                        lineHeight: 1.55,
-                      }}
-                    >
-                      {issue.message}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-            {!hasHardError && (
-              <Box
-                sx={{
-                  p: 1.5,
-                  borderRadius: "10px",
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(53,53,53,0.02)",
-                  border: `1px solid ${border}`,
-                  mb: 3,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    color: "text.secondary",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  You can still proceed with this reschedule. Section heads will
-                  be notified to reassign staff for the new date.
-                </Typography>
-              </Box>
-            )}
-            <Box sx={{ display: "flex", gap: 1.25 }}>
-              <Button
-                fullWidth
-                onClick={handleBack}
-                disabled={loading}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 500,
-                  borderRadius: "10px",
-                  py: 1,
-                  textTransform: "none",
-                  border: `1px solid ${border}`,
-                  color: "text.secondary",
-                  backgroundColor: "transparent",
-                  "&:hover": {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.04)"
-                      : HOVER_BG,
-                  },
-                }}
-              >
-                Go Back
-              </Button>
-              {!hasHardError && (
-                <Button
-                  fullWidth
-                  onClick={handleProceedDespiteWarnings}
-                  disabled={loading}
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.82rem",
-                    fontWeight: 600,
-                    borderRadius: "10px",
-                    py: 1,
-                    textTransform: "none",
-                    backgroundColor: "#212121",
-                    color: "#fff",
-                    "&:hover": { backgroundColor: "#333" },
-                    "&:disabled": {
-                      backgroundColor: "rgba(33,33,33,0.35)",
-                      color: "rgba(255,255,255,0.7)",
-                    },
-                  }}
-                >
-                  {loading ? (
-                    <CircularProgress size={16} sx={{ color: "#fff" }} />
-                  ) : (
-                    "Proceed Anyway"
-                  )}
-                </Button>
-              )}
-            </Box>
-          </Box>
-        ) : (
-          <Box>
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: "10px",
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.02)"
-                  : "rgba(53,53,53,0.02)",
-                border: `1px solid ${border}`,
-                mb: 2.5,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.7rem",
-                  color: "text.secondary",
-                  mb: 0.25,
-                }}
-              >
-                Current event date
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: "text.primary",
-                }}
-              >
-                {buildEventDateDisplay(request)}
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 2,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "text.primary",
-                }}
-              >
-                New Schedule
-              </Typography>
-              <Box
-                onClick={() => {
-                  setMultiDay((p) => !p);
-                  setDays([{ date: "", from_time: "", to_time: "" }]);
-                  setSingleDate("");
-                  setFromTime("");
-                  setToTime("");
-                }}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  px: 1.25,
-                  py: 0.45,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  border: `1px solid ${multiDay ? GOLD : border}`,
-                  backgroundColor: multiDay ? GOLD_08 : "transparent",
-                  transition: "all 0.15s",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.73rem",
-                    fontWeight: 500,
-                    color: multiDay
-                      ? isDark
-                        ? GOLD
-                        : "#7a5c00"
-                      : "text.secondary",
-                  }}
-                >
-                  Multi-day
-                </Typography>
-              </Box>
-            </Box>
-
-            {!multiDay && (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                <TextField
-                  fullWidth
-                  label="New Event Date"
-                  type="date"
-                  value={singleDate}
-                  onChange={(e) => setSingleDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={inputSx}
-                />
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 1.5,
-                  }}
-                >
-                  <TextField
-                    fullWidth
-                    label="Start Time"
-                    type="time"
-                    value={fromTime}
-                    onChange={(e) => setFromTime(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
-                  />
-                  <TextField
-                    fullWidth
-                    label="End Time"
-                    type="time"
-                    value={toTime}
-                    onChange={(e) => setToTime(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
-                  />
-                </Box>
-              </Box>
-            )}
-
-            {multiDay && (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {days.map((day, idx) => (
-                  <Box
-                    key={idx}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: "10px",
-                      border: `1px solid ${border}`,
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.01)"
-                        : "rgba(53,53,53,0.01)",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        mb: 1.25,
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          color: "text.secondary",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        Day {idx + 1}
-                      </Typography>
-                      {days.length > 1 && (
-                        <IconButton
-                          onClick={() => removeDay(idx)}
-                          size="small"
-                          sx={{
-                            color: "text.disabled",
-                            borderRadius: "10px",
-                            p: 0.4,
-                            "&:hover": {
-                              color: "#ef4444",
-                              backgroundColor: "rgba(239,68,68,0.06)",
-                            },
-                          }}
-                        >
-                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      )}
-                    </Box>
-                    <Box
-                      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-                    >
-                      <TextField
-                        fullWidth
-                        label="Date"
-                        type="date"
-                        value={day.date}
-                        onChange={(e) => updateDay(idx, "date", e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        sx={inputSx}
-                        size="small"
-                      />
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: 1,
-                        }}
-                      >
-                        <TextField
-                          fullWidth
-                          label="Start"
-                          type="time"
-                          value={day.from_time}
-                          onChange={(e) =>
-                            updateDay(idx, "from_time", e.target.value)
-                          }
-                          InputLabelProps={{ shrink: true }}
-                          sx={inputSx}
-                          size="small"
-                        />
-                        <TextField
-                          fullWidth
-                          label="End"
-                          type="time"
-                          value={day.to_time}
-                          onChange={(e) =>
-                            updateDay(idx, "to_time", e.target.value)
-                          }
-                          InputLabelProps={{ shrink: true }}
-                          sx={inputSx}
-                          size="small"
-                        />
-                      </Box>
-                    </Box>
-                  </Box>
-                ))}
-                <Box
-                  onClick={addDay}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 0.75,
-                    py: 1,
-                    borderRadius: "10px",
-                    border: `1px dashed ${border}`,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                    "&:hover": {
-                      borderColor: "rgba(53,53,53,0.35)",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : HOVER_BG,
-                    },
-                  }}
-                >
-                  <AddOutlinedIcon
-                    sx={{ fontSize: 15, color: "text.secondary" }}
-                  />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      color: "text.secondary",
-                    }}
-                  >
-                    Add another day
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                label="Reason for rescheduling (optional)"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                sx={inputSx}
-              />
-            </Box>
-
-            <Box
-              sx={{
-                mt: 2,
-                p: 1.25,
-                borderRadius: "10px",
-                backgroundColor: isDark ? "rgba(139,92,246,0.06)" : "#f5f3ff",
-                border: `1px solid ${isDark ? "rgba(139,92,246,0.2)" : "#e9d5ff"}`,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.75rem",
-                  color: isDark ? "#a78bfa" : "#6d28d9",
-                  lineHeight: 1.55,
-                }}
-              >
-                Rescheduling will reset this request to{" "}
-                <strong>Under Review</strong> so section heads can reassign
-                staff for the new date. Previously assigned staff will be
-                notified.
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 1.25, mt: 2.5 }}>
-              <Button
-                fullWidth
-                onClick={handleClose}
-                disabled={loading || validating}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 500,
-                  borderRadius: "10px",
-                  py: 1,
-                  textTransform: "none",
-                  border: `1px solid ${border}`,
-                  color: "text.secondary",
-                  backgroundColor: "transparent",
-                  "&:hover": {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.04)"
-                      : HOVER_BG,
-                  },
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                fullWidth
-                onClick={handleValidate}
-                disabled={!canSubmit || loading || validating}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  borderRadius: "10px",
-                  py: 1,
-                  textTransform: "none",
-                  backgroundColor: "#212121",
-                  color: "#fff",
-                  "&:hover": { backgroundColor: "#333" },
-                  "&:disabled": {
-                    backgroundColor: "rgba(33,33,33,0.35)",
-                    color: "rgba(255,255,255,0.7)",
-                  },
-                }}
-              >
-                {validating ? (
-                  <CircularProgress size={16} sx={{ color: "#fff" }} />
-                ) : (
-                  "Continue"
-                )}
-              </Button>
-            </Box>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Detail Dialog ─────────────────────────────────────────────────────────────
+// G��G�� Detail Dialog G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function RequestDetailDialog({
   open,
   onClose,
   request,
   isDark,
   border,
+  onActionError,
   onCancelSuccess,
   onRescheduleSuccess,
 }) {
@@ -2986,7 +2106,9 @@ function RequestDetailDialog({
       onCancelSuccess?.();
     } catch (err) {
       console.error("Cancel failed:", err);
-      alert(err.message || "Failed to cancel the request. Please try again.");
+      onActionError?.(
+        err.message || "Failed to cancel the request. Please try again.",
+      );
     } finally {
       setCancelLoading(false);
     }
@@ -3000,7 +2122,7 @@ function RequestDetailDialog({
       onRescheduleSuccess?.();
     } catch (err) {
       console.error("Reschedule failed:", err);
-      alert(
+      onActionError?.(
         err.message || "Failed to reschedule the request. Please try again.",
       );
     } finally {
@@ -3356,7 +2478,7 @@ function RequestDetailDialog({
                   ? ` Reason: "${request.cancellation_reason}"`
                   : ""}
                 {request.cancelled_at
-                  ? ` · ${new Date(request.cancelled_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                  ? ` -+ ${new Date(request.cancelled_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
                   : ""}
               </Typography>
             </Box>
@@ -3384,7 +2506,7 @@ function RequestDetailDialog({
                 Rescheduled from{" "}
                 <strong>{fmtDate(request.previous_event_date)}</strong>
                 {request.reschedule_reason
-                  ? ` · "${request.reschedule_reason}"`
+                  ? ` -+ "${request.reschedule_reason}"`
                   : ""}
               </Typography>
             </Box>
@@ -3551,7 +2673,7 @@ function RequestDetailDialog({
                               color: "text.primary",
                             }}
                           >
-                            {fmtTime(day.from_time)} – {fmtTime(day.to_time)}
+                            {fmtTime(day.from_time)} - {fmtTime(day.to_time)}
                           </Typography>
                         ) : (
                           <Typography
@@ -3608,8 +2730,8 @@ function RequestDetailDialog({
                     }}
                   >
                     {request.from_time && request.to_time
-                      ? `${fmtTime(request.from_time)} – ${fmtTime(request.to_time)}`
-                      : "—"}
+                      ? `${fmtTime(request.from_time)} - ${fmtTime(request.to_time)}`
+                      : "N/A"}
                   </Typography>
                 </>
               )}
@@ -3630,7 +2752,7 @@ function RequestDetailDialog({
                   lineHeight: 1.55,
                 }}
               >
-                {request.venue || "—"}
+                {request.venue || "N/A"}
               </Typography>
             </Box>
           </Section>
@@ -3660,7 +2782,7 @@ function RequestDetailDialog({
                     >
                       {c.name}{" "}
                       <Box component="span" sx={{ color: "text.secondary" }}>
-                        ×{c.pax}
+                        +{c.pax}
                       </Box>
                     </Typography>
                   </Box>
@@ -3674,7 +2796,7 @@ function RequestDetailDialog({
                   color: "text.secondary",
                 }}
               >
-                —
+                N/A
               </Typography>
             )}
           </Section>
@@ -3682,8 +2804,8 @@ function RequestDetailDialog({
           <Section label="Contact Details" border={border}>
             <InfoGrid
               rows={[
-                ["Contact Person", request.contact_person || "—"],
-                ["Contact Info", request.contact_info || "—"],
+                ["Contact Person", request.contact_person || "N/A"],
+                ["Contact Info", request.contact_info || "N/A"],
               ]}
             />
           </Section>
@@ -3866,7 +2988,7 @@ function RequestDetailDialog({
                           "en-US",
                           { month: "long", day: "numeric", year: "numeric" },
                         )
-                      : "—"}
+                      : "N/A"}
                   </Typography>
                 </Box>
                 <Box
@@ -3927,7 +3049,7 @@ function RequestDetailDialog({
   );
 }
 
-// ── Shared components ─────────────────────────────────────────────────────────
+// G��G�� Shared components G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 function Section({ label, children, border }) {
   return (
     <Box sx={{ mb: 2.5 }}>
@@ -3981,7 +3103,7 @@ function InfoGrid({ rows }) {
               lineHeight: 1.55,
             }}
           >
-            {value || "—"}
+            {value || "N/A"}
           </Typography>
         </React.Fragment>
       ))}
