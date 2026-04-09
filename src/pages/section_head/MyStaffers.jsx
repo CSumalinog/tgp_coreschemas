@@ -19,6 +19,10 @@ import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
+import {
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
+} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -392,9 +396,9 @@ export default function MyStaffers() {
             <Avatar
               src={url}
               sx={{
-                width: 28,
-                height: 28,
-                fontSize: "0.62rem",
+                width: TABLE_USER_AVATAR_SIZE,
+                height: TABLE_USER_AVATAR_SIZE,
+                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                 fontWeight: 700,
                 backgroundColor: avatarColor.bg,
                 color: avatarColor.color,

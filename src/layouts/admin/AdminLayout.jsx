@@ -17,6 +17,7 @@ import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -66,6 +67,11 @@ const MENU_SECTIONS = [
         label: "Request Management",
         to: "request-management",
         Icon: DescriptionOutlinedIcon,
+      },
+      {
+        label: "Coverage Tracker",
+        to: "coverage-tracker",
+        Icon: TrackChangesOutlinedIcon,
       },
       {
         label: "Scheduling",

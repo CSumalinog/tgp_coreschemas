@@ -14,6 +14,8 @@ import Signup from "../pages/auth/Signup";
 // Admin Pages
 import Dashboard from "../pages/admin/Dashboard";
 import AdminRequestManagement from "../pages/admin/AdminRequestManagement";
+import CoverageTracker from "../pages/admin/CoverageTracker";
+import CoverageRequestDetailsPage from "../pages/admin/CoverageRequestDetailsPage";
 import CalendarManagement from "../pages/admin/CalendarManagement";
 import StaffersManagement from "../pages/admin/StaffersManagement";
 import SemesterManagement from "../pages/admin/SemesterManagement";
@@ -68,6 +70,16 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="request-management" element={<AdminRequestManagement />} />
+        <Route path="coverage-tracker" element={<CoverageTracker />} />
+        <Route path="coverage-request-details/:id" element={<CoverageRequestDetailsPage />} />
+        <Route
+          path="coverage-tracker/:requestId"
+          element={<Navigate to="/admin/coverage-tracker" replace />}
+        />
+        <Route
+          path="request-management/coverage-tracker/:requestId"
+          element={<Navigate to="/admin/coverage-tracker" replace />}
+        />
         <Route path="calendar-management" element={<CalendarManagement />} />
         <Route path="staffers-management" element={<StaffersManagement />} />
         <Route path="semester-management" element={<SemesterManagement />} />

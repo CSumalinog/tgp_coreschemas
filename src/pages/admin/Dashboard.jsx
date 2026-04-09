@@ -411,8 +411,13 @@ export default function Dashboard() {
     title: "Duty Schedule",
   });
 
-  const goToRequests = (tab) =>
+  const goToRequests = (tab) => {
+    if (tab === "On Going" || tab === "Completed") {
+      navigate("/admin/coverage-tracker", { state: { tab } });
+      return;
+    }
     navigate("/admin/request-management", { state: { tab } });
+  };
   const goToRequest = (id, s) => {
     const m = {
       Pending: "Pending",

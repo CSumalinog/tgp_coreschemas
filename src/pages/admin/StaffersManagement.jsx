@@ -58,6 +58,9 @@ import {
   FILTER_BUTTON_HEIGHT,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
+  FILTER_SEARCH_MIN_WIDTH,
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
@@ -591,11 +594,11 @@ export default function StaffersManagement() {
               <Avatar
                 src={url}
                 sx={{
-                  width: 36,
-                  height: 36,
+                  width: TABLE_USER_AVATAR_SIZE,
+                  height: TABLE_USER_AVATAR_SIZE,
                   backgroundColor: avatarColor.bg,
                   color: avatarColor.color,
-                  fontSize: "0.7rem",
+                  fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                   fontWeight: 700,
                   flexShrink: 0,
                 }}
@@ -893,7 +896,7 @@ export default function StaffersManagement() {
         }}
       >
         {/* Search */}
-        <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
+        <FormControl size="small" sx={{ flex: 1, minWidth: FILTER_SEARCH_MIN_WIDTH }}>
           <OutlinedInput
             placeholder="Search"
             value={searchText}

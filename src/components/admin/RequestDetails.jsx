@@ -21,10 +21,14 @@ import {
   Checkbox,
   Tooltip,
   Popover,
+  Collapse,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ViewSidebarOutlinedIcon from "@mui/icons-material/ViewSidebarOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
-import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -35,6 +39,7 @@ import {
 } from "../../services/adminRequestService";
 import { useRequestAssistant } from "../../hooks/RequestAssistant";
 import BrandedLoader from "../common/BrandedLoader";
+import RequestAssessmentPanel from "./RequestAssessmentPanel";
 
 const ALL_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
@@ -561,6 +566,8 @@ export default function RequestDetails({
   onClose,
   request,
   onActionSuccess,
+  onOpenCoverageDetails,
+  asPage = false,
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -829,19 +836,17 @@ export default function RequestDetails({
     }
   };
 
-  if (!request) return null;
-
-  const coverageComponents = request.services
+  const coverageComponents = request?.services
     ? Object.entries(request.services)
         .filter(([_, pax]) => pax > 0)
         .map(([name, pax]) => ({ name, pax }))
     : [];
 
-  const statusCfg = STATUS_CONFIG[request.status] || {
+  const statusCfg = STATUS_CONFIG[request?.status] || {
     bg: "#f3f4f6",
     color: "#6b7280",
   };
-  const isMultiDay = !!(request.is_multiday && request.event_days?.length > 0);
+  const isMultiDay = !!(request?.is_multiday && request?.event_days?.length > 0);
   // FIX #3: show staff panel for more statuses including On Going / Completed
   const showStaff = [
     "Forwarded",
@@ -850,114 +855,138 @@ export default function RequestDetails({
     "Approved",
     "On Going",
     "Completed",
-  ].includes(request.status);
+  ].includes(request?.status);
   // FIX #4: decline available at any pre-completion stage
-  const canDecline = DECLINABLE_STATUSES.includes(request.status);
+  const canDecline = DECLINABLE_STATUSES.includes(request?.status);
+  const canOpenCoverageDetails = ["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(
+    request?.status,
+  );
 
-  return (
+  const eventDateDisplay = React.useMemo(() => {
+    if (!request) return "—";
+    if (request.is_multiday && request.event_days?.length) {
+      const sorted = [...request.event_days].sort((a, b) =>
+        a.date.localeCompare(b.date),
+      );
+      const first = fmtDate(sorted[0].date, { month: "short", day: "numeric" });
+      const last = fmtDate(sorted[sorted.length - 1].date, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      return sorted.length === 1 ? fmtDate(sorted[0].date) : `${first} – ${last}`;
+    }
+    return request.event_date ? fmtDate(request.event_date) : "—";
+  }, [request]);
+
+  const [panelOpen, setPanelOpen] = useState({
+    eventInfo: true,
+    coverageRequirements: true,
+    clientDetails: true,
+    attachment: true,
+  });
+  const [assessmentSidebarOpen, setAssessmentSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (!open || !request?.id) return;
+    const defaultOpen = !["On Going", "Completed"].includes(request.status);
+    setPanelOpen({
+      eventInfo: defaultOpen,
+      coverageRequirements: defaultOpen,
+      clientDetails: defaultOpen,
+      attachment: defaultOpen,
+    });
+    setAssessmentSidebarOpen(true);
+  }, [open, request?.id, request?.status]);
+
+  const togglePanel = (key) => {
+    setPanelOpen((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  if (!request) return null;
+
+  const openCtrForThisRequest = () => {
+    onOpenCoverageDetails?.({
+      requestId: request.id,
+      title: request.title || "Coverage request",
+      client: request.entity?.name || "—",
+      eventDate: eventDateDisplay,
+      venue: request.venue || "—",
+    });
+  };
+
+  const detailsContent = (
     <>
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        fullWidth
-        maxWidth="md"
-        PaperProps={{
-          sx: {
-            borderRadius: "10px",
-            fontFamily: "'Helvetica Neue', sans-serif",
-            height: { md: "90vh" },
-            maxHeight: "95vh",
-            backgroundColor: "background.paper",
-            boxShadow: isDark
-              ? "0 8px 32px rgba(0,0,0,0.5)"
-              : "0 4px 24px rgba(0,0,0,0.08)",
-          },
+      {/* Title bar */}
+      <Box
+        sx={{
+          px: 3,
+          py: 1,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        {/* Title bar */}
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 3,
-                height: 28,
-                borderRadius: 1,
-                backgroundColor: "#f5c52b",
-                flexShrink: 0,
-              }}
-            />
-            <Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "0.95rem",
-                    color: "text.primary",
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {request.title}
-                </Typography>
-                {isMultiDay && (
-                  <Box
-                    sx={{
-                      px: 0.9,
-                      py: 0.2,
-                      borderRadius: "10px",
-                      backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4",
-                      border: "1px solid",
-                      borderColor: isDark ? "#166534" : "#86efac",
-                      fontSize: "0.65rem",
-                      fontWeight: 600,
-                      color: isDark ? "#4ade80" : "#15803d",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {request.event_days.length}-day event
-                  </Box>
-                )}
-              </Box>
-              <Typography
-                sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          {asPage && (
+            <Tooltip title="Back" arrow>
+              <IconButton
+                onClick={handleClose}
+                size="small"
+                sx={{ color: "text.secondary", mr: -0.4 }}
               >
-                {request.submitted_at
-                  ? `Submitted ${new Date(request.submitted_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
-                  : "Date unknown"}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{
+              px: 1.5,
+              py: 0.35,
+              borderRadius: 1,
+              backgroundColor: statusCfg.bg,
+              border: `1px solid ${statusCfg.color}30`,
+            }}
+          >
+            <Typography
               sx={{
-                px: 1.5,
-                py: 0.4,
-                borderRadius: 1,
-                backgroundColor: statusCfg.bg,
-                border: `1px solid ${statusCfg.color}30`,
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                color: statusCfg.color,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                lineHeight: 1.2,
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  color: statusCfg.color,
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {request.status}
-              </Typography>
-            </Box>
+              {request.status}
+            </Typography>
+          </Box>
+          <Tooltip
+            title={assessmentSidebarOpen ? "Hide assessment panel" : "Show assessment panel"}
+            arrow
+          >
+            <IconButton
+              size="small"
+              onClick={() => setAssessmentSidebarOpen((v) => !v)}
+              sx={{
+                color: "text.secondary",
+                transition: "color 0.2s ease, background-color 0.2s ease",
+                "&:hover": {
+                  color: "text.primary",
+                },
+              }}
+            >
+              <ViewSidebarOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          {!asPage && (
             <IconButton
               onClick={handleClose}
               size="small"
@@ -965,300 +994,383 @@ export default function RequestDetails({
             >
               <CloseIcon fontSize="small" />
             </IconButton>
-          </Box>
+          )}
         </Box>
+      </Box>
 
-        {/* Body */}
-        <DialogContent
+      {/* Body */}
+      <DialogContent
+        sx={{
+          p: 0,
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          overflow: { xs: "auto", md: "hidden" },
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {/* Left */}
+        <Box
           sx={{
-            p: 0,
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            overflow: { xs: "auto", md: "hidden" },
+            flex: 1,
+            px: 3,
+            py: 3,
+            overflowY: { xs: "visible", md: "auto" },
+            minWidth: 0,
           }}
         >
-          {/* Left */}
-          <Box
-            sx={{
-              flex: 1,
-              px: 3,
-              py: 3,
-              overflowY: { xs: "visible", md: "auto" },
-              minWidth: 0,
-            }}
+          <Section
+            label="Event Information"
+            collapsible
+            open={panelOpen.eventInfo}
+            onToggle={() => togglePanel("eventInfo")}
           >
-            <Section label="Event Information">
-              <InfoGrid
-                rows={[
-                  ["Event Title", request.title],
-                  ["Description", request.description],
-                ]}
-                isDark={isDark}
-              />
+            <InfoGrid
+              rows={[
+                ["Event Title", request.title],
+                ["Description", request.description],
+              ]}
+              isDark={isDark}
+            />
 
-              <Box
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "140px 1fr",
+                rowGap: 0.75,
+                columnGap: 1,
+                alignItems: "start",
+                mt: 0.75,
+              }}
+            >
+              <Typography
                 sx={{
-                  display: "grid",
-                  gridTemplateColumns: "140px 1fr",
-                  rowGap: 0.75,
-                  columnGap: 1,
-                  alignItems: "start",
-                  mt: 0.75,
+                  fontSize: "0.8rem",
+                  color: "text.secondary",
+                  pt: isMultiDay ? 0.3 : 0.2,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontSize: "0.8rem",
-                    color: "text.secondary",
-                    pt: isMultiDay ? 0.3 : 0.2,
-                  }}
-                >
-                  {isMultiDay ? "Coverage Days" : "Date"}
-                </Typography>
+                {isMultiDay ? "Coverage Days" : "Date"}
+              </Typography>
 
-                {isMultiDay ? (
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
-                  >
-                    {request.event_days.map((day, idx) => (
+              {isMultiDay ? (
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
+                >
+                  {request.event_days.map((day, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: "10px",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        backgroundColor: isDark ? "#1a1a1a" : "#fafafa",
+                      }}
+                    >
                       <Box
-                        key={idx}
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          px: 1,
-                          py: 0.5,
+                          px: 0.9,
+                          py: 0.2,
                           borderRadius: "10px",
-                          border: "1px solid",
-                          borderColor: "divider",
-                          backgroundColor: isDark ? "#1a1a1a" : "#fafafa",
+                          backgroundColor: "#f5c52b",
+                          color: "#111",
+                          fontSize: "0.7rem",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          minWidth: 52,
+                          textAlign: "center",
                         }}
                       >
-                        <Box
+                        {fmtDate(day.date, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </Box>
+                      {day.from_time && day.to_time ? (
+                        <Typography
+                          sx={{ fontSize: "0.8rem", color: "text.primary" }}
+                        >
+                          {fmtTime(day.from_time)} – {fmtTime(day.to_time)}
+                        </Typography>
+                      ) : (
+                        <Typography
                           sx={{
-                            px: 0.9,
-                            py: 0.2,
-                            borderRadius: "10px",
-                            backgroundColor: "#f5c52b",
-                            color: "#111",
-                            fontSize: "0.7rem",
-                            fontWeight: 600,
-                            flexShrink: 0,
-                            minWidth: 52,
-                            textAlign: "center",
+                            fontSize: "0.78rem",
+                            color: "text.disabled",
+                            fontStyle: "italic",
                           }}
                         >
-                          {fmtDate(day.date, {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </Box>
-                        {day.from_time && day.to_time ? (
-                          <Typography
-                            sx={{ fontSize: "0.8rem", color: "text.primary" }}
-                          >
-                            {fmtTime(day.from_time)} – {fmtTime(day.to_time)}
-                          </Typography>
-                        ) : (
-                          <Typography
-                            sx={{
-                              fontSize: "0.78rem",
-                              color: "text.disabled",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            No time set
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography
-                    sx={{
-                      fontSize: "0.85rem",
-                      color: "text.primary",
-                      lineHeight: 1.5,
-                      pt: 0.2,
-                    }}
-                  >
-                    {fmtDate(request.event_date)}
-                  </Typography>
-                )}
-
-                {!isMultiDay && (
-                  <>
-                    <Typography
-                      sx={{
-                        fontSize: "0.8rem",
-                        color: "text.secondary",
-                        pt: 0.2,
-                      }}
-                    >
-                      Time
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: "0.85rem",
-                        color: "text.primary",
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {request.from_time && request.to_time
-                        ? `${fmtTime(request.from_time)} – ${fmtTime(request.to_time)}`
-                        : "—"}
-                    </Typography>
-                  </>
-                )}
-
-                <Typography
-                  sx={{ fontSize: "0.8rem", color: "text.secondary", pt: 0.2 }}
-                >
-                  Venue
-                </Typography>
+                          No time set
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
                 <Typography
                   sx={{
                     fontSize: "0.85rem",
                     color: "text.primary",
                     lineHeight: 1.5,
+                    pt: 0.2,
                   }}
                 >
-                  {request.venue || "—"}
+                  {fmtDate(request.event_date)}
+                </Typography>
+              )}
+
+              {!isMultiDay && (
+                <>
+                  <Typography
+                    sx={{
+                      fontSize: "0.8rem",
+                      color: "text.secondary",
+                      pt: 0.2,
+                    }}
+                  >
+                    Time
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: "0.85rem",
+                      color: "text.primary",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {request.from_time && request.to_time
+                      ? `${fmtTime(request.from_time)} – ${fmtTime(request.to_time)}`
+                      : "—"}
+                  </Typography>
+                </>
+              )}
+
+              <Typography
+                sx={{ fontSize: "0.8rem", color: "text.secondary", pt: 0.2 }}
+              >
+                Venue
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: "0.85rem",
+                  color: "text.primary",
+                  lineHeight: 1.5,
+                }}
+              >
+                {request.venue || "—"}
+              </Typography>
+            </Box>
+          </Section>
+
+          <Section
+            label="Coverage Requirements"
+            collapsible
+            open={panelOpen.coverageRequirements}
+            onToggle={() => togglePanel("coverageRequirements")}
+          >
+            <Box
+              sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}
+            >
+              {coverageComponents.length > 0 ? (
+                coverageComponents.map((c, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      px: 1.25,
+                      py: 0.5,
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      backgroundColor: isDark ? "#1e1e1e" : "#f9fafb",
+                    }}
+                  >
+                    <Typography
+                      sx={{ fontSize: "0.8rem", color: "text.primary" }}
+                    >
+                      {c.name}{" "}
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: "0.78rem", color: "text.secondary" }}
+                      >
+                        ×{c.pax}
+                      </Typography>
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography
+                  sx={{ fontSize: "0.85rem", color: "text.secondary" }}
+                >
+                  —
+                </Typography>
+              )}
+            </Box>
+          </Section>
+
+          <Section
+            label="Client Details"
+            collapsible
+            open={panelOpen.clientDetails}
+            onToggle={() => togglePanel("clientDetails")}
+          >
+            <InfoGrid
+              rows={[
+                ["Organization", request.entity?.name || "—"],
+                ["Client Type", request.client_type?.name || "—"],
+                ["Submitted By", request.requester?.full_name || "—"],
+                ["Contact Person", request.contact_person || "—"],
+                ["Contact Info", request.contact_info || "—"],
+              ]}
+              isDark={isDark}
+            />
+          </Section>
+
+          <Section
+            label="Attachment"
+            collapsible
+            open={panelOpen.attachment}
+            onToggle={() => togglePanel("attachment")}
+          >
+            {request.file_url ? (
+              <Box
+                onClick={() => openFile(request.file_url)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  cursor: "pointer",
+                  color: "#1976d2",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              >
+                <InsertDriveFileOutlinedIcon sx={{ fontSize: 15 }} />
+                <Typography sx={{ fontSize: "0.85rem" }}>
+                  {getFileName(request.file_url)}
                 </Typography>
               </Box>
-            </Section>
-
-            <Section label="Coverage Requirements">
-              <Box
-                sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}
+            ) : (
+              <Typography
+                sx={{ fontSize: "0.85rem", color: "text.secondary" }}
               >
-                {coverageComponents.length > 0 ? (
-                  coverageComponents.map((c, idx) => (
+                No file attached
+              </Typography>
+            )}
+          </Section>
+
+          {/* FIX #6: show forwarded sections on both Forwarded AND For Approval */}
+          {["Forwarded", "Assigned", "For Approval"].includes(
+            request.status,
+          ) &&
+            request.forwarded_sections?.length > 0 && (
+              <Section label="Forwarded To">
+                <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
+                  {request.forwarded_sections.map((s, idx) => (
                     <Box
                       key={idx}
                       sx={{
                         px: 1.25,
                         py: 0.5,
                         borderRadius: 1,
-                        border: "1px solid",
-                        borderColor: "divider",
-                        backgroundColor: isDark ? "#1e1e1e" : "#f9fafb",
+                        backgroundColor: isDark ? "#1e0a2e" : "#f3e8ff",
+                        border: "1px solid #7c3aed30",
                       }}
                     >
                       <Typography
-                        sx={{ fontSize: "0.8rem", color: "text.primary" }}
-                      >
-                        {c.name}{" "}
-                        <Typography
-                          component="span"
-                          sx={{ fontSize: "0.78rem", color: "text.secondary" }}
-                        >
-                          ×{c.pax}
-                        </Typography>
-                      </Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography
-                    sx={{ fontSize: "0.85rem", color: "text.secondary" }}
-                  >
-                    —
-                  </Typography>
-                )}
-              </Box>
-            </Section>
-
-            <Section label="Client Details">
-              <InfoGrid
-                rows={[
-                  ["Organization", request.entity?.name || "—"],
-                  ["Client Type", request.client_type?.name || "—"],
-                  ["Submitted By", request.requester?.full_name || "—"],
-                  ["Contact Person", request.contact_person || "—"],
-                  ["Contact Info", request.contact_info || "—"],
-                ]}
-                isDark={isDark}
-              />
-            </Section>
-
-            <Section label="Attachment">
-              {request.file_url ? (
-                <Box
-                  onClick={() => openFile(request.file_url)}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                    cursor: "pointer",
-                    color: "#1976d2",
-                    "&:hover": { textDecoration: "underline" },
-                  }}
-                >
-                  <InsertDriveFileOutlinedIcon sx={{ fontSize: 15 }} />
-                  <Typography sx={{ fontSize: "0.85rem" }}>
-                    {getFileName(request.file_url)}
-                  </Typography>
-                </Box>
-              ) : (
-                <Typography
-                  sx={{ fontSize: "0.85rem", color: "text.secondary" }}
-                >
-                  No file attached
-                </Typography>
-              )}
-            </Section>
-
-            {/* FIX #6: show forwarded sections on both Forwarded AND For Approval */}
-            {["Forwarded", "Assigned", "For Approval"].includes(
-              request.status,
-            ) &&
-              request.forwarded_sections?.length > 0 && (
-                <Section label="Forwarded To">
-                  <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
-                    {request.forwarded_sections.map((s, idx) => (
-                      <Box
-                        key={idx}
                         sx={{
-                          px: 1.25,
-                          py: 0.5,
-                          borderRadius: 1,
-                          backgroundColor: isDark ? "#1e0a2e" : "#f3e8ff",
-                          border: "1px solid #7c3aed30",
+                          fontSize: "0.8rem",
+                          color: "#7c3aed",
+                          fontWeight: 500,
                         }}
                       >
-                        <Typography
-                          sx={{
-                            fontSize: "0.8rem",
-                            color: "#7c3aed",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {s}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Section>
-              )}
+                        {s}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Section>
+            )}
 
-            {/* ── Assigned Staff — service rows with fill bar ── */}
-            {showStaff && (
-              <Section label="Assigned Staff">
+          {/* ── Assigned Staff — service rows with fill bar ── */}
+          {showStaff && (
+            <Section label="Assigned Staff">
+              <Box
+                sx={{
+                  position: "relative",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "10px",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "#ffffff",
+                  overflow: "hidden",
+                  transition: "background-color 0.18s ease",
+                  "& .assigned-staff-ctr-action": {
+                    opacity: 0,
+                    pointerEvents: "none",
+                  },
+                  "&:hover": {
+                    backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(53,53,53,0.02)",
+                  },
+                  "&:hover .assigned-staff-ctr-action": {
+                    opacity: 1,
+                    pointerEvents: "auto",
+                  },
+                }}
+              >
+                {canOpenCoverageDetails && (
+                  <Tooltip title="View CTR" placement="left" arrow>
+                    <IconButton
+                      className="assigned-staff-ctr-action"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCtrForThisRequest();
+                      }}
+                      sx={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: { xs: 52, md: 72 },
+                        borderRadius: 0,
+                        borderLeft: "1px solid",
+                        borderColor: "divider",
+                        background: isDark
+                          ? "linear-gradient(90deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.08) 100%)"
+                          : "linear-gradient(90deg, rgba(53,53,53,0.00) 0%, rgba(53,53,53,0.06) 100%)",
+                        color: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,17,17,0.75)",
+                        transition: "opacity 0.2s ease, background 0.2s ease, color 0.2s ease",
+                        "&:hover": {
+                          background: isDark
+                            ? "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.14) 100%)"
+                            : "linear-gradient(90deg, rgba(53,53,53,0.03) 0%, rgba(53,53,53,0.12) 100%)",
+                          color: isDark ? "#ffffff" : "#111111",
+                        },
+                      }}
+                    >
+                      <ChevronRightIcon sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 700 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
                 <Box
-                  sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.75,
+                    p: 1,
+                    pr: canOpenCoverageDetails ? { xs: 1, md: 8 } : 1,
+                  }}
                 >
                   {SERVICE_COLUMNS.filter((svc) => {
                     const pax = request.services?.[svc.key];
-                    // Service must be requested (pax > 0)
                     if (!pax || pax <= 0) return false;
-                    // Camera Operator has additional restriction: only Video section head manages it
-                    // and it should only appear if explicitly requested (not auto-assigned)
                     if (
                       svc.key === "Camera Operator (for live streaming)" &&
                       svc.section === "Videojournalism"
                     ) {
-                      return pax > 0; // Already checked above, but explicit for clarity
+                      return pax > 0;
                     }
                     return true;
                   }).map((svc) => {
@@ -1277,284 +1389,206 @@ export default function RequestDetails({
                     );
                   })}
                 </Box>
-                {assignedStaffers.length === 0 && (
-                  <Typography
-                    sx={{ fontSize: "0.78rem", color: "text.secondary", mt: 1 }}
-                  >
-                    No staff assigned yet.
-                  </Typography>
-                )}
-              </Section>
-            )}
+              </Box>
+              {assignedStaffers.length === 0 && (
+                <Typography
+                  sx={{ fontSize: "0.78rem", color: "text.secondary", mt: 1 }}
+                >
+                  No staff assigned yet.
+                </Typography>
+              )}
+            </Section>
+          )}
 
-            {request.status === "Declined" && request.declined_reason && (
-              <Section label="Decline Reason">
+          {request.status === "Declined" && request.declined_reason && (
+            <Section label="Decline Reason">
+              <Box
+                sx={{
+                  p: 1.5,
+                  bgcolor: isDark ? "#1a0a0a" : "#fef2f2",
+                  borderRadius: "10px",
+                  borderLeft: "3px solid #dc2626",
+                }}
+              >
+                <Typography sx={{ fontSize: "0.85rem", color: "#dc2626" }}>
+                  {request.declined_reason}
+                </Typography>
+              </Box>
+            </Section>
+          )}
+
+          {/* FIX #3: show admin_notes for all post-approval statuses */}
+          {["Approved", "Assigned", "On Going", "Completed"].includes(request.status) &&
+            request.admin_notes && (
+              <Section label="Admin Notes">
                 <Box
                   sx={{
                     p: 1.5,
-                    bgcolor: isDark ? "#1a0a0a" : "#fef2f2",
+                    bgcolor: isDark ? "#0a1a0a" : "#f0fdf4",
                     borderRadius: "10px",
-                    borderLeft: "3px solid #dc2626",
+                    borderLeft: "3px solid #15803d",
                   }}
                 >
-                  <Typography sx={{ fontSize: "0.85rem", color: "#dc2626" }}>
-                    {request.declined_reason}
+                  <Typography sx={{ fontSize: "0.85rem", color: "#15803d" }}>
+                    {request.admin_notes}
                   </Typography>
                 </Box>
               </Section>
             )}
+        </Box>
 
-            {/* FIX #3: show admin_notes for all post-approval statuses */}
-            {["Approved", "On Going", "Completed"].includes(request.status) &&
-              request.admin_notes && (
-                <Section label="Admin Notes">
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      bgcolor: isDark ? "#0a1a0a" : "#f0fdf4",
-                      borderRadius: "10px",
-                      borderLeft: "3px solid #15803d",
-                    }}
-                  >
-                    <Typography sx={{ fontSize: "0.85rem", color: "#15803d" }}>
-                      {request.admin_notes}
-                    </Typography>
-                  </Box>
-                </Section>
-              )}
+        <Collapse
+          in={assessmentSidebarOpen}
+          orientation="horizontal"
+          timeout={{ enter: 260, exit: 220 }}
+          easing={{
+            enter: "cubic-bezier(0.22, 1, 0.36, 1)",
+            exit: "cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+          sx={{ display: { xs: "none", md: "block" } }}
+        >
+          <Box sx={{ display: "flex", height: "100%" }}>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ display: "flex" }}
+            />
+            <RequestAssessmentPanel
+              checks={checks}
+              isDark={isDark}
+            />
           </Box>
+        </Collapse>
 
-          <Divider
-            orientation="horizontal"
-            flexItem
-            sx={{ display: { xs: "block", md: "none" } }}
-          />
-          <Divider
-            orientation="vertical"
-            flexItem
-            sx={{ display: { xs: "none", md: "flex" } }}
-          />
+        {assessmentSidebarOpen && (
+          <Box sx={{ display: { xs: "block", md: "none" }, width: "100%" }}>
+            <Divider orientation="horizontal" flexItem />
+            <RequestAssessmentPanel
+              checks={checks}
+              isDark={isDark}
+            />
+          </Box>
+        )}
+      </DialogContent>
 
-          {/* Right: Assessment panel */}
-          <Box
+      {/* Footer — FIX #4: Decline available for all DECLINABLE_STATUSES */}
+      <Box
+        sx={{
+          px: 3,
+          py: 1.75,
+          borderTop: "1px solid",
+          borderColor: "divider",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1,
+          backgroundColor: isDark ? "#161616" : "#fafafa",
+        }}
+      >
+        {canDecline && (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              setError("");
+              setDeclineOpen(true);
+            }}
             sx={{
-              width: { xs: "100%", md: 280 },
-              flexShrink: 0,
-              px: 2.5,
-              py: 3,
-              backgroundColor: isDark ? "#161616" : "#fafafa",
-              overflowY: { xs: "visible", md: "auto" },
-              display: "flex",
-              flexDirection: "column",
-              gap: 1.5,
+              textTransform: "none",
+              fontSize: "0.82rem",
+              borderColor: "divider",
+              color: "text.secondary",
+              "&:hover": { borderColor: "#dc2626", color: "#dc2626" },
             }}
           >
-            <Box
-              sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}
-            >
-              <AutoAwesomeOutlinedIcon
-                sx={{ fontSize: 13, color: "#f5c52b" }}
-              />
-              <Typography
-                sx={{
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  color: "text.secondary",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Request Assessment
-              </Typography>
-            </Box>
+            Decline
+          </Button>
+        )}
+        {request.status === "Pending" && (
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => {
+              setError("");
+              assessmentFlags.length > 0
+                ? setWarningOpen(true)
+                : setForwardOpen(true);
+            }}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              backgroundColor: "#212121",
+              color: "#fff",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "#333", boxShadow: "none" },
+            }}
+          >
+            Forward to Section
+          </Button>
+        )}
+        {/* FIX #2: approve goes through handleApproveClick which checks flags + unfilled slots */}
+        {request.status === "For Approval" && (
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleApproveClick}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              backgroundColor: "#212121",
+              color: "#fff",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "#333", boxShadow: "none" },
+            }}
+          >
+            Approve Request
+          </Button>
+        )}
+      </Box>
+    </>
+  );
 
-            {!checks || checks.loading ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <BrandedLoader size={20} inline />
-                <Typography
-                  sx={{ fontSize: "0.78rem", color: "text.secondary" }}
-                >
-                  Analyzing…
-                </Typography>
-              </Box>
-            ) : (
-              <>
-                <AssessCard
-                  title="Submission Timing"
-                  check={checks.lateSubmission}
-                  isDark={isDark}
-                />
-                <AssessCard
-                  title="Completeness"
-                  check={checks.incomplete}
-                  isDark={isDark}
-                  issues={checks.incomplete?.issues}
-                />
-                <AssessCard
-                  title="Scheduling Conflict"
-                  check={checks.conflict}
-                  isDark={isDark}
-                  conflicts={checks.conflict?.conflicts}
-                />
-                {checks.newsworthiness && (
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: "10px",
-                      border: "1px solid",
-                      borderColor: "divider",
-                      backgroundColor: "background.paper",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: "0.7rem",
-                        fontWeight: 700,
-                        color: "text.secondary",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                        mb: 1,
-                      }}
-                    >
-                      Newsworthiness
-                    </Typography>
-                    {checks.newsworthiness.score ? (
-                      <>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            mb: 0.75,
-                          }}
-                        >
-                          <Typography sx={{ fontSize: "0.85rem" }}>
-                            {"⭐".repeat(checks.newsworthiness.score)}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              color:
-                                SCORE_CONFIG[checks.newsworthiness.label]
-                                  ?.color || "text.secondary",
-                            }}
-                          >
-                            {checks.newsworthiness.label}
-                          </Typography>
-                        </Box>
-                        <Typography
-                          sx={{
-                            fontSize: "0.75rem",
-                            color: "text.secondary",
-                            lineHeight: 1.5,
-                            mb: 0.75,
-                          }}
-                        >
-                          {checks.newsworthiness.reasoning}
-                        </Typography>
-                        {checks.newsworthiness.recommendation && (
-                          <Typography
-                            sx={{
-                              fontSize: "0.72rem",
-                              fontWeight: 600,
-                              color: "#1976d2",
-                            }}
-                          >
-                            → {checks.newsworthiness.recommendation}
-                          </Typography>
-                        )}
-                      </>
-                    ) : (
-                      <Typography
-                        sx={{ fontSize: "0.75rem", color: "text.secondary" }}
-                      >
-                        {checks.newsworthiness.reasoning}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-              </>
-            )}
-          </Box>
-        </DialogContent>
-
-        {/* Footer — FIX #4: Decline available for all DECLINABLE_STATUSES */}
+  return (
+    <>
+      {asPage ? (
         <Box
           sx={{
-            px: 3,
-            py: 1.75,
-            borderTop: "1px solid",
-            borderColor: "divider",
+            height: "100%",
+            minHeight: 0,
             display: "flex",
-            justifyContent: "flex-end",
-            gap: 1,
-            backgroundColor: isDark ? "#161616" : "#fafafa",
+            flexDirection: "column",
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: "20px",
+            backgroundColor: "background.paper",
+            overflow: "hidden",
           }}
         >
-          {canDecline && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setError("");
-                setDeclineOpen(true);
-              }}
-              sx={{
-                textTransform: "none",
-                fontSize: "0.82rem",
-                borderColor: "divider",
-                color: "text.secondary",
-                "&:hover": { borderColor: "#dc2626", color: "#dc2626" },
-              }}
-            >
-              Decline
-            </Button>
-          )}
-          {request.status === "Pending" && (
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => {
-                setError("");
-                assessmentFlags.length > 0
-                  ? setWarningOpen(true)
-                  : setForwardOpen(true);
-              }}
-              sx={{
-                textTransform: "none",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                backgroundColor: "#212121",
-                color: "#fff",
-                boxShadow: "none",
-                "&:hover": { backgroundColor: "#333", boxShadow: "none" },
-              }}
-            >
-              Forward to Section
-            </Button>
-          )}
-          {/* FIX #2: approve goes through handleApproveClick which checks flags + unfilled slots */}
-          {request.status === "For Approval" && (
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleApproveClick}
-              sx={{
-                textTransform: "none",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                backgroundColor: "#212121",
-                color: "#fff",
-                boxShadow: "none",
-                "&:hover": { backgroundColor: "#333", boxShadow: "none" },
-              }}
-            >
-              Approve Request
-            </Button>
-          )}
+          {detailsContent}
         </Box>
-      </Dialog>
+      ) : (
+        <Dialog
+          open={open}
+          onClose={handleClose}
+          fullWidth
+          maxWidth="md"
+          PaperProps={{
+            sx: {
+              borderRadius: "10px",
+              fontFamily: "'Helvetica Neue', sans-serif",
+              height: { md: "90vh" },
+              maxHeight: "95vh",
+              backgroundColor: "background.paper",
+              boxShadow: isDark
+                ? "0 8px 32px rgba(0,0,0,0.5)"
+                : "0 4px 24px rgba(0,0,0,0.08)",
+            },
+          }}
+        >
+          {detailsContent}
+        </Dialog>
+      )}
 
       {/* ── Forward Warning Dialog (unchanged) ── */}
       <Dialog
@@ -2476,25 +2510,53 @@ export default function RequestDetails({
   );
 }
 
-function Section({ label, children }) {
+function Section({
+  label,
+  children,
+  collapsible = false,
+  open = true,
+  onToggle,
+}) {
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography
+      <Box
+        onClick={() => collapsible && onToggle?.()}
         sx={{
-          fontSize: "0.68rem",
-          fontWeight: 700,
-          color: "text.secondary",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           mb: 1,
           pb: 0.75,
           borderBottom: "1px solid",
           borderColor: "divider",
+          cursor: collapsible ? "pointer" : "default",
+          userSelect: "none",
         }}
       >
-        {label}
-      </Typography>
-      {children}
+        <Typography
+          sx={{
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            color: "text.secondary",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}
+        >
+          {label}
+        </Typography>
+        {collapsible && (
+          <ExpandMoreIcon
+            sx={{
+              fontSize: 16,
+              color: "text.disabled",
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }}
+          />
+        )}
+      </Box>
+
+      {collapsible ? <Collapse in={open}>{children}</Collapse> : children}
     </Box>
   );
 }
@@ -2528,104 +2590,4 @@ function InfoGrid({ rows, isDark }) {
   );
 }
 
-function AssessCard({ title, check, issues, conflicts, isDark }) {
-  const type = check?.type;
-  const borderColor =
-    type === "success"
-      ? "#15803d"
-      : type === "warning"
-        ? "#d97706"
-        : type === "error"
-          ? "#dc2626"
-          : "divider";
-  const dotColor =
-    type === "success"
-      ? "#15803d"
-      : type === "warning"
-        ? "#d97706"
-        : type === "error"
-          ? "#dc2626"
-          : "#9ca3af";
-  const textColor =
-    type === "success"
-      ? "#15803d"
-      : type === "warning"
-        ? "#d97706"
-        : type === "error"
-          ? "#dc2626"
-          : "text.secondary";
-  return (
-    <Box
-      sx={{
-        p: 1.5,
-        borderRadius: "10px",
-        border: "1px solid",
-        borderColor: "divider",
-        borderLeft: `3px solid ${borderColor}`,
-        backgroundColor: "background.paper",
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.4 }}>
-        <Box
-          sx={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            backgroundColor: dotColor,
-            flexShrink: 0,
-          }}
-        />
-        <Typography
-          sx={{ fontSize: "0.75rem", fontWeight: 700, color: "text.primary" }}
-        >
-          {title}
-        </Typography>
-      </Box>
-      {check?.message && (
-        <Typography
-          sx={{
-            fontSize: "0.73rem",
-            color: textColor,
-            lineHeight: 1.5,
-            pl: 1.5,
-          }}
-        >
-          {check.message}
-        </Typography>
-      )}
-      {issues?.map((issue, idx) => (
-        <Typography
-          key={idx}
-          sx={{
-            fontSize: "0.72rem",
-            color: textColor,
-            lineHeight: 1.6,
-            pl: 1.5,
-          }}
-        >
-          · {issue}
-        </Typography>
-      ))}
-      {conflicts?.map((c, idx) => (
-        <Typography
-          key={idx}
-          sx={{
-            fontSize: "0.72rem",
-            color: "#d97706",
-            lineHeight: 1.6,
-            pl: 1.5,
-          }}
-        >
-          · {c.title} ({c.time})
-        </Typography>
-      ))}
-      {!type && !check?.message && (
-        <Typography
-          sx={{ fontSize: "0.73rem", color: "text.secondary", pl: 1.5 }}
-        >
-          Checking…
-        </Typography>
-      )}
-    </Box>
-  );
-}
+

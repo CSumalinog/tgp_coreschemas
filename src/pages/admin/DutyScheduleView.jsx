@@ -29,7 +29,9 @@ import {
   FILTER_BUTTON_HEIGHT,
   FILTER_GROUP_GAP,
   FILTER_INPUT_HEIGHT,
-  FILTER_ROW_GAP,
+  FILTER_SEARCH_MIN_WIDTH,
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 import { useLocation } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
@@ -37,8 +39,6 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CloseIcon from "@mui/icons-material/Close";
-import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -229,7 +229,6 @@ export default function DutyScheduleView() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [activeTab, setActiveTab] = useState(0);
-  const [isTableFullscreen, setIsTableFullscreen] = useState(false);
   const [selectedDayFilter, setSelectedDayFilter] = useState(null);
   const [requestSearchText, setRequestSearchText] = useState("");
   const [requestStatusFilter, setRequestStatusFilter] = useState("All");
@@ -817,9 +816,9 @@ export default function DutyScheduleView() {
             <Avatar
               src={url}
               sx={{
-                width: 28,
-                height: 28,
-                fontSize: "0.62rem",
+                width: TABLE_USER_AVATAR_SIZE,
+                height: TABLE_USER_AVATAR_SIZE,
+                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                 fontWeight: 700,
                 backgroundColor: avatarColor.bg,
                 color: avatarColor.color,
@@ -1010,9 +1009,9 @@ export default function DutyScheduleView() {
             <Avatar
               src={url}
               sx={{
-                width: 26,
-                height: 26,
-                fontSize: "0.62rem",
+                width: TABLE_USER_AVATAR_SIZE,
+                height: TABLE_USER_AVATAR_SIZE,
+                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                 fontWeight: 700,
                 backgroundColor: avatarColor.bg,
                 color: avatarColor.color,
@@ -1236,34 +1235,365 @@ export default function DutyScheduleView() {
       {/* ── Header ── */}
       <Box
         sx={{
-          mb: 3,
+          mb: 1.5,
           flexShrink: 0,
           display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 1,
-          flexWrap: "wrap",
+          flexDirection: "column",
+          gap: 0.25,
         }}
       >
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontWeight: 700,
-            fontSize: "1.05rem",
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Duty Schedule
-        </Typography>
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-end",
-            flexDirection: "row",
-            gap: 0.75,
-            flexWrap: "nowrap",
+            justifyContent: "space-between",
+            gap: 1,
+            flexWrap: "wrap",
+            width: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.2,
+              flexWrap: "wrap",
+            }}
+          >
+            <Box
+              component="button"
+              type="button"
+              onClick={() => setActiveTab(0)}
+              sx={{
+                p: 0,
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                fontFamily: dm,
+                fontWeight: activeTab === 0 ? 700 : 600,
+                fontSize: "0.95rem",
+                color: activeTab === 0 ? "text.primary" : "text.secondary",
+                letterSpacing: "-0.01em",
+                transition: "color 0.15s ease",
+                "&:hover": { color: "text.primary" },
+              }}
+            >
+              Duty Schedule
+            </Box>
+
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontWeight: 500,
+                fontSize: "0.95rem",
+                color: "text.disabled",
+                lineHeight: 1,
+              }}
+            >
+              |
+            </Typography>
+
+            <Box
+              component="button"
+              type="button"
+              onClick={() => setActiveTab(1)}
+              sx={{
+                p: 0,
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.7,
+                fontFamily: dm,
+                fontSize: "0.95rem",
+                fontWeight: activeTab === 1 ? 700 : 600,
+                color: activeTab === 1 ? "text.primary" : "text.secondary",
+                letterSpacing: "-0.01em",
+                transition: "color 0.15s ease",
+                "&:hover": { color: "text.primary" },
+              }}
+            >
+              Schedule Change Request
+              {pendingRequestCount > 0 ? (
+                <NumberBadge
+                  count={pendingRequestCount}
+                  active={activeTab === 1}
+                  size={15}
+                  activeBg={GOLD}
+                  inactiveBg={
+                    isDark
+                      ? "rgba(255,255,255,0.28)"
+                      : "rgba(53,53,53,0.45)"
+                  }
+                  textColor="#ffffff"
+                  sx={{
+                    fontFamily: dm,
+                    fontWeight: 700,
+                    fontSize: "0.62rem",
+                  }}
+                />
+              ) : null}
+            </Box>
+          </Box>
+
+          {activeSemester && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: FILTER_GROUP_GAP,
+                flexWrap: "nowrap",
+                overflowX: "auto",
+                width: { xs: "100%", md: "auto" },
+                minWidth: { xs: "100%", md: 420 },
+              }}
+            >
+              {activeTab === 1 ? (
+                <>
+                  <FormControl
+                    size="small"
+                    sx={{ flex: 1, minWidth: FILTER_SEARCH_MIN_WIDTH }}
+                  >
+                    <OutlinedInput
+                      placeholder="Search requests"
+                      value={requestSearchText}
+                      onChange={(e) => setRequestSearchText(e.target.value)}
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        </InputAdornment>
+                      }
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        height: FILTER_INPUT_HEIGHT,
+                        backgroundColor: "#f7f7f8",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "rgba(0,0,0,0.12)",
+                        },
+                      }}
+                    />
+                  </FormControl>
+
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <Select
+                      value={requestStatusFilter}
+                      onChange={(e) => setRequestStatusFilter(e.target.value)}
+                      IconComponent={UnfoldMoreIcon}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        height: FILTER_INPUT_HEIGHT,
+                        backgroundColor: "#f7f7f8",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "rgba(0,0,0,0.12)",
+                        },
+                      }}
+                    >
+                      {["All", "Pending", "Approved", "Declined"].map((status) => (
+                        <MenuItem
+                          key={status}
+                          value={status}
+                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                        >
+                          {status}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <Box
+                    onClick={handleExportRequestsCsv}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      px: 1.5,
+                      height: ACTION_BTN_HEIGHT,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      fontWeight: 500,
+                      color: "text.secondary",
+                      backgroundColor: "#f7f7f8",
+                      transition: "all 0.15s",
+                      flexShrink: 0,
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: "text.primary",
+                        backgroundColor: "#ededee",
+                      },
+                    }}
+                  >
+                    <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                    Export
+                  </Box>
+                </>
+              ) : (
+                <>
+                  <FormControl
+                    size="small"
+                    sx={{ flex: 1, minWidth: FILTER_SEARCH_MIN_WIDTH }}
+                  >
+                    <OutlinedInput
+                      placeholder="Search"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                        </InputAdornment>
+                      }
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        height: FILTER_INPUT_HEIGHT,
+                        backgroundColor: "#f7f7f8",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "rgba(0,0,0,0.12)",
+                        },
+                      }}
+                    />
+                  </FormControl>
+
+                  <FormControl size="small" sx={{ minWidth: 170 }}>
+                    <Select
+                      value={sectionFilter}
+                      onChange={(e) => setSectionFilter(e.target.value)}
+                      IconComponent={UnfoldMoreIcon}
+                      displayEmpty
+                      renderValue={(val) => {
+                        const triggerCount =
+                          val === "All"
+                            ? schedules.length
+                            : schedules.filter((s) => s.staffer?.section === val)
+                                .length;
+                        return (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.78rem",
+                                color: "text.primary",
+                              }}
+                            >
+                              {val}
+                            </Typography>
+                            <NumberBadge
+                              count={triggerCount}
+                              active={isSectionFiltered}
+                              inactiveBg={
+                                isDark
+                                  ? "rgba(255,255,255,0.28)"
+                                  : "rgba(53,53,53,0.45)"
+                              }
+                              fontFamily={dm}
+                              fontSize="0.56rem"
+                              sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
+                            />
+                          </Box>
+                        );
+                      }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        height: FILTER_INPUT_HEIGHT,
+                        backgroundColor: "#f7f7f8",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "rgba(0,0,0,0.12)",
+                        },
+                        "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
+                      }}
+                    >
+                      {["All", ...sectionOptions].map((sec) => {
+                        const count =
+                          sec === "All"
+                            ? schedules.length
+                            : schedules.filter((s) => s.staffer?.section === sec)
+                                .length;
+                        const isSelected = sectionFilter === sec;
+                        return (
+                          <MenuItem
+                            key={sec}
+                            value={sec}
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.78rem",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              gap: 2,
+                              fontWeight: isSelected ? 600 : 400,
+                            }}
+                          >
+                            {sec}
+                            <NumberBadge
+                              count={count}
+                              active={isSelected}
+                              inactiveBg={
+                                isDark
+                                  ? "rgba(255,255,255,0.28)"
+                                  : "rgba(53,53,53,0.45)"
+                              }
+                              fontFamily={dm}
+                              fontSize="0.56rem"
+                              sx={{ opacity: count === 0 ? 0.5 : 1 }}
+                            />
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+
+                  <Box
+                    onClick={handleExportCsv}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      px: 1.5,
+                      height: ACTION_BTN_HEIGHT,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      fontWeight: 500,
+                      color: "text.secondary",
+                      backgroundColor: "#f7f7f8",
+                      transition: "all 0.15s",
+                      flexShrink: 0,
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: "text.primary",
+                        backgroundColor: "#ededee",
+                      },
+                    }}
+                  >
+                    <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                    Export
+                  </Box>
+                </>
+              )}
+            </Box>
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            flexWrap: "wrap",
+            mt: 0.1,
           }}
         >
           <Typography
@@ -1272,7 +1602,6 @@ export default function DutyScheduleView() {
               fontSize: "0.78rem",
               color: "text.secondary",
               whiteSpace: "nowrap",
-              textAlign: "right",
             }}
           >
             {activeSemester
@@ -1360,6 +1689,17 @@ export default function DutyScheduleView() {
                       ? "none"
                       : "0 10px 20px rgba(0,0,0,0.04)",
                   },
+                  "& .day-card-actions": {
+                    opacity: 0,
+                    transform: "translateY(-2px)",
+                    pointerEvents: "none",
+                    transition: "opacity 0.18s ease, transform 0.18s ease",
+                  },
+                  "&:hover .day-card-actions, &:focus-within .day-card-actions": {
+                    opacity: 1,
+                    transform: "translateY(0)",
+                    pointerEvents: "auto",
+                  },
                 }}
               >
                 <Box
@@ -1383,7 +1723,10 @@ export default function DutyScheduleView() {
                   >
                     {day}
                   </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box
+                    className="day-card-actions"
+                    sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                  >
                     {isSelected && (
                       <IconButton
                         size="small"
@@ -1533,197 +1876,6 @@ export default function DutyScheduleView() {
         </Alert>
       )}
 
-      {activeSemester && (
-        <Box
-          sx={{
-            mb: 2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: FILTER_GROUP_GAP,
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { key: 0, label: "Schedule" },
-            { key: 1, label: "Requests", showBadge: true },
-          ].map((item) => {
-            const active = activeTab === item.key;
-            return (
-              <Box
-                key={item.key}
-                component="button"
-                type="button"
-                onClick={() => setActiveTab(item.key)}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: item.showBadge ? 1 : 0,
-                  px: 1.35,
-                  height: FILTER_BUTTON_HEIGHT,
-                  borderRadius: CONTROL_RADIUS,
-                  border: `1px solid ${active ? "#212121" : "rgba(53,53,53,0.12)"}`,
-                  backgroundColor: active ? "#212121" : "transparent",
-                  color: active ? "#ffffff" : "text.secondary",
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: active ? 600 : 500,
-                  lineHeight: 1.15,
-                  cursor: "pointer",
-                  userSelect: "none",
-                  transition: "all 0.15s ease",
-                  "&:hover": {
-                    borderColor: active ? "#212121" : "rgba(53,53,53,0.22)",
-                    color: active ? "#ffffff" : "text.primary",
-                    backgroundColor: active ? "#212121" : "rgba(53,53,53,0.03)",
-                  },
-                }}
-              >
-                <Box component="span" sx={{ lineHeight: 1 }}>
-                  {item.label}
-                </Box>
-                {item.showBadge && pendingRequestCount > 0 ? (
-                  <NumberBadge
-                    count={pendingRequestCount}
-                    active={active}
-                    size={15}
-                    activeBg={GOLD}
-                    inactiveBg={
-                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
-                    }
-                    textColor="#ffffff"
-                    sx={{
-                      fontFamily: dm,
-                      fontWeight: 700,
-                      fontSize: "0.62rem",
-                    }}
-                  />
-                ) : null}
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {activeSemester && activeTab === 1 && (
-        <Box
-          sx={{
-            mb: 2,
-            display: "flex",
-            alignItems: "center",
-            gap: FILTER_GROUP_GAP,
-            flexWrap: "nowrap",
-            overflowX: "auto",
-            flexShrink: 0,
-          }}
-        >
-          <FormControl size="small" sx={{ flex: 1, minWidth: 280 }}>
-            <OutlinedInput
-              placeholder="Search requests"
-              value={requestSearchText}
-              onChange={(e) => setRequestSearchText(e.target.value)}
-              startAdornment={
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                </InputAdornment>
-              }
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                borderRadius: CONTROL_RADIUS,
-                height: FILTER_INPUT_HEIGHT,
-                backgroundColor: "#f7f7f8",
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.12)",
-                },
-              }}
-            />
-          </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <Select
-              value={requestStatusFilter}
-              onChange={(e) => setRequestStatusFilter(e.target.value)}
-              IconComponent={UnfoldMoreIcon}
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                borderRadius: CONTROL_RADIUS,
-                height: FILTER_INPUT_HEIGHT,
-                backgroundColor: "#f7f7f8",
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.12)",
-                },
-              }}
-            >
-              {["All", "Pending", "Approved", "Declined"].map((status) => (
-                <MenuItem
-                  key={status}
-                  value={status}
-                  sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                >
-                  {status}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Box sx={{ flex: 1 }} />
-
-          <IconButton
-            size="small"
-            onClick={() => setIsTableFullscreen(true)}
-            sx={{
-              borderRadius: CONTROL_RADIUS,
-              color: "text.secondary",
-              border: "1px solid rgba(0,0,0,0.12)",
-              backgroundColor: "#f7f7f8",
-              width: ACTION_BTN_HEIGHT,
-              height: ACTION_BTN_HEIGHT,
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
-            }}
-          >
-            <FullscreenIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-
-          <Box
-            onClick={handleExportRequestsCsv}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1.5,
-              height: ACTION_BTN_HEIGHT,
-              borderRadius: CONTROL_RADIUS,
-              cursor: "pointer",
-              border: "1px solid rgba(0,0,0,0.12)",
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: 500,
-              color: "text.secondary",
-              backgroundColor: "#f7f7f8",
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
-            }}
-          >
-            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-            Export
-          </Box>
-        </Box>
-      )}
-
       {activeSemester && activeTab === 1 && (
         <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
           <Box
@@ -1756,192 +1908,6 @@ export default function DutyScheduleView() {
         </Box>
       )}
 
-      {/* ── Filter row: Search | Section | Export ── */}
-      {/* ── Filter row: Search | Section | Export ── */}
-      {activeSemester && activeTab === 0 && (
-        <Box
-          sx={{
-            mb: 2,
-            display: "flex",
-            alignItems: "center",
-            gap: FILTER_ROW_GAP,
-            flexWrap: "nowrap",
-            overflowX: "auto",
-            flexShrink: 0,
-          }}
-        >
-          {/* Search */}
-          <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
-            <OutlinedInput
-              placeholder="Search"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              startAdornment={
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-                </InputAdornment>
-              }
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                borderRadius: CONTROL_RADIUS,
-                height: FILTER_INPUT_HEIGHT,
-                backgroundColor: "#f7f7f8",
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.12)",
-                },
-              }}
-            />
-          </FormControl>
-
-          {/* Section */}
-          <FormControl size="small" sx={{ minWidth: 170 }}>
-            <Select
-              value={sectionFilter}
-              onChange={(e) => setSectionFilter(e.target.value)}
-              IconComponent={UnfoldMoreIcon}
-              displayEmpty
-              renderValue={(val) => {
-                const triggerCount =
-                  val === "All"
-                    ? schedules.length
-                    : schedules.filter((s) => s.staffer?.section === val)
-                        .length;
-                return (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        color: "text.primary",
-                      }}
-                    >
-                      {val}
-                    </Typography>
-                    <NumberBadge
-                      count={triggerCount}
-                      active={isSectionFiltered}
-                      inactiveBg={
-                        isDark
-                          ? "rgba(255,255,255,0.28)"
-                          : "rgba(53,53,53,0.45)"
-                      }
-                      fontFamily={dm}
-                      fontSize="0.56rem"
-                      sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
-                    />
-                  </Box>
-                );
-              }}
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                borderRadius: CONTROL_RADIUS,
-                height: FILTER_INPUT_HEIGHT,
-                backgroundColor: "#f7f7f8",
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.12)",
-                },
-                "& .MuiSelect-icon": { fontSize: 18, color: "text.disabled" },
-              }}
-            >
-              {["All", ...sectionOptions].map((sec) => {
-                const count =
-                  sec === "All"
-                    ? schedules.length
-                    : schedules.filter((s) => s.staffer?.section === sec)
-                        .length;
-                const isSelected = sectionFilter === sec;
-                return (
-                  <MenuItem
-                    key={sec}
-                    value={sec}
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 2,
-                      fontWeight: isSelected ? 600 : 400,
-                    }}
-                  >
-                    {sec}
-                    <NumberBadge
-                      count={count}
-                      active={isSelected}
-                      inactiveBg={
-                        isDark
-                          ? "rgba(255,255,255,0.28)"
-                          : "rgba(53,53,53,0.45)"
-                      }
-                      fontFamily={dm}
-                      fontSize="0.56rem"
-                      sx={{ opacity: count === 0 ? 0.5 : 1 }}
-                    />
-                  </MenuItem>
-                );
-              })}
-            </Select>
-          </FormControl>
-
-          <Box sx={{ flex: 1 }} />
-
-          {/* Expand Button */}
-          <IconButton
-            size="small"
-            onClick={() => setIsTableFullscreen(true)}
-            sx={{
-              borderRadius: CONTROL_RADIUS,
-              color: "text.secondary",
-              border: "1px solid rgba(0,0,0,0.12)",
-              backgroundColor: "#f7f7f8",
-              width: ACTION_BTN_HEIGHT,
-              height: ACTION_BTN_HEIGHT,
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
-            }}
-          >
-            <FullscreenIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-
-          {/* Export */}
-          <Box
-            onClick={handleExportCsv}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1.5,
-              height: ACTION_BTN_HEIGHT,
-              borderRadius: CONTROL_RADIUS,
-              cursor: "pointer",
-              border: "1px solid rgba(0,0,0,0.12)",
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: 500,
-              color: "text.secondary",
-              backgroundColor: "#f7f7f8",
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
-            }}
-          >
-            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-            Export
-          </Box>
-        </Box>
-      )}
-
       {/* ── Table ── */}
       {activeSemester && activeTab === 0 && (
         <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
@@ -1964,7 +1930,7 @@ export default function DutyScheduleView() {
                   justifyContent: "center",
                 }}
               >
-                <BrandedLoader size={44} inline />
+                <CircularProgress size={22} sx={{ color: "text.secondary" }} />
               </Box>
             ) : (
               <DataGrid
@@ -1984,460 +1950,6 @@ export default function DutyScheduleView() {
                 }}
               />
             )}
-          </Box>
-        </Box>
-      )}
-
-      {/* ── Fullscreen Table View ── */}
-      {isTableFullscreen && activeSemester && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "#fff",
-            zIndex: 1300,
-            boxShadow: isDark
-              ? "0 16px 40px rgba(0,0,0,0.35)"
-              : "0 10px 30px rgba(0,0,0,0.08)",
-            ...(!isDark && {}),
-            ...(isDark && { backgroundColor: "#121212" }),
-            opacity: isTableFullscreen ? 1 : 0,
-            transform: isTableFullscreen ? "scale(1)" : "scale(0.95)",
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            pointerEvents: isTableFullscreen ? "auto" : "none",
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              px: 4,
-              py: 2,
-              borderBottom: `1px solid ${border}`,
-              display: "flex",
-              alignItems: "center",
-              gap: FILTER_GROUP_GAP,
-              flexShrink: 0,
-              transform: isTableFullscreen
-                ? "translateY(0)"
-                : "translateY(-10px)",
-              opacity: isTableFullscreen ? 1 : 0,
-              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-              transitionDelay: isTableFullscreen ? "0.1s" : "0s",
-            }}
-          >
-            {activeTab === 0 ? (
-              <>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.8,
-                    flexShrink: 0,
-                  }}
-                >
-                  {DAY_LABELS.map((day, i) => {
-                    const label = ["M", "T", "W", "Th", "F"][i];
-                    const cfg = DAY_CFG[i];
-                    const isSelected = selectedDayFilter === i;
-                    return (
-                      <Box
-                        key={day}
-                        onClick={() =>
-                          setSelectedDayFilter((current) =>
-                            current === i ? null : i,
-                          )
-                        }
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 0.3,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: "50%",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontFamily: dm,
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                            border: `1px solid ${isSelected ? GOLD : border}`,
-                            backgroundColor: isSelected
-                              ? isDark
-                                ? "rgba(245,197,43,0.12)"
-                                : "rgba(245,197,43,0.08)"
-                              : "background.paper",
-                            color: isSelected ? "text.primary" : cfg.color,
-                            transition: "all 0.2s ease",
-                            "&:hover": {
-                              transform: "translateY(-1px)",
-                              boxShadow: isSelected
-                                ? "none"
-                                : "0 10px 20px rgba(0,0,0,0.04)",
-                            },
-                          }}
-                        >
-                          {label}
-                        </Box>
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.62rem",
-                            color: isSelected ? GOLD : "text.secondary",
-                          }}
-                        >
-                          {dayCounts[i]}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-
-                  {selectedDayFilter !== null && (
-                    <IconButton
-                      size="small"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openSlotDialog(selectedDayFilter);
-                      }}
-                      sx={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: "10px",
-                        color: "text.disabled",
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.06)"
-                          : "rgba(53,53,53,0.06)",
-                        "&:hover": {
-                          color: "text.primary",
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.1)"
-                            : "rgba(53,53,53,0.1)",
-                        },
-                      }}
-                    >
-                      <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  )}
-                </Box>
-
-                <Box sx={{ flex: 1 }} />
-
-                <FormControl size="small" sx={{ minWidth: 250, flex: 1 }}>
-                  <OutlinedInput
-                    placeholder="Search"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <SearchIcon
-                          sx={{ fontSize: 16, color: "text.disabled" }}
-                        />
-                      </InputAdornment>
-                    }
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      borderRadius: "10px",
-                      backgroundColor: "#f7f7f8",
-                      "&.MuiOutlinedInput-root": {
-                        "& fieldset": { borderColor: "rgba(0,0,0,0.12)" },
-                      },
-                    }}
-                  />
-                </FormControl>
-
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <Select
-                    value={sectionFilter}
-                    onChange={(e) => setSectionFilter(e.target.value)}
-                    IconComponent={UnfoldMoreIcon}
-                    displayEmpty
-                    renderValue={(val) => {
-                      const triggerCount =
-                        val === "All"
-                          ? schedules.length
-                          : schedules.filter((s) => s.staffer?.section === val)
-                              .length;
-                      return (
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.78rem",
-                              color: "text.primary",
-                            }}
-                          >
-                            {val}
-                          </Typography>
-                          <NumberBadge
-                            count={triggerCount}
-                            active={isSectionFiltered}
-                            inactiveBg={
-                              isDark
-                                ? "rgba(255,255,255,0.28)"
-                                : "rgba(53,53,53,0.45)"
-                            }
-                            fontFamily={dm}
-                            fontSize="0.56rem"
-                            sx={{ opacity: triggerCount === 0 ? 0.5 : 1 }}
-                          />
-                        </Box>
-                      );
-                    }}
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      borderRadius: "10px",
-                      backgroundColor: "#f7f7f8",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "rgba(0,0,0,0.12)",
-                      },
-                      "& .MuiSelect-icon": {
-                        fontSize: 18,
-                        color: "text.disabled",
-                      },
-                    }}
-                  >
-                    {["All", ...sectionOptions].map((sec) => {
-                      const count =
-                        sec === "All"
-                          ? schedules.length
-                          : schedules.filter((s) => s.staffer?.section === sec)
-                              .length;
-                      const isSelected = sectionFilter === sec;
-                      return (
-                        <MenuItem
-                          key={sec}
-                          value={sec}
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.78rem",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: 2,
-                            fontWeight: isSelected ? 600 : 400,
-                          }}
-                        >
-                          {sec}
-                          <NumberBadge
-                            count={count}
-                            active={isSelected}
-                            inactiveBg={
-                              isDark
-                                ? "rgba(255,255,255,0.28)"
-                                : "rgba(53,53,53,0.45)"
-                            }
-                            fontFamily={dm}
-                            fontSize="0.56rem"
-                            sx={{ opacity: count === 0 ? 0.5 : 1 }}
-                          />
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-
-                <Box
-                  onClick={handleExportCsv}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1.5,
-                    height: ACTION_BTN_HEIGHT,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    border: "1px solid rgba(0,0,0,0.12)",
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 500,
-                    color: "text.secondary",
-                    backgroundColor: "#f7f7f8",
-                    transition: "all 0.15s",
-                    flexShrink: 0,
-                    "&:hover": {
-                      borderColor: "rgba(53,53,53,0.3)",
-                      color: "text.primary",
-                      backgroundColor: "#ededee",
-                    },
-                  }}
-                >
-                  <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-                  Export
-                </Box>
-              </>
-            ) : (
-              <>
-                <FormControl size="small" sx={{ minWidth: 280, flex: 1 }}>
-                  <OutlinedInput
-                    placeholder="Search requests"
-                    value={requestSearchText}
-                    onChange={(e) => setRequestSearchText(e.target.value)}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <SearchIcon
-                          sx={{ fontSize: 16, color: "text.disabled" }}
-                        />
-                      </InputAdornment>
-                    }
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      borderRadius: "10px",
-                      backgroundColor: "#f7f7f8",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "rgba(0,0,0,0.12)",
-                      },
-                    }}
-                  />
-                </FormControl>
-
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <Select
-                    value={requestStatusFilter}
-                    onChange={(e) => setRequestStatusFilter(e.target.value)}
-                    IconComponent={UnfoldMoreIcon}
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      borderRadius: "10px",
-                      backgroundColor: "#f7f7f8",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "rgba(0,0,0,0.12)",
-                      },
-                    }}
-                  >
-                    {["All", "Pending", "Approved", "Declined"].map(
-                      (status) => (
-                        <MenuItem
-                          key={status}
-                          value={status}
-                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                        >
-                          {status}
-                        </MenuItem>
-                      ),
-                    )}
-                  </Select>
-                </FormControl>
-
-                <Box sx={{ flex: 1 }} />
-
-                <Box
-                  onClick={handleExportRequestsCsv}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1.5,
-                    height: ACTION_BTN_HEIGHT,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    border: "1px solid rgba(0,0,0,0.12)",
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 500,
-                    color: "text.secondary",
-                    backgroundColor: "#f7f7f8",
-                    transition: "all 0.15s",
-                    flexShrink: 0,
-                    "&:hover": {
-                      borderColor: "rgba(53,53,53,0.3)",
-                      color: "text.primary",
-                      backgroundColor: "#ededee",
-                    },
-                  }}
-                >
-                  <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-                  Export
-                </Box>
-              </>
-            )}
-            <IconButton
-              size="small"
-              onClick={() => setIsTableFullscreen(false)}
-              sx={{
-                borderRadius: "10px",
-                color: "text.secondary",
-                "&:hover": {
-                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-                },
-              }}
-            >
-              <FullscreenExitIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
-
-          {/* Table */}
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              width: "100%",
-              overflowX: "auto",
-              px: 4,
-              py: 2,
-              transform: isTableFullscreen
-                ? "translateY(0)"
-                : "translateY(20px)",
-              opacity: isTableFullscreen ? 1 : 0,
-              transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-              transitionDelay: isTableFullscreen ? "0.2s" : "0s",
-            }}
-          >
-            <Box
-              sx={{
-                minWidth: 600,
-                height: "100%",
-                bgcolor: "#f7f7f8",
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                overflow: "hidden",
-              }}
-            >
-              {loading && activeTab === 0 ? (
-                <Box
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <BrandedLoader size={44} inline />
-                </Box>
-              ) : (
-                <DataGrid
-                  rows={activeTab === 0 ? rows : requestRows}
-                  columns={activeTab === 0 ? columns : requestColumns}
-                  pageSize={10}
-                  rowsPerPageOptions={[10]}
-                  disableRowSelectionOnClick
-                  rowHeight={56}
-                  enableSearch={false}
-                  apiRef={activeTab === 0 ? gridApiRef : requestGridApiRef}
-                  slotProps={{
-                    toolbar: {
-                      csvOptions: { disableToolbarButton: true },
-                      printOptions: { disableToolbarButton: true },
-                    },
-                  }}
-                />
-              )}
-            </Box>
           </Box>
         </Box>
       )}

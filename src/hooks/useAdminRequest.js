@@ -11,8 +11,8 @@ import { fetchAllRequests } from "../services/adminRequestService";
  */
 export function useAdminRequests() {
   const [requests, setRequests] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -28,22 +28,33 @@ export function useAdminRequests() {
     }
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
 
-  const pending     = requests.filter((r) => r.status === "Pending");
-  const forwarded   = requests.filter((r) => r.status === "Forwarded" || r.status === "Assigned");
+  const pending = requests.filter((r) => r.status === "Pending");
+  const forwarded = requests.filter((r) => r.status === "Forwarded");
   const forApproval = requests.filter((r) => r.status === "For Approval");
-  const approved    = requests.filter((r) => r.status === "Approved");
+  // 'Approved' is the legacy status; 'Assigned' is the new post-refactor status
+  const assigned = requests.filter(
+    (r) => r.status === "Assigned" || r.status === "Approved",
+  );
+  const approved = assigned; // kept for backward compat with any consumers
   // Trim + lowercase comparison to guard against any whitespace or case inconsistency
-  const onGoing     = requests.filter((r) => r.status?.trim().toLowerCase() === "on going");
-  const completed   = requests.filter((r) => r.status?.trim().toLowerCase() === "completed");
-  const declined    = requests.filter((r) => r.status === "Declined");
+  const onGoing = requests.filter(
+    (r) => r.status?.trim().toLowerCase() === "on going",
+  );
+  const completed = requests.filter(
+    (r) => r.status?.trim().toLowerCase() === "completed",
+  );
+  const declined = requests.filter((r) => r.status === "Declined");
 
   return {
     requests,
     pending,
     forwarded,
     forApproval,
+    assigned,
     approved,
     onGoing,
     completed,

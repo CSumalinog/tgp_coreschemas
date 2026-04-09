@@ -49,7 +49,8 @@ export async function fetchAllRequests() {
         section,
         assigned_to,
         timed_in_at,
-        completed_at
+        completed_at,
+        selfie_url
       )
     `,
     )
@@ -218,7 +219,7 @@ export async function approveRequest(requestId, adminNotes = "") {
   const { data, error } = await supabase
     .from("coverage_requests")
     .update({
-      status: "Approved",
+      status: "Assigned",
       admin_notes: adminNotes,
       approved_at: new Date().toISOString(),
       approved_by: currentUserId,
@@ -231,11 +232,11 @@ export async function approveRequest(requestId, adminNotes = "") {
 
   const { error: assignErr } = await supabase
     .from("coverage_assignments")
-    .update({ status: "Approved" })
+    .update({ status: "Assigned" })
     .eq("request_id", requestId);
 
   if (assignErr)
-    throw new Error(`Failed to approve assignments: ${assignErr.message}`);
+    throw new Error(`Failed to assign assignments: ${assignErr.message}`);
 
   const requestTitle = req?.title || "a coverage request";
 

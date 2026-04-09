@@ -51,6 +51,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
+import CoverageCompletionDialog from "../../components/section_head/CoverageCompletionDialog";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -130,9 +131,10 @@ const STATUS_CFG = {
   Completed: { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
 };
 
-// View options — replaces the old TABS array
+// View options — shows requests at different stages of the assignment workflow
 const VIEW_OPTIONS = [
   { label: "For Assignment", key: "for-assignment" },
+  { label: "For Approval", key: "for-approval" },
   { label: "Assigned", key: "assigned" },
   { label: "On Going", key: "on-going" },
   { label: "Completed", key: "completed" },
@@ -181,6 +183,11 @@ const computeDuration = (timedIn, completedAt) => {
   if (mins === 0) return `${hrs}h`;
   return `${hrs}h ${mins}m`;
 };
+const isAssignmentCompleted = (assignment) =>
+  assignment?.status === "Completed" || !!assignment?.completed_at;
+const isAssignmentOnGoing = (assignment) =>
+  (assignment?.status === "On Going" || !!assignment?.timed_in_at) &&
+  !isAssignmentCompleted(assignment);
 const fmtTime = (ts) => {
   if (!ts) return null;
   return new Date(ts).toLocaleTimeString("en-US", {
@@ -630,6 +637,7 @@ export default function SecHeadAssignmentManagement() {
   // ── Data state ────────────────────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null);
   const [forAssignmentReqs, setForAssignmentReqs] = useState([]);
+  const [forApprovalReqs, setForApprovalReqs] = useState([]);
   const [assignedReqs, setAssignedReqs] = useState([]);
   const [onGoingReqs, setOnGoingReqs] = useState([]);
   const [completedReqs, setCompletedReqs] = useState([]);
@@ -690,6 +698,8 @@ export default function SecHeadAssignmentManagement() {
   const [staffersLoading, setStaffersLoading] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
+  const [completionDetailsOpen, setCompletionDetailsOpen] = useState(false);
+  const [selectedCompletionAssignment, setSelectedCompletionAssignment] = useState(null);
   const openedFromNotificationRef = useRef(null);
 
   // ── Load user ─────────────────────────────────────────────────────────────
@@ -772,18 +782,18 @@ export default function SecHeadAssignmentManagement() {
         entity:client_entities ( id, name ),
         coverage_assignments (
           id, status, assigned_to, section, service_key, timed_in_at, completed_at,
-          assignment_date, from_time, to_time,
+          assignment_date, from_time, to_time, selfie_url,
           staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
         )
       `;
 
-      const [allForwarded, assignedAndApproval, onGoing, completed] =
+      const [allForwarded, forApproval, assigned, onGoing, completed] =
         await Promise.all([
           applyHiddenFilter(
             supabase
               .from("coverage_requests")
               .select(baseSelect)
-              .in("status", ["Forwarded", "Assigned", "For Approval"])
+              .eq("status", "Forwarded")
               .contains("forwarded_sections", [currentUser.section])
               .order("forwarded_at", { ascending: false }),
           ),
@@ -791,7 +801,15 @@ export default function SecHeadAssignmentManagement() {
             supabase
               .from("coverage_requests")
               .select(baseSelect)
-              .in("status", ["Assigned", "For Approval"])
+              .eq("status", "For Approval")
+              .contains("forwarded_sections", [currentUser.section])
+              .order("event_date", { ascending: true }),
+          ),
+          applyHiddenFilter(
+            supabase
+              .from("coverage_requests")
+              .select(baseSelect)
+              .in("status", ["Assigned", "Approved"])
               .contains("forwarded_sections", [currentUser.section])
               .order("event_date", { ascending: true }),
           ),
@@ -808,7 +826,6 @@ export default function SecHeadAssignmentManagement() {
               .from("coverage_requests")
               .select(baseSelect)
               .in("status", [
-                "Approved",
                 "Coverage Complete",
                 "Completed",
                 "No-show",
@@ -821,13 +838,15 @@ export default function SecHeadAssignmentManagement() {
 
       if (
         allForwarded.error ||
-        assignedAndApproval.error ||
+        forApproval.error ||
+        assigned.error ||
         onGoing.error ||
         completed.error
       )
         throw (
           allForwarded.error ||
-          assignedAndApproval.error ||
+          forApproval.error ||
+          assigned.error ||
           onGoing.error ||
           completed.error
         );
@@ -848,28 +867,56 @@ export default function SecHeadAssignmentManagement() {
         return allDates.some((d) => !assignedDates.has(d));
       });
 
-      const forwardedButMySecDone = forwardedData.filter((req) => {
-        if (req.status !== "Forwarded") return false;
-        const myAssignments = (req.coverage_assignments || []).filter(
-          (a) => a.section === mySection,
+      // Derive section-level progress from assignment rows so stale request.status
+      // does not keep completed coverage visible under "On Going".
+      const assignedData = assigned.data || [];
+      const onGoingData = onGoing.data || [];
+      const completedData = completed.data || [];
+      const allProgressRows = Array.from(
+        new Map(
+          [...assignedData, ...onGoingData, ...completedData].map((req) => [
+            req.id,
+            req,
+          ]),
+        ).values(),
+      );
+      const sectionAssignmentsOf = (req) =>
+        (req.coverage_assignments || []).filter((a) => a.section === mySection);
+      const isSectionCompleted = (req) => {
+        const sectionAssignments = sectionAssignmentsOf(req);
+        return (
+          sectionAssignments.length > 0 &&
+          sectionAssignments.every(isAssignmentCompleted)
         );
-        if (!req.is_multiday) return myAssignments.length > 0;
-        const assignedDates = new Set(myAssignments.map((a) => a.assignment_date));
-        return assignedDates.size > 0;
+      };
+      const isSectionOnGoing = (req) =>
+        sectionAssignmentsOf(req).some(isAssignmentOnGoing);
+
+      const sectionCompletedRows = allProgressRows.filter(isSectionCompleted);
+      const completedIds = new Set(sectionCompletedRows.map((r) => r.id));
+      const sectionOnGoingRows = allProgressRows.filter(
+        (req) => !completedIds.has(req.id) && isSectionOnGoing(req),
+      );
+      const onGoingIds = new Set(sectionOnGoingRows.map((r) => r.id));
+
+      const cleanAssigned = assignedData.filter(
+        (req) => !onGoingIds.has(req.id) && !completedIds.has(req.id),
+      );
+      const mergedOnGoing = new Map();
+      [...onGoingData, ...sectionOnGoingRows].forEach((r) => {
+        if (completedIds.has(r.id)) return;
+        mergedOnGoing.set(r.id, r);
+      });
+      const mergedCompleted = new Map();
+      [...completedData, ...sectionCompletedRows].forEach((r) => {
+        mergedCompleted.set(r.id, r);
       });
 
-      const assignedMap = new Map();
-      [...forwardedButMySecDone, ...(assignedAndApproval.data || [])].forEach(
-        (r) => assignedMap.set(r.id, r),
-      );
-      const assignedRows = Array.from(assignedMap.values()).sort(
-        (a, b) => new Date(a.event_date) - new Date(b.event_date),
-      );
-
       setForAssignmentReqs(forAssignRows);
-      setAssignedReqs(assignedRows);
-      setOnGoingReqs(onGoing.data || []);
-      setCompletedReqs(completed.data || []);
+      setForApprovalReqs(forApproval.data || []);
+      setAssignedReqs(cleanAssigned);
+      setOnGoingReqs(Array.from(mergedOnGoing.values()));
+      setCompletedReqs(Array.from(mergedCompleted.values()));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1019,12 +1066,13 @@ export default function SecHeadAssignmentManagement() {
   const getViewSource = useCallback(
     (key) => {
       if (key === "for-assignment") return applyFilters(forAssignmentReqs);
+      if (key === "for-approval") return applyFilters(forApprovalReqs);
       if (key === "assigned") return applyFilters(assignedReqs);
       if (key === "on-going") return applyFilters(onGoingReqs);
       if (key === "completed") return applyFilters(completedReqs);
       return [];
     },
-    [applyFilters, forAssignmentReqs, assignedReqs, onGoingReqs, completedReqs],
+    [applyFilters, forAssignmentReqs, forApprovalReqs, assignedReqs, onGoingReqs, completedReqs],
   );
 
   const getViewCount = useCallback(
@@ -1206,6 +1254,7 @@ export default function SecHeadAssignmentManagement() {
 
     const sources = [
       ["for-assignment", forAssignmentReqs],
+      ["for-approval", forApprovalReqs],
       ["assigned", assignedReqs],
       ["on-going", onGoingReqs],
       ["completed", completedReqs],
@@ -1231,6 +1280,7 @@ export default function SecHeadAssignmentManagement() {
     location.state?.openRequestId,
     loading,
     forAssignmentReqs,
+    forApprovalReqs,
     assignedReqs,
     onGoingReqs,
     completedReqs,
@@ -1263,10 +1313,10 @@ export default function SecHeadAssignmentManagement() {
     if (totalSelected === 0 && totalAlreadyAssigned > 0) {
       setAssignDialogOpen(false);
       await loadAll();
-      setViewFilter("assigned");
+      setViewFilter("for-assignment");
       setToast({
         open: true,
-        text: "Assignment already saved and visible under Assigned.",
+        text: "Assignment already saved. Please submit for approval when ready.",
         severity: "success",
       });
       return;
@@ -1350,23 +1400,9 @@ export default function SecHeadAssignmentManagement() {
         ? coveredDateCount >= totalDays
         : coveredDateCount > 0;
 
-      const forwardedSections = req.forwarded_sections || [];
-      let allAssigned = forwardedSections.length === 0;
-      if (!allAssigned) {
-        const { data: existing } = await supabase
-          .from("coverage_assignments")
-          .select("section")
-          .eq("request_id", req.id);
-        const assignedSections = new Set(
-          (existing || []).map((a) => a.section),
-        );
-        allAssigned = forwardedSections.every((s) => assignedSections.has(s));
-      }
-      if (allAssigned)
-        await supabase
-          .from("coverage_requests")
-          .update({ status: "Assigned" })
-          .eq("id", req.id);
+      // Note: Status is NOT changed here. Assignments are saved but status
+      // remains "For Assignment" until SEC head submits for approval.
+      // handleSubmitForApproval() will handle the status transition.
 
       // Build staffers-by-day for the post-assign review dialog
       const staffersByDay = {};
@@ -1410,7 +1446,7 @@ export default function SecHeadAssignmentManagement() {
         mySectionFullyAssigned,
       });
       await loadAll();
-      setViewFilter("assigned");
+      setViewFilter("for-assignment");
     } catch (err) {
       setAssignError(err.message);
     } finally {
@@ -1476,12 +1512,12 @@ export default function SecHeadAssignmentManagement() {
       setConfirmRequest(null);
       setPostAssignReview(null);
       await loadAll();
-      setViewFilter("assigned");
+      setViewFilter("for-approval");
       setToast({
         open: true,
         text: allSectionsSubmitted
           ? "Submitted for approval. All sections are complete and the request is now queued for admin review."
-          : "Submission saved for your section. This request stays in Assigned until all forwarded sections submit.",
+          : "Submission saved for your section. Other sections still need to submit their assignments.",
         severity: "success",
       });
     } catch (err) {
@@ -1494,9 +1530,15 @@ export default function SecHeadAssignmentManagement() {
   // ── Row builder ───────────────────────────────────────────────────────────
   const buildRows = (source) =>
     source.map((req) => {
-      const myAssignments = (req.coverage_assignments || []).filter(
+      const sectionAssignments = (req.coverage_assignments || []).filter(
         (a) => a.section === currentUser?.section,
       );
+      const myAssignments =
+        viewFilter === "on-going"
+          ? sectionAssignments.filter(isAssignmentOnGoing)
+          : viewFilter === "completed"
+            ? sectionAssignments.filter(isAssignmentCompleted)
+            : sectionAssignments;
       const seen = new Set();
       const uniqueStaffers = myAssignments
         .filter((a) => {
@@ -1509,16 +1551,17 @@ export default function SecHeadAssignmentManagement() {
           id: a.assigned_to,
           timed_in_at: a.timed_in_at,
           completed_at: a.completed_at,
+          selfie_url: a.selfie_url,
         }));
 
       const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
       const assignedDates = new Set(
-        myAssignments.map((a) => a.assignment_date),
+        sectionAssignments.map((a) => a.assignment_date),
       );
       const totalDays = isMultiDay ? req.event_days?.length || 1 : 1;
       const assignedDayCount = isMultiDay
         ? (req.event_days || []).filter((d) => assignedDates.has(d.date)).length
-        : myAssignments.length > 0
+        : sectionAssignments.length > 0
           ? 1
           : 0;
 
@@ -1549,7 +1592,7 @@ export default function SecHeadAssignmentManagement() {
         myHasSubmitted: (req.submitted_sections || []).includes(
           currentUser?.section,
         ),
-        myHasAssignments: myAssignments.length > 0,
+        myHasAssignments: sectionAssignments.length > 0,
         myDone: assignedDayCount >= totalDays,
         myPartial: assignedDayCount > 0 && assignedDayCount < totalDays,
         assignedDayCount,
@@ -1810,6 +1853,17 @@ export default function SecHeadAssignmentManagement() {
               Submit
             </ViewActionButton>
           )}
+        {viewFilter === "completed" && !hasBulkSelection && p.row?.staffers?.length > 0 && (
+          <ViewActionButton
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedCompletionAssignment(p.row);
+              setCompletionDetailsOpen(true);
+            }}
+          >
+            View Details
+          </ViewActionButton>
+        )}
         <IconButton
           size="small"
           disabled={hasBulkSelection}
@@ -1930,8 +1984,10 @@ export default function SecHeadAssignmentManagement() {
           >
             {viewFilter === "for-assignment" &&
               `Requests forwarded to your section (${currentUser.section}). Assign staffers, then submit for admin approval.`}
+            {viewFilter === "for-approval" &&
+              `Assignments submitted and waiting for admin to review and approve all sections.`}
             {viewFilter === "assigned" &&
-              `Requests with staffers assigned from your section (${currentUser.section}). Submit ready ones for admin approval.`}
+              `Officially approved assignments. Staffers are confirmed and the event is upcoming.`}
             {viewFilter === "on-going" &&
               `Coverage currently in progress — your section's staffers have timed in and are on-site.`}
             {viewFilter === "completed" &&
@@ -2595,6 +2651,15 @@ export default function SecHeadAssignmentManagement() {
         loading={submitLoading}
         onClose={() => !submitLoading && setPostAssignReview(null)}
         onSubmit={() => handleSubmitForApproval(postAssignReview?.requestId)}
+      />
+
+      {/* ── Completion Details Dialog ── */}
+      <CoverageCompletionDialog
+        open={completionDetailsOpen}
+        assignment={selectedCompletionAssignment}
+        isDark={isDark}
+        border={border}
+        onClose={() => setCompletionDetailsOpen(false)}
       />
     </Box>
   );

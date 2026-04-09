@@ -284,7 +284,8 @@ function AssignmentCard({
 }) {
   const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
   const req = a.request;
-  const state = a.status === "Approved" ? getTimeInState(req) : null;
+  const canTimeIn = ["Assigned", "Approved"].includes(a.status);
+  const state = canTimeIn ? getTimeInState(req) : null;
   const [menuAnchor, setMenuAnchor] = useState(null);
 
   return (
@@ -508,7 +509,7 @@ function AssignmentCard({
         )}
         <Box sx={{ height: "1px", backgroundColor: border }} />
         <Box onClick={(e) => e.stopPropagation()}>
-          {a.status === "Approved" && state === "open" && (
+          {canTimeIn && state === "open" && (
             <Box
               onClick={() => onTimeIn(a)}
               sx={{
@@ -532,7 +533,7 @@ function AssignmentCard({
               Time In
             </Box>
           )}
-          {a.status === "Approved" && state === "early" && (
+          {canTimeIn && state === "early" && (
             <Box
               sx={{
                 display: "flex",
@@ -549,7 +550,7 @@ function AssignmentCard({
               Time In opens 10 mins before event
             </Box>
           )}
-          {a.status === "Approved" && state === "passed" && (
+          {canTimeIn && state === "passed" && (
             <Box
               sx={{
                 display: "flex",
@@ -1012,7 +1013,7 @@ function AssignmentDetailDialog({
               </Box>
             </DetailSection>
           )}
-          {assignment.status === "Approved" &&
+          {(["Assigned", "Approved"].includes(assignment.status)) &&
             getTimeInState(assignment.request) === "open" && (
               <Box
                 sx={{
@@ -1093,7 +1094,7 @@ function AssignmentDetailDialog({
         }}
       >
         <CancelBtn onClick={onClose} border={isDark ? BORDER_DARK : BORDER} />
-        {assignment.status === "Approved" &&
+        {(["Assigned", "Approved"].includes(assignment.status)) &&
           (() => {
             const state = getTimeInState(assignment.request);
             if (state === "open")

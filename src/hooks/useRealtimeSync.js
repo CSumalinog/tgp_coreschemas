@@ -54,6 +54,17 @@ export function useRealtimeSync(table, callback, filter = null) {
       .on("postgres_changes", config, () => callbackRef.current?.())
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      // In React 18 StrictMode, effects mount/unmount twice in dev.
+      // Make cleanup resilient so transient socket states do not throw noise.
+      try {
+        channel.unsubscribe();
+      } catch {
+        // no-op
+      }
+      Promise.resolve(supabase.removeChannel(channel)).catch(() => {
+        // no-op
+      });
+    };
   }, [table, filter]);
 }

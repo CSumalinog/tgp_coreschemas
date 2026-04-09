@@ -23,10 +23,9 @@ import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
-import RequestDetails from "../../components/admin/RequestDetails";
 import { supabase } from "../../lib/supabaseClient";
 import CloseIcon from "@mui/icons-material/Close";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
@@ -43,6 +42,9 @@ import {
   FILTER_BUTTON_HEIGHT,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
+  FILTER_SEARCH_MIN_WIDTH,
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 import {
   RoleArchiveManagement,
@@ -61,8 +63,8 @@ const dm = "'Inter', sans-serif";
 const STATUS_CONFIG = {
   Pending: { bg: "#fef9ec", color: "#b45309", dot: "#f59e0b" },
   Forwarded: { bg: "#f5f3ff", color: "#6d28d9", dot: "#8b5cf6" },
-  Assigned: { bg: "#fff7ed", color: "#c2410c", dot: "#f97316" },
   "For Approval": { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
+  Assigned: { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
   Approved: { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
   "On Going": { bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
   Declined: { bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
@@ -73,9 +75,7 @@ const STATUS_OPTIONS = [
   { label: "Pending", key: "Pending" },
   { label: "Forwarded", key: "Forwarded" },
   { label: "For Approval", key: "For Approval" },
-  { label: "Approved", key: "Approved" },
-  { label: "On Going", key: "On Going" },
-  { label: "Completed", key: "Completed" },
+  { label: "Approved", key: "Assigned" },
   { label: "Declined", key: "Declined" },
 ];
 
@@ -93,26 +93,6 @@ const getInitials = (name) => {
     .join("")
     .toUpperCase()
     .slice(0, 2);
-};
-
-const computeDuration = (timedIn, completedAt) => {
-  if (!timedIn || !completedAt) return null;
-  const diffMs = new Date(completedAt) - new Date(timedIn);
-  if (diffMs <= 0) return null;
-  const totalMins = Math.floor(diffMs / 60000);
-  const hrs = Math.floor(totalMins / 60);
-  const mins = totalMins % 60;
-  if (hrs === 0) return `${mins}m`;
-  if (mins === 0) return `${hrs}h`;
-  return `${hrs}h ${mins}m`;
-};
-
-const fmtTime = (ts) => {
-  if (!ts) return null;
-  return new Date(ts).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
 };
 
 const fmtDateStr = (
@@ -247,6 +227,7 @@ export default function AdminRequestManagement() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
+  const navigate = useNavigate();
   const border = isDark ? BORDER_DARK : BORDER;
 
   const {
@@ -254,9 +235,7 @@ export default function AdminRequestManagement() {
     pending,
     forwarded,
     forApproval,
-    approved,
-    onGoing,
-    completed,
+    assigned,
     declined,
     loading,
     refetch,
@@ -272,7 +251,6 @@ export default function AdminRequestManagement() {
       ? incoming
       : "all";
   });
-  const [selectedRequest, setSelectedRequest] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const [viewedIds, setViewedIds] = useState(new Set());
@@ -378,7 +356,13 @@ export default function AdminRequestManagement() {
   const handleOpenRequest = async (row) => {
     if (!row) return;
     if (row.id) await markAsViewed(row.id);
-    setSelectedRequest(row._raw || row);
+    const request = row._raw || row;
+    if (!request?.id) return;
+    navigate(`/admin/coverage-request-details/${request.id}`, {
+      state: {
+        backTo: "/admin/request-management",
+      },
+    });
   };
 
   useEffect(() => {
@@ -387,10 +371,14 @@ export default function AdminRequestManagement() {
     const found = requests.find((r) => r.id === openId);
     if (found) {
       queueMicrotask(() => {
-        setSelectedRequest(found);
+        navigate(`/admin/coverage-request-details/${found.id}`, {
+          state: {
+            backTo: "/admin/request-management",
+          },
+        });
       });
     }
-  }, [location.state?.openRequestId, loading, requests]);
+  }, [location.state?.openRequestId, loading, requests, navigate]);
 
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
@@ -422,6 +410,12 @@ export default function AdminRequestManagement() {
   useEffect(() => {
     const incoming = location.state?.tab;
     if (!incoming) return;
+    if (incoming === "On Going" || incoming === "Completed") {
+      queueMicrotask(() => {
+        navigate("/admin/coverage-tracker", { replace: true });
+      });
+      return;
+    }
     if (
       STATUS_OPTIONS.some((o) => o.key === incoming) &&
       incoming !== statusFilter
@@ -430,7 +424,7 @@ export default function AdminRequestManagement() {
         setStatusFilter(incoming);
       });
     }
-  }, [location.state?.tab, statusFilter]);
+  }, [location.state?.tab, statusFilter, navigate]);
 
   useEffect(() => {
     if (!isBulkSelectionActive) return;
@@ -489,22 +483,11 @@ export default function AdminRequestManagement() {
         return (
           forApproval || requests.filter((r) => r.status === "For Approval")
         );
-      if (key === "Approved") return approved || [];
-      if (key === "On Going") return onGoing || [];
-      if (key === "Completed") return completed || [];
+      if (key === "Assigned") return assigned || [];
       if (key === "Declined") return declined || [];
       return [];
     },
-    [
-      requests,
-      pending,
-      forwarded,
-      forApproval,
-      approved,
-      onGoing,
-      completed,
-      declined,
-    ],
+    [requests, pending, forwarded, forApproval, assigned, declined],
   );
 
   const applyFilters = useCallback(
@@ -517,9 +500,7 @@ export default function AdminRequestManagement() {
           const end = new Date(sem.end_date);
           end.setHours(23, 59, 59, 999);
           filtered = filtered.filter((r) => {
-            const df = ["On Going", "Completed"].includes(r.status)
-              ? r.event_date
-              : r.submitted_at;
+            const df = r.submitted_at;
             if (!df) return false;
             const d = new Date(df);
             return d >= start && d <= end;
@@ -534,7 +515,7 @@ export default function AdminRequestManagement() {
   );
 
   const filteredSource = useMemo(
-    () => applyFilters(getBaseSource(statusFilter)),
+    () => applyFilters(getBaseSource(statusFilter), statusFilter),
     [statusFilter, applyFilters, getBaseSource],
   );
 
@@ -642,36 +623,39 @@ export default function AdminRequestManagement() {
     sortable: false,
     align: "right",
     headerAlign: "right",
-    renderCell: (p) => (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          height: "100%",
-          pr: 0.5,
-        }}
-      >
-        <ViewActionButton
-          disabled={isBulkSelectionActive}
-          onClick={() => {
-            if (isBulkSelectionActive) return;
-            handleOpenRequest(p.row);
-          }}
-        />
-        <IconButton
-          size="small"
-          disabled={isBulkSelectionActive}
-          onClick={(e) => {
-            if (isBulkSelectionActive) return;
-            setMenuAnchor(e.currentTarget);
-            setMenuRow(p.row);
+    renderCell: (p) => {
+      return (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            height: "100%",
+            pr: 0.5,
+            gap: 0.5,
           }}
         >
-          <MoreVertIcon sx={{ fontSize: 18 }} />
-        </IconButton>
-      </Box>
-    ),
+          <ViewActionButton
+            disabled={isBulkSelectionActive}
+            onClick={() => {
+              if (isBulkSelectionActive) return;
+              handleOpenRequest(p.row);
+            }}
+          />
+          <IconButton
+            size="small"
+            disabled={isBulkSelectionActive}
+            onClick={(e) => {
+              if (isBulkSelectionActive) return;
+              setMenuAnchor(e.currentTarget);
+              setMenuRow(p.row);
+            }}
+          >
+            <MoreVertIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
+      );
+    },
   };
 
   const statusCol = {
@@ -810,9 +794,9 @@ export default function AdminRequestManagement() {
             <Avatar
               src={url || undefined}
               sx={{
-                width: 28,
-                height: 28,
-                fontSize: "0.62rem",
+                width: TABLE_USER_AVATAR_SIZE,
+                height: TABLE_USER_AVATAR_SIZE,
+                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                 fontWeight: 600,
                 backgroundColor: avatarBg,
                 color: avatarColor,
@@ -862,320 +846,6 @@ export default function AdminRequestManagement() {
     "#dc2626",
   );
 
-  const onGoingVenueCol = {
-    field: "venue",
-    headerName: "Venue",
-    flex: 1,
-    minWidth: 120,
-    renderCell: (p) => <MetaCell>{p.row._raw?.venue || "—"}</MetaCell>,
-  };
-
-  const onGoingStaffersCol = {
-    field: "assignments",
-    headerName: "Staffers On-Site",
-    flex: 1.6,
-    minWidth: 200,
-    sortable: false,
-    renderCell: (p) => {
-      const assignments = p.value || [];
-      if (!assignments.length) return <MetaCell>—</MetaCell>;
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.35,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
-          {assignments.map((a) => {
-            const url = getAvatarUrl(a.staffer?.avatar_url);
-            const timeIn = fmtTime(a.timed_in_at);
-            return (
-              <Box
-                key={a.id}
-                sx={{ display: "flex", alignItems: "center", gap: 0.6 }}
-              >
-                <Avatar
-                  src={url}
-                  sx={{
-                    width: 18,
-                    height: 18,
-                    fontSize: "0.48rem",
-                    fontWeight: 600,
-                    backgroundColor: "#eff6ff",
-                    color: "#1d4ed8",
-                    flexShrink: 0,
-                  }}
-                >
-                  {!url && getInitials(a.staffer?.full_name)}
-                </Avatar>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 400,
-                    color: "text.secondary",
-                  }}
-                >
-                  {a.staffer?.full_name || "—"}
-                </Typography>
-                {timeIn ? (
-                  <Box
-                    sx={{
-                      px: 0.8,
-                      py: 0.15,
-                      borderRadius: "10px",
-                      backgroundColor: isDark
-                        ? "rgba(59,130,246,0.12)"
-                        : "#eff6ff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.64rem",
-                        fontWeight: 500,
-                        color: "#1d4ed8",
-                      }}
-                    >
-                      {timeIn}
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box
-                    sx={{
-                      px: 0.8,
-                      py: 0.15,
-                      borderRadius: "10px",
-                      backgroundColor: isDark
-                        ? "rgba(245,158,11,0.12)"
-                        : "#fffbeb",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.64rem",
-                        fontWeight: 500,
-                        color: "#b45309",
-                      }}
-                    >
-                      Not yet
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            );
-          })}
-        </Box>
-      );
-    },
-  };
-
-  const completedStafferCol = {
-    field: "assignments",
-    headerName: "Staffer",
-    flex: 1.2,
-    minWidth: 150,
-    sortable: false,
-    renderCell: (p) => {
-      const a = p.value || [];
-      if (!a.length) return <MetaCell>—</MetaCell>;
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.5,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
-          {a.map((x) => {
-            const url = getAvatarUrl(x.staffer?.avatar_url);
-            return (
-              <Box
-                key={x.id}
-                sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
-              >
-                <Avatar
-                  src={url}
-                  sx={{
-                    width: 22,
-                    height: 22,
-                    fontSize: "0.52rem",
-                    fontWeight: 600,
-                    backgroundColor: isDark
-                      ? "rgba(34,197,94,0.15)"
-                      : "#f0fdf4",
-                    color: "#15803d",
-                    flexShrink: 0,
-                  }}
-                >
-                  {!url && getInitials(x.staffer?.full_name)}
-                </Avatar>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 400,
-                    color: "text.secondary",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {x.staffer?.full_name || "—"}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-      );
-    },
-  };
-
-  const mkTimeCol = (field, header, color) => ({
-    field,
-    flex: 0.7,
-    minWidth: 80,
-    sortable: false,
-    renderHeader: () => (
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.65rem",
-          fontWeight: 700,
-          color,
-          letterSpacing: "0.07em",
-          textTransform: "uppercase",
-        }}
-      >
-        {header}
-      </Typography>
-    ),
-    renderCell: (p) => {
-      const a = p.row.assignments || [];
-      if (!a.length) return <MetaCell>—</MetaCell>;
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.5,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
-          {a.map((x) => {
-            const t =
-              field === "timeIn"
-                ? fmtTime(x.timed_in_at)
-                : fmtTime(x.completed_at);
-            return (
-              <Typography
-                key={x.id}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.81rem",
-                  fontWeight: 400,
-                  color: t ? color : "text.disabled",
-                  fontStyle: t ? "normal" : "italic",
-                }}
-              >
-                {t || "—"}
-              </Typography>
-            );
-          })}
-        </Box>
-      );
-    },
-  });
-
-  const completedTimeInCol = mkTimeCol("timeIn", "IN", "#1d4ed8");
-  const completedTimeOutCol = mkTimeCol("timeOut", "OUT", "#15803d");
-
-  const completedDurCol = {
-    field: "duration",
-    flex: 0.7,
-    minWidth: 80,
-    sortable: false,
-    renderHeader: () => (
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontSize: "0.65rem",
-          fontWeight: 700,
-          color: "#b45309",
-          letterSpacing: "0.07em",
-          textTransform: "uppercase",
-        }}
-      >
-        DUR
-      </Typography>
-    ),
-    renderCell: (p) => {
-      const a = p.row.assignments || [];
-      if (!a.length) return <MetaCell>—</MetaCell>;
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 0.5,
-            height: "100%",
-            py: 0.5,
-          }}
-        >
-          {a.map((x) => {
-            const dur = computeDuration(x.timed_in_at, x.completed_at);
-            return dur ? (
-              <Box key={x.id} sx={{ display: "inline-flex" }}>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.72rem",
-                    fontWeight: 600,
-                    color: "#b45309",
-                    backgroundColor: isDark
-                      ? "rgba(245,197,43,0.1)"
-                      : "rgba(245,197,43,0.12)",
-                    border: "1px solid rgba(245,197,43,0.3)",
-                    px: 0.75,
-                    py: 0.15,
-                    borderRadius: "10px",
-                  }}
-                >
-                  {dur}
-                </Typography>
-              </Box>
-            ) : (
-              <Typography
-                key={x.id}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.81rem",
-                  color: "text.disabled",
-                  fontStyle: "italic",
-                }}
-              >
-                —
-              </Typography>
-            );
-          })}
-        </Box>
-      );
-    },
-  };
-
   const buildColumns = () => {
     const key = statusFilter;
     if (key === "all")
@@ -1198,35 +868,13 @@ export default function AdminRequestManagement() {
         forwardedByCol,
         actionCol,
       ];
-    if (key === "Approved")
+    if (key === "Assigned")
       return [
         titleCol,
         typeCol,
         clientCol,
         eventDateCol,
         approvedByCol,
-        actionCol,
-      ];
-    if (key === "On Going")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        onGoingVenueCol,
-        onGoingStaffersCol,
-        actionCol,
-      ];
-    if (key === "Completed")
-      return [
-        titleCol,
-        typeCol,
-        clientCol,
-        eventDateCol,
-        completedStafferCol,
-        completedTimeInCol,
-        completedTimeOutCol,
-        completedDurCol,
         actionCol,
       ];
     if (key === "Declined")
@@ -1303,7 +951,7 @@ export default function AdminRequestManagement() {
         {/* Search */}
         <FormControl
           size="small"
-          sx={{ flex: 2.4, minWidth: 250, maxWidth: 440 }}
+          sx={{ flex: 2.4, minWidth: FILTER_SEARCH_MIN_WIDTH, maxWidth: 440 }}
         >
           <OutlinedInput
             placeholder="Search"
@@ -1349,7 +997,7 @@ export default function AdminRequestManagement() {
                       color: "text.primary",
                     }}
                   >
-                    {opt?.label || "All Statuses"}
+                    {opt?.label || "All Requests"}
                   </Typography>
                   <NumberBadge
                     count={triggerCount}
@@ -1575,7 +1223,7 @@ export default function AdminRequestManagement() {
                 },
               }}
               rowHeight={
-                ["On Going", "Completed"].includes(statusFilter) ? 60 : 56
+                statusFilter === "Forwarded" ? 56 : 56
               }
               getRowHeight={
                 statusFilter === "Forwarded"
@@ -1597,16 +1245,6 @@ export default function AdminRequestManagement() {
           )}
         </Box>
       </Box>
-
-      <RequestDetails
-        open={!!selectedRequest}
-        onClose={() => setSelectedRequest(null)}
-        request={selectedRequest}
-        onActionSuccess={() => {
-          setSelectedRequest(null);
-          refetch();
-        }}
-      />
 
       {/* ── 3-dot menu ── */}
       <Menu
