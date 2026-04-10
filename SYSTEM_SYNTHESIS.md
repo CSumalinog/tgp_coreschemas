@@ -88,17 +88,18 @@ Section Heads manage specific coverage sections (News, Photojournalism, Videojou
 
 - **Dashboard Overview**: Viewing section-specific metrics and pending items.
 - **Coverage Assignment**: Assigning staff members from their section to coverage requests that have been forwarded to them, with duty schedule integration to ensure proper staffing.
+- **Coverage Tracking**: Monitoring ongoing coverage and completed assignments with real-time status updates.
+- **Time Records**: Viewing and managing staffer time-in/time-out records with filtering and export capabilities.
 - **Managing Staffers**: Viewing and monitoring staff members within their section.
 - **Submit for Approval**: After assigning staffers, section heads submit requests for final admin approval.
 - **Profile Management**: Maintaining their profile information.
 
-The Section Head Assignment Management interface features:
+The Section Head interface features modular pages:
 
-- Three-tab organization: For Assignment, Assigned, History
-- Semester and staffer filtering capabilities
-- Duty schedule integration (eligible staffers based on duty day)
-- Assignment count tracking per staffer
-- Real-time updates via Supabase Realtime
+- **Coverage Assignment**: Views for All, For Assignment, For Approval, and Assigned statuses
+- **Coverage Tracker**: Views for All, On Going, and Completed coverage records
+- **Time Records**: Comprehensive time tracking with search, filter, and CSV export
+- **Real-time Updates**: Live subscription to coverage_requests and coverage_assignments tables
 
 ### 3.4 Regular Staff (role: "staff")
 
@@ -966,6 +967,90 @@ The [`DutyScheduleView`](src/pages/admin/DutyScheduleView.jsx:1) component recei
 - Subscriptions to both `duty_schedules` and `duty_schedule_change_requests` tables
 - Toast notifications for schedule changes
 - Auto-refresh on external modifications
+
+### 9.28 Section Head Interface Restructuring (v2.5)
+
+The Section Head module received a complete architectural overhaul with new page structure and shared base component:
+
+#### New Page Architecture
+
+The section head navigation now uses a modular component structure:
+
+- **CoverageAssignmentPage** ([`CoverageAssignmentPage.jsx`](src/pages/section_head/CoverageAssignmentPage.jsx:1)): Manages staff assignments with views for "All", "For Assignment", "For Approval", and "Assigned" statuses
+- **CoverageTrackerPage** ([`CoverageTrackerPage.jsx`](src/pages/section_head/CoverageTrackerPage.jsx:1)): Tracks ongoing and completed coverage with "All", "On Going", and "Completed" views
+- **CoverageTimeRecordPage** ([`CoverageTimeRecordPage.jsx`](src/pages/section_head/CoverageTimeRecordPage.jsx:1)): Comprehensive time record management with filtering, search, and CSV export capabilities
+
+#### CoverageManagementBase Component
+
+A new shared base component ([`CoverageManagementBase.jsx`](src/pages/section_head/CoverageManagementBase.jsx:1)) provides:
+
+- **Configurable Views**: Page-specific view definitions with customizable tabs and filtering
+- **DataGrid Integration**: Full-featured data tables with sorting, filtering, and pagination
+- **Real-time Updates**: Live subscription to coverage_requests and coverage_assignments tables
+- **Assignment Workflow**: Complete assignment creation, editing, and submission workflow
+- **Coverage Completion**: Staff can mark assignments as complete with dialog confirmation
+- **View Details**: Drawer-based detail view for examining individual requests
+- **Export Functionality**: CSV export with customizable filename
+- **Archive/Trash Management**: Integration with role-based archive and trash systems
+- **Unified Styling**: Consistent use of layout tokens (TABLE_USER_AVATAR_SIZE, TABLE_USER_AVATAR_FONT_SIZE)
+
+#### Layout Token Integration
+
+All section head pages now import and utilize shared layout tokens from [`layoutTokens.js`](src/utils/layoutTokens.js:1):
+
+- FILTER_SEARCH_MIN_WIDTH, FILTER_ROW_GAP, FILTER_INPUT_HEIGHT
+- TABLE_USER_AVATAR_SIZE, TABLE_USER_AVATAR_FONT_SIZE
+
+#### Deprecation
+
+The legacy **SecheadAssignmentManagement.jsx** component has been removed and replaced by the new modular architecture.
+
+### 9.29 Regular Staff My Schedule Enhancements (v2.6)
+
+The MySchedule page received comprehensive UI enhancements for duty day management with improved visualization and interaction:
+
+#### Staffer Avatar Display System
+
+- **Color-Coded Avatar Swatches**: 8 distinct color combinations randomly assigned to staffers for visual differentiation
+- **Initials Generation**: Automatic extraction of first letters from first and last names
+- **Avatar with Fallback**: Uses uploaded avatar_url or generates initials-based fallback
+- **Co-Staffer Visibility**: Staff can view other team members on the same duty day
+
+#### Capacity Visualization
+
+- **Progress Bar Display**: Each day shows a visual progress bar indicating slot usage (count/capacity)
+- **Color-Coded Full States**: Red (#ef4444) when full, Gold (#F5C52B) when available
+- **Percentage Calculation**: Automatic calculation of utilization percentage
+- **Full Badge**: "Full" indicator appears when a day reaches capacity
+
+#### Staffer List Popover
+
+- **Click-to-View**: Click on the staffer avatars group to open a detailed popover
+- **Full Roster Display**: Shows all staffers assigned to the selected day
+- **Section Information**: Displays each staffer's section (News, Photo, Video)
+- **Co-Staffer Filtering**: When viewing own day, excludes self from the list
+
+#### Enhanced Day Selection Grid
+
+- **Visual Selection States**: Gold border for pending selection, green border for current assignment
+- **Disabled States**: Proper opacity reduction for unavailable days
+- **My Day Badge**: "Your day" indicator for assigned duty day
+- **Pending Badge**: "Pending" indicator for requested changes
+
+#### First-Time Setup Flow
+
+- **Dedicated Welcome Card**: Special UI card explaining first-time duty day setup
+- **Step-by-Step Instructions**: Clear numbered guidance (Choose → Check → Confirm)
+- **Notice About Approval**: Explains that changes after setup require admin approval
+- **No Existing Schedule Detection**: Automatically detects new staff without assignments
+
+#### Confirmation Dialog
+
+- **Change Confirmation Dialog**: Modal dialog for confirming duty day changes
+- **Load Display**: Shows current count/capacity for target day
+- **Reason Input**: Multi-line text field for providing change reason
+- **Validation**: Prevents submission without reason text
+- **Loading State**: Circular progress indicator during submission
 
 ---
 

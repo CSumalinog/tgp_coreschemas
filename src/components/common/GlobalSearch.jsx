@@ -31,7 +31,6 @@ import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
-import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -96,19 +95,14 @@ const PAGES_BY_ROLE = {
       icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} />,
     },
     {
-      label: "For Assignment",
-      path: "/sec_head/assignment-management",
-      icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} />,
+      label: "Coverage Assignment",
+      path: "/sec_head/coverage-management/assignment",
+      icon: <AssignmentOutlinedIcon sx={{ fontSize: 16 }} />,
     },
     {
-      label: "Assigned",
-      path: "/sec_head/assignment-management",
-      icon: <TaskAltOutlinedIcon sx={{ fontSize: 16 }} />,
-    },
-    {
-      label: "History",
-      path: "/sec_head/assignment-management",
-      icon: <HistoryOutlinedIcon sx={{ fontSize: 16 }} />,
+      label: "Coverage Tracker",
+      path: "/sec_head/coverage-management/tracker",
+      icon: <TrackChangesOutlinedIcon sx={{ fontSize: 16 }} />,
     },
     {
       label: "My Staffers",
@@ -194,11 +188,17 @@ const getClientRequestPath = (status) =>
 
 const getSecHeadAssignmentPath = (status) =>
   ({
-    Pending: "/sec_head/assignment-management",
-    Assigned: "/sec_head/assignment-management",
-    Completed: "/sec_head/assignment-management",
-    "Coverage Complete": "/sec_head/assignment-management",
-  })[status] || "/sec_head/assignment-management";
+    Pending: "/sec_head/coverage-management/assignment",
+    Forwarded: "/sec_head/coverage-management/assignment",
+    "For Approval": "/sec_head/coverage-management/assignment",
+    Assigned: "/sec_head/coverage-management/assignment",
+    Approved: "/sec_head/coverage-management/assignment",
+    "On Going": "/sec_head/coverage-management/tracker",
+    Completed: "/sec_head/coverage-management/tracker",
+    "Coverage Complete": "/sec_head/coverage-management/tracker",
+    Declined: "/sec_head/coverage-management/tracker",
+    "No-show": "/sec_head/coverage-management/tracker",
+  })[status] || "/sec_head/coverage-management/assignment";
 
 // ─── Fetch results — fixed foreign key ilike queries ─────────────────────────
 async function fetchResults(role, query, userId) {

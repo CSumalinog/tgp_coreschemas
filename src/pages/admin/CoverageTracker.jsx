@@ -50,6 +50,7 @@ const HOVER_BG = "rgba(53,53,53,0.03)";
 const dm = "'Inter', sans-serif";
 
 const STAGE_OPTIONS = [
+  { key: "all", label: "All" },
   { key: "On Going", label: "On Going" },
   { key: "Completed", label: "Completed" },
 ];
@@ -406,7 +407,9 @@ export default function CoverageTracker() {
 
   const [stageFilter, setStageFilter] = useState(() => {
     const incoming = location.state?.tab;
-    return incoming === "Completed" || incoming === "CTR" ? "Completed" : "On Going";
+    if (incoming === "Completed" || incoming === "CTR") return "Completed";
+    if (incoming === "On Going") return "On Going";
+    return "all";
   });
   const [activeTab, setActiveTab] = useState(() => {
     const incoming = location.state?.tab;
@@ -488,10 +491,18 @@ export default function CoverageTracker() {
         (r) => hasAnyAssignments(r) && hasAnyTimeIn(r),
       );
     }
+    if (stageFilter === "Completed") {
+      return dedupeById([
+        ...(completed || []),
+        ...requests.filter((r) => hasAnyCompleted(r)),
+      ]).filter((r) => hasAnyAssignments(r) && hasAnyCompleted(r));
+    }
+    // "all" — combine on-going and completed
     return dedupeById([
+      ...(onGoing || []),
       ...(completed || []),
-      ...requests.filter((r) => hasAnyCompleted(r)),
-    ]).filter((r) => hasAnyAssignments(r) && hasAnyCompleted(r));
+      ...requests.filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status)),
+    ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status));
   }, [stageFilter, onGoing, completed, requests]);
 
   const ctrBaseSource = useMemo(
@@ -1049,9 +1060,10 @@ export default function CoverageTracker() {
               sx={selectSx}
               renderValue={(val) => {
                 const count = rows.length;
+                const label = STAGE_OPTIONS.find((o) => o.key === val)?.label ?? val;
                 return (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{val}</Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{label}</Typography>
                     <NumberBadge
                       count={count}
                       active

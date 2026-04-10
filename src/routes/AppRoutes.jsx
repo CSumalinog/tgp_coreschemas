@@ -28,7 +28,9 @@ import RequestTracker from "../pages/client/RequestTracker";
 
 // Section Head Pages
 import SecHeadDashboard from "../pages/section_head/SecHeadDashboard";
-import SecHeadAssignmentManagement from "../pages/section_head/SecheadAssignmentManagement";
+import CoverageAssignmentPage from "../pages/section_head/CoverageAssignmentPage";
+import CoverageTrackerPage from "../pages/section_head/CoverageTrackerPage";
+import CoverageTimeRecordPage from "../pages/section_head/CoverageTimeRecordPage";
 import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
 
 // Regular Staff Pages
@@ -130,19 +132,33 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="dashboard" />} />
         <Route path="dashboard" element={<SecHeadDashboard />} />
-        <Route path="coverage-assignment" element={<SecHeadAssignmentManagement />} />
+        <Route path="coverage-management" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="coverage-management/assignment" element={<CoverageAssignmentPage />} />
+        <Route path="coverage-management/tracker" element={<CoverageTrackerPage />} />
+        <Route
+          path="coverage-management/time-record"
+          element={
+            <Navigate
+              to="/sec_head/coverage-management/tracker"
+              replace
+              state={{ tab: "time-record" }}
+            />
+          }
+        />
         <Route path="my-staffers" element={<SecHeadMyStaffers />} />
-        <Route path="archive" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
-        <Route path="trash" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
-        <Route path="notification-cleanup" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="archive" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="trash" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="notification-cleanup" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
         <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="settings" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="settings" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* Legacy redirects */}
-        <Route path="assignment-management" element={<Navigate to="/sec_head/coverage-assignment" replace />} />
-        <Route path="for-assignment"        element={<Navigate to="/sec_head/coverage-assignment" replace />} />
-        <Route path="assigned"              element={<Navigate to="/sec_head/coverage-assignment" replace />} />
-        <Route path="history"               element={<Navigate to="/sec_head/coverage-assignment" replace />} />
+        <Route path="coverage-assignment" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="assignment-management" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="for-assignment" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="assigned" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
+        <Route path="coverage-tracker" element={<Navigate to="/sec_head/coverage-management/tracker" replace />} />
+        <Route path="history" element={<Navigate to="/sec_head/coverage-management/tracker" replace />} />
       </Route>
 
       {/* Regular Staff Routes — only role: "staff" */}

@@ -72,7 +72,7 @@ const STATUS_CONFIG = {
 };
 
 const STATUS_OPTIONS = [
-  { label: "All Statuses", key: "all" },
+  { label: "All", key: "all" },
   { label: "Pending", key: "Pending" },
   { label: "Forwarded", key: "Forwarded" },
   { label: "For Approval", key: "For Approval" },

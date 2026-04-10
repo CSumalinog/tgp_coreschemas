@@ -16,6 +16,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
@@ -53,9 +54,20 @@ const MENU_SECTIONS = [
     items: [
       { label: "Dashboard", to: "dashboard", Icon: DashboardOutlinedIcon },
       {
-        label: "Coverage Assignment",
-        to: "coverage-assignment",
+        label: "Coverage Management",
         Icon: AssignmentOutlinedIcon,
+        children: [
+          {
+            label: "Assignment",
+            to: "coverage-management/assignment",
+            Icon: AssignmentOutlinedIcon,
+          },
+          {
+            label: "Tracker",
+            to: "coverage-management/tracker",
+            Icon: TrackChangesOutlinedIcon,
+          },
+        ],
       },
       { label: "My Staffers", to: "my-staffers", Icon: GroupOutlinedIcon },
     ],
@@ -235,7 +247,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
 
 function SidebarContent({ onClose, isMobile }) {
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState({});
+  const [openGroups, setOpenGroups] = useState({ "Coverage Management": true });
   const toggleGroup = (label) =>
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   const isChildActive = (children) =>

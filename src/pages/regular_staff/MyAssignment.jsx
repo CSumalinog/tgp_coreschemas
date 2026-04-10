@@ -1788,7 +1788,7 @@ export default function MyAssignment() {
       </Box>
     );
 
-  const statusOptions = ["All", "Assigned", "Approved", "On Going", "Completed"];
+  const statusOptions = ["All", "On Going", "Completed"];
 
   return (
     <Box

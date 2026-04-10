@@ -330,10 +330,10 @@ function DataGridStyles({ isDark }) {
           fontFamily: `${dm} !important`,
         },
         ".MuiDataGrid-cell .MuiButton-root": {
-          minWidth: "72px !important",
-          width: "72px !important",
+          minWidth: "fit-content !important",
+          width: "auto !important",
           height: "30px !important",
-          padding: "0 12px !important",
+          padding: "0 14px !important",
           borderRadius: "10px !important",
           fontFamily: `${dm} !important`,
           fontSize: "0.73rem !important",

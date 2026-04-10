@@ -1,5 +1,5 @@
 // src/pages/regular_staff/MySchedule.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Typography,
@@ -9,6 +9,8 @@ import {
   Dialog,
   useTheme,
   IconButton,
+  Avatar,
+  Popover,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -46,6 +48,17 @@ const SLOT_FIELDS = [
 
 const ACTIVE_REQUEST_STATUSES = ["Assigned", "For Approval", "On Going"];
 
+const AVATAR_SWATCHES = [
+  { bg: "#E6F1FB", color: "#0C447C" },
+  { bg: "#EAF3DE", color: "#27500A" },
+  { bg: "#FAEEDA", color: "#633806" },
+  { bg: "#EEEDFE", color: "#3C3489" },
+  { bg: "#E1F5EE", color: "#085041" },
+  { bg: "#FAECE7", color: "#712B13" },
+  { bg: "#FBEAF0", color: "#72243E" },
+  { bg: "#DBEAFE", color: "#1E40AF" },
+];
+
 const getDutyDayFromDate = (dateStr) => {
   if (!dateStr) return null;
   const day = new Date(`${dateStr}T00:00:00`).getDay();
@@ -59,6 +72,38 @@ const getUpcomingRequestDates = (request) => {
     return request.event_days.map((entry) => entry?.date).filter(Boolean);
   }
   return request.event_date ? [request.event_date] : [];
+};
+
+const getInitials = (name) => {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const normalizeDivision = (value) => {
+  if (!value) return "";
+  const clean = String(value).trim().toLowerCase();
+  if (clean === "scribe" || clean === "scribes") return "Scribes";
+  if (clean === "creative" || clean === "creatives") return "Creatives";
+  return "";
+};
+
+const isTrackedDivision = (division) =>
+  division === "Scribes" || division === "Creatives";
+
+const getDivisionCounts = (staffers = []) => {
+  let scribes = 0;
+  let creatives = 0;
+  (staffers || []).forEach((staffer) => {
+    const division = normalizeDivision(staffer?.division);
+    if (division === "Scribes") scribes += 1;
+    if (division === "Creatives") creatives += 1;
+  });
+  return { scribes, creatives, total: scribes + creatives };
 };
 
 export default function MySchedule() {
@@ -82,6 +127,20 @@ export default function MySchedule() {
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
   const [pendingNoticeExpanded, setPendingNoticeExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dayStaffers, setDayStaffers] = useState([[], [], [], [], []]);
+  const [blackoutDates, setBlackoutDates] = useState([]);
+  const [stafferListAnchorEl, setStafferListAnchorEl] = useState(null);
+  const [stafferListDayIndex, setStafferListDayIndex] = useState(null);
+  const avatarColorMapRef = useRef({});
+
+  const getRandomAvatarColor = useCallback((stafferId) => {
+    const key = String(stafferId || "unknown");
+    if (!avatarColorMapRef.current[key]) {
+      avatarColorMapRef.current[key] =
+        AVATAR_SWATCHES[Math.floor(Math.random() * AVATAR_SWATCHES.length)];
+    }
+    return avatarColorMapRef.current[key];
+  }, []);
 
   // quotas hook - re-fetches when currentUser or activeSemester changes
   const {
@@ -89,6 +148,30 @@ export default function MySchedule() {
     isExhausted: quotaExhausted,
     refetch: refetchQuota,
   } = useDutyChangeRequestQuota(currentUser?.id, activeSemester?.id);
+
+  const writeDutyAuditLog = useCallback(
+    async ({
+      actionType,
+      targetStafferId = null,
+      metadata = {},
+      requestId = null,
+    }) => {
+      try {
+        if (!activeSemester?.id || !currentUser?.id || !actionType) return;
+        await supabase.from("duty_schedule_audit_logs").insert({
+          semester_id: activeSemester.id,
+          actor_id: currentUser.id,
+          target_staffer_id: targetStafferId,
+          request_id: requestId,
+          action_type: actionType,
+          metadata,
+        });
+      } catch {
+        // Keep scheduling actions resilient even if audit logging fails.
+      }
+    },
+    [activeSemester?.id, currentUser?.id],
+  );
 
   const loadActiveSemester = useCallback(async () => {
     const { data } = await supabase
@@ -107,7 +190,7 @@ export default function MySchedule() {
       if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, full_name, section, division, role")
+        .select("id, full_name, section, division, role, avatar_url")
         .eq("id", user.id)
         .single();
       setCurrentUser(profile);
@@ -126,10 +209,13 @@ export default function MySchedule() {
       { data: allSchedules },
       { data: pendingRows },
       { data: reviewedRows },
+      { data: blackoutRows },
     ] = await Promise.all([
       supabase
         .from("duty_schedules")
-        .select("duty_day, staffer_id")
+        .select(
+          "duty_day, staffer_id, staffer:profiles!staffer_id(id, full_name, section, avatar_url, division)",
+        )
         .eq("semester_id", activeSemester.id),
       supabase
         .from("duty_schedule_change_requests")
@@ -152,12 +238,36 @@ export default function MySchedule() {
         .order("reviewed_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(1),
+      supabase
+        .from("duty_schedule_blackout_dates")
+        .select("id, blackout_date, reason")
+        .eq("semester_id", activeSemester.id)
+        .order("blackout_date", { ascending: true }),
     ]);
     const counts = [0, 0, 0, 0, 0];
+    const nextDayStaffers = [[], [], [], [], []];
     (allSchedules || []).forEach((s) => {
-      if (s.duty_day >= 0 && s.duty_day <= 4) counts[s.duty_day]++;
+      if (s.duty_day >= 0 && s.duty_day <= 4) {
+        counts[s.duty_day]++;
+        if (s.staffer) {
+          nextDayStaffers[s.duty_day].push(s.staffer);
+        }
+      }
     });
+
+    // Deduplicate staffers per day (safety against accidental duplicates).
+    const dedupedDayStaffers = nextDayStaffers.map((list) => {
+      const seen = new Set();
+      return list.filter((s) => {
+        if (!s?.id || seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+    });
+
     setSlotCounts(counts);
+    setDayStaffers(dedupedDayStaffers);
+    setBlackoutDates(blackoutRows || []);
     const nextPending = pendingRows?.[0] || null;
     setPendingRequest(nextPending);
     setLatestReviewedRequest(reviewedRows?.[0] || null);
@@ -312,6 +422,63 @@ export default function MySchedule() {
         return;
       }
 
+      const actorDivision = normalizeDivision(currentUser?.division);
+      if (isTrackedDivision(actorDivision) && (isNew || isChanging)) {
+        const sourceDay = effectiveExistingSchedule?.duty_day;
+        const affectedDays = Array.from(
+          new Set([
+            requestedDay,
+            sourceDay !== undefined && sourceDay !== null ? sourceDay : null,
+          ]),
+        ).filter((day) => day !== null);
+
+        const getProjectedCountsForDay = (dayIndex) => {
+          const baseStaffers = dayStaffers[dayIndex] || [];
+          let scribes = getDivisionCounts(baseStaffers).scribes;
+          let creatives = getDivisionCounts(baseStaffers).creatives;
+
+          if (
+            isChanging &&
+            sourceDay === dayIndex &&
+            isTrackedDivision(actorDivision)
+          ) {
+            if (actorDivision === "Scribes") scribes = Math.max(0, scribes - 1);
+            if (actorDivision === "Creatives") {
+              creatives = Math.max(0, creatives - 1);
+            }
+          }
+
+          if (
+            (isNew || isChanging) &&
+            requestedDay === dayIndex &&
+            isTrackedDivision(actorDivision)
+          ) {
+            if (actorDivision === "Scribes") scribes += 1;
+            if (actorDivision === "Creatives") creatives += 1;
+          }
+
+          return { scribes, creatives, total: scribes + creatives };
+        };
+
+        const violatedDay = affectedDays.find((dayIndex) => {
+          const projection = getProjectedCountsForDay(dayIndex);
+          const isBootstrapAllowed = isNew && dayIndex === requestedDay && countForDay === 0;
+          if (isBootstrapAllowed) return false;
+          return (
+            projection.total > 0 &&
+            (projection.scribes === 0 || projection.creatives === 0)
+          );
+        });
+
+        if (violatedDay !== undefined) {
+          setSaveError(
+            `Balance policy: ${DAY_LABELS[violatedDay]} must keep both Scribes and Creatives assigned.`,
+          );
+          setSaving(false);
+          return;
+        }
+      }
+
       if (isChanging) {
         if (!requestReason.trim()) {
           setSaveError("Please provide a reason for your change request.");
@@ -357,6 +524,16 @@ export default function MySchedule() {
         setSaveSuccess("Duty day change request submitted for approval.");
         setRequestReason("");
         await refetchQuota();
+        await writeDutyAuditLog({
+          actionType: "duty_change_requested",
+          targetStafferId: currentUser.id,
+          requestId: changeRequest?.id || null,
+          metadata: {
+            from_day: effectiveExistingSchedule.duty_day,
+            to_day: requestedDay,
+            reason: requestReason.trim(),
+          },
+        });
       } else {
         const { error: upsertErr } = await supabase
           .from("duty_schedules")
@@ -372,6 +549,15 @@ export default function MySchedule() {
 
         setSaveSuccess("Duty day saved successfully!");
         setRequestReason("");
+        await writeDutyAuditLog({
+          actionType: "duty_day_saved",
+          targetStafferId: currentUser.id,
+          metadata: {
+            from_day: effectiveExistingSchedule?.duty_day ?? null,
+            to_day: requestedDay,
+            is_initial_setup: !effectiveExistingSchedule,
+          },
+        });
       }
 
       await loadScheduleData();
@@ -681,6 +867,53 @@ export default function MySchedule() {
             </Box>
           )}
 
+          {blackoutDates.length > 0 && (
+            <Box
+              sx={{
+                mb: 2.5,
+                px: 1.6,
+                py: 1.2,
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(53,53,53,0.02)",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "text.secondary",
+                  mb: 0.6,
+                }}
+              >
+                Blackout Dates
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "text.secondary",
+                  lineHeight: 1.55,
+                }}
+              >
+                No duty operations on: {" "}
+                {blackoutDates
+                  .map((row) =>
+                    new Date(`${row.blackout_date}T00:00:00`).toLocaleDateString(
+                      "en-US",
+                      { month: "short", day: "numeric", year: "numeric" },
+                    ),
+                  )
+                  .join(", ")}
+              </Typography>
+            </Box>
+          )}
+
           {/* ── Status alerts ── */}
           {schedulingClosed && (
             <Box
@@ -966,8 +1199,14 @@ export default function MySchedule() {
             {DAY_LABELS.map((day, i) => {
               const count = slotCounts[i];
               const capacity = slotCapacities[i] ?? 10;
+              const assignedStaffers = dayStaffers[i] || [];
               const isFull = count >= capacity;
               const isMyPick = existingSchedule?.duty_day === i;
+              const sameDayPeers = isMyPick
+                ? assignedStaffers.filter((staffer) => staffer.id !== currentUser?.id)
+                : assignedStaffers;
+              const previewStaffers = sameDayPeers.slice(0, 2);
+              const overflowCount = Math.max(sameDayPeers.length - previewStaffers.length, 0);
               const isSelected = selectedDay === i;
               const isPendingTarget = pendingRequest?.requested_duty_day === i;
               const isChangingDay =
@@ -1038,8 +1277,8 @@ export default function MySchedule() {
                 >
                   <Box
                     sx={{
-                      width: 30,
-                      height: 30,
+                      width: isMyPick ? 40 : 30,
+                      height: isMyPick ? 40 : 30,
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
@@ -1059,12 +1298,23 @@ export default function MySchedule() {
                           : `1.5px solid ${border}`,
                     }}
                   >
-                    {isSelected ? (
+                    {isMyPick ? (
+                      <Avatar
+                        src={currentUser?.avatar_url || undefined}
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          fontFamily: dm,
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          border: `1px solid ${isSelected ? "rgba(33,33,33,0.18)" : "rgba(34,197,94,0.35)"}`,
+                        }}
+                      >
+                        {!currentUser?.avatar_url &&
+                          getInitials(currentUser?.full_name)}
+                      </Avatar>
+                    ) : isSelected ? (
                       <CheckCircleIcon sx={{ fontSize: 15, color: CHARCOAL }} />
-                    ) : isMyPick ? (
-                      <CheckCircleIcon
-                        sx={{ fontSize: 15, color: "#22c55e" }}
-                      />
                     ) : (
                       <Box
                         sx={{
@@ -1128,6 +1378,88 @@ export default function MySchedule() {
                     )}
                   </Box>
 
+                  {sameDayPeers.length > 0 && (
+                    <Box
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStafferListAnchorEl(e.currentTarget);
+                        setStafferListDayIndex(i);
+                      }}
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.55,
+                        px: 0.75,
+                        py: 0.35,
+                        borderRadius: "10px",
+                        border: `1px solid ${border}`,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.03)"
+                          : "rgba(53,53,53,0.02)",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        "&:hover": {
+                          borderColor: GOLD,
+                          backgroundColor: GOLD_08,
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        {previewStaffers.map((staffer, idx) => {
+                          const tone = getRandomAvatarColor(staffer.id);
+                          return (
+                            <Avatar
+                              key={staffer.id || idx}
+                              src={staffer.avatar_url || undefined}
+                              sx={{
+                                width: 24,
+                                height: 24,
+                                ml: idx === 0 ? 0 : -0.45,
+                                border: `1.5px solid ${isDark ? "#1f1f1f" : "#fff"}`,
+                                fontFamily: dm,
+                                fontSize: "0.58rem",
+                                fontWeight: 700,
+                                backgroundColor: tone.bg,
+                                color: tone.color,
+                              }}
+                            >
+                              {!staffer.avatar_url && getInitials(staffer.full_name)}
+                            </Avatar>
+                          );
+                        })}
+                        {overflowCount > 0 && (
+                          <Box
+                            sx={{
+                              ml: -0.45,
+                              width: 24,
+                              height: 24,
+                              borderRadius: "50%",
+                              border: `1.5px solid ${isDark ? "#1f1f1f" : "#fff"}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: isDark
+                                ? "rgba(255,255,255,0.12)"
+                                : "rgba(53,53,53,0.15)",
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.54rem",
+                                fontWeight: 700,
+                                color: "text.primary",
+                                lineHeight: 1,
+                              }}
+                            >
+                              +{overflowCount}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+
                   <Box
                     sx={{
                       width: "80%",
@@ -1152,6 +1484,152 @@ export default function MySchedule() {
               );
             })}
           </Box>
+
+          <Popover
+            open={Boolean(stafferListAnchorEl)}
+            anchorEl={stafferListAnchorEl}
+            onClose={() => {
+              setStafferListAnchorEl(null);
+              setStafferListDayIndex(null);
+            }}
+            anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+            transformOrigin={{ vertical: "top", horizontal: "left" }}
+            PaperProps={{
+              sx: {
+                mt: 0.75,
+                width: 310,
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                overflow: "hidden",
+                boxShadow: isDark
+                  ? "0 14px 36px rgba(0,0,0,0.45)"
+                  : "0 14px 36px rgba(17,24,39,0.12)",
+              },
+            }}
+          >
+            {(() => {
+              const popoverAllStaffers =
+                stafferListDayIndex !== null
+                  ? dayStaffers[stafferListDayIndex] || []
+                  : [];
+              const isPopoverMyDay =
+                stafferListDayIndex !== null &&
+                existingSchedule?.duty_day === stafferListDayIndex;
+              const popoverStaffers = isPopoverMyDay
+                ? popoverAllStaffers.filter((staffer) => staffer.id !== currentUser?.id)
+                : popoverAllStaffers;
+
+              return (
+                <>
+            <Box
+              sx={{
+                px: 1.4,
+                py: 1,
+                borderBottom: `1px solid ${border}`,
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(53,53,53,0.02)",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.64rem",
+                  fontWeight: 800,
+                  color: "text.secondary",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {stafferListDayIndex !== null
+                  ? isPopoverMyDay
+                    ? `Co-Staffers · ${popoverStaffers.length}`
+                    : `${DAY_SHORT[stafferListDayIndex]} · ${popoverStaffers.length} assigned`
+                  : "Assigned Staffers"}
+              </Typography>
+            </Box>
+
+            <Box sx={{ maxHeight: 280, overflowY: "auto" }}>
+              {popoverStaffers.length === 0 ? (
+                <Box sx={{ px: 1.4, py: 1.25 }}>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.76rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    {isPopoverMyDay
+                      ? "No other staff assigned the same day yet."
+                      : "No assigned staff for this day yet."}
+                  </Typography>
+                </Box>
+              ) : (
+                popoverStaffers.map((staffer, idx) => {
+                  const tone = getRandomAvatarColor(staffer.id);
+                  return (
+                    <Box
+                      key={staffer.id || idx}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        px: 1.4,
+                        py: 1,
+                        borderBottom:
+                          idx < popoverStaffers.length - 1
+                            ? `1px solid ${border}`
+                            : "none",
+                      }}
+                    >
+                      <Avatar
+                        src={staffer.avatar_url || undefined}
+                        sx={{
+                          width: 30,
+                          height: 30,
+                          fontFamily: dm,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          backgroundColor: tone.bg,
+                          color: tone.color,
+                        }}
+                      >
+                        {!staffer.avatar_url && getInitials(staffer.full_name)}
+                      </Avatar>
+
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.82rem",
+                            color: "text.primary",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {staffer.full_name || "Unnamed Staffer"}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.72rem",
+                            color: "text.secondary",
+                          }}
+                        >
+                          {staffer.section || "Unassigned Section"}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              )}
+            </Box>
+                </>
+              );
+            })()}
+          </Popover>
 
           <Dialog
             open={reasonDialogOpen}

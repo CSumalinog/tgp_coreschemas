@@ -7,6 +7,7 @@ import {
   Alert,
   Avatar,
   Dialog,
+  Drawer,
   IconButton,
   TextField,
   useTheme,
@@ -37,6 +38,7 @@ import {
 import { useLocation } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CloseIcon from "@mui/icons-material/Close";
@@ -205,6 +207,25 @@ const getRequestStatusMeta = (status) =>
     border: "rgba(53,53,53,0.12)",
   };
 
+const normalizeDivision = (value) => {
+  if (!value) return "";
+  const clean = String(value).trim().toLowerCase();
+  if (clean === "scribe" || clean === "scribes") return "Scribes";
+  if (clean === "creative" || clean === "creatives") return "Creatives";
+  return "";
+};
+
+const countDivision = (list = []) => {
+  let scribes = 0;
+  let creatives = 0;
+  (list || []).forEach((item) => {
+    const division = normalizeDivision(item?.staffer?.division || item?.division);
+    if (division === "Scribes") scribes += 1;
+    if (division === "Creatives") creatives += 1;
+  });
+  return { scribes, creatives, total: scribes + creatives };
+};
+
 export default function DutyScheduleView() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -212,6 +233,8 @@ export default function DutyScheduleView() {
   const location = useLocation();
 
   const [schedules, setSchedules] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [selectedSemesterId, setSelectedSemesterId] = useState("");
   const [activeSemester, setActiveSemester] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -233,29 +256,97 @@ export default function DutyScheduleView() {
   const [selectedDayFilter, setSelectedDayFilter] = useState(null);
   const [requestSearchText, setRequestSearchText] = useState("");
   const [requestStatusFilter, setRequestStatusFilter] = useState("All");
+  const [divisionComposition, setDivisionComposition] = useState({
+    current: { scribes: 0, creatives: 0 },
+    requested: { scribes: 0, creatives: 0 },
+  });
+  const [blackoutDates, setBlackoutDates] = useState([]);
+  const [blackoutDateInput, setBlackoutDateInput] = useState("");
+  const [blackoutReasonInput, setBlackoutReasonInput] = useState("");
+  const [blackoutSaving, setBlackoutSaving] = useState(false);
+  const [latestPublication, setLatestPublication] = useState(null);
+  const [publications, setPublications] = useState([]);
+  const [publicationsLoading, setPublicationsLoading] = useState(false);
+  const [publishSaving, setPublishSaving] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState("");
+  const [governanceMessage, setGovernanceMessage] = useState("");
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditSearchText, setAuditSearchText] = useState("");
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+  const [publishExportCsv, setPublishExportCsv] = useState(true);
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+  const [settingsPanelTab, setSettingsPanelTab] = useState("operations");
+  const [selectedPublicationId, setSelectedPublicationId] = useState(null);
+  const [snapshotViewerOpen, setSnapshotViewerOpen] = useState(false);
   const gridApiRef = useGridApiRef();
   const requestGridApiRef = useGridApiRef();
+  const auditGridApiRef = useGridApiRef();
 
-  const loadActiveSemester = useCallback(async () => {
+  const writeDutyAuditLog = useCallback(
+    async ({
+      actorId = null,
+      actionType,
+      targetStafferId = null,
+      requestId = null,
+      metadata = {},
+    }) => {
+      try {
+        if (!activeSemester?.id || !actionType) return;
+        await supabase.from("duty_schedule_audit_logs").insert({
+          semester_id: activeSemester.id,
+          actor_id: actorId,
+          target_staffer_id: targetStafferId,
+          request_id: requestId,
+          action_type: actionType,
+          metadata,
+        });
+      } catch {
+        // Keep admin flow resilient if audit logging fails.
+      }
+    },
+    [activeSemester?.id],
+  );
+
+  const loadSemesters = useCallback(async () => {
     const { data, error: semesterError } = await supabase
       .from("semesters")
       .select("*")
-      .eq("is_active", true)
-      .single();
+      .order("start_date", { ascending: false });
 
-    if (semesterError && semesterError.code !== "PGRST116") {
+    if (semesterError) {
       setError(semesterError.message);
       return;
     }
 
-    setActiveSemester(data || null);
+    const rows = data || [];
+    setSemesters(rows);
+    if (!rows.length) {
+      setSelectedSemesterId("");
+      setActiveSemester(null);
+      return;
+    }
+
+    const fallback = rows.find((semester) => semester.is_active) || rows[0];
+    setSelectedSemesterId((prev) =>
+      prev && rows.some((semester) => semester.id === prev) ? prev : fallback.id,
+    );
   }, []);
 
   useEffect(() => {
-    loadActiveSemester();
-  }, [loadActiveSemester]);
+    loadSemesters();
+  }, [loadSemesters]);
 
-  useRealtimeNotify("semesters", loadActiveSemester, "is_active=eq.true", {
+  useEffect(() => {
+    if (!selectedSemesterId) {
+      setActiveSemester(null);
+      return;
+    }
+    setActiveSemester(
+      semesters.find((semester) => semester.id === selectedSemesterId) || null,
+    );
+  }, [semesters, selectedSemesterId]);
+
+  useRealtimeNotify("semesters", loadSemesters, null, {
     title: "Duty Slots",
     sound: false,
   });
@@ -309,6 +400,94 @@ export default function DutyScheduleView() {
     loadPendingRequests();
   }, [loadPendingRequests]);
 
+  const loadBlackoutDates = useCallback(async () => {
+    if (!activeSemester?.id) {
+      setBlackoutDates([]);
+      return;
+    }
+
+    const { data, error: fetchErr } = await supabase
+      .from("duty_schedule_blackout_dates")
+      .select("id, blackout_date, reason, created_at")
+      .eq("semester_id", activeSemester.id)
+      .order("blackout_date", { ascending: true });
+
+    if (fetchErr) {
+      setError(fetchErr.message);
+      return;
+    }
+
+    setBlackoutDates(data || []);
+  }, [activeSemester]);
+
+  useEffect(() => {
+    loadBlackoutDates();
+  }, [loadBlackoutDates]);
+
+  const loadPublications = useCallback(async () => {
+    if (!activeSemester?.id) {
+      setPublications([]);
+      setLatestPublication(null);
+      setSelectedPublicationId(null);
+      return;
+    }
+
+    setPublicationsLoading(true);
+    const { data, error: fetchErr } = await supabase
+      .from("duty_schedule_publications")
+      .select("id, version, published_at, published_by, snapshot")
+      .eq("semester_id", activeSemester.id)
+      .order("version", { ascending: false })
+      .limit(20);
+
+    if (fetchErr) {
+      setError(fetchErr.message);
+      setPublicationsLoading(false);
+      return;
+    }
+
+    const publicationRows = data || [];
+    setPublications(publicationRows);
+    setLatestPublication(publicationRows[0] || null);
+    setSelectedPublicationId((prev) =>
+      publicationRows.some((row) => row.id === prev)
+        ? prev
+        : (publicationRows[0]?.id ?? null),
+    );
+    setPublicationsLoading(false);
+  }, [activeSemester]);
+
+  useEffect(() => {
+    loadPublications();
+  }, [loadPublications]);
+
+  const loadAuditLogs = useCallback(async () => {
+    if (!activeSemester?.id) {
+      setAuditLogs([]);
+      return;
+    }
+
+    const { data, error: fetchErr } = await supabase
+      .from("duty_schedule_audit_logs")
+      .select(
+        "id, action_type, metadata, created_at, actor:profiles!actor_id(id, full_name), target:profiles!target_staffer_id(id, full_name)",
+      )
+      .eq("semester_id", activeSemester.id)
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (fetchErr) {
+      setError(fetchErr.message);
+      return;
+    }
+
+    setAuditLogs(data || []);
+  }, [activeSemester]);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
+
   useRealtimeNotify(
     "duty_schedules",
     loadSchedules,
@@ -329,6 +508,36 @@ export default function DutyScheduleView() {
     },
   );
 
+  useRealtimeNotify(
+    "duty_schedule_blackout_dates",
+    loadBlackoutDates,
+    activeSemester?.id ? `semester_id=eq.${activeSemester.id}` : null,
+    {
+      title: "Duty Blackout Dates",
+      sound: false,
+    },
+  );
+
+  useRealtimeNotify(
+    "duty_schedule_publications",
+    loadPublications,
+    activeSemester?.id ? `semester_id=eq.${activeSemester.id}` : null,
+    {
+      title: "Duty Publication",
+      sound: false,
+    },
+  );
+
+  useRealtimeNotify(
+    "duty_schedule_audit_logs",
+    loadAuditLogs,
+    activeSemester?.id ? `semester_id=eq.${activeSemester.id}` : null,
+    {
+      title: "Duty Audit",
+      sound: false,
+    },
+  );
+
   const filtered =
     sectionFilter === "All"
       ? schedules
@@ -340,6 +549,31 @@ export default function DutyScheduleView() {
     [pendingRequests],
   );
   const canApprovePendingRequests = Boolean(activeSemester?.scheduling_open);
+  const selectedPublication = useMemo(
+    () =>
+      publications.find((publication) => publication.id === selectedPublicationId) ||
+      latestPublication ||
+      null,
+    [latestPublication, publications, selectedPublicationId],
+  );
+  const settingsPanelMeta = useMemo(
+    () => ({
+      operations: {
+        title: "Operations",
+        description: "Manage day-to-day schedule controls such as blackout dates.",
+      },
+      governance: {
+        title: "Governance",
+        description: "Publish final rosters, inspect versions, and export approved snapshots.",
+      },
+      audit: {
+        title: "Audit Trail",
+        description: "Review change history and export activity logs.",
+      },
+    }),
+    [],
+  );
+  const activeSettingsMeta = settingsPanelMeta[settingsPanelTab] || settingsPanelMeta.operations;
 
   // Count total APPROVED requests per staffer for quota display
   const requestCountPerStaffer = useMemo(() => {
@@ -485,6 +719,13 @@ export default function DutyScheduleView() {
     });
   };
 
+  const handleExportAuditCsv = () => {
+    auditGridApiRef.current?.exportDataAsCsv({
+      utf8WithBom: true,
+      fileName: "duty-audit-export",
+    });
+  };
+
   const openSlotDialog = (dayIndex = null) => {
     setSlotForm(getSlotForm(activeSemester));
     setSlotError("");
@@ -527,7 +768,7 @@ export default function DutyScheduleView() {
 
       if (saveError) throw saveError;
 
-      await loadActiveSemester();
+      await loadSemesters();
       setSlotDialogDayIndex(null);
       setSlotDialogOpen(false);
     } catch (saveError) {
@@ -574,6 +815,167 @@ export default function DutyScheduleView() {
       );
   }, []);
 
+  const getProjectedDivisionForRequest = useCallback(
+    (request) => {
+      const sourceDay = request?.current_duty_day;
+      const targetDay = request?.requested_duty_day;
+      const actorDivision = normalizeDivision(request?.staffer?.division);
+
+      const sourceList = schedules.filter((entry) => entry.duty_day === sourceDay);
+      const targetList = schedules.filter((entry) => entry.duty_day === targetDay);
+      let source = countDivision(sourceList);
+      let target = countDivision(targetList);
+
+      if (actorDivision === "Scribes") {
+        source = {
+          ...source,
+          scribes: Math.max(0, source.scribes - 1),
+          total: Math.max(0, source.total - 1),
+        };
+        target = {
+          ...target,
+          scribes: target.scribes + 1,
+          total: target.total + 1,
+        };
+      }
+
+      if (actorDivision === "Creatives") {
+        source = {
+          ...source,
+          creatives: Math.max(0, source.creatives - 1),
+          total: Math.max(0, source.total - 1),
+        };
+        target = {
+          ...target,
+          creatives: target.creatives + 1,
+          total: target.total + 1,
+        };
+      }
+
+      const sourceViolation =
+        source.total > 0 && (source.scribes === 0 || source.creatives === 0);
+      const targetViolation =
+        target.total > 0 && (target.scribes === 0 || target.creatives === 0);
+
+      return {
+        source,
+        target,
+        sourceViolation,
+        targetViolation,
+        actorDivision,
+      };
+    },
+    [schedules],
+  );
+
+  const approveRequestInternal = useCallback(
+    async (request, reviewerId, { closeDetails = false } = {}) => {
+      if (!activeSemester?.id || !request?.id) return false;
+
+      const { data: currentSchedule, error: scheduleErr } = await supabase
+        .from("duty_schedules")
+        .select("id, duty_day")
+        .eq("semester_id", activeSemester.id)
+        .eq("staffer_id", request.staffer_id)
+        .maybeSingle();
+
+      if (scheduleErr) throw scheduleErr;
+
+      if (!currentSchedule) {
+        setError("This staff member no longer has an approved duty day to update.");
+        return false;
+      }
+
+      if (currentSchedule.duty_day !== request.current_duty_day) {
+        setError(
+          "This request is stale because the staff member's approved duty day already changed.",
+        );
+        await loadPendingRequests();
+        await loadSchedules();
+        return false;
+      }
+
+      const requestedDayCount = schedules.filter(
+        (entry) => entry.duty_day === request.requested_duty_day,
+      ).length;
+      const requestedDayProjectedCount =
+        currentSchedule.duty_day === request.requested_duty_day
+          ? requestedDayCount
+          : requestedDayCount + 1;
+      const requestedDayCapacity = dayCapacities[request.requested_duty_day] ?? 10;
+
+      if (requestedDayProjectedCount > requestedDayCapacity) {
+        setError(
+          `${DAY_LABELS[request.requested_duty_day]} is already full (${requestedDayCount}/${requestedDayCapacity}).`,
+        );
+        return false;
+      }
+
+      const projection = getProjectedDivisionForRequest(request);
+      if (projection.actorDivision && (projection.sourceViolation || projection.targetViolation)) {
+        const blockedDay = projection.sourceViolation
+          ? request.current_duty_day
+          : request.requested_duty_day;
+        setError(
+          `Balance policy: ${DAY_LABELS[blockedDay]} must keep both Scribes and Creatives assigned.`,
+        );
+        return false;
+      }
+
+      const conflicts = await findScheduleConflicts(
+        request.staffer_id,
+        request.current_duty_day,
+      );
+
+      if (conflicts.length > 0) {
+        setError(
+          `${request.staffer?.full_name || "This staff member"} still has upcoming assignments on ${DAY_LABELS[request.current_duty_day]}. Resolve those before approving the change.`,
+        );
+        return false;
+      }
+
+      const { error: approveErr } = await supabase.rpc(
+        "approve_duty_schedule_change_request",
+        {
+          p_request_id: request.id,
+          p_reviewer_id: reviewerId || null,
+        },
+      );
+
+      if (approveErr) throw approveErr;
+
+      await notifySpecificStaff({
+        staffIds: [request.staffer_id],
+        type: "duty_schedule_change_approved",
+        title: "Duty Day Change Approved",
+        message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was approved.`,
+        requestId: null,
+        createdBy: reviewerId || null,
+        targetPath: "/staff/my-schedule",
+        targetPayload: { openDutyChangeRequestId: request.id },
+      });
+
+      await loadSchedules();
+      await loadPendingRequests();
+
+      if (closeDetails) {
+        setRequestDetailsOpen(false);
+        setRequestDetailsTarget(null);
+      }
+
+      return true;
+    },
+    [
+      activeSemester,
+      dayCapacities,
+      findScheduleConflicts,
+      getProjectedDivisionForRequest,
+      loadPendingRequests,
+      loadSchedules,
+      schedules,
+    ],
+  );
+
   const handleApproveRequest = useCallback(
     async (request) => {
       if (!activeSemester?.id || !request?.id) return;
@@ -592,100 +994,9 @@ export default function DutyScheduleView() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-
-        const { data: currentSchedule, error: scheduleErr } = await supabase
-          .from("duty_schedules")
-          .select("id, duty_day")
-          .eq("semester_id", activeSemester.id)
-          .eq("staffer_id", request.staffer_id)
-          .maybeSingle();
-
-        if (scheduleErr) throw scheduleErr;
-
-        if (!currentSchedule) {
-          setError(
-            "This staff member no longer has an approved duty day to update.",
-          );
-          return;
-        }
-
-        if (currentSchedule.duty_day !== request.current_duty_day) {
-          setError(
-            "This request is stale because the staff member's approved duty day already changed.",
-          );
-          await loadPendingRequests();
-          await loadSchedules();
-          return;
-        }
-
-        const requestedDayCount = schedules.filter(
-          (entry) => entry.duty_day === request.requested_duty_day,
-        ).length;
-        const requestedDayProjectedCount =
-          currentSchedule.duty_day === request.requested_duty_day
-            ? requestedDayCount
-            : requestedDayCount + 1;
-        const requestedDayCapacity =
-          dayCapacities[request.requested_duty_day] ?? 10;
-
-        if (requestedDayProjectedCount > requestedDayCapacity) {
-          setError(
-            `${DAY_LABELS[request.requested_duty_day]} is already full (${requestedDayCount}/${requestedDayCapacity}).`,
-          );
-          return;
-        }
-
-        const conflicts = await findScheduleConflicts(
-          request.staffer_id,
-          request.current_duty_day,
-        );
-
-        if (conflicts.length > 0) {
-          setError(
-            `${request.staffer?.full_name || "This staff member"} still has upcoming assignments on ${DAY_LABELS[request.current_duty_day]}. Resolve those before approving the change.`,
-          );
-          return;
-        }
-
-        const { error: upsertErr } = await supabase
-          .from("duty_schedules")
-          .upsert(
-            {
-              staffer_id: request.staffer_id,
-              semester_id: activeSemester.id,
-              duty_day: request.requested_duty_day,
-            },
-            { onConflict: "staffer_id,semester_id" },
-          );
-
-        if (upsertErr) throw upsertErr;
-
-        const { error: reviewErr } = await supabase
-          .from("duty_schedule_change_requests")
-          .update({
-            status: "approved",
-            reviewed_at: new Date().toISOString(),
-            reviewed_by: user?.id || null,
-          })
-          .eq("id", request.id);
-
-        if (reviewErr) throw reviewErr;
-
-        await notifySpecificStaff({
-          staffIds: [request.staffer_id],
-          type: "duty_schedule_change_approved",
-          title: "Duty Day Change Approved",
-          message: `Your request to change from ${DAY_LABELS[request.current_duty_day]} to ${DAY_LABELS[request.requested_duty_day]} was approved.`,
-          requestId: null,
-          createdBy: user?.id || null,
-          targetPath: "/staff/my-schedule",
-          targetPayload: { openDutyChangeRequestId: request.id },
+        await approveRequestInternal(request, user?.id || null, {
+          closeDetails: true,
         });
-
-        await loadSchedules();
-        await loadPendingRequests();
-        setRequestDetailsOpen(false);
-        setRequestDetailsTarget(null);
       } catch (actionErr) {
         setError(
           actionErr.message || "Failed to approve schedule change request.",
@@ -696,11 +1007,7 @@ export default function DutyScheduleView() {
     },
     [
       activeSemester,
-      dayCapacities,
-      findScheduleConflicts,
-      loadPendingRequests,
-      loadSchedules,
-      schedules,
+      approveRequestInternal,
     ],
   );
 
@@ -728,6 +1035,18 @@ export default function DutyScheduleView() {
 
         if (reviewErr) throw reviewErr;
 
+        await writeDutyAuditLog({
+          actorId: user?.id || null,
+          actionType: "duty_change_rejected",
+          targetStafferId: request.staffer_id,
+          requestId: request.id,
+          metadata: {
+            from_day: request.current_duty_day,
+            to_day: request.requested_duty_day,
+            reason: reason.trim() || null,
+          },
+        });
+
         await notifySpecificStaff({
           staffIds: [request.staffer_id],
           type: "duty_schedule_change_rejected",
@@ -748,7 +1067,7 @@ export default function DutyScheduleView() {
         setRequestActionId("");
       }
     },
-    [loadPendingRequests],
+    [loadPendingRequests, writeDutyAuditLog],
   );
 
   const openRejectDialog = useCallback((request) => {
@@ -760,11 +1079,31 @@ export default function DutyScheduleView() {
     setRejectDialogOpen(true);
   }, []);
 
-  const openRequestDetails = useCallback((request) => {
-    if (!request?.id) return;
-    setRequestDetailsTarget(request);
-    setRequestDetailsOpen(true);
-  }, []);
+  const getDayDivisionComposition = useCallback(
+    (dayIndex) => {
+      if (dayIndex === null || !schedules) return { scribes: 0, creatives: 0 };
+      const dayStaffers = schedules.filter((s) => s.duty_day === dayIndex);
+      const scribes = dayStaffers.filter((s) => s.staffer?.division === "Scribes").length;
+      const creatives = dayStaffers.filter((s) => s.staffer?.division === "Creatives").length;
+      return { scribes, creatives };
+    },
+    [schedules]
+  );
+
+  const openRequestDetails = useCallback(
+    (request) => {
+      if (!request?.id) return;
+      setRequestDetailsTarget(request);
+      const currentComp = getDayDivisionComposition(request.current_duty_day);
+      const requestedComp = getDayDivisionComposition(request.requested_duty_day);
+      setDivisionComposition({
+        current: currentComp,
+        requested: requestedComp,
+      });
+      setRequestDetailsOpen(true);
+    },
+    [getDayDivisionComposition]
+  );
 
   const closeRequestDetails = useCallback(() => {
     if (requestActionId) return;
@@ -786,6 +1125,216 @@ export default function DutyScheduleView() {
     setRejectTarget(null);
     setRejectReason("");
   }, [handleRejectRequest, rejectReason, rejectTarget]);
+
+  const exportSnapshotCsv = useCallback((snapshot, version) => {
+    if (!snapshot?.length) return;
+    const header = ["Full Name", "Section", "Division", "Role", "Duty Day"].join(",");
+    const csvRows = snapshot.map((row) =>
+      [row.full_name, row.section, row.division, row.role, DAY_LABELS[row.duty_day] ?? row.duty_day]
+        .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+        .join(","),
+    );
+    const csv = [header, ...csvRows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `duty-roster-v${version}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const openSnapshotViewer = useCallback(
+    (publicationId = selectedPublication?.id ?? latestPublication?.id ?? null) => {
+      if (publicationId) {
+        setSelectedPublicationId(publicationId);
+      }
+      setSnapshotViewerOpen(true);
+    },
+    [latestPublication?.id, selectedPublication?.id],
+  );
+
+  const handlePublishRoster = useCallback(async () => {
+    if (!activeSemester?.id) return;
+    if (activeSemester.scheduling_open) {
+      setGovernanceMessage("Close scheduling first before publishing a final roster.");
+      return;
+    }
+
+    setPublishSaving(true);
+    setError("");
+    setGovernanceMessage("");
+    setPublishSuccess("");
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { data: latestRow, error: versionErr } = await supabase
+        .from("duty_schedule_publications")
+        .select("version")
+        .eq("semester_id", activeSemester.id)
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (versionErr) throw versionErr;
+
+      const nextVersion = (latestRow?.version || 0) + 1;
+      const snapshot = schedules.map((entry) => ({
+        staffer_id: entry.staffer?.id || null,
+        full_name: entry.staffer?.full_name || null,
+        section: entry.staffer?.section || null,
+        role: entry.staffer?.role || null,
+        division: entry.staffer?.division || null,
+        duty_day: entry.duty_day,
+      }));
+
+      const { error: publishErr } = await supabase
+        .from("duty_schedule_publications")
+        .insert({
+          semester_id: activeSemester.id,
+          published_by: user?.id || null,
+          version: nextVersion,
+          snapshot,
+        });
+
+      if (publishErr) throw publishErr;
+
+      await writeDutyAuditLog({
+        actorId: user?.id || null,
+        actionType: "duty_roster_published",
+        metadata: {
+          version: nextVersion,
+          rows: snapshot.length,
+          scheduling_open: activeSemester.scheduling_open,
+        },
+      });
+
+      await loadPublications();
+      if (publishExportCsv) exportSnapshotCsv(snapshot, nextVersion);
+      setPublishConfirmOpen(false);
+      setPublishSuccess(`Roster published as version ${nextVersion}.`);
+    } catch (publishErr) {
+      setGovernanceMessage(publishErr.message || "Failed to publish duty roster.");
+    } finally {
+      setPublishSaving(false);
+    }
+  }, [
+    activeSemester,
+    exportSnapshotCsv,
+    loadPublications,
+    publishExportCsv,
+    schedules,
+    writeDutyAuditLog,
+  ]);
+
+  const handleAddBlackoutDate = useCallback(async () => {
+    if (!activeSemester?.id || !blackoutDateInput) return;
+
+    setBlackoutSaving(true);
+    setError("");
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { error: insertErr } = await supabase
+        .from("duty_schedule_blackout_dates")
+        .insert({
+          semester_id: activeSemester.id,
+          blackout_date: blackoutDateInput,
+          reason: blackoutReasonInput.trim() || null,
+          created_by: user?.id || null,
+        });
+
+      if (insertErr) throw insertErr;
+
+      await writeDutyAuditLog({
+        actorId: user?.id || null,
+        actionType: "duty_blackout_date_added",
+        metadata: {
+          blackout_date: blackoutDateInput,
+          reason: blackoutReasonInput.trim() || null,
+        },
+      });
+
+      setBlackoutDateInput("");
+      setBlackoutReasonInput("");
+      await loadBlackoutDates();
+    } catch (insertErr) {
+      setError(insertErr.message || "Failed to add blackout date.");
+    } finally {
+      setBlackoutSaving(false);
+    }
+  }, [
+    activeSemester,
+    blackoutDateInput,
+    blackoutReasonInput,
+    loadBlackoutDates,
+    writeDutyAuditLog,
+  ]);
+
+  const handleRemoveBlackoutDate = useCallback(
+    async (blackoutRow) => {
+      if (!blackoutRow?.id) return;
+      setBlackoutSaving(true);
+      setError("");
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const { error: deleteErr } = await supabase
+          .from("duty_schedule_blackout_dates")
+          .delete()
+          .eq("id", blackoutRow.id);
+
+        if (deleteErr) throw deleteErr;
+
+        await writeDutyAuditLog({
+          actorId: user?.id || null,
+          actionType: "duty_blackout_date_removed",
+          metadata: {
+            blackout_date: blackoutRow.blackout_date,
+          },
+        });
+
+        await loadBlackoutDates();
+      } catch (deleteErr) {
+        setError(deleteErr.message || "Failed to remove blackout date.");
+      } finally {
+        setBlackoutSaving(false);
+      }
+    },
+    [loadBlackoutDates, writeDutyAuditLog],
+  );
+
+  const handleOpenPublishConfirm = useCallback(() => {
+    if (!activeSemester?.id) return;
+    if (activeSemester.scheduling_open) {
+      setGovernanceMessage("Close scheduling first before publishing a final roster.");
+      return;
+    }
+    setError("");
+    setGovernanceMessage("");
+    setPublishSuccess("");
+    setPublishConfirmOpen(true);
+  }, [activeSemester]);
+
+  const handleReopenScheduling = useCallback(async () => {
+    if (!activeSemester?.id) return;
+    const { error: reopenErr } = await supabase
+      .from("semesters")
+      .update({ scheduling_open: true })
+      .eq("id", activeSemester.id);
+    if (reopenErr) {
+      setError(reopenErr.message || "Failed to reopen scheduling.");
+      return;
+    }
+    setGovernanceMessage("");
+    await loadSemesters();
+  }, [activeSemester, loadSemesters]);
 
   const rows = filteredByDay.map((s) => ({
     id: s.id,
@@ -989,6 +1538,46 @@ export default function DutyScheduleView() {
     request_count: requestCountPerStaffer[request.staffer_id] || 0,
     rawRequest: request,
   }));
+
+  const auditTokens = auditSearchText
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const auditRows = (auditLogs || [])
+    .filter((log) => {
+      if (!auditTokens.length) return true;
+      const content = [
+        log.actor?.full_name,
+        log.target?.full_name,
+        log.action_type,
+        log.metadata?.reason,
+        DAY_LABELS[log.metadata?.from_day],
+        DAY_LABELS[log.metadata?.to_day],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return auditTokens.every((token) => content.includes(token));
+    })
+    .map((log) => ({
+      id: log.id,
+      created_at: log.created_at,
+      actor_name: log.actor?.full_name || "System",
+      target_name: log.target?.full_name || "-",
+      action_type: log.action_type,
+      from_day:
+        log.metadata?.from_day !== null && log.metadata?.from_day !== undefined
+          ? DAY_LABELS[log.metadata.from_day]
+          : "-",
+      to_day:
+        log.metadata?.to_day !== null && log.metadata?.to_day !== undefined
+          ? DAY_LABELS[log.metadata.to_day]
+          : "-",
+      reason: log.metadata?.reason || "-",
+    }));
 
   const requestColumns = [
     {
@@ -1218,6 +1807,51 @@ export default function DutyScheduleView() {
     },
   ];
 
+  const auditColumns = [
+    {
+      field: "created_at",
+      headerName: "Time",
+      flex: 0.95,
+      renderCell: (p) => <MetaCell>{formatDateTime(p.value)}</MetaCell>,
+    },
+    {
+      field: "actor_name",
+      headerName: "Actor",
+      flex: 1,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+    {
+      field: "target_name",
+      headerName: "Target",
+      flex: 1,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+    {
+      field: "action_type",
+      headerName: "Action",
+      flex: 1.25,
+      renderCell: (p) => <MetaCell>{String(p.value || "-").replaceAll("_", " ")}</MetaCell>,
+    },
+    {
+      field: "from_day",
+      headerName: "From",
+      flex: 0.8,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+    {
+      field: "to_day",
+      headerName: "To",
+      flex: 0.8,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+    {
+      field: "reason",
+      headerName: "Reason / Note",
+      flex: 1.6,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
+    },
+  ];
+
   return (
     <Box
       sx={{
@@ -1334,9 +1968,10 @@ export default function DutyScheduleView() {
                 />
               ) : null}
             </Box>
+
           </Box>
 
-          {activeSemester && (
+          {semesters.length > 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -1405,6 +2040,36 @@ export default function DutyScheduleView() {
                     </Select>
                   </FormControl>
 
+                  <FormControl size="small" sx={{ minWidth: 220 }}>
+                    <Select
+                      value={selectedSemesterId}
+                      onChange={(e) => setSelectedSemesterId(e.target.value)}
+                      IconComponent={UnfoldMoreIcon}
+                      displayEmpty
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        height: FILTER_INPUT_HEIGHT,
+                        backgroundColor: "#f7f7f8",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "rgba(0,0,0,0.12)",
+                        },
+                      }}
+                    >
+                      {semesters.map((semester) => (
+                        <MenuItem
+                          key={semester.id}
+                          value={semester.id}
+                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                        >
+                          {getSemesterDisplayName(semester)}
+                          {semester.is_active ? " (Active)" : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
                   <Divider
                     orientation="vertical"
                     flexItem
@@ -1444,6 +2109,36 @@ export default function DutyScheduleView() {
                     <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
                     Export
                   </Box>
+
+                  <Box
+                    onClick={() => {
+                      setSettingsPanelTab("operations");
+                      setSettingsDrawerOpen(true);
+                    }}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: ACTION_BTN_HEIGHT,
+                      height: ACTION_BTN_HEIGHT,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      color: "text.secondary",
+                      backgroundColor: "#f7f7f8",
+                      transition: "all 0.15s",
+                      flexShrink: 0,
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: "text.primary",
+                        backgroundColor: "#ededee",
+                      },
+                    }}
+                    title="Schedule settings"
+                  >
+                    <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
+                  </Box>
+
                 </>
               ) : (
                 <>
@@ -1563,6 +2258,36 @@ export default function DutyScheduleView() {
                     </Select>
                   </FormControl>
 
+                  <FormControl size="small" sx={{ minWidth: 220 }}>
+                    <Select
+                      value={selectedSemesterId}
+                      onChange={(e) => setSelectedSemesterId(e.target.value)}
+                      IconComponent={UnfoldMoreIcon}
+                      displayEmpty
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        height: FILTER_INPUT_HEIGHT,
+                        backgroundColor: "#f7f7f8",
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "rgba(0,0,0,0.12)",
+                        },
+                      }}
+                    >
+                      {semesters.map((semester) => (
+                        <MenuItem
+                          key={semester.id}
+                          value={semester.id}
+                          sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                        >
+                          {getSemesterDisplayName(semester)}
+                          {semester.is_active ? " (Active)" : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
                   <Divider
                     orientation="vertical"
                     flexItem
@@ -1602,39 +2327,58 @@ export default function DutyScheduleView() {
                     <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
                     Export
                   </Box>
+
+                  <Box
+                    onClick={() => {
+                      setSettingsPanelTab("operations");
+                      setSettingsDrawerOpen(true);
+                    }}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: ACTION_BTN_HEIGHT,
+                      height: ACTION_BTN_HEIGHT,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      color: "text.secondary",
+                      backgroundColor: "#f7f7f8",
+                      transition: "all 0.15s",
+                      flexShrink: 0,
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: "text.primary",
+                        backgroundColor: "#ededee",
+                      },
+                    }}
+                    title="Schedule settings"
+                  >
+                    <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
+                  </Box>
                 </>
               )}
             </Box>
           )}
         </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            flexWrap: "wrap",
-            mt: 0.1,
-          }}
-        >
-          <Typography
+        {activeSemester && !canApprovePendingRequests && (
+          <Box
             sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
-              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              flexWrap: "wrap",
+              mt: 0.1,
             }}
           >
-            {activeSemester
-              ? `Showing duty schedules for ${getSemesterDisplayName(activeSemester)}`
-              : "No active semester. Create and activate one in Semester Management."}
-          </Typography>
-
-          {activeSemester && !canApprovePendingRequests && (
             <Box
               sx={{
-                px: 1,
-                py: 0.28,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                px: 1.25,
+                py: 0.35,
                 borderRadius: "10px",
                 border: "1px solid rgba(245,197,43,0.45)",
                 backgroundColor: isDark ? "rgba(245,197,43,0.14)" : "#fefce8",
@@ -1647,13 +2391,29 @@ export default function DutyScheduleView() {
                   fontWeight: 700,
                   color: "#9a6b00",
                   letterSpacing: "0.03em",
+                  whiteSpace: "nowrap",
                 }}
               >
-                APPROVALS LOCKED (SCHEDULING CLOSED)
+                SCHEDULING CLOSED
               </Typography>
+              <Box
+                onClick={handleReopenScheduling}
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  fontWeight: 600,
+                  color: "#9a6b00",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  whiteSpace: "nowrap",
+                  "&:hover": { color: "#704f00" },
+                }}
+              >
+                Reopen
+              </Box>
             </Box>
-          )}
-        </Box>
+          </Box>
+        )}
       </Box>
 
       {!activeSemester && !loading && (
@@ -1666,7 +2426,7 @@ export default function DutyScheduleView() {
             fontSize: "0.78rem",
           }}
         >
-          No active semester found. Go to Semester Management to set one up.
+          No semester available. Go to Semester Management to set one up.
         </Alert>
       )}
 
@@ -1897,6 +2657,20 @@ export default function DutyScheduleView() {
         </Alert>
       )}
 
+      {publishSuccess && (
+        <Alert
+          severity="success"
+          sx={{
+            mb: 2,
+            borderRadius: "10px",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+          }}
+        >
+          {publishSuccess}
+        </Alert>
+      )}
+
       {activeSemester && activeTab === 1 && (
         <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
           <Box
@@ -2112,6 +2886,197 @@ export default function DutyScheduleView() {
                 dayIndex={requestDetailsTarget?.requested_duty_day}
                 accent
               />
+            </Box>
+          </Box>
+
+          {/* ── Division Composition ── */}
+          <Box
+            sx={{
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              px: 1.35,
+              py: 1.1,
+              backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "text.secondary",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                mb: 0.8,
+              }}
+            >
+              Team Composition
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1.5 }}>
+              {/* Current day */}
+              <Box sx={{ flex: 1 }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: "text.secondary",
+                    mb: 0.6,
+                  }}
+                >
+                  {DAY_LABELS[requestDetailsTarget?.current_duty_day]} (Today)
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.6,
+                      px: 0.8,
+                      py: 0.45,
+                      borderRadius: "6px",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(53,53,53,0.03)",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        backgroundColor: "#3b82f6",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        color: "#1e40af",
+                      }}
+                    >
+                      Scribes: {divisionComposition.current.scribes}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.6,
+                      px: 0.8,
+                      py: 0.45,
+                      borderRadius: "6px",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(53,53,53,0.03)",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        backgroundColor: "#f97316",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        color: "#c2410c",
+                      }}
+                    >
+                      Creatives: {divisionComposition.current.creatives}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              {/* Requested day (after change) */}
+              <Box sx={{ flex: 1 }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: "text.secondary",
+                    mb: 0.6,
+                  }}
+                >
+                  {DAY_LABELS[requestDetailsTarget?.requested_duty_day]} (After)
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.6,
+                      px: 0.8,
+                      py: 0.45,
+                      borderRadius: "6px",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(53,53,53,0.03)",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        backgroundColor: "#3b82f6",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        color: "#1e40af",
+                      }}
+                    >
+                      Scribes: {divisionComposition.requested.scribes}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.6,
+                      px: 0.8,
+                      py: 0.45,
+                      borderRadius: "6px",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(53,53,53,0.03)",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        backgroundColor: "#f97316",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        color: "#c2410c",
+                      }}
+                    >
+                      Creatives: {divisionComposition.requested.creatives}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           </Box>
 
@@ -2432,6 +3397,1309 @@ export default function DutyScheduleView() {
         </Box>
       </Dialog>
 
+      {/* ── Publish confirm dialog ── */}
+      <Dialog
+        open={publishConfirmOpen}
+        onClose={publishSaving ? undefined : () => setPublishConfirmOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: "10px",
+            width: 480,
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography
+            sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.92rem", color: "text.primary" }}
+          >
+            Publish Duty Roster
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => setPublishConfirmOpen(false)}
+            disabled={publishSaving}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+        <Box sx={{ px: 2.5, py: 1.75, display: "flex", flexDirection: "column", gap: 1.25 }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", lineHeight: 1.6 }}
+          >
+            This creates a permanent versioned snapshot of the current roster for{" "}
+            <strong style={{ color: "inherit" }}>{getSemesterDisplayName(activeSemester)}</strong>.
+          </Typography>
+
+          {/* Summary */}
+          <Box
+            sx={{
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              px: 1.5,
+              py: 1.25,
+              backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.75,
+            }}
+          >
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  color: "text.secondary",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Roster summary
+              </Typography>
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 700, color: "text.primary" }}
+              >
+                {schedules.length} staffer{schedules.length !== 1 ? "s" : ""}
+              </Typography>
+            </Box>
+            {(() => {
+              const div = countDivision(schedules);
+              return (
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.3,
+                      borderRadius: "8px",
+                      backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.68rem",
+                        fontWeight: 600,
+                        color: isDark ? "#93c5fd" : "#1d4ed8",
+                      }}
+                    >
+                      Scribes: {div.scribes}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.3,
+                      borderRadius: "8px",
+                      backgroundColor: isDark ? "rgba(139,92,246,0.12)" : "#f5f3ff",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.68rem",
+                        fontWeight: 600,
+                        color: isDark ? "#c4b5fd" : "#6d28d9",
+                      }}
+                    >
+                      Creatives: {div.creatives}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+            })()}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 0.5,
+                mt: 0.25,
+              }}
+            >
+              {DAY_LABELS.map((day, i) => (
+                <Box
+                  key={day}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    px: 1,
+                    py: 0.4,
+                    borderRadius: "8px",
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.04)"
+                      : "rgba(53,53,53,0.03)",
+                  }}
+                >
+                  <Typography
+                    sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary" }}
+                  >
+                    {day}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      color: "text.primary",
+                    }}
+                  >
+                    {dayCounts[i]}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Export CSV toggle */}
+          <Box
+            onClick={() => setPublishExportCsv((v) => !v)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              cursor: "pointer",
+              userSelect: "none",
+              px: 1.25,
+              py: 0.85,
+              borderRadius: "10px",
+              border: `1px solid ${publishExportCsv ? "rgba(53,53,53,0.2)" : border}`,
+              backgroundColor: publishExportCsv
+                ? isDark
+                  ? "rgba(255,255,255,0.04)"
+                  : "rgba(53,53,53,0.03)"
+                : "transparent",
+              transition: "all 0.15s",
+            }}
+          >
+            <Box
+              sx={{
+                width: 16,
+                height: 16,
+                borderRadius: "4px",
+                border: publishExportCsv ? "none" : `1.5px solid rgba(53,53,53,0.3)`,
+                backgroundColor: publishExportCsv ? "#1a1a1a" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                transition: "all 0.15s",
+              }}
+            >
+              {publishExportCsv && (
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: 10,
+                    color: "#fff",
+                    fontWeight: 900,
+                    lineHeight: 1,
+                    mt: "-1px",
+                  }}
+                >
+                  ✓
+                </Box>
+              )}
+            </Box>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary" }}>
+              Download roster as CSV after publishing
+            </Typography>
+          </Box>
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                borderRadius: "10px",
+                fontFamily: dm,
+                fontSize: "0.77rem",
+                py: 0.25,
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+        </Box>
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            borderTop: `1px solid ${border}`,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
+          }}
+        >
+          <Box
+            onClick={publishSaving ? undefined : () => setPublishConfirmOpen(false)}
+            sx={{
+              px: 1.75,
+              py: 0.65,
+              borderRadius: "10px",
+              cursor: publishSaving ? "default" : "pointer",
+              border: `1px solid ${border}`,
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 500,
+              color: "text.secondary",
+              opacity: publishSaving ? 0.5 : 1,
+              transition: "all 0.15s",
+            }}
+          >
+            Cancel
+          </Box>
+          <Box
+            onClick={publishSaving ? undefined : handlePublishRoster}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              px: 1.75,
+              py: 0.65,
+              borderRadius: "10px",
+              cursor: publishSaving ? "default" : "pointer",
+              backgroundColor: publishSaving ? "rgba(245,197,43,0.6)" : GOLD,
+              border: "1px solid #d5a308",
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#1a1a1a",
+              transition: "background-color 0.15s",
+              "&:hover": {
+                backgroundColor: publishSaving ? "rgba(245,197,43,0.6)" : "#e9b914",
+              },
+            }}
+          >
+            {publishSaving && <CircularProgress size={13} sx={{ color: "#1a1a1a" }} />}
+            {publishSaving ? "Publishing..." : "Confirm Publish"}
+          </Box>
+        </Box>
+      </Dialog>
+
+      {/* ── Snapshot viewer dialog ── */}
+      <Dialog
+        open={snapshotViewerOpen}
+        onClose={() => setSnapshotViewerOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: "10px",
+            width: 620,
+            maxWidth: "96vw",
+            maxHeight: "82vh",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <Box>
+            <Typography
+              sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.92rem", color: "text.primary" }}
+            >
+              Published Roster
+            </Typography>
+            {selectedPublication && (
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  color: "text.secondary",
+                  mt: 0.2,
+                }}
+              >
+                v{selectedPublication.version} · Published{" "}
+                {formatDateTime(selectedPublication.published_at)} ·{" "}
+                {selectedPublication.snapshot?.length ?? 0} staffers
+              </Typography>
+            )}
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            {selectedPublication?.snapshot?.length > 0 && (
+              <Box
+                onClick={() =>
+                  exportSnapshotCsv(
+                    selectedPublication.snapshot,
+                    selectedPublication.version,
+                  )
+                }
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 1.25,
+                  py: 0.5,
+                  borderRadius: "8px",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  cursor: "pointer",
+                  backgroundColor: "#f7f7f8",
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  fontWeight: 500,
+                  color: "text.secondary",
+                  "&:hover": {
+                    borderColor: "rgba(53,53,53,0.3)",
+                    color: "text.primary",
+                    backgroundColor: "#ededee",
+                  },
+                }}
+              >
+                <FileDownloadOutlinedIcon sx={{ fontSize: 13 }} />
+                Export CSV
+              </Box>
+            )}
+            <IconButton
+              size="small"
+              onClick={() => setSnapshotViewerOpen(false)}
+              sx={{
+                borderRadius: "10px",
+                color: "text.secondary",
+                "&:hover": {
+                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                },
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        </Box>
+        <Box sx={{ overflow: "auto", flex: 1 }}>
+          {!selectedPublication?.snapshot?.length ? (
+            <Box
+              sx={{
+                px: 2.5,
+                py: 3,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}
+              >
+                No snapshot data available.
+              </Typography>
+            </Box>
+          ) : (
+            <Box>
+              {/* Header row */}
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                  px: 2.5,
+                  py: 0.8,
+                  borderBottom: `1px solid ${border}`,
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.03)"
+                    : "rgba(53,53,53,0.025)",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                }}
+              >
+                {["Name", "Section", "Division", "Duty Day"].map((col) => (
+                  <Typography
+                    key={col}
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      color: "text.secondary",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    {col}
+                  </Typography>
+                ))}
+              </Box>
+              {/* Data rows */}
+              {[...DAY_LABELS.keys()].flatMap((dayIdx) => {
+                const dayRows = (selectedPublication.snapshot || []).filter(
+                  (r) => r.duty_day === dayIdx,
+                );
+                if (!dayRows.length) return [];
+                const cfg = DAY_CFG[dayIdx];
+                return [
+                  <Box
+                    key={`day-header-${dayIdx}`}
+                    sx={{
+                      px: 2.5,
+                      py: 0.5,
+                      backgroundColor: isDark ? cfg.darkBg : cfg.bg,
+                      borderBottom: `1px solid ${border}`,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.62rem",
+                        fontWeight: 800,
+                        color: isDark ? cfg.darkColor : cfg.color,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {DAY_LABELS[dayIdx]} · {dayRows.length} staffer
+                      {dayRows.length !== 1 ? "s" : ""}
+                    </Typography>
+                  </Box>,
+                  ...dayRows.map((row, rowIdx) => (
+                    <Box
+                      key={`${dayIdx}-${rowIdx}`}
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                        px: 2.5,
+                        py: 0.95,
+                        borderBottom: `1px solid ${border}`,
+                        "&:hover": {
+                          backgroundColor: isDark ? "rgba(255,255,255,0.025)" : HOVER_BG,
+                        },
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.78rem",
+                          fontWeight: 500,
+                          color: "text.primary",
+                        }}
+                      >
+                        {row.full_name || "—"}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.secondary",
+                        }}
+                      >
+                        {row.section || "—"}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.72rem",
+                          color: "text.secondary",
+                        }}
+                      >
+                        {row.division || "—"}
+                      </Typography>
+                      <Box>
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            px: 0.9,
+                            py: 0.25,
+                            borderRadius: "8px",
+                            backgroundColor: isDark ? cfg.darkBg : cfg.bg,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 5,
+                              height: 5,
+                              borderRadius: "50%",
+                              backgroundColor: cfg.dot,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                              color: isDark ? cfg.darkColor : cfg.color,
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            {DAY_LABELS[row.duty_day] ?? "—"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  )),
+                ];
+              })}
+            </Box>
+          )}
+        </Box>
+      </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={settingsDrawerOpen}
+        onClose={() => setSettingsDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 520, md: 600 },
+            maxWidth: "100vw",
+            backgroundColor: "background.paper",
+            borderLeft: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "-18px 0 48px rgba(0,0,0,0.45)"
+              : "-12px 0 32px rgba(53,53,53,0.12)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              px: 2,
+              py: 1.75,
+              borderBottom: `1px solid ${border}`,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 1,
+            }}
+          >
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.92rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
+              >
+                Duty Settings
+              </Typography>
+              <Typography
+                sx={{
+                  mt: 0.3,
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  color: "text.secondary",
+                  lineHeight: 1.45,
+                }}
+              >
+                Keep daily schedule tasks clean by grouping non-daily controls here.
+              </Typography>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={() => setSettingsDrawerOpen(false)}
+              sx={{
+                borderRadius: "10px",
+                color: "text.secondary",
+                "&:hover": {
+                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                },
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ px: 2, pt: 1.5, pb: 1, borderBottom: `1px solid ${border}` }}>
+            <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+              {[
+                { key: "operations", label: "Operations" },
+                { key: "governance", label: "Governance" },
+                { key: "audit", label: "Audit Trail" },
+              ].map((tab) => {
+                const active = settingsPanelTab === tab.key;
+                return (
+                  <Box
+                    key={tab.key}
+                    onClick={() => setSettingsPanelTab(tab.key)}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      px: 1.3,
+                      py: 0.6,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: active
+                        ? "1px solid rgba(0,0,0,0.25)"
+                        : "1px solid rgba(0,0,0,0.12)",
+                      backgroundColor: active ? "#0f1115" : "#f7f7f8",
+                      color: active ? "#ffffff" : "text.secondary",
+                      fontFamily: dm,
+                      fontSize: "0.76rem",
+                      fontWeight: active ? 700 : 600,
+                      transition: "all 0.15s",
+                      "&:hover": {
+                        borderColor: active ? "#0f1115" : "rgba(53,53,53,0.3)",
+                        color: active ? "#ffffff" : "text.primary",
+                        backgroundColor: active ? "#0f1115" : "#ededee",
+                      },
+                    }}
+                  >
+                    {tab.label}
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+
+          <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
+            <Box sx={{ mb: 1.25 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
+              >
+                {activeSettingsMeta.title}
+              </Typography>
+              <Typography
+                sx={{
+                  mt: 0.2,
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  color: "text.secondary",
+                }}
+              >
+                {activeSettingsMeta.description}
+              </Typography>
+            </Box>
+
+            {settingsPanelTab === "governance" && governanceMessage && (
+              <Alert
+                severity="error"
+                sx={{
+                  mb: 1.25,
+                  borderRadius: "10px",
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                }}
+              >
+                {governanceMessage}
+              </Alert>
+            )}
+
+            {settingsPanelTab === "operations" && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(53,53,53,0.02)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Blackout Dates (No Duty Operations)
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 1,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <TextField
+                    type="date"
+                    size="small"
+                    value={blackoutDateInput}
+                    onChange={(event) => setBlackoutDateInput(event.target.value)}
+                    sx={{
+                      minWidth: 190,
+                      "& .MuiOutlinedInput-root": {
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        backgroundColor: "#f7f7f8",
+                      },
+                    }}
+                  />
+                  <TextField
+                    size="small"
+                    value={blackoutReasonInput}
+                    onChange={(event) => setBlackoutReasonInput(event.target.value)}
+                    placeholder="Reason (optional)"
+                    sx={{
+                      minWidth: 260,
+                      flex: "1 1 260px",
+                      "& .MuiOutlinedInput-root": {
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        borderRadius: CONTROL_RADIUS,
+                        backgroundColor: "#f7f7f8",
+                      },
+                    }}
+                  />
+                  <Box
+                    onClick={
+                      blackoutSaving || !blackoutDateInput
+                        ? undefined
+                        : handleAddBlackoutDate
+                    }
+                    sx={{
+                      px: 1.35,
+                      py: 0.68,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor:
+                        blackoutSaving || !blackoutDateInput ? "default" : "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      backgroundColor: "#f7f7f8",
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      color: "text.secondary",
+                      opacity: blackoutSaving || !blackoutDateInput ? 0.6 : 1,
+                    }}
+                  >
+                    Add Date
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                  {blackoutDates.length === 0 ? (
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.75rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      No blackout dates set for this semester.
+                    </Typography>
+                  ) : (
+                    blackoutDates.map((row) => (
+                      <Box
+                        key={row.id}
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 0.6,
+                          px: 1,
+                          py: 0.45,
+                          borderRadius: "999px",
+                          border: `1px solid ${border}`,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.04)"
+                            : "#ffffff",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.72rem",
+                            color: "text.primary",
+                          }}
+                        >
+                          {new Date(`${row.blackout_date}T00:00:00`).toLocaleDateString()}
+                        </Typography>
+                        <Box
+                          onClick={
+                            blackoutSaving ? undefined : () => handleRemoveBlackoutDate(row)
+                          }
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.7rem",
+                            color: "#dc2626",
+                            cursor: blackoutSaving ? "default" : "pointer",
+                            opacity: blackoutSaving ? 0.5 : 1,
+                          }}
+                        >
+                          Remove
+                        </Box>
+                      </Box>
+                    ))
+                  )}
+                </Box>
+              </Box>
+            )}
+
+            {settingsPanelTab === "governance" && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(53,53,53,0.02)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Governance Controls
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Publishing
+                </Typography>
+
+                <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                  <Box
+                    onClick={publishSaving ? undefined : handleOpenPublishConfirm}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      px: 1.4,
+                      py: 0.65,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: publishSaving ? "default" : "pointer",
+                      border: "1px solid rgba(0,0,0,0.18)",
+                      backgroundColor: "#ffffff",
+                      color: "text.primary",
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      opacity: publishSaving ? 0.65 : 1,
+                      transition: "all 0.15s",
+                      "&:hover": publishSaving
+                        ? {}
+                        : {
+                            borderColor: "rgba(0,0,0,0.34)",
+                            backgroundColor: "#f7f7f8",
+                          },
+                    }}
+                  >
+                    {publishSaving ? "Publishing..." : "Publish Roster"}
+                  </Box>
+
+                  {selectedPublication?.snapshot?.length > 0 && (
+                    <Box
+                      onClick={() => openSnapshotViewer(selectedPublication.id)}
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        px: 1.4,
+                        py: 0.65,
+                        borderRadius: CONTROL_RADIUS,
+                        cursor: "pointer",
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        backgroundColor: "#f7f7f8",
+                        color: "text.secondary",
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        transition: "all 0.15s",
+                        "&:hover": {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: "text.primary",
+                          backgroundColor: "#ededee",
+                        },
+                      }}
+                    >
+                      View Snapshot
+                    </Box>
+                  )}
+
+                  <Box
+                    onClick={() =>
+                      selectedPublication?.snapshot?.length > 0
+                        ? exportSnapshotCsv(
+                            selectedPublication.snapshot,
+                            selectedPublication.version,
+                          )
+                        : undefined
+                    }
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      px: 1.4,
+                      py: 0.65,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      backgroundColor: "#f7f7f8",
+                      color: "text.secondary",
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      opacity: selectedPublication?.snapshot?.length > 0 ? 1 : 0.6,
+                      transition: "all 0.15s",
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: "text.primary",
+                        backgroundColor: "#ededee",
+                      },
+                    }}
+                  >
+                    Export Selected CSV
+                  </Box>
+                </Box>
+
+                <Box
+                  sx={{
+                    mt: 0.75,
+                    p: 1,
+                    borderRadius: "10px",
+                    border: `1px solid ${border}`,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.02)"
+                      : "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      Selected Publication
+                    </Typography>
+                    <Typography
+                      sx={{
+                        mt: 0.25,
+                        fontFamily: dm,
+                        fontSize: "0.84rem",
+                        fontWeight: 700,
+                        color: "text.primary",
+                      }}
+                    >
+                      {selectedPublication
+                        ? `Roster v${selectedPublication.version}`
+                        : "No publication selected"}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        mt: 0.15,
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      {selectedPublication
+                        ? `${formatDateTime(selectedPublication.published_at)} • ${selectedPublication.snapshot?.length ?? 0} staffers`
+                        : "Publish a roster to start version tracking."}
+                    </Typography>
+                  </Box>
+                  {latestPublication?.id === selectedPublication?.id && (
+                    <Box
+                      sx={{
+                        px: 0.85,
+                        py: 0.25,
+                        borderRadius: "999px",
+                        border: "1px solid rgba(34,197,94,0.24)",
+                        backgroundColor: isDark ? "rgba(34,197,94,0.08)" : "#f0fdf4",
+                        fontFamily: dm,
+                        fontSize: "0.62rem",
+                        fontWeight: 700,
+                        color: "#15803d",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Current
+                    </Box>
+                  )}
+                </Box>
+
+                <Typography
+                  sx={{
+                    mt: 0.2,
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Publication History
+                </Typography>
+
+                <Box
+                  sx={{
+                    mt: 0.25,
+                    maxHeight: 260,
+                    overflow: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.75,
+                    pr: 0.25,
+                  }}
+                >
+                  {publicationsLoading ? (
+                    <Box
+                      sx={{
+                        py: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <CircularProgress size={18} sx={{ color: "text.secondary" }} />
+                    </Box>
+                  ) : publications.length === 0 ? (
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.74rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      No publication history yet.
+                    </Typography>
+                  ) : (
+                    publications.map((publication) => {
+                      const isSelected = publication.id === selectedPublication?.id;
+                      return (
+                        <Box
+                          key={publication.id}
+                          onClick={() => setSelectedPublicationId(publication.id)}
+                          sx={{
+                            px: 1,
+                            py: 0.85,
+                            borderRadius: "10px",
+                            border: `1px solid ${
+                              isSelected
+                                ? isDark
+                                  ? "rgba(255,255,255,0.22)"
+                                  : "rgba(0,0,0,0.2)"
+                                : border
+                            }`,
+                            backgroundColor: isSelected
+                              ? isDark
+                                ? "rgba(255,255,255,0.04)"
+                                : "rgba(53,53,53,0.03)"
+                              : isDark
+                                ? "rgba(255,255,255,0.02)"
+                                : "#ffffff",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                            "&:hover": {
+                              borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.16)",
+                              backgroundColor: isDark ? "rgba(255,255,255,0.035)" : "#f7f7f8",
+                            },
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.8rem",
+                              fontWeight: 700,
+                              color: "text.primary",
+                            }}
+                          >
+                            Roster v{publication.version}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              mt: 0.2,
+                              fontFamily: dm,
+                              fontSize: "0.7rem",
+                              color: "text.secondary",
+                            }}
+                          >
+                            {formatDateTime(publication.published_at)} • {publication.snapshot?.length ?? 0} staffers
+                          </Typography>
+                        </Box>
+                      );
+                    })
+                  )}
+                </Box>
+              </Box>
+            )}
+
+            {settingsPanelTab === "audit" && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(53,53,53,0.02)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      color: "text.secondary",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Audit Trail
+                  </Typography>
+                  <Box
+                    onClick={handleExportAuditCsv}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.45,
+                      px: 1.05,
+                      py: 0.45,
+                      borderRadius: CONTROL_RADIUS,
+                      cursor: "pointer",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      backgroundColor: "#f7f7f8",
+                      fontFamily: dm,
+                      fontSize: "0.72rem",
+                      fontWeight: 600,
+                      color: "text.secondary",
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.3)",
+                        color: "text.primary",
+                        backgroundColor: "#ededee",
+                      },
+                    }}
+                  >
+                    <FileDownloadOutlinedIcon sx={{ fontSize: 13 }} />
+                    Export
+                  </Box>
+                </Box>
+
+                <FormControl size="small" fullWidth>
+                  <OutlinedInput
+                    placeholder="Search audit log"
+                    value={auditSearchText}
+                    onChange={(e) => setAuditSearchText(e.target.value)}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ fontSize: 15, color: "text.disabled" }} />
+                      </InputAdornment>
+                    }
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.76rem",
+                      borderRadius: CONTROL_RADIUS,
+                      height: FILTER_INPUT_HEIGHT,
+                      backgroundColor: "#f7f7f8",
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "rgba(0,0,0,0.12)",
+                      },
+                    }}
+                  />
+                </FormControl>
+
+                <Box
+                  sx={{
+                    minHeight: 420,
+                    borderRadius: "10px",
+                    border: `1px solid ${border}`,
+                    overflow: "hidden",
+                    backgroundColor: "#f7f7f8",
+                  }}
+                >
+                  <DataGrid
+                    rows={auditRows}
+                    columns={auditColumns}
+                    pageSize={10}
+                    rowsPerPageOptions={[10]}
+                    disableRowSelectionOnClick
+                    rowHeight={56}
+                    enableSearch={false}
+                    apiRef={auditGridApiRef}
+                    slotProps={{
+                      toolbar: {
+                        csvOptions: { disableToolbarButton: true },
+                        printOptions: { disableToolbarButton: true },
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Box>
+      </Drawer>
+
+      {/* ── Slot capacity dialog ── */}
       <Dialog
         open={slotDialogOpen}
         onClose={closeSlotDialog}

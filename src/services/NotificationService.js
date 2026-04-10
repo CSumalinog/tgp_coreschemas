@@ -26,7 +26,7 @@ function buildNotificationTarget({
     const requestTargetPath = {
       admin: "/admin/request-management",
       client: "/client/request-tracker",
-      sec_head: "/sec_head/coverage-assignment",
+      sec_head: "/sec_head/coverage-management/assignment",
       staff: "/staff/my-assignment",
     }[recipientRole];
 

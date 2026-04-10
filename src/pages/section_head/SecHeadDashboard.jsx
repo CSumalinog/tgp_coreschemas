@@ -83,12 +83,17 @@ const STATUS = {
 const STATUS_TO_TAB = {
   Forwarded: "for-assignment",
   Assigned: "assigned",
-  "For Approval": "assigned",
-  "On Going": "assigned",
-  "Coverage Complete": "history",
-  Approved: "history",
-  Declined: "history",
+  "For Approval": "for-approval",
+  "On Going": "on-going",
+  "Coverage Complete": "completed",
+  Approved: "assigned",
+  Declined: "completed",
 };
+
+const getCoverageManagementPath = (tab) =>
+  ["on-going", "completed"].includes(tab)
+    ? "/sec_head/coverage-management/tracker"
+    : "/sec_head/coverage-management/assignment";
 
 const getInitials = (name) => {
   if (!name) return "?";
@@ -297,7 +302,7 @@ export default function SecHeadDashboard() {
   });
 
   const goToTab = (tab) =>
-    navigate("/sec_head/coverage-assignment", { state: { tab } });
+    navigate(getCoverageManagementPath(tab), { state: { tab } });
   const goToRequest = (s) => goToTab(STATUS_TO_TAB[s] || "for-assignment");
 
   const dutyDaySet = teamSnapshot.filter((s) => s.dutyDay !== null).length;

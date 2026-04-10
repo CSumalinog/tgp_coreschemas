@@ -1,4 +1,4 @@
-// src/pages/section_head/SecHeadAssignmentManagement.jsx
+// src/pages/section_head/CoverageManagementBase.jsx
 import React, {
   useState,
   useEffect,
@@ -139,12 +139,33 @@ const STATUS_CFG = {
 
 // View options — shows requests at different stages of the assignment workflow
 const VIEW_OPTIONS = [
+  { label: "All", key: "all" },
   { label: "For Assignment", key: "for-assignment" },
   { label: "For Approval", key: "for-approval" },
   { label: "Assigned", key: "assigned" },
   { label: "On Going", key: "on-going" },
   { label: "Completed", key: "completed" },
 ];
+
+const getViewMeta = (key) =>
+  VIEW_OPTIONS.find((option) => option.key === key) || VIEW_OPTIONS[0];
+
+const getAvailableViewOptions = (allowedViews) =>
+  VIEW_OPTIONS.filter((option) => allowedViews.includes(option.key));
+
+const getPreferredView = (allowedViews, preferredView) => {
+  if (preferredView && allowedViews.includes(preferredView)) return preferredView;
+  return getAvailableViewOptions(allowedViews)[0]?.key || VIEW_OPTIONS[0].key;
+};
+
+const VIEW_LABEL_BY_KEY = {
+  all: "All",
+  "for-assignment": "For Assignment",
+  "for-approval": "For Approval",
+  assigned: "Assigned",
+  "on-going": "On Going",
+  completed: "Completed",
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const jsDateToDutyDay = (dateStr) => {
@@ -616,7 +637,16 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function SecHeadAssignmentManagement() {
+export default function CoverageManagementBase({
+  pageTitle = "Coverage Management",
+  exportFileName = "coverage-management-export",
+  settingsTitle = "Assignment Settings",
+  defaultView = "for-assignment",
+  allowedViews = VIEW_OPTIONS.map((option) => option.key),
+  showHeader = true,
+  compactTop = false,
+  descriptions = {},
+}) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
@@ -624,23 +654,33 @@ export default function SecHeadAssignmentManagement() {
   const gridApiRef = useGridApiRef();
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
+  const availableViewOptions = useMemo(
+    () => getAvailableViewOptions(allowedViews),
+    [allowedViews],
+  );
+  const fallbackView = useMemo(
+    () => getPreferredView(allowedViews, defaultView),
+    [allowedViews, defaultView],
+  );
 
-  // ── View filter (replaces tabs) ───────────────────────────────────────────
+  // ── View filter ──────────────────────────────────────────────────────────
   const [viewFilter, setViewFilter] = useState(() => {
     const incoming = location.state?.tab;
-    if (!incoming) return "for-assignment";
-    const found = VIEW_OPTIONS.find((o) => o.key === incoming);
-    return found ? found.key : "for-assignment";
+    return getPreferredView(allowedViews, incoming || defaultView);
   });
 
   useEffect(() => {
     const incoming = location.state?.tab;
-    if (!incoming) return;
-    const found = VIEW_OPTIONS.find((o) => o.key === incoming);
-    if (found) setViewFilter(found.key);
-  }, [location.state?.tab]);
+    if (!incoming) {
+      setViewFilter((prev) =>
+        allowedViews.includes(prev) ? prev : fallbackView,
+      );
+      return;
+    }
+    const preferred = getPreferredView(allowedViews, incoming);
+    setViewFilter((prev) => (prev === preferred ? prev : preferred));
+  }, [location.state?.tab, allowedViews, defaultView, fallbackView]);
 
-  // ── Data state ────────────────────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null);
   const [forAssignmentReqs, setForAssignmentReqs] = useState([]);
   const [forApprovalReqs, setForApprovalReqs] = useState([]);
@@ -654,8 +694,6 @@ export default function SecHeadAssignmentManagement() {
     text: "",
     severity: "success",
   });
-
-  // ── Filter state ──────────────────────────────────────────────────────────
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
   const [allStaffers, setAllStaffers] = useState([]);
@@ -663,8 +701,6 @@ export default function SecHeadAssignmentManagement() {
   const [searchText, setSearchText] = useState("");
   const [semRange, setSemRange] = useState(null);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
-
-  // ── Menu + dialog state ───────────────────────────────────────────────────
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const [confirmRequest, setConfirmRequest] = useState(null);
@@ -1071,6 +1107,21 @@ export default function SecHeadAssignmentManagement() {
 
   const getViewSource = useCallback(
     (key) => {
+      if (key === "all") {
+        const merged = new Map();
+        allowedViews
+          .filter((viewKey) => viewKey !== "all")
+          .forEach((viewKey) => {
+            const rows = getViewSource(viewKey);
+            rows.forEach((row) => {
+              merged.set(`${viewKey}:${row.id}`, {
+                ...row,
+                _sectionHeadView: viewKey,
+              });
+            });
+          });
+        return Array.from(merged.values());
+      }
       if (key === "for-assignment") return applyFilters(forAssignmentReqs);
       if (key === "for-approval") return applyFilters(forApprovalReqs);
       if (key === "assigned") return applyFilters(assignedReqs);
@@ -1078,7 +1129,15 @@ export default function SecHeadAssignmentManagement() {
       if (key === "completed") return applyFilters(completedReqs);
       return [];
     },
-    [applyFilters, forAssignmentReqs, forApprovalReqs, assignedReqs, onGoingReqs, completedReqs],
+    [
+      allowedViews,
+      applyFilters,
+      forAssignmentReqs,
+      forApprovalReqs,
+      assignedReqs,
+      onGoingReqs,
+      completedReqs,
+    ],
   );
 
   const getViewCount = useCallback(
@@ -1091,7 +1150,7 @@ export default function SecHeadAssignmentManagement() {
     [viewFilter, getViewSource],
   );
 
-  const isViewFiltered = viewFilter !== "for-assignment";
+  const isViewFiltered = viewFilter !== fallbackView;
 
   // ── External search filter for DataGrid ───────────────────────────────────
   const externalFilterModel = useMemo(() => {
@@ -1105,7 +1164,7 @@ export default function SecHeadAssignmentManagement() {
   const handleExportCsv = () => {
     gridApiRef.current?.exportDataAsCsv({
       utf8WithBom: true,
-      fileName: "assignment-management-export",
+      fileName: exportFileName,
     });
   };
 
@@ -1524,13 +1583,14 @@ export default function SecHeadAssignmentManagement() {
   // ── Row builder ───────────────────────────────────────────────────────────
   const buildRows = (source) =>
     source.map((req) => {
+      const rowView = req._sectionHeadView || viewFilter;
       const sectionAssignments = (req.coverage_assignments || []).filter(
         (a) => a.section === currentUser?.section,
       );
       const myAssignments =
-        viewFilter === "on-going"
+        rowView === "on-going"
           ? sectionAssignments.filter(isAssignmentOnGoing)
-          : viewFilter === "completed"
+          : rowView === "completed"
             ? sectionAssignments.filter(isAssignmentCompleted)
             : sectionAssignments;
       const seen = new Set();
@@ -1593,6 +1653,8 @@ export default function SecHeadAssignmentManagement() {
         totalDays,
         venue: req.venue || "—",
         assignments: req.coverage_assignments || [],
+        rowView,
+        stageLabel: VIEW_LABEL_BY_KEY[rowView] || req.status,
         _raw: req,
       };
     });
@@ -1675,6 +1737,19 @@ export default function SecHeadAssignmentManagement() {
             {p.value} pax
           </Typography>
         </Box>
+      </Box>
+    ),
+  };
+
+  const statusCol = {
+    field: "stageLabel",
+    headerName: "Status",
+    flex: 0.8,
+    minWidth: 140,
+    sortable: false,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <StatusPill status={p.value} isDark={isDark} />
       </Box>
     ),
   };
@@ -1822,7 +1897,8 @@ export default function SecHeadAssignmentManagement() {
           pr: 0.5,
         }}
       >
-        {viewFilter === "for-assignment" && !hasBulkSelection && (
+        {(viewFilter === "for-assignment" || p.row?.rowView === "for-assignment") &&
+          !hasBulkSelection && (
           <ViewActionButton
             onClick={(e) => {
               e.stopPropagation();
@@ -1834,7 +1910,7 @@ export default function SecHeadAssignmentManagement() {
               : "Assign"}
           </ViewActionButton>
         )}
-        {viewFilter === "assigned" &&
+        {(viewFilter === "assigned" || p.row?.rowView === "assigned") &&
           !hasBulkSelection &&
           p.row?.myHasAssignments &&
           !p.row?.myHasSubmitted && (
@@ -1847,7 +1923,9 @@ export default function SecHeadAssignmentManagement() {
               Submit
             </ViewActionButton>
           )}
-        {viewFilter === "completed" && !hasBulkSelection && p.row?.staffers?.length > 0 && (
+        {(viewFilter === "completed" || p.row?.rowView === "completed") &&
+          !hasBulkSelection &&
+          p.row?.staffers?.length > 0 && (
           <ViewActionButton
             onClick={(e) => {
               e.stopPropagation();
@@ -1874,6 +1952,8 @@ export default function SecHeadAssignmentManagement() {
   };
 
   const buildColumns = () => {
+    if (viewFilter === "all")
+      return [titleCol, typeCol, clientCol, eventDateCol, statusCol, actionCol];
     if (viewFilter === "for-assignment")
       return [titleCol, typeCol, clientCol, eventDateCol, paxCol, actionCol];
     if (viewFilter === "assigned")
@@ -1936,7 +2016,9 @@ export default function SecHeadAssignmentManagement() {
   return (
     <Box
       sx={{
-        p: { xs: 1.5, sm: 2, md: 3 },
+        px: { xs: 1.5, sm: 2, md: 3 },
+        pt: compactTop ? { xs: 0.5, sm: 0.75, md: 1 } : { xs: 1.5, sm: 2, md: 3 },
+        pb: { xs: 1.5, sm: 2, md: 3 },
         height: "100%",
         boxSizing: "border-box",
         display: "flex",
@@ -1947,48 +2029,41 @@ export default function SecHeadAssignmentManagement() {
       }}
     >
       {/* ── Header ── */}
-      <Box
-        sx={{
-          mb: 2.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              color: "text.primary",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Assignment Management
-          </Typography>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
-              mt: 0.3,
-            }}
-          >
-            {viewFilter === "for-assignment" &&
-              `Requests forwarded to your section (${currentUser.section}). Assign staffers, then submit for admin approval.`}
-            {viewFilter === "for-approval" &&
-              `Assignments submitted and waiting for admin to review and approve all sections.`}
-            {viewFilter === "assigned" &&
-              `Officially approved assignments. Staffers are confirmed and the event is upcoming.`}
-            {viewFilter === "on-going" &&
-              `Coverage currently in progress — your section's staffers have timed in and are on-site.`}
-            {viewFilter === "completed" &&
-              `Completed coverage requests handled by your section (${currentUser.section}).`}
-          </Typography>
+      {showHeader && (
+        <Box
+          sx={{
+            mb: 2.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                color: "text.primary",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {pageTitle}
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.secondary",
+                mt: 0.3,
+              }}
+            >
+              {descriptions[viewFilter] || ""}
+            </Typography>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       {/* ── Filter row ── */}
       <Box
@@ -2029,16 +2104,15 @@ export default function SecHeadAssignmentManagement() {
           />
         </FormControl>
 
-        {/* View dropdown — matches Status dropdown pattern */}
-        <FormControl size="small" sx={{ minWidth: 158 }}>
+        <FormControl size="small" sx={{ minWidth: 168 }}>
           <Select
             value={viewFilter}
             onChange={(e) => setViewFilter(e.target.value)}
             IconComponent={UnfoldMoreIcon}
             displayEmpty
-            inputProps={{ "aria-label": "Assignment view filter" }}
+            inputProps={{ "aria-label": `${pageTitle} status filter` }}
             renderValue={(val) => {
-              const opt = VIEW_OPTIONS.find((o) => o.key === val);
+              const opt = getViewMeta(val);
               const triggerCount = getViewCount(val);
               return (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -2066,7 +2140,7 @@ export default function SecHeadAssignmentManagement() {
             }}
             sx={selectSx}
           >
-            {VIEW_OPTIONS.map((o) => {
+            {availableViewOptions.map((o) => {
               const count = getViewCount(o.key);
               const isSelected = viewFilter === o.key;
               return (
@@ -2418,7 +2492,7 @@ export default function SecHeadAssignmentManagement() {
                 color: "text.primary",
               }}
             >
-              Assignment Settings
+              {settingsTitle}
             </Typography>
           </Box>
           <IconButton
