@@ -182,7 +182,7 @@ function ColumnMenuStyles({ isDark, border }) {
           transition: "color 0.12s !important",
         },
         ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
-          fontSize: "1rem !important",
+          fontSize: "1.5rem !important",
           color: `${iconColor} !important`,
         },
         ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {
@@ -675,10 +675,10 @@ export default function SemesterManagement() {
           <Typography
             sx={{
               fontFamily: dm,
-              fontWeight: 700,
-              fontSize: "1.05rem",
+              fontWeight: 600,
+              fontSize: "0.8rem",
               color: "text.primary",
-              letterSpacing: "-0.02em",
+              letterSpacing: "-0.01em",
             }}
           >
             Semester Management

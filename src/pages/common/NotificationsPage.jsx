@@ -36,6 +36,8 @@ import {
   PAGE_PADDING,
   PAGE_CONTENT_MAX_WIDTH,
   PAGE_CONTENT_INNER_GUTTER,
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
@@ -233,6 +235,8 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [requesterProfiles, setRequesterProfiles] = useState({});
+  const [assignmentAssignersByRequest, setAssignmentAssignersByRequest] =
+    useState({});
 
   const filters = useMemo(() => {
     if (currentRole === "client") {
@@ -290,6 +294,67 @@ export default function NotificationsPage() {
     setRequesterProfiles(profileMap);
   }, []);
 
+  const loadAssignmentAssigners = useCallback(async (rows, currentUserId) => {
+    const requestIds = [
+      ...new Set(
+        rows
+          .filter((row) => row.type === "assigned")
+          .map((row) => row.request_id)
+          .filter(Boolean),
+      ),
+    ];
+
+    if (!requestIds.length || !currentUserId) {
+      setAssignmentAssignersByRequest({});
+      return;
+    }
+
+    const { data: assignments, error: assignmentsError } = await supabase
+      .from("coverage_assignments")
+      .select("request_id, assigned_by, assigned_to")
+      .eq("assigned_to", currentUserId)
+      .in("request_id", requestIds);
+
+    if (assignmentsError) {
+      console.error("Assignment fetch failed:", assignmentsError.message);
+      return;
+    }
+
+    const assignerIds = [
+      ...new Set((assignments || []).map((row) => row.assigned_by).filter(Boolean)),
+    ];
+
+    if (!assignerIds.length) {
+      setAssignmentAssignersByRequest({});
+      return;
+    }
+
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, position, designation, section")
+      .in("id", assignerIds);
+
+    if (profilesError) {
+      console.error("Assigner profile fetch failed:", profilesError.message);
+      return;
+    }
+
+    const profileMap = (profiles || []).reduce((acc, profile) => {
+      acc[profile.id] = profile;
+      return acc;
+    }, {});
+
+    const requestMap = {};
+    (assignments || []).forEach((row) => {
+      if (!row.request_id || requestMap[row.request_id]) return;
+      if (row.assigned_by && profileMap[row.assigned_by]) {
+        requestMap[row.request_id] = profileMap[row.assigned_by];
+      }
+    });
+
+    setAssignmentAssignersByRequest(requestMap);
+  }, []);
+
   const loadNotifications = useCallback(
     async (currentUserId) => {
       if (!currentUserId) return;
@@ -310,11 +375,12 @@ export default function NotificationsPage() {
         const rows = data || [];
         setNotifications(rows);
         loadRequesterProfiles(rows);
+        loadAssignmentAssigners(rows, currentUserId);
       }
 
       setLoading(false);
     },
-    [loadRequesterProfiles],
+    [loadAssignmentAssigners, loadRequesterProfiles],
   );
 
   useEffect(() => {
@@ -515,7 +581,7 @@ export default function NotificationsPage() {
               sx={{
                 fontFamily: dm,
                 fontWeight: 600,
-                fontSize: "0.95rem",
+                fontSize: "0.8rem",
                 color: "text.primary",
                 letterSpacing: "-0.01em",
               }}
@@ -669,7 +735,17 @@ export default function NotificationsPage() {
                 requesterName === "Unknown requester"
                   ? requesterName
                   : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
-              const requesterAvatarUrl = getAvatarUrl(requester?.avatar_url);
+              const assignerProfile =
+                assignmentAssignersByRequest[notification.request_id] || null;
+              const displayActorProfile =
+                notification.type === "assigned" && assignerProfile
+                  ? assignerProfile
+                  : requester;
+              const displayActorName =
+                displayActorProfile?.full_name || requesterName;
+              const displayActorAvatarUrl = getAvatarUrl(
+                displayActorProfile?.avatar_url,
+              );
               const typeCfg = getTypeCfg(notification.type);
               const TypeIcon = typeCfg.icon;
               const isCoverageRequest = notification.type === "new_request";
@@ -680,6 +756,7 @@ export default function NotificationsPage() {
               const isForwarded = notification.type === "forwarded";
               const isDutyChangeRejected =
                 notification.type === "duty_schedule_change_rejected";
+              const isAssigned = notification.type === "assigned";
 
               let displayMessage = notification.message;
               if (isCoverageRequest) {
@@ -707,9 +784,29 @@ export default function NotificationsPage() {
                   notification,
                   reviewerActorLabel,
                 );
+              } else if (isAssigned) {
+                const assigner =
+                  assignmentAssignersByRequest[notification.request_id] || null;
+                if (assigner) {
+                  const assignerName = assigner.full_name || "Your section head";
+                  const assignerDesignation =
+                    assigner.designation ||
+                    assigner.position ||
+                    (assigner.section
+                      ? `${assigner.section} Section Head`
+                      : "Section Head");
+                  const requestLabel = getCoverageRequestLabel(
+                    notification.message,
+                    notification.title,
+                  );
+                  displayMessage = `${assignerName} - ${assignerDesignation}, assigned you to cover "${requestLabel}". Admin approval has finalized this assignment.`;
+                }
               }
 
-              const shouldShowRequesterLine = !startsWithRequesterName(
+              const shouldShowRequesterLine =
+                !isAssigned &&
+                requesterName !== "Unknown requester" &&
+                !startsWithRequesterName(
                 displayMessage,
                 requesterName,
               );
@@ -759,19 +856,19 @@ export default function NotificationsPage() {
                           position: "relative",
                           mt: 0.1,
                           flexShrink: 0,
-                          width: 42,
-                          height: 42,
+                          width: TABLE_USER_AVATAR_SIZE,
+                          height: TABLE_USER_AVATAR_SIZE,
                         }}
                       >
-                        <Tooltip title={requesterName} arrow>
+                        <Tooltip title={displayActorName} arrow>
                           <Avatar
-                            src={requesterAvatarUrl || undefined}
+                            src={displayActorAvatarUrl || undefined}
                             sx={{
-                              width: 42,
-                              height: 42,
+                              width: TABLE_USER_AVATAR_SIZE,
+                              height: TABLE_USER_AVATAR_SIZE,
                               borderRadius: "50%",
                               fontFamily: dm,
-                              fontSize: "0.8rem",
+                              fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                               fontWeight: 700,
                               backgroundColor: isDark
                                 ? "rgba(255,255,255,0.12)"
@@ -779,8 +876,8 @@ export default function NotificationsPage() {
                               color: isDark ? "#ffffff" : "#212121",
                             }}
                           >
-                            {!requesterAvatarUrl &&
-                              getInitials(requester?.full_name)}
+                            {!displayActorAvatarUrl &&
+                              getInitials(displayActorName)}
                           </Avatar>
                         </Tooltip>
 

@@ -942,10 +942,10 @@ export default function Settings() {
         <Typography
           sx={{
             fontFamily: dm,
-            fontWeight: 700,
-            fontSize: "1rem",
+            fontWeight: 600,
+            fontSize: "0.8rem",
             color: "text.primary",
-            letterSpacing: "-0.02em",
+            letterSpacing: "-0.01em",
           }}
         >
           Settings

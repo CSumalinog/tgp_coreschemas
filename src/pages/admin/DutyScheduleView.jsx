@@ -15,6 +15,7 @@ import {
   MenuItem,
   OutlinedInput,
   InputAdornment,
+  Divider,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
@@ -1192,7 +1193,7 @@ export default function DutyScheduleView() {
             sx={{
               px: 1.35,
               height: 28,
-              borderRadius: "4px",
+              borderRadius: CONTROL_RADIUS,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1270,8 +1271,8 @@ export default function DutyScheduleView() {
                 background: "none",
                 cursor: "pointer",
                 fontFamily: dm,
-                fontWeight: activeTab === 0 ? 700 : 600,
-                fontSize: "0.95rem",
+                fontWeight: activeTab === 0 ? 600 : 400,
+                fontSize: "0.8rem",
                 color: activeTab === 0 ? "text.primary" : "text.secondary",
                 letterSpacing: "-0.01em",
                 transition: "color 0.15s ease",
@@ -1281,17 +1282,15 @@ export default function DutyScheduleView() {
               Duty Schedule
             </Box>
 
-            <Typography
+            <Divider
+              orientation="vertical"
+              flexItem
               sx={{
-                fontFamily: dm,
-                fontWeight: 500,
-                fontSize: "0.95rem",
-                color: "text.disabled",
-                lineHeight: 1,
+                height: 18,
+                alignSelf: "center",
+                borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
               }}
-            >
-              |
-            </Typography>
+            />
 
             <Box
               component="button"
@@ -1306,8 +1305,8 @@ export default function DutyScheduleView() {
                 alignItems: "center",
                 gap: 0.7,
                 fontFamily: dm,
-                fontSize: "0.95rem",
-                fontWeight: activeTab === 1 ? 700 : 600,
+                fontSize: "0.8rem",
+                fontWeight: activeTab === 1 ? 600 : 400,
                 color: activeTab === 1 ? "text.primary" : "text.secondary",
                 letterSpacing: "-0.01em",
                 transition: "color 0.15s ease",
@@ -1405,6 +1404,17 @@ export default function DutyScheduleView() {
                       ))}
                     </Select>
                   </FormControl>
+
+                  <Divider
+                    orientation="vertical"
+                    flexItem
+                    sx={{
+                      mr: 0.75,
+                      height: 18,
+                      alignSelf: "center",
+                      borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+                    }}
+                  />
 
                   <Box
                     onClick={handleExportRequestsCsv}
@@ -1552,6 +1562,17 @@ export default function DutyScheduleView() {
                       })}
                     </Select>
                   </FormControl>
+
+                  <Divider
+                    orientation="vertical"
+                    flexItem
+                    sx={{
+                      mr: 0.75,
+                      height: 18,
+                      alignSelf: "center",
+                      borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+                    }}
+                  />
 
                   <Box
                     onClick={handleExportCsv}

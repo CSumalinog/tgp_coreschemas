@@ -22,6 +22,7 @@ import {
   Drawer,
   Tabs,
   Tab,
+  Divider,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
@@ -858,7 +859,7 @@ export default function StaffersManagement() {
         sx={{
           fontFamily: dm,
           fontWeight: 600,
-          fontSize: "0.95rem",
+          fontSize: "0.8rem",
           color: "text.primary",
           letterSpacing: "-0.01em",
           mb: 2,
@@ -999,6 +1000,17 @@ export default function StaffersManagement() {
         </FormControl>
 
         <Box sx={{ flex: 1 }} />
+
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{
+            mr: 0.75,
+            height: 18,
+            alignSelf: "center",
+            borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+          }}
+        />
 
         {/* Add Member */}
         <Box

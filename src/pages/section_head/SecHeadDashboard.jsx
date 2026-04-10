@@ -25,6 +25,10 @@ import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import {
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
+} from "../../utils/layoutTokens";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const BRAND = {
@@ -988,9 +992,9 @@ export default function SecHeadDashboard() {
                         <Avatar
                           src={url}
                           sx={{
-                            width: 30,
-                            height: 30,
-                            fontSize: "0.7rem",
+                            width: TABLE_USER_AVATAR_SIZE,
+                            height: TABLE_USER_AVATAR_SIZE,
+                            fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                             fontWeight: 700,
                             backgroundColor: BRAND.gold,
                             color: BRAND.charcoal,

@@ -14,6 +14,10 @@ import {
   notifySecHeads,
 } from "../../services/NotificationService";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import {
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
+} from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
 const DARK = "#212121";
@@ -548,9 +552,9 @@ export default function TimeoutPage() {
                     <Avatar
                       src={assign.staffer?.avatar_url}
                       sx={{
-                        width: 30,
-                        height: 30,
-                        fontSize: "0.72rem",
+                        width: TABLE_USER_AVATAR_SIZE,
+                        height: TABLE_USER_AVATAR_SIZE,
+                        fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                         backgroundColor: isMe ? GOLD : "#f3f4f6",
                         color: isMe ? DARK : "#6b7280",
                       }}

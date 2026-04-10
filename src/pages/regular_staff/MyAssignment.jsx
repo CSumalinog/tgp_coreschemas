@@ -15,7 +15,6 @@ import {
   DialogContent,
   IconButton,
   useTheme,
-  ClickAwayListener,
   Avatar,
   Menu,
   MenuItem,
@@ -23,6 +22,11 @@ import {
   ListItemText,
   Drawer,
   Tooltip,
+  Divider,
+  FormControl,
+  Select,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
@@ -36,7 +40,6 @@ import {
   RoleTrashManagement,
 } from "../common/request-management/RoleRequestManagement";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
@@ -48,11 +51,25 @@ import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { useLocation } from "react-router-dom";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import NumberBadge from "../../components/common/NumberBadge";
+import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_CLIENT_MIN_WIDTH,
+  FILTER_GROUP_GAP,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+  FILTER_SEARCH_MAX_WIDTH,
+  FILTER_SEARCH_MIN_WIDTH,
+  FILTER_SEMESTER_MIN_WIDTH,
+  FILTER_STATUS_MIN_WIDTH,
+} from "../../utils/layoutTokens";
 
 import {
   TimeInModal,
@@ -1372,10 +1389,9 @@ export default function MyAssignment() {
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
   const [selectedEntity, setSelectedEntity] = useState("all");
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
-  const filterRef = useRef(null);
   const timeInNotifiedRef = useRef(new Set());
 
   useEffect(() => {
@@ -1567,12 +1583,23 @@ export default function MyAssignment() {
     return opts.sort();
   }, [assignments]);
 
-  const activeFilterCount =
-    (selectedSem !== "all" ? 1 : 0) + (selectedEntity !== "all" ? 1 : 0);
-
   const applyFilters = useCallback(
     (list) => {
       let out = list;
+      if (searchText.trim()) {
+        const q = searchText.trim().toLowerCase();
+        out = out.filter((a) => {
+          const request = a.request || {};
+          return [
+            request.title,
+            request.venue,
+            request.entity?.name,
+            a.assigned_by_profile?.full_name,
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(q));
+        });
+      }
       if (selectedSem !== "all") {
         const sem = semesters.find((s) => s.id === selectedSem);
         if (sem) {
@@ -1590,7 +1617,7 @@ export default function MyAssignment() {
         out = out.filter((a) => a.request?.entity?.name === selectedEntity);
       return out;
     },
-    [selectedSem, selectedEntity, semesters],
+    [searchText, selectedSem, selectedEntity, semesters],
   );
 
   const filtered = useMemo(
@@ -1747,8 +1774,6 @@ export default function MyAssignment() {
     }
   };
 
-  const selectedSemName = semesters.find((s) => s.id === selectedSem)?.name;
-
   if (!currentUser || loading)
     return (
       <Box
@@ -1763,10 +1788,7 @@ export default function MyAssignment() {
       </Box>
     );
 
-  const TABS = [
-    { label: "All", count: allFiltered.length },
-    { label: "Completed", count: completedFiltered.length },
-  ];
+  const statusOptions = ["All", "Assigned", "Approved", "On Going", "Completed"];
 
   return (
     <Box
@@ -1783,7 +1805,7 @@ export default function MyAssignment() {
           sx={{
             fontFamily: dm,
             fontWeight: 600,
-            fontSize: "0.95rem",
+            fontSize: "0.8rem",
             color: "text.primary",
             letterSpacing: "-0.01em",
           }}
@@ -1806,359 +1828,184 @@ export default function MyAssignment() {
         </Alert>
       )}
 
-      {/* ── Tabs + filter row ── */}
+      {/* ── Controls row ── */}
       <Box
         sx={{
+          mb: 2,
           display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          mb: 2.5,
-          gap: 1,
+          alignItems: "center",
+          gap: FILTER_ROW_GAP,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          flexShrink: 0,
         }}
       >
-        {/* ── Segmented tab pills ── */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: "6px",
-            flexWrap: "wrap",
-            flex: 1,
-            alignItems: "flex-end",
-          }}
+        <FormControl
+          size="small"
+          sx={{ flex: 2.4, minWidth: FILTER_SEARCH_MIN_WIDTH, maxWidth: FILTER_SEARCH_MAX_WIDTH }}
         >
-          {TABS.map((tab) => {
-            const isActive = statusFilter === tab.label;
-            return (
-              <Box
-                key={tab.label}
-                onClick={() => setStatusFilter(tab.label)}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 1,
-                  px: 1.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  fontFamily: dm,
-                  fontSize: "0.79rem",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#fff" : "text.secondary",
-                  border: `1px solid ${isActive ? "#212121" : border}`,
-                  backgroundColor: isActive ? "#212121" : "background.paper",
-                  transition: "all 0.12s",
-                  "&:hover": isActive
-                    ? {}
-                    : {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: isDark ? "#f5f5f5" : CHARCOAL,
-                      },
-                }}
-              >
-                {tab.label}
-                {tab.count > 0 && (
-                  <NumberBadge
-                    count={tab.count}
-                    active={isActive}
-                    activeBg={GOLD}
-                    inactiveBg={
-                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
-                    }
-                    textColor="#ffffff"
-                    fontFamily={dm}
-                    fontSize="0.6rem"
-                    sx={{ flexShrink: 0 }}
-                  />
-                )}
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* ── Filter button ── */}
-        <Box ref={filterRef} sx={{ position: "relative" }}>
-          <ClickAwayListener onClickAway={() => setFilterOpen(false)}>
-            <Box>
-              <Box
-                onClick={() => setFilterOpen((p) => !p)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  px: 1.25,
-                  py: 0.55,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  border: `1px solid ${activeFilterCount > 0 ? "rgba(245,197,43,0.6)" : border}`,
-                  backgroundColor:
-                    activeFilterCount > 0 ? GOLD_08 : "transparent",
-                  fontFamily: dm,
-                  fontSize: "0.76rem",
-                  fontWeight: 500,
-                  color: activeFilterCount > 0 ? "#b45309" : "text.secondary",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    borderColor: "rgba(245,197,43,0.6)",
-                    color: "#b45309",
-                    backgroundColor: GOLD_08,
-                  },
-                }}
-              >
-                <FilterListIcon sx={{ fontSize: 15 }} />
-                Filter
-                {activeFilterCount > 0 && (
-                  <NumberBadge
-                    count={activeFilterCount}
-                    active
-                    activeBg={GOLD}
-                    textColor="#ffffff"
-                    fontFamily={dm}
-                    fontSize="0.6rem"
-                  />
-                )}
-              </Box>
-              {filterOpen && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    right: 0,
-                    width: 250,
-                    zIndex: 1300,
-                    borderRadius: "10px",
-                    overflow: "hidden",
-                    border: `1px solid ${border}`,
-                    backgroundColor: "background.paper",
-                    boxShadow: isDark
-                      ? "0 12px 40px rgba(0,0,0,0.5)"
-                      : "0 4px 24px rgba(53,53,53,0.12)",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      px: 2,
-                      py: 1.5,
-                      borderBottom: `1px solid ${border}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.76rem",
-                        fontWeight: 700,
-                        color: "text.primary",
-                      }}
-                    >
-                      Filter
-                    </Typography>
-                    {activeFilterCount > 0 && (
-                      <Box
-                        onClick={() => {
-                          setSelectedSem("all");
-                          setSelectedEntity("all");
-                        }}
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.72rem",
-                          color: "text.secondary",
-                          cursor: "pointer",
-                          "&:hover": { color: CHARCOAL },
-                        }}
-                      >
-                        Clear all
-                      </Box>
-                    )}
-                  </Box>
-                  <Box
-                    sx={{
-                      px: 2,
-                      py: 1.75,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 1.5,
-                    }}
-                  >
-                    <FilterLabel>Semester</FilterLabel>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 0.5,
-                      }}
-                    >
-                      {[{ id: "all", name: "All Semesters" }, ...semesters].map(
-                        (s) => (
-                          <Box
-                            key={s.id}
-                            onClick={() => setSelectedSem(s.id)}
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              px: 1.25,
-                              py: 0.6,
-                              borderRadius: "10px",
-                              cursor: "pointer",
-                              backgroundColor:
-                                selectedSem === s.id ? GOLD_08 : "transparent",
-                              "&:hover": {
-                                backgroundColor:
-                                  selectedSem === s.id ? GOLD_08 : HOVER_BG,
-                              },
-                            }}
-                          >
-                            <Typography
-                              sx={{
-                                fontFamily: dm,
-                                fontSize: "0.78rem",
-                                color:
-                                  selectedSem === s.id
-                                    ? "#b45309"
-                                    : "text.primary",
-                                fontWeight: selectedSem === s.id ? 600 : 400,
-                              }}
-                            >
-                              {getSemesterDisplayName(s)}
-                            </Typography>
-                            {selectedSem === s.id && (
-                              <Box
-                                sx={{
-                                  width: 5,
-                                  height: 5,
-                                  borderRadius: "50%",
-                                  backgroundColor: GOLD,
-                                }}
-                              />
-                            )}
-                          </Box>
-                        ),
-                      )}
-                    </Box>
-                    {entityOptions.length > 0 && (
-                      <>
-                        <FilterLabel>Client</FilterLabel>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 0.5,
-                          }}
-                        >
-                          {[
-                            { id: "all", name: "All Clients" },
-                            ...entityOptions.map((n) => ({ id: n, name: n })),
-                          ].map((e) => (
-                            <Box
-                              key={e.id}
-                              onClick={() => setSelectedEntity(e.id)}
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                px: 1.25,
-                                py: 0.6,
-                                borderRadius: "10px",
-                                cursor: "pointer",
-                                backgroundColor:
-                                  selectedEntity === e.id
-                                    ? GOLD_08
-                                    : "transparent",
-                                "&:hover": {
-                                  backgroundColor:
-                                    selectedEntity === e.id
-                                      ? GOLD_08
-                                      : HOVER_BG,
-                                },
-                              }}
-                            >
-                              <Typography
-                                sx={{
-                                  fontFamily: dm,
-                                  fontSize: "0.78rem",
-                                  color:
-                                    selectedEntity === e.id
-                                      ? "#b45309"
-                                      : "text.primary",
-                                  fontWeight:
-                                    selectedEntity === e.id ? 600 : 400,
-                                }}
-                              >
-                                {e.name}
-                              </Typography>
-                              {selectedEntity === e.id && (
-                                <Box
-                                  sx={{
-                                    width: 5,
-                                    height: 5,
-                                    borderRadius: "50%",
-                                    backgroundColor: GOLD,
-                                  }}
-                                />
-                              )}
-                            </Box>
-                          ))}
-                        </Box>
-                      </>
-                    )}
-                  </Box>
-                </Box>
-              )}
-            </Box>
-          </ClickAwayListener>
-        </Box>
-
-        {/* ── Settings gear ── */}
-        <Tooltip title="Archive & Trash" arrow>
-          <IconButton
-            size="small"
-            onClick={() => setSettingsOpen(true)}
+          <OutlinedInput
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
             sx={{
-              borderRadius: "10px",
-              p: 0.7,
-              border: `1px solid ${border}`,
-              color: "text.secondary",
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          />
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH }}>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            renderValue={(val) => {
+              const count =
+                val === "All"
+                  ? allFiltered.length
+                  : allFiltered.filter((a) => a.status === val).length;
+              return (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{val}</Typography>
+                  <NumberBadge
+                    count={count}
+                    active={val !== "All"}
+                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                  />
+                </Box>
+              );
+            }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
               },
             }}
           >
-            <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Tooltip>
-      </Box>
+            {statusOptions.map((status) => (
+              <MenuItem key={status} value={status} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                {status}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-      {activeFilterCount > 0 && (
+        <FormControl size="small" sx={{ minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
+          <Select
+            value={selectedSem}
+            onChange={(e) => setSelectedSem(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Semesters
+            </MenuItem>
+            {semesters.map((s) => (
+              <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                {getSemesterDisplayName(s)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: FILTER_CLIENT_MIN_WIDTH }}>
+          <Select
+            value={selectedEntity}
+            onChange={(e) => setSelectedEntity(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Clients
+            </MenuItem>
+            {entityOptions.map((name) => (
+              <MenuItem key={name} value={name} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                {name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{
+            mx: 0.75,
+            height: 18,
+            alignSelf: "center",
+            borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+          }}
+        />
+
         <Box
           sx={{
             display: "flex",
-            gap: 0.75,
-            mt: 1.5,
-            mb: 0.5,
-            flexWrap: "wrap",
+            alignItems: "center",
+            gap: FILTER_GROUP_GAP,
+            flexShrink: 0,
           }}
         >
-          {selectedSem !== "all" && (
-            <FilterChip
-              label={selectedSemName}
-              onDelete={() => setSelectedSem("all")}
-            />
-          )}
-          {selectedEntity !== "all" && (
-            <FilterChip
-              label={selectedEntity}
-              onDelete={() => setSelectedEntity("all")}
-            />
-          )}
+          {/* ── Settings gear ── */}
+          <Tooltip title="Archive & Trash" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setSettingsOpen(true)}
+              sx={{
+                borderRadius: CONTROL_RADIUS,
+                width: FILTER_BUTTON_HEIGHT,
+                height: FILTER_BUTTON_HEIGHT,
+                border: `1px solid ${border}`,
+                color: "text.secondary",
+                transition: "all 0.15s",
+                flexShrink: 0,
+                "&:hover": {
+                  borderColor: "rgba(53,53,53,0.3)",
+                  color: "text.primary",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.04)" : HOVER_BG,
+                },
+              }}
+            >
+              <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
-      )}
+      </Box>
 
       {selectedSem !== "all" && (
         <Box

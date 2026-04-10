@@ -18,6 +18,7 @@ import {
   Drawer,
   Tooltip,
   Snackbar,
+  Divider,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -926,7 +927,7 @@ export default function AdminRequestManagement() {
         <Typography
           sx={{
             fontFamily: dm,
-            fontSize: "0.95rem",
+            fontSize: "0.8rem",
             fontWeight: 600,
             color: "text.primary",
             letterSpacing: "-0.01em",
@@ -1100,6 +1101,17 @@ export default function AdminRequestManagement() {
         </FormControl>
 
         <Box sx={{ flex: 0.35 }} />
+
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{
+            mr: 0.75,
+            height: 18,
+            alignSelf: "center",
+            borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+          }}
+        />
 
         {/* Export */}
         <Box

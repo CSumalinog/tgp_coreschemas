@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import {
   notifyClient,
   notifySecHeads,
-  notifyAssignedStaff,
+  notifySpecificStaff,
 } from "./NotificationService";
 
 /**
@@ -249,13 +249,52 @@ export async function approveRequest(requestId, adminNotes = "") {
     createdBy: currentUserId,
   });
 
-  await notifyAssignedStaff({
-    requestId,
-    type: "assigned",
-    title: "You Have a Coverage Assignment",
-    message: `You have been assigned to cover "${requestTitle}". Check your assignments for details.`,
-    createdBy: currentUserId,
+  const { data: assignmentRows } = await supabase
+    .from("coverage_assignments")
+    .select("assigned_to, assigned_by")
+    .eq("request_id", requestId);
+
+  const assignerIds = [
+    ...new Set((assignmentRows || []).map((a) => a.assigned_by).filter(Boolean)),
+  ];
+
+  const assignerMap = {};
+  if (assignerIds.length > 0) {
+    const { data: assigners } = await supabase
+      .from("profiles")
+      .select("id, full_name, position, designation, section")
+      .in("id", assignerIds);
+
+    (assigners || []).forEach((p) => {
+      assignerMap[p.id] = p;
+    });
+  }
+
+  const staffToAssigner = new Map();
+  (assignmentRows || []).forEach((row) => {
+    if (!row.assigned_to || staffToAssigner.has(row.assigned_to)) return;
+    staffToAssigner.set(row.assigned_to, row.assigned_by || null);
   });
+
+  await Promise.all(
+    [...staffToAssigner.entries()].map(([staffId, assignerId]) => {
+      const assigner = assignerMap[assignerId] || null;
+      const assignerName = assigner?.full_name || "Your section head";
+      const assignerDesignation =
+        assigner?.designation ||
+        assigner?.position ||
+        (assigner?.section ? `${assigner.section} Section Head` : "Section Head");
+
+      return notifySpecificStaff({
+        staffIds: [staffId],
+        requestId,
+        type: "assigned",
+        title: "Coverage Assignment Finalized",
+        message: `${assignerName} - ${assignerDesignation}, assigned you to cover "${requestTitle}". Admin approval has finalized this assignment.`,
+        createdBy: currentUserId,
+      });
+    }),
+  );
 
   return data;
 }

@@ -147,7 +147,7 @@ const CoverageRequestDetailsPage = () => {
           flexShrink: 0,
         }}
       >
-        <Typography sx={{ fontSize: "0.98rem", fontWeight: 600, color: "text.primary" }}>
+        <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: "text.primary", letterSpacing: "-0.01em" }}>
           Request Details
         </Typography>
       </Box>

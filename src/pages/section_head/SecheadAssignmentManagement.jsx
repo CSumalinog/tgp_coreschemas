@@ -29,6 +29,7 @@ import {
   Drawer,
   Tooltip,
   Snackbar,
+  Divider,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -56,6 +57,11 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { notifyAdmins } from "../../services/NotificationService";
+import {
+  TABLE_USER_AVATAR_FONT_SIZE,
+  TABLE_USER_AVATAR_SIZE,
+} from "../../utils/layoutTokens";
 import {
   RoleArchiveManagement,
   RoleTrashManagement,
@@ -463,9 +469,9 @@ function AvatarStackPopover({ staffers = [], isDark, border, renderExtra }) {
               <Avatar
                 src={url || undefined}
                 sx={{
-                  width: 28,
-                  height: 28,
-                  fontSize: "0.65rem",
+                  width: TABLE_USER_AVATAR_SIZE,
+                  height: TABLE_USER_AVATAR_SIZE,
+                  fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                   fontWeight: 500,
                   flexShrink: 0,
                   backgroundColor: clr.bg,
@@ -1489,25 +1495,13 @@ export default function SecHeadAssignmentManagement() {
       if (error) throw error;
 
       if (allSectionsSubmitted) {
-        const { data: admins } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("role", "admin")
-          .eq("is_active", true);
-        if (admins?.length) {
-          await supabase.from("notifications").insert(
-            admins.map((admin) => ({
-              user_id: admin.id,
-              recipient_id: admin.id,
-              recipient_role: "admin",
-              request_id: requestId,
-              type: "for_approval",
-              title: "Assignment Ready for Approval",
-              message: `All sections have submitted their staff assignments for "${req?.title || "a coverage request"}" — ready for your approval.`,
-              is_read: false,
-            })),
-          );
-        }
+        await notifyAdmins({
+          type: "for_approval",
+          title: "Assignment Ready for Approval",
+          message: `All sections have submitted their staff assignments for "${req?.title || "a coverage request"}" — ready for your approval.`,
+          requestId,
+          createdBy: currentUser.id,
+        });
       }
       setConfirmRequest(null);
       setPostAssignReview(null);
@@ -1966,7 +1960,7 @@ export default function SecHeadAssignmentManagement() {
           <Typography
             sx={{
               fontFamily: dm,
-              fontSize: "0.95rem",
+              fontSize: "0.8rem",
               fontWeight: 600,
               color: "text.primary",
               letterSpacing: "-0.01em",
@@ -2158,6 +2152,17 @@ export default function SecHeadAssignmentManagement() {
         </FormControl>
 
         <Box sx={{ flex: 0.35 }} />
+
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{
+            mr: 0.75,
+            height: 18,
+            alignSelf: "center",
+            borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+          }}
+        />
 
         {/* Export */}
         <Box
@@ -3009,9 +3014,9 @@ function AssignmentDialog({
         <Avatar
           src={url || undefined}
           sx={{
-            width: 36,
-            height: 36,
-            fontSize: "0.72rem",
+            width: TABLE_USER_AVATAR_SIZE,
+            height: TABLE_USER_AVATAR_SIZE,
+            fontSize: TABLE_USER_AVATAR_FONT_SIZE,
             fontWeight: 500,
             backgroundColor: isAlreadyAssigned
               ? "#22c55e"
@@ -4183,9 +4188,9 @@ function PostAssignReviewDialog({
                         <Avatar
                           src={url || undefined}
                           sx={{
-                            width: 28,
-                            height: 28,
-                            fontSize: "0.65rem",
+                            width: TABLE_USER_AVATAR_SIZE,
+                            height: TABLE_USER_AVATAR_SIZE,
+                            fontSize: TABLE_USER_AVATAR_FONT_SIZE,
                             fontWeight: 600,
                             backgroundColor: clr.bg,
                             color: clr.color,

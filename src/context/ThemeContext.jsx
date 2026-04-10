@@ -132,6 +132,26 @@ function buildTheme(isDark) {
           },
         },
       },
+      MuiSvgIcon: {
+        defaultProps: {
+          fontSize: "medium",
+        },
+        styleOverrides: {
+          root: {
+            fontSize: "1.5rem !important",
+          },
+        },
+      },
+      MuiIcon: {
+        defaultProps: {
+          fontSize: "medium",
+        },
+        styleOverrides: {
+          root: {
+            fontSize: "1.5rem !important",
+          },
+        },
+      },
       MuiButtonBase: {
         styleOverrides: {
           root: {
@@ -309,6 +329,27 @@ function DataGridStyles({ isDark }) {
           fontSize: "0.78rem !important",
           fontFamily: `${dm} !important`,
         },
+        ".MuiDataGrid-cell .MuiButton-root": {
+          minWidth: "72px !important",
+          width: "72px !important",
+          height: "30px !important",
+          padding: "0 12px !important",
+          borderRadius: "10px !important",
+          fontFamily: `${dm} !important`,
+          fontSize: "0.73rem !important",
+          fontWeight: "600 !important",
+          lineHeight: "1.2 !important",
+          textTransform: "none !important",
+          boxShadow: "none !important",
+        },
+        ".MuiDataGrid-cell .MuiIconButton-root": {
+          width: "30px !important",
+          height: "30px !important",
+          borderRadius: "10px !important",
+        },
+        ".MuiDataGrid-cell .MuiIconButton-root .MuiSvgIcon-root": {
+          fontSize: "1.5rem !important",
+        },
         // ── Row highlight on click ───────────────────────────────────────────────
         ".MuiDataGrid-row.row--highlighted": {
           backgroundColor: "rgba(245,197,43,0.10) !important",
@@ -392,7 +433,7 @@ function DataGridStyles({ isDark }) {
           backgroundColor: `${isDark ? "rgba(255,255,255,0.06)" : "rgba(33,33,33,0.04)"} !important`,
         },
         ".MuiDataGrid-toolbarContainer .MuiButtonBase-root .MuiSvgIcon-root": {
-          fontSize: "1rem !important",
+          fontSize: "1.5rem !important",
         },
         ".MuiDataGrid-columnHeaderTitle": {
           fontSize: "0.65rem !important",
@@ -468,7 +509,7 @@ function DataGridStyles({ isDark }) {
           transition: "color 0.12s !important",
         },
         ".MuiDataGrid-menuList .MuiMenuItem-root .MuiSvgIcon-root": {
-          fontSize: "1rem !important",
+          fontSize: "1.5rem !important",
           color: `${iconColor} !important`,
         },
         ".MuiDataGrid-menuList .MuiMenuItem-root:hover .MuiListItemIcon-root": {

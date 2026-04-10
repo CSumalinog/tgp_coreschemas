@@ -743,7 +743,6 @@ function NavItem({ label, Icon, to }) {
           >
             <Icon
               sx={{
-                fontSize: 15,
                 color: active ? GOLD : TEXT_ICON,
                 transition: "color 0.15s",
               }}
@@ -753,7 +752,7 @@ function NavItem({ label, Icon, to }) {
         <Typography
           sx={{
             fontFamily: dm,
-            fontSize: "0.81rem",
+            fontSize: "0.8rem",
             fontWeight: active ? 600 : 400,
             color: active ? GOLD : TEXT_SECONDARY,
             flex: 1,

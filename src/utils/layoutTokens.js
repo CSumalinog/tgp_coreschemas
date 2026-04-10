@@ -13,6 +13,10 @@ export const FILTER_BUTTON_HEIGHT = 38;
 export const FILTER_ROW_GAP = 1;
 export const FILTER_GROUP_GAP = 0.75;
 export const FILTER_SEARCH_MIN_WIDTH = 250;
+export const FILTER_SEARCH_MAX_WIDTH = 440;
+export const FILTER_STATUS_MIN_WIDTH = 158;
+export const FILTER_SEMESTER_MIN_WIDTH = 170;
+export const FILTER_CLIENT_MIN_WIDTH = 170;
 
 // Shared user-avatar sizing for table/list rows.
 export const TABLE_USER_AVATAR_SIZE = 36;

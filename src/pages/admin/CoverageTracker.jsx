@@ -969,8 +969,8 @@ export default function CoverageTracker() {
           }}
           sx={{
             fontFamily: dm,
-            fontSize: "0.95rem",
-            fontWeight: activeTab === "tracker" ? 700 : 600,
+            fontSize: "0.8rem",
+            fontWeight: activeTab === "tracker" ? 600 : 400,
             color: activeTab === "tracker" ? "text.primary" : "text.secondary",
             letterSpacing: "-0.01em",
             cursor: "pointer",
@@ -992,8 +992,8 @@ export default function CoverageTracker() {
           }}
           sx={{
             fontFamily: dm,
-            fontSize: "0.95rem",
-            fontWeight: activeTab === "ctr" ? 700 : 600,
+            fontSize: "0.8rem",
+            fontWeight: activeTab === "ctr" ? 600 : 400,
             color: activeTab === "ctr" ? "text.primary" : "text.secondary",
             letterSpacing: "-0.01em",
             cursor: "pointer",
@@ -1120,6 +1120,17 @@ export default function CoverageTracker() {
         </FormControl>
 
         <Box sx={{ flex: 1 }} />
+
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{
+            mr: 0.75,
+            height: 18,
+            alignSelf: "center",
+            borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
+          }}
+        />
 
         <Box
           onClick={openGlobalExportMenu}

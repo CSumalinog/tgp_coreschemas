@@ -432,7 +432,6 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
         >
           <Icon
             sx={{
-              fontSize: isChild ? 13 : 15,
               color: active ? GOLD : TEXT_ICON,
               transition: "color 0.15s",
             }}
@@ -442,7 +441,7 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
       <Typography
         sx={{
           fontFamily: dm,
-          fontSize: isChild ? "0.76rem" : "0.81rem",
+          fontSize: isChild ? "0.76rem" : "0.8rem",
           fontWeight: active ? 600 : 400,
           color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
           flex: 1,
