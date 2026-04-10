@@ -883,12 +883,12 @@ export default function NotificationsPage() {
 
                         <Box
                           sx={{
-                            width: 20,
-                            height: 20,
+                            width: 22,
+                            height: 22,
                             borderRadius: "50%",
                             position: "absolute",
-                            right: -3,
-                            bottom: -3,
+                            right: -4,
+                            bottom: -4,
                             backgroundColor: "#ffffff",
                             zIndex: 1,
                             pointerEvents: "none",
@@ -897,8 +897,8 @@ export default function NotificationsPage() {
 
                         <Box
                           sx={{
-                            width: 18,
-                            height: 18,
+                            width: 19,
+                            height: 19,
                             borderRadius: "50%",
                             display: "inline-flex",
                             alignItems: "center",
@@ -913,8 +913,10 @@ export default function NotificationsPage() {
                         >
                           <TypeIcon
                             sx={{
-                              fontSize: 11,
+                              fontSize: "12px !important",
                               color: typeCfg.dot,
+                              lineHeight: 1,
+                              display: "block",
                             }}
                           />
                         </Box>

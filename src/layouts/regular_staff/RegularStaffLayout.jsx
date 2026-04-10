@@ -404,6 +404,10 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
         backgroundColor: active ? ACTIVE_BG : "transparent",
         transition: "background 0.15s",
         "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
+        "&:hover .nav-item-icon": { color: GOLD },
+        "&:hover .nav-item-label": {
+          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+        },
         "&::before": active
           ? {
               content: '""',
@@ -433,6 +437,7 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
           }}
         >
           <Icon
+            className="nav-item-icon"
             sx={{
               color: active ? GOLD : TEXT_ICON,
               transition: "color 0.15s",
@@ -441,6 +446,7 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
         </Box>
       )}
       <Typography
+        className="nav-item-label"
         sx={{
           fontFamily: dm,
           fontSize: isChild ? "0.76rem" : "0.8rem",

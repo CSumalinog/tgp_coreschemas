@@ -821,8 +821,8 @@ export default function NotificationBell({ userId }) {
 
                         <Box
                           sx={{
-                            width: 16,
-                            height: 16,
+                            width: 17,
+                            height: 17,
                             borderRadius: "50%",
                             position: "absolute",
                             right: -2,
@@ -835,8 +835,8 @@ export default function NotificationBell({ userId }) {
 
                         <Box
                           sx={{
-                            width: 14,
-                            height: 14,
+                            width: 15,
+                            height: 15,
                             borderRadius: "50%",
                             display: "inline-flex",
                             alignItems: "center",
@@ -851,8 +851,10 @@ export default function NotificationBell({ userId }) {
                         >
                           <Icon
                             sx={{
-                              fontSize: 9,
+                              fontSize: "10px !important",
                               color: cfg.dot,
+                              lineHeight: 1,
+                              display: "block",
                             }}
                           />
                         </Box>
