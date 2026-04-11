@@ -23,26 +23,28 @@ import {
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
+import PageFilterToolbar from "../../components/common/PageFilterToolbar";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { supabase } from "../../lib/supabaseClient";
 import CloseIcon from "@mui/icons-material/Close";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import SearchIcon from "@mui/icons-material/Search";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
+  FILTER_SEARCH_FLEX,
   FILTER_INPUT_HEIGHT,
-  FILTER_ROW_GAP,
+  FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
@@ -914,45 +916,25 @@ export default function AdminRequestManagement() {
         fontFamily: dm,
       }}
     >
-      {/* ── Header ── */}
-      <Box
-        sx={{
-          mb: 2.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}
-      >
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            color: "text.primary",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Request Management
-        </Typography>
-      </Box>
-
       {/* ── Filter row ── */}
-      <Box
+      <PageFilterToolbar
+        mb={2}
         sx={{
-          mb: 2,
-          display: "flex",
-          alignItems: "center",
-          gap: FILTER_ROW_GAP,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-          flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
         <FormControl
           size="small"
-          sx={{ flex: 2.4, minWidth: FILTER_SEARCH_MIN_WIDTH, maxWidth: 440 }}
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
         >
           <OutlinedInput
             placeholder="Search"
@@ -1100,7 +1082,7 @@ export default function AdminRequestManagement() {
           </Select>
         </FormControl>
 
-        <Box sx={{ flex: 0.35 }} />
+        <Box sx={{ flex: 1 }} />
 
         <Divider
           orientation="vertical"
@@ -1171,7 +1153,7 @@ export default function AdminRequestManagement() {
             <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
-      </Box>
+      </PageFilterToolbar>
 
       {/* ── Table ── */}
       <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
@@ -1234,9 +1216,7 @@ export default function AdminRequestManagement() {
                   printOptions: { disableToolbarButton: true },
                 },
               }}
-              rowHeight={
-                statusFilter === "Forwarded" ? 56 : 56
-              }
+              rowHeight={statusFilter === "Forwarded" ? 56 : 56}
               getRowHeight={
                 statusFilter === "Forwarded"
                   ? ({ model }) => {

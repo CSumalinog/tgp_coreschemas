@@ -18,13 +18,13 @@ import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNone
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DoneAllOutlinedIcon from "@mui/icons-material/DoneAllOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
+import ArrowOutwardIcon from "@mui/icons-material/ArrowOutwardOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
@@ -36,6 +36,7 @@ import {
   getNotificationPagePath,
   isNotificationNavigable,
 } from "../../utils/notificationRouting";
+import { LAYOUT_ICON_BASE, LAYOUT_ICON_MD } from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -468,7 +469,9 @@ export default function NotificationBell({ userId }) {
                 },
               ]}
             >
-              <NotificationsNoneOutlinedIcon sx={{ fontSize: 18 }} />
+              <NotificationsNoneOutlinedIcon
+                sx={{ fontSize: LAYOUT_ICON_MD }}
+              />
             </Badge>
           </IconButton>
         </Tooltip>
@@ -577,7 +580,7 @@ export default function NotificationBell({ userId }) {
                     },
                   }}
                 >
-                  <MoreVertIcon sx={{ fontSize: 17 }} />
+                  <MoreVertIcon sx={{ fontSize: LAYOUT_ICON_MD }} />
                 </IconButton>
               </Box>
 
@@ -989,7 +992,7 @@ export default function NotificationBell({ userId }) {
               >
                 <ListItemIcon sx={{ minWidth: 28 }}>
                   <DoneAllOutlinedIcon
-                    sx={{ fontSize: 16, color: "text.secondary" }}
+                    sx={{ fontSize: LAYOUT_ICON_BASE, color: "text.secondary" }}
                   />
                 </ListItemIcon>
                 Mark all as read
@@ -1003,7 +1006,7 @@ export default function NotificationBell({ userId }) {
               >
                 <ListItemIcon sx={{ minWidth: 28 }}>
                   <RefreshOutlinedIcon
-                    sx={{ fontSize: 16, color: "text.secondary" }}
+                    sx={{ fontSize: LAYOUT_ICON_BASE, color: "text.secondary" }}
                   />
                 </ListItemIcon>
                 Refresh

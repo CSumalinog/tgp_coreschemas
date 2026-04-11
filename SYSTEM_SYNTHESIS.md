@@ -968,7 +968,82 @@ The [`DutyScheduleView`](src/pages/admin/DutyScheduleView.jsx:1) component recei
 - Toast notifications for schedule changes
 - Auto-refresh on external modifications
 
-### 9.28 Section Head Interface Restructuring (v2.5)
+### 9.28 Advanced Duty Schedule Governance (v2.5)
+
+The [`DutyScheduleView`](src/pages/admin/DutyScheduleView.jsx:1) component received comprehensive governance and operations features:
+
+#### Blackout Dates Management
+
+- **Operations Panel**: Settings drawer with dedicated blackout dates section
+- **Date Input**: Add dates when no duty operations should occur
+- **Reason Tracking**: Optional reason for each blackout date
+- **Removable Tags**: Visual tag display with remove functionality
+- **Persistence**: Stored in `duty_schedule_blackout_dates` table per semester
+
+#### Roster Publishing System
+
+- **Versioned Snapshots**: Create permanent records of duty roster state
+- **Publishing Workflow**: Confirm dialog with roster summary and CSV export option
+- **Publication History**: View all past published rosters with version numbers
+- **Snapshot Viewer**: Dialog showing published roster by day with section/duty day grouping
+- **Selection Management**: Switch between different published versions
+- **CSV Export**: Export any published snapshot to CSV
+- **Storage**: Published rosters stored in `duty_schedule_publications` table with:
+  - `version`: Sequential version number
+  - `published_at`: Timestamp
+  - `published_by`: Admin who published
+  - `snapshot`: JSON array of staffer records
+
+#### Audit Trail System
+
+- **Complete Activity Log**: All duty schedule actions tracked
+- **Action Types**: duty_change_approved, duty_change_rejected, duty_blackout_date_added, duty_blackout_date_removed, duty_roster_published
+- **Search & Filter**: Full-text search across actor, target, action, and reasons
+- **CSV Export**: Export audit logs for external analysis
+- **Storage**: Logs stored in `duty_schedule_audit_logs` table with:
+  - `actor_id`: Admin who performed action
+  - `target_staffer_id`: Affected staff member
+  - `request_id`: Related change request
+  - `action_type`: Type of action
+  - `metadata`: JSON with additional context (from_day, to_day, reason, etc.)
+  - `created_at`: Timestamp
+
+#### Settings Drawer
+
+- **Three-Tab Interface**: Operations, Governance, Audit Trail
+- **Operations Panel**: Blackout dates management
+- **Governance Panel**: Publishing controls, publication history, version selection
+- **Audit Panel**: Searchable audit log with export
+
+#### Division Composition Tracking
+
+- **Team Balance Visualization**: Display Scribes vs Creatives count per day
+- **Projected Composition**: Shows how composition changes after requested duty day
+- **Balance Policy Enforcement**: Prevents changes that would leave a day without both divisions
+- **Visual Indicators**: Blue for Scribes (#3b82f6), Orange for Creatives (#f97316)
+
+#### Scheduling Reopen Feature
+
+- **Admin Control**: Re-enable scheduling when closed
+- **Visual Indicator**: "SCHEDULING CLOSED" warning banner with reopen link
+- **Blocking Logic**: Request approvals blocked when scheduling is closed
+- **Still Allows Declines**: Admins can still decline requests when closed
+
+#### Enhanced Day Slot Cards
+
+- **Progress Visualization**: Visual progress bars with color-coded capacity
+- **Over-Capacity Warnings**: Red "Over" badge when staffing exceeds capacity
+- **Hover Actions**: Edit icon appears on hover for capacity adjustment
+- **Click Filtering**: Click day cards to filter the duty roster table
+
+#### CSV Export Capabilities
+
+- **Schedule Export**: Full duty roster export
+- **Requests Export**: Duty change requests with status
+- **Audit Export**: Complete audit trail
+- **Snapshot Export**: Published roster versions
+
+### 9.29 Section Head Interface Restructuring (v2.5)
 
 The Section Head module received a complete architectural overhaul with new page structure and shared base component:
 
@@ -1005,7 +1080,44 @@ All section head pages now import and utilize shared layout tokens from [`layout
 
 The legacy **SecheadAssignmentManagement.jsx** component has been removed and replaced by the new modular architecture.
 
-### 9.29 Regular Staff My Schedule Enhancements (v2.6)
+### 9.29 Section Head Interface Restructuring (v2.5)
+
+The Section Head module received a complete architectural overhaul with new page structure and shared base component:
+
+#### New Page Architecture
+
+The section head navigation now uses a modular component structure:
+
+- **CoverageAssignmentPage** ([`CoverageAssignmentPage.jsx`](src/pages/section_head/CoverageAssignmentPage.jsx:1)): Manages staff assignments with views for "All", "For Assignment", "For Approval", and "Assigned" statuses
+- **CoverageTrackerPage** ([`CoverageTrackerPage.jsx`](src/pages/section_head/CoverageTrackerPage.jsx:1)): Tracks ongoing and completed coverage with "All", "On Going", and "Completed" views
+- **CoverageTimeRecordPage** ([`CoverageTimeRecordPage.jsx`](src/pages/section_head/CoverageTimeRecordPage.jsx:1)): Comprehensive time record management with filtering, search, and CSV export capabilities
+
+#### CoverageManagementBase Component
+
+A new shared base component ([`CoverageManagementBase.jsx`](src/pages/section_head/CoverageManagementBase.jsx:1)) provides:
+
+- **Configurable Views**: Page-specific view definitions with customizable tabs and filtering
+- **DataGrid Integration**: Full-featured data tables with sorting, filtering, and pagination
+- **Real-time Updates**: Live subscription to coverage_requests and coverage_assignments tables
+- **Assignment Workflow**: Complete assignment creation, editing, and submission workflow
+- **Coverage Completion**: Staff can mark assignments as complete with dialog confirmation
+- **View Details**: Drawer-based detail view for examining individual requests
+- **Export Functionality**: CSV export with customizable filename
+- **Archive/Trash Management**: Integration with role-based archive and trash systems
+- **Unified Styling**: Consistent use of layout tokens (TABLE_USER_AVATAR_SIZE, TABLE_USER_AVATAR_FONT_SIZE)
+
+#### Layout Token Integration
+
+All section head pages now import and utilize shared layout tokens from [`layoutTokens.js`](src/utils/layoutTokens.js:1):
+
+- FILTER_SEARCH_MIN_WIDTH, FILTER_ROW_GAP, FILTER_INPUT_HEIGHT
+- TABLE_USER_AVATAR_SIZE, TABLE_USER_AVATAR_FONT_SIZE
+
+#### Deprecation
+
+The legacy **SecheadAssignmentManagement.jsx** component has been removed and replaced by the new modular architecture.
+
+### 9.30 Regular Staff My Schedule Enhancements (v2.6)
 
 The MySchedule page received comprehensive UI enhancements for duty day management with improved visualization and interaction:
 

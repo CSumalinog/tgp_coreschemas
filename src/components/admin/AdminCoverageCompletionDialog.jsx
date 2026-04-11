@@ -10,7 +10,7 @@ import {
   Collapse,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../common/UserAvatar";
@@ -656,3 +656,5 @@ export default function AdminCoverageCompletionDialog({
     </Dialog>
   );
 }
+
+

@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Typography, CircularProgress, Avatar } from "@mui/material";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import AccessTimeIcon from "@mui/icons-material/AccessTimeOutlined";
 import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -1087,3 +1087,5 @@ export default function TimeoutPage() {
     </Box>
   );
 }
+
+

@@ -37,19 +37,19 @@ import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import SearchIcon from "@mui/icons-material/Search";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
+import ExpandLessIcon from "@mui/icons-material/ExpandLessOutlined";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
 import CoverageCompletionDialog from "../../components/section_head/CoverageCompletionDialog";
@@ -59,6 +59,11 @@ import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { notifyAdmins } from "../../services/NotificationService";
 import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_SEARCH_FLEX,
+  FILTER_SEARCH_MAX_WIDTH,
+  FILTER_SEARCH_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -154,7 +159,8 @@ const getAvailableViewOptions = (allowedViews) =>
   VIEW_OPTIONS.filter((option) => allowedViews.includes(option.key));
 
 const getPreferredView = (allowedViews, preferredView) => {
-  if (preferredView && allowedViews.includes(preferredView)) return preferredView;
+  if (preferredView && allowedViews.includes(preferredView))
+    return preferredView;
   return getAvailableViewOptions(allowedViews)[0]?.key || VIEW_OPTIONS[0].key;
 };
 
@@ -643,7 +649,7 @@ export default function CoverageManagementBase({
   settingsTitle = "Assignment Settings",
   defaultView = "for-assignment",
   allowedViews = VIEW_OPTIONS.map((option) => option.key),
-  showHeader = true,
+  showHeader = false,
   compactTop = false,
   descriptions = {},
 }) {
@@ -741,7 +747,8 @@ export default function CoverageManagementBase({
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
   const [completionDetailsOpen, setCompletionDetailsOpen] = useState(false);
-  const [selectedCompletionAssignment, setSelectedCompletionAssignment] = useState(null);
+  const [selectedCompletionAssignment, setSelectedCompletionAssignment] =
+    useState(null);
   const openedFromNotificationRef = useRef(null);
 
   // ── Load user ─────────────────────────────────────────────────────────────
@@ -1897,19 +1904,20 @@ export default function CoverageManagementBase({
           pr: 0.5,
         }}
       >
-        {(viewFilter === "for-assignment" || p.row?.rowView === "for-assignment") &&
+        {(viewFilter === "for-assignment" ||
+          p.row?.rowView === "for-assignment") &&
           !hasBulkSelection && (
-          <ViewActionButton
-            onClick={(e) => {
-              e.stopPropagation();
-              openAssignDialog(p.row);
-            }}
-          >
-            {p.row?.myPartial
-              ? `Assign (${p.row?.assignedDayCount}/${p.row?.totalDays})`
-              : "Assign"}
-          </ViewActionButton>
-        )}
+            <ViewActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                openAssignDialog(p.row);
+              }}
+            >
+              {p.row?.myPartial
+                ? `Assign (${p.row?.assignedDayCount}/${p.row?.totalDays})`
+                : "Assign"}
+            </ViewActionButton>
+          )}
         {(viewFilter === "assigned" || p.row?.rowView === "assigned") &&
           !hasBulkSelection &&
           p.row?.myHasAssignments &&
@@ -1926,16 +1934,16 @@ export default function CoverageManagementBase({
         {(viewFilter === "completed" || p.row?.rowView === "completed") &&
           !hasBulkSelection &&
           p.row?.staffers?.length > 0 && (
-          <ViewActionButton
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedCompletionAssignment(p.row);
-              setCompletionDetailsOpen(true);
-            }}
-          >
-            View Details
-          </ViewActionButton>
-        )}
+            <ViewActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedCompletionAssignment(p.row);
+                setCompletionDetailsOpen(true);
+              }}
+            >
+              View Details
+            </ViewActionButton>
+          )}
         <IconButton
           size="small"
           disabled={hasBulkSelection}
@@ -2017,7 +2025,9 @@ export default function CoverageManagementBase({
     <Box
       sx={{
         px: { xs: 1.5, sm: 2, md: 3 },
-        pt: compactTop ? { xs: 0.5, sm: 0.75, md: 1 } : { xs: 1.5, sm: 2, md: 3 },
+        pt: compactTop
+          ? { xs: 0.5, sm: 0.75, md: 1 }
+          : { xs: 1.5, sm: 2, md: 3 },
         pb: { xs: 1.5, sm: 2, md: 3 },
         height: "100%",
         boxSizing: "border-box",
@@ -2075,12 +2085,21 @@ export default function CoverageManagementBase({
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: "10px",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
         <FormControl
           size="small"
-          sx={{ flex: 2.4, minWidth: 250, maxWidth: 440 }}
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
         >
           <OutlinedInput
             placeholder="Search"
@@ -2225,7 +2244,7 @@ export default function CoverageManagementBase({
           </Select>
         </FormControl>
 
-        <Box sx={{ flex: 0.35 }} />
+        <Box sx={{ flex: 1 }} />
 
         <Divider
           orientation="vertical"
@@ -2246,8 +2265,8 @@ export default function CoverageManagementBase({
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: 36,
-            borderRadius: "10px",
+            height: FILTER_BUTTON_HEIGHT,
+            borderRadius: CONTROL_RADIUS,
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
             fontFamily: dm,
@@ -2274,10 +2293,10 @@ export default function CoverageManagementBase({
             size="small"
             onClick={() => setSettingsOpen(true)}
             sx={{
-              borderRadius: "10px",
+              borderRadius: CONTROL_RADIUS,
               p: 0.7,
-              height: 36,
-              width: 36,
+              height: FILTER_BUTTON_HEIGHT,
+              width: FILTER_BUTTON_HEIGHT,
               border: "1px solid rgba(0,0,0,0.12)",
               color: "text.secondary",
               backgroundColor: isDark ? "transparent" : "#f7f7f8",
@@ -4139,7 +4158,11 @@ function PostAssignReviewDialog({
               Assignment Saved
             </Typography>
             <Typography
-              sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.7rem",
+                color: "text.secondary",
+              }}
             >
               Review the assigned staff before submitting for admin approval.
             </Typography>
@@ -4239,7 +4262,9 @@ function PostAssignReviewDialog({
                 >
                   {isMultiDay ? fmtDate(dateStr) : "Staffers assigned"}
                 </Typography>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}
+                >
                   {staffers.map((s) => {
                     const url = getAvatarUrl(s.avatar_url);
                     const clr = getAvatarColor(s.id);

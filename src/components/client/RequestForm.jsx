@@ -33,8 +33,8 @@ import {
   parseISO,
 } from "date-fns";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeftOutlined";
+import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   fetchClientTypes,
@@ -1797,3 +1797,4 @@ function FormSection({ label, children }) {
     </Box>
   );
 }
+

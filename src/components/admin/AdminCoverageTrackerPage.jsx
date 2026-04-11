@@ -8,10 +8,10 @@ import {
   Collapse,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import OpenInFullIcon from "@mui/icons-material/OpenInFullOutlined";
+import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreenOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../common/UserAvatar";
 
@@ -681,3 +681,5 @@ export default function AdminCoverageTrackerPage({
     </Box>
   );
 }
+
+

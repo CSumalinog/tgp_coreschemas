@@ -28,16 +28,16 @@ import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import SearchIcon from "@mui/icons-material/Search";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import { useSearchParams } from "react-router-dom";
@@ -57,8 +57,10 @@ import NumberBadge from "../../components/common/NumberBadge";
 import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
+  FILTER_SEARCH_FLEX,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
+  FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
@@ -189,6 +191,7 @@ export default function StaffersManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
+  const focusStaffId = searchParams.get("focus") || "";
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState("create");
@@ -282,6 +285,28 @@ export default function StaffersManagement() {
         .map((s) => ({ id: s.id, ...s })),
     [staffers, activeTab],
   );
+
+  useEffect(() => {
+    if (!focusStaffId || loading || filteredRows.length === 0) return;
+
+    const rowExists = filteredRows.some(
+      (row) => String(row.id) === String(focusStaffId),
+    );
+    if (!rowExists) return;
+
+    setRowSelectionModel({
+      type: "include",
+      ids: new Set([focusStaffId]),
+    });
+
+    queueMicrotask(() => {
+      const rowIndex =
+        gridApiRef.current?.getRowIndexRelativeToVisibleRows?.(focusStaffId);
+      if (typeof rowIndex === "number" && rowIndex >= 0) {
+        gridApiRef.current?.scrollToIndexes?.({ rowIndex });
+      }
+    });
+  }, [focusStaffId, filteredRows, loading, gridApiRef]);
 
   const getCount = (tab) =>
     tab === "All"
@@ -855,19 +880,7 @@ export default function StaffersManagement() {
         fontFamily: dm,
       }}
     >
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontWeight: 600,
-          fontSize: "0.8rem",
-          color: "text.primary",
-          letterSpacing: "-0.01em",
-          mb: 2,
-          flexShrink: 0,
-        }}
-      >
-        Staffers Management
-      </Typography>
+     
 
       {error && (
         <Alert
@@ -894,10 +907,22 @@ export default function StaffersManagement() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
-        <FormControl size="small" sx={{ flex: 1, minWidth: FILTER_SEARCH_MIN_WIDTH }}>
+        <FormControl
+          size="small"
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
+        >
           <OutlinedInput
             placeholder="Search"
             value={searchText}
@@ -1255,8 +1280,10 @@ export default function StaffersManagement() {
                 },
               ]}
               getRowClassName={(params) =>
-                highlight &&
-                params.row.full_name?.toLowerCase().includes(highlight)
+                (focusStaffId &&
+                  String(params.row.id) === String(focusStaffId)) ||
+                (highlight &&
+                  params.row.full_name?.toLowerCase().includes(highlight))
                   ? "highlighted-row"
                   : ""
               }
@@ -1913,7 +1940,10 @@ export default function StaffersManagement() {
                       gap: 1,
                     }}
                   >
-                    <Box component="span" sx={{ letterSpacing: createdShowPassword ? 0 : "0.04em" }}>
+                    <Box
+                      component="span"
+                      sx={{ letterSpacing: createdShowPassword ? 0 : "0.04em" }}
+                    >
                       {createdShowPassword
                         ? value
                         : value === "—"
@@ -2500,7 +2530,17 @@ function PrimaryBtn({ onClick, loading, children, tone = "dark" }) {
   );
 }
 
-function StyledField({ border, children, ...props }) {
+function StyledField({ border, children, InputProps, slotProps, ...props }) {
+  const mergedSlotProps = InputProps
+    ? {
+        ...(slotProps || {}),
+        input: {
+          ...(slotProps?.input || {}),
+          ...InputProps,
+        },
+      }
+    : slotProps;
+
   return (
     <TextField
       size="small"
@@ -2518,6 +2558,7 @@ function StyledField({ border, children, ...props }) {
         "& .MuiInputLabel-root.Mui-focused": { color: "#b45309" },
         "& .MuiFormHelperText-root": { fontFamily: dm, fontSize: "0.72rem" },
       }}
+      slotProps={mergedSlotProps}
       {...props}
     >
       {children}

@@ -17,6 +17,7 @@ import AdminRequestManagement from "../pages/admin/AdminRequestManagement";
 import CoverageTracker from "../pages/admin/CoverageTracker";
 import CoverageRequestDetailsPage from "../pages/admin/CoverageRequestDetailsPage";
 import CalendarManagement from "../pages/admin/CalendarManagement";
+import BlockingDetailsLog from "../pages/admin/BlockingDetailsLog";
 import StaffersManagement from "../pages/admin/StaffersManagement";
 import SemesterManagement from "../pages/admin/SemesterManagement";
 import DutyScheduleView from "../pages/admin/DutyScheduleView";
@@ -72,20 +73,29 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="request-management" element={<AdminRequestManagement />} />
-        <Route path="coverage-tracker" element={<CoverageTracker />} />
+        <Route path="coverage-tracker" element={<Navigate to="/admin/coverage-tracker/requests" replace />} />
+        <Route path="coverage-tracker/requests" element={<CoverageTracker />} />
+        <Route path="coverage-tracker/time-record" element={<CoverageTracker />} />
         <Route path="coverage-request-details/:id" element={<CoverageRequestDetailsPage />} />
         <Route
           path="coverage-tracker/:requestId"
-          element={<Navigate to="/admin/coverage-tracker" replace />}
+          element={<Navigate to="/admin/coverage-tracker/requests" replace />}
         />
         <Route
           path="request-management/coverage-tracker/:requestId"
-          element={<Navigate to="/admin/coverage-tracker" replace />}
+          element={<Navigate to="/admin/coverage-tracker/requests" replace />}
         />
         <Route path="calendar-management" element={<CalendarManagement />} />
+        <Route
+          path="calendar-management/blocking-details"
+          element={<BlockingDetailsLog />}
+        />
         <Route path="staffers-management" element={<StaffersManagement />} />
         <Route path="semester-management" element={<SemesterManagement />} />
         <Route path="duty-schedule-view" element={<DutyScheduleView />} />
+        <Route path="schedule-requests-tracker" element={<Navigate to="/admin/duty-schedule-view" replace />} />
+        <Route path="duty-schedule-view/schedule" element={<Navigate to="/admin/duty-schedule-view" replace />} />
+        <Route path="duty-schedule-view/change-requests" element={<Navigate to="/admin/duty-schedule-view" replace />} />
         <Route path="archive" element={<Navigate to="/admin/request-management" replace />} />
         <Route path="trash" element={<Navigate to="/admin/request-management" replace />} />
         <Route path="notification-cleanup" element={<Navigate to="/admin/request-management" replace />} />

@@ -13,11 +13,11 @@ import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import GpsFixedIcon from "@mui/icons-material/GpsFixed";
-import GpsNotFixedIcon from "@mui/icons-material/GpsNotFixed";
-import GpsOffIcon from "@mui/icons-material/GpsOff";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import GpsFixedIcon from "@mui/icons-material/GpsFixedOutlined";
+import GpsNotFixedIcon from "@mui/icons-material/GpsNotFixedOutlined";
+import GpsOffIcon from "@mui/icons-material/GpsOffOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────

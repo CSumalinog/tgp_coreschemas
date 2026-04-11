@@ -12,7 +12,7 @@ import {
   useTheme,
   Collapse,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import MenuIcon from "@mui/icons-material/MenuOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
@@ -20,15 +20,21 @@ import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import LogoutIcon from "@mui/icons-material/Logout";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import LogoutIcon from "@mui/icons-material/LogoutOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
+import TopbarRouteTitle from "../../components/common/TopbarRouteTitle";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import {
+  LAYOUT_ICON_LG,
+  LAYOUT_ICON_MD,
+  LAYOUT_ICON_SM,
+} from "../../utils/layoutTokens";
 import brandLogo from "../../assets/img/cs-logo.png";
 
 const SIDEBAR_W = 228;
@@ -167,7 +173,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
         },
         <>
           <AccountCircleOutlinedIcon
-            sx={{ fontSize: 15, color: "rgba(53,53,53,0.45)" }}
+            sx={{ fontSize: LAYOUT_ICON_SM, color: "rgba(53,53,53,0.45)" }}
           />
           <Typography
             sx={{
@@ -185,7 +191,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
         toggleDark,
         <>
           <DarkModeOutlinedIcon
-            sx={{ fontSize: 15, color: "rgba(53,53,53,0.45)" }}
+            sx={{ fontSize: LAYOUT_ICON_SM, color: "rgba(53,53,53,0.45)" }}
           />
           <Typography
             sx={{
@@ -227,7 +233,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
           navigate("/login");
         },
         <>
-          <LogoutIcon sx={{ fontSize: 15, color: "#c62828" }} />
+          <LogoutIcon sx={{ fontSize: LAYOUT_ICON_SM, color: "#c62828" }} />
           <Typography
             sx={{
               fontFamily: dm,
@@ -308,7 +314,7 @@ function SidebarContent({ onClose, isMobile }) {
               "&:hover": { color: TEXT_PRIMARY, backgroundColor: HOVER_BG },
             }}
           >
-            <CloseIcon sx={{ fontSize: 18 }} />
+            <CloseIcon sx={{ fontSize: LAYOUT_ICON_MD }} />
           </IconButton>
         )}
       </Box>
@@ -351,7 +357,7 @@ function SidebarContent({ onClose, isMobile }) {
                       trailing={
                         <KeyboardArrowDownIcon
                           sx={{
-                            fontSize: 15,
+                            fontSize: LAYOUT_ICON_SM,
                             color: TEXT_ICON,
                             transition: "transform 0.22s",
                             transform: isOpen
@@ -597,9 +603,10 @@ function SectionHeadLayout() {
                 },
               }}
             >
-              <MenuIcon sx={{ fontSize: 20 }} />
+              <MenuIcon sx={{ fontSize: LAYOUT_ICON_LG }} />
             </IconButton>
           )}
+          <TopbarRouteTitle role="sec_head" isMobile={isMobile} />
           <Box sx={{ flex: 1 }} />
           <GlobalSearch
             role="sec_head"

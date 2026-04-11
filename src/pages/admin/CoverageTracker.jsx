@@ -19,14 +19,14 @@ import {
   useTheme,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
-import SearchIcon from "@mui/icons-material/Search";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import CloseIcon from "@mui/icons-material/Close";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import NumberBadge from "../../components/common/NumberBadge";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -37,6 +37,8 @@ import {
   CONTROL_RADIUS,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
+  FILTER_SEARCH_FLEX,
+  FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
@@ -76,7 +78,9 @@ const fmtDateStr = (
 
 const buildEventDateDisplay = (req) => {
   if (req.is_multiday && req.event_days?.length > 0) {
-    const sorted = [...req.event_days].sort((a, b) => a.date.localeCompare(b.date));
+    const sorted = [...req.event_days].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
     const first = fmtDateStr(sorted[0].date, {
       month: "short",
       day: "numeric",
@@ -86,7 +90,9 @@ const buildEventDateDisplay = (req) => {
       day: "numeric",
       year: "numeric",
     });
-    return sorted.length === 1 ? fmtDateStr(sorted[0].date) : `${first} – ${last}`;
+    return sorted.length === 1
+      ? fmtDateStr(sorted[0].date)
+      : `${first} – ${last}`;
   }
   return req.event_date
     ? new Date(req.event_date).toLocaleDateString("en-US", {
@@ -202,9 +208,8 @@ const resolveSelfieUrl = (rawSelfieUrl) => {
     .replace(/^login-proof\//i, "")
     .replace(/^\/+/, "");
 
-  return supabase.storage
-    .from("login-proof")
-    .getPublicUrl(normalizedPath)?.data?.publicUrl;
+  return supabase.storage.from("login-proof").getPublicUrl(normalizedPath)?.data
+    ?.publicUrl;
 };
 
 const getAssignmentPriority = (assignment) => {
@@ -261,10 +266,16 @@ const escapeHtml = (value) =>
     .replace(/'/g, "&#39;");
 
 const openPrintTable = (title, columns, rows) => {
-  const popup = window.open("", "_blank", "noopener,noreferrer,width=1200,height=800");
+  const popup = window.open(
+    "",
+    "_blank",
+    "noopener,noreferrer,width=1200,height=800",
+  );
   if (!popup) return;
 
-  const headerHtml = columns.map((col) => `<th>${escapeHtml(col)}</th>`).join("");
+  const headerHtml = columns
+    .map((col) => `<th>${escapeHtml(col)}</th>`)
+    .join("");
   const rowHtml = rows
     .map(
       (row) =>
@@ -395,6 +406,9 @@ export default function CoverageTracker() {
   const navigate = useNavigate();
   const location = useLocation();
   const gridApiRef = useGridApiRef();
+  const isCtrRoute = location.pathname.includes(
+    "/admin/coverage-tracker/time-record",
+  );
 
   const { requests, onGoing, completed, loading, refetch } = useAdminRequests();
 
@@ -405,16 +419,9 @@ export default function CoverageTracker() {
     title: "Coverage Assignment",
   });
 
-  const [stageFilter, setStageFilter] = useState(() => {
-    const incoming = location.state?.tab;
-    if (incoming === "Completed" || incoming === "CTR") return "Completed";
-    if (incoming === "On Going") return "On Going";
-    return "all";
-  });
-  const [activeTab, setActiveTab] = useState(() => {
-    const incoming = location.state?.tab;
-    return incoming === "Completed" || incoming === "CTR" ? "ctr" : "tracker";
-  });
+  const [stageFilter, setStageFilter] = useState(() =>
+    isCtrRoute ? "Completed" : "On Going",
+  );
   const [focusedRequestId, setFocusedRequestId] = useState(
     () => location.state?.focusRequestId || null,
   );
@@ -452,27 +459,37 @@ export default function CoverageTracker() {
     const incoming = location.state?.tab;
     const focusedId = location.state?.focusRequestId;
 
-    const frameId = window.requestAnimationFrame(() => {
-      if (incoming === "Completed") {
-        setStageFilter((prev) => (prev === "Completed" ? prev : "Completed"));
-        setActiveTab((prev) => (prev === "ctr" ? prev : "ctr"));
-      } else if (incoming === "On Going") {
-        setStageFilter((prev) => (prev === "On Going" ? prev : "On Going"));
-        setActiveTab((prev) => (prev === "tracker" ? prev : "tracker"));
-      } else if (incoming === "CTR") {
-        setActiveTab((prev) => (prev === "ctr" ? prev : "ctr"));
+    if (incoming === "CTR" || incoming === "Completed" || focusedId) {
+      if (!isCtrRoute) {
+        navigate("/admin/coverage-tracker/time-record", {
+          replace: true,
+          state: focusedId ? { focusRequestId: focusedId } : undefined,
+        });
+        return;
       }
+      setStageFilter("Completed");
+    } else if (incoming === "On Going") {
+      setStageFilter("On Going");
+    }
 
-      if (focusedId) {
-        setFocusedRequestId((prev) => (prev === focusedId ? prev : focusedId));
-        setActiveTab((prev) => (prev === "ctr" ? prev : "ctr"));
-      }
-    });
+    if (focusedId) {
+      setFocusedRequestId((prev) => (prev === focusedId ? prev : focusedId));
+    }
+  }, [
+    location.state?.tab,
+    location.state?.focusRequestId,
+    isCtrRoute,
+    navigate,
+  ]);
 
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [location.state?.tab, location.state?.focusRequestId]);
+  useEffect(() => {
+    setStageFilter(isCtrRoute ? "Completed" : "On Going");
+    if (!isCtrRoute) {
+      setFocusedRequestId(null);
+    }
+  }, [isCtrRoute]);
+
+  const activeTab = isCtrRoute ? "ctr" : "tracker";
 
   useEffect(() => {
     async function loadSemesters() {
@@ -487,9 +504,10 @@ export default function CoverageTracker() {
 
   const trackerBaseSource = useMemo(() => {
     if (stageFilter === "On Going") {
-      return dedupeById([...(onGoing || []), ...requests.filter((r) => hasAnyTimeIn(r))]).filter(
-        (r) => hasAnyAssignments(r) && hasAnyTimeIn(r),
-      );
+      return dedupeById([
+        ...(onGoing || []),
+        ...requests.filter((r) => hasAnyTimeIn(r)),
+      ]).filter((r) => hasAnyAssignments(r) && hasAnyTimeIn(r));
     }
     if (stageFilter === "Completed") {
       return dedupeById([
@@ -501,7 +519,9 @@ export default function CoverageTracker() {
     return dedupeById([
       ...(onGoing || []),
       ...(completed || []),
-      ...requests.filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status)),
+      ...requests.filter(
+        (r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status),
+      ),
     ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status));
   }, [stageFilter, onGoing, completed, requests]);
 
@@ -510,12 +530,15 @@ export default function CoverageTracker() {
       dedupeById([
         ...(onGoing || []),
         ...(completed || []),
-        ...requests.filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status)),
+        ...requests.filter(
+          (r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status),
+        ),
       ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status)),
     [onGoing, completed, requests],
   );
 
-  const sourceForFilters = activeTab === "ctr" ? ctrBaseSource : trackerBaseSource;
+  const sourceForFilters =
+    activeTab === "ctr" ? ctrBaseSource : trackerBaseSource;
 
   const entityOptions = useMemo(() => {
     const seen = new Set();
@@ -569,7 +592,10 @@ export default function CoverageTracker() {
       if (tokens.length) {
         filtered = filtered.filter((r) => {
           const assignmentText = (r.coverage_assignments || [])
-            .map((a) => `${a.staffer?.full_name || ""} ${a.section || a.sections?.name || ""}`)
+            .map(
+              (a) =>
+                `${a.staffer?.full_name || ""} ${a.section || a.sections?.name || ""}`,
+            )
             .join(" ")
             .toLowerCase();
 
@@ -591,7 +617,15 @@ export default function CoverageTracker() {
     }
 
     return filtered;
-  }, [sourceForFilters, selectedSem, selectedEntity, semesters, missingProofOnly, activeTab, searchText]);
+  }, [
+    sourceForFilters,
+    selectedSem,
+    selectedEntity,
+    semesters,
+    missingProofOnly,
+    activeTab,
+    searchText,
+  ]);
 
   const rows = useMemo(() => {
     return filteredSource.map((req) => {
@@ -633,14 +667,16 @@ export default function CoverageTracker() {
           request_id: item.request_id || req.id,
           section_id: item.section_id || null,
           staff_id: item.staff_id || item.assigned_to || null,
-          sections: item.sections || (sectionName ? { name: sectionName } : null),
+          sections:
+            item.sections || (sectionName ? { name: sectionName } : null),
           staff: item.staff || item.staffer || null,
         };
       });
 
       const byStaff = new Map();
       normalized.forEach((item) => {
-        const sectionName = item.sections?.name || item.section || "Unassigned Section";
+        const sectionName =
+          item.sections?.name || item.section || "Unassigned Section";
         const fallbackStaffName = item.staff?.full_name || "Unknown";
         const staffKey =
           item.staff_id ||
@@ -657,9 +693,13 @@ export default function CoverageTracker() {
         }
 
         const existing = byStaff.get(staffKey);
-        const mergedSections = Array.from(new Set([...(existing._sectionNames || []), sectionName]));
+        const mergedSections = Array.from(
+          new Set([...(existing._sectionNames || []), sectionName]),
+        );
         const preferred =
-          getAssignmentPriority(item) > getAssignmentPriority(existing) ? item : existing;
+          getAssignmentPriority(item) > getAssignmentPriority(existing)
+            ? item
+            : existing;
 
         byStaff.set(staffKey, {
           ...preferred,
@@ -708,7 +748,11 @@ export default function CoverageTracker() {
       }
 
       attendance.forEach((a) => {
-        const status = a.completed_at ? "Completed" : a.timed_in_at ? "Ongoing" : "Pending";
+        const status = a.completed_at
+          ? "Completed"
+          : a.timed_in_at
+            ? "Ongoing"
+            : "Pending";
         rowsForExport.push([
           req.id,
           req.title || req.request_title || "Coverage Request",
@@ -871,7 +915,14 @@ export default function CoverageTracker() {
       flex: 1.5,
       minWidth: 220,
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%", width: "100%" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+          }}
+        >
           <Typography
             sx={{
               fontFamily: dm,
@@ -934,9 +985,8 @@ export default function CoverageTracker() {
         >
           <ViewActionButton
             onClick={() => {
-              navigate(`/admin/coverage-tracker`, {
+              navigate(`/admin/coverage-tracker/time-record`, {
                 state: {
-                  tab: "CTR",
                   focusRequestId: p.row.id,
                 },
               });
@@ -964,58 +1014,6 @@ export default function CoverageTracker() {
     >
       <Box
         sx={{
-          mb: 2.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          gap: 1,
-          flexShrink: 0,
-        }}
-      >
-        <Typography
-          onClick={() => {
-            setActiveTab("tracker");
-            setStageFilter("On Going");
-            setFocusedRequestId(null);
-          }}
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: activeTab === "tracker" ? 600 : 400,
-            color: activeTab === "tracker" ? "text.primary" : "text.secondary",
-            letterSpacing: "-0.01em",
-            cursor: "pointer",
-          }}
-        >
-          Coverage Tracker
-        </Typography>
-
-        <Divider
-          orientation="vertical"
-          flexItem
-          sx={{ borderColor: border, my: 0.1 }}
-        />
-
-        <Typography
-          onClick={() => {
-            setActiveTab("ctr");
-            setStageFilter("Completed");
-          }}
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: activeTab === "ctr" ? 600 : 400,
-            color: activeTab === "ctr" ? "text.primary" : "text.secondary",
-            letterSpacing: "-0.01em",
-            cursor: "pointer",
-          }}
-        >
-          Coverage Time Record
-        </Typography>
-      </Box>
-
-      <Box
-        sx={{
           mb: 2,
           display: "flex",
           alignItems: "center",
@@ -1023,11 +1021,20 @@ export default function CoverageTracker() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         <FormControl
           size="small"
-          sx={{ flex: 1.8, minWidth: FILTER_SEARCH_MIN_WIDTH, maxWidth: 460 }}
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
         >
           <OutlinedInput
             placeholder="Search request, client, venue"
@@ -1060,10 +1067,13 @@ export default function CoverageTracker() {
               sx={selectSx}
               renderValue={(val) => {
                 const count = rows.length;
-                const label = STAGE_OPTIONS.find((o) => o.key === val)?.label ?? val;
+                const label =
+                  STAGE_OPTIONS.find((o) => o.key === val)?.label ?? val;
                 return (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{label}</Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                      {label}
+                    </Typography>
                     <NumberBadge
                       count={count}
                       active
@@ -1075,7 +1085,11 @@ export default function CoverageTracker() {
               }}
             >
               {STAGE_OPTIONS.map((opt) => (
-                <MenuItem key={opt.key} value={opt.key} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                <MenuItem
+                  key={opt.key}
+                  value={opt.key}
+                  sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                >
                   {opt.label}
                 </MenuItem>
               ))}
@@ -1312,7 +1326,9 @@ export default function CoverageTracker() {
                         position: "relative",
                         transition: "background-color 0.2s ease",
                         "&:hover": {
-                          backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(53,53,53,0.05)",
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(53,53,53,0.05)",
                         },
                         "& .ctr-card-reveal": {
                           opacity: { xs: 1, md: 0 },
@@ -1327,11 +1343,14 @@ export default function CoverageTracker() {
                           component="button"
                           type="button"
                           onClick={() => {
-                            navigate(`/admin/coverage-request-details/${req.id}`, {
-                              state: {
-                                backTo: "/admin/coverage-tracker",
+                            navigate(
+                              `/admin/coverage-request-details/${req.id}`,
+                              {
+                                state: {
+                                  backTo: "/admin/coverage-tracker",
+                                },
                               },
-                            });
+                            );
                           }}
                           className="ctr-card-reveal"
                           sx={{
@@ -1345,29 +1364,43 @@ export default function CoverageTracker() {
                             background: isDark
                               ? "linear-gradient(90deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.10) 100%)"
                               : "linear-gradient(90deg, rgba(53,53,53,0.00) 0%, rgba(53,53,53,0.08) 100%)",
-                            color: isDark ? "rgba(255,255,255,0.82)" : "rgba(17,17,17,0.75)",
+                            color: isDark
+                              ? "rgba(255,255,255,0.82)"
+                              : "rgba(17,17,17,0.75)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
                             zIndex: 2,
-                            transition: "opacity 0.2s ease, background 0.2s ease, color 0.2s ease, width 0.2s ease",
+                            transition:
+                              "opacity 0.2s ease, background 0.2s ease, color 0.2s ease, width 0.2s ease",
                             overflow: "hidden",
                             "&:hover": {
                               background: isDark
                                 ? "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.16) 100%)"
                                 : "linear-gradient(90deg, rgba(53,53,53,0.03) 0%, rgba(53,53,53,0.13) 100%)",
                               color: isDark ? "#ffffff" : "#111111",
-            width: { xs: 52, md: 72 },
+                              width: { xs: 52, md: 72 },
                             },
                           }}
                         >
-                          <ChevronRightIcon sx={{ fontSize: { xs: 26, md: 44 }, fontWeight: 700 }} />
+                          <ChevronRightIcon
+                            sx={{
+                              fontSize: { xs: 26, md: 44 },
+                              fontWeight: 700,
+                            }}
+                          />
                         </Box>
                       </Tooltip>
 
-                      <Box sx={{ px: 1.5, pt: 1.3, pb: 1.5, pr: { xs: 1.5, md: 7.25 } }}>
-
+                      <Box
+                        sx={{
+                          px: 1.5,
+                          pt: 1.3,
+                          pb: 1.5,
+                          pr: { xs: 1.5, md: 7.25 },
+                        }}
+                      >
                         {attendance.length === 0 ? (
                           <Typography
                             sx={{
@@ -1412,7 +1445,9 @@ export default function CoverageTracker() {
                                     color: "text.primary",
                                   }}
                                 >
-                                  {req.title || req.request_title || "Coverage Request"}
+                                  {req.title ||
+                                    req.request_title ||
+                                    "Coverage Request"}
                                 </Typography>
                                 <Typography
                                   sx={{
@@ -1421,7 +1456,8 @@ export default function CoverageTracker() {
                                     color: "text.secondary",
                                   }}
                                 >
-                                  {req.entity?.name || "—"} · {buildEventDateDisplay(req)}
+                                  {req.entity?.name || "—"} ·{" "}
+                                  {buildEventDateDisplay(req)}
                                 </Typography>
                                 <Typography
                                   sx={{
@@ -1434,7 +1470,13 @@ export default function CoverageTracker() {
                                 </Typography>
                               </Box>
 
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
                                 <Box
                                   sx={{
                                     px: 0.9,
@@ -1448,7 +1490,10 @@ export default function CoverageTracker() {
                                     lineHeight: 1,
                                   }}
                                 >
-                                  {attendance.length} {attendance.length === 1 ? "staffer" : "staffers"}
+                                  {attendance.length}{" "}
+                                  {attendance.length === 1
+                                    ? "staffer"
+                                    : "staffers"}
                                 </Box>
 
                                 <Box
@@ -1471,7 +1516,9 @@ export default function CoverageTracker() {
                                   }}
                                   title="Export"
                                 >
-                                  <FileDownloadOutlinedIcon sx={{ fontSize: "1.3rem" }} />
+                                  <FileDownloadOutlinedIcon
+                                    sx={{ fontSize: "1.3rem" }}
+                                  />
                                 </Box>
                               </Box>
                             </Box>
@@ -1479,33 +1526,89 @@ export default function CoverageTracker() {
                             <Box
                               sx={{
                                 display: "grid",
-                                gridTemplateColumns: { xs: "1fr", md: "1.05fr 1.75fr 0.85fr 1fr" },
+                                gridTemplateColumns: {
+                                  xs: "1fr",
+                                  md: "1.05fr 1.75fr 0.85fr 1fr",
+                                },
                                 borderBottom: `1px solid ${border}`,
                                 backgroundColor: isDark
                                   ? "rgba(0,0,0,0.14)"
                                   : "rgba(53,53,53,0.02)",
                               }}
                             >
-                              <Typography sx={{ px: 1.1, py: 0.55, fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: "text.disabled", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                              <Typography
+                                sx={{
+                                  px: 1.1,
+                                  py: 0.55,
+                                  fontFamily: dm,
+                                  fontSize: "0.6rem",
+                                  fontWeight: 700,
+                                  color: "text.disabled",
+                                  letterSpacing: "0.07em",
+                                  textTransform: "uppercase",
+                                }}
+                              >
                                 Staff Assigned
                               </Typography>
-                              <Typography sx={{ px: 1.1, py: 0.55, fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: "text.disabled", letterSpacing: "0.07em", textTransform: "uppercase", borderLeft: { md: `1px solid ${border}` } }}>
+                              <Typography
+                                sx={{
+                                  px: 1.1,
+                                  py: 0.55,
+                                  fontFamily: dm,
+                                  fontSize: "0.6rem",
+                                  fontWeight: 700,
+                                  color: "text.disabled",
+                                  letterSpacing: "0.07em",
+                                  textTransform: "uppercase",
+                                  borderLeft: { md: `1px solid ${border}` },
+                                }}
+                              >
                                 Attendance
                               </Typography>
-                              <Typography sx={{ px: 1.1, py: 0.55, fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: "text.disabled", letterSpacing: "0.07em", textTransform: "uppercase", borderLeft: { md: `1px solid ${border}` } }}>
+                              <Typography
+                                sx={{
+                                  px: 1.1,
+                                  py: 0.55,
+                                  fontFamily: dm,
+                                  fontSize: "0.6rem",
+                                  fontWeight: 700,
+                                  color: "text.disabled",
+                                  letterSpacing: "0.07em",
+                                  textTransform: "uppercase",
+                                  borderLeft: { md: `1px solid ${border}` },
+                                }}
+                              >
                                 Status
                               </Typography>
-                              <Typography sx={{ px: 1.1, py: 0.55, fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: "text.disabled", letterSpacing: "0.07em", textTransform: "uppercase", borderLeft: { md: `1px solid ${border}` } }}>
+                              <Typography
+                                sx={{
+                                  px: 1.1,
+                                  py: 0.55,
+                                  fontFamily: dm,
+                                  fontSize: "0.6rem",
+                                  fontWeight: 700,
+                                  color: "text.disabled",
+                                  letterSpacing: "0.07em",
+                                  textTransform: "uppercase",
+                                  borderLeft: { md: `1px solid ${border}` },
+                                }}
+                              >
                                 Proof of Attendance
                               </Typography>
                             </Box>
 
-                            <Box sx={{ display: "flex", flexDirection: "column" }}>
+                            <Box
+                              sx={{ display: "flex", flexDirection: "column" }}
+                            >
                               {attendance.map((a, index) => {
-                                const sectionName = a.sections?.name || "Unassigned Section";
+                                const sectionName =
+                                  a.sections?.name || "Unassigned Section";
                                 const timeInStr = fmtTime(a.timed_in_at);
                                 const completedAtStr = fmtTime(a.completed_at);
-                                const duration = computeDuration(a.timed_in_at, a.completed_at);
+                                const duration = computeDuration(
+                                  a.timed_in_at,
+                                  a.completed_at,
+                                );
                                 const status = a.completed_at
                                   ? "Completed"
                                   : a.timed_in_at
@@ -1515,32 +1618,50 @@ export default function CoverageTracker() {
                                 const isBroken = !!brokenSelfieById[a.id];
                                 const hasProof = !!a.selfie_url;
                                 const avatarColor = getAvatarColor(a.staff_id);
-                                const avatarUrl = getAvatarUrl(a.staff?.avatar_url);
+                                const avatarUrl = getAvatarUrl(
+                                  a.staff?.avatar_url,
+                                );
 
                                 return (
                                   <Box
                                     key={a.id}
                                     sx={{
                                       display: "grid",
-                                      gridTemplateColumns: { xs: "1fr", md: "1.05fr 1.75fr 0.85fr 1fr" },
-                                      borderTop: index === 0 ? "none" : `1px solid ${border}`,
+                                      gridTemplateColumns: {
+                                        xs: "1fr",
+                                        md: "1.05fr 1.75fr 0.85fr 1fr",
+                                      },
+                                      borderTop:
+                                        index === 0
+                                          ? "none"
+                                          : `1px solid ${border}`,
                                     }}
                                   >
-                                    <Box sx={{ px: 1.1, py: 0.95, minWidth: 0 }}>
-                                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                    <Box
+                                      sx={{ px: 1.1, py: 0.95, minWidth: 0 }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 0.75,
+                                        }}
+                                      >
                                         <Avatar
                                           src={avatarUrl || undefined}
                                           sx={{
                                             width: TABLE_USER_AVATAR_SIZE,
                                             height: TABLE_USER_AVATAR_SIZE,
-                                            fontSize: TABLE_USER_AVATAR_FONT_SIZE,
+                                            fontSize:
+                                              TABLE_USER_AVATAR_FONT_SIZE,
                                             fontWeight: 600,
                                             backgroundColor: avatarColor.bg,
                                             color: avatarColor.color,
                                             flexShrink: 0,
                                           }}
                                         >
-                                          {!avatarUrl && getInitials(a.staff?.full_name)}
+                                          {!avatarUrl &&
+                                            getInitials(a.staff?.full_name)}
                                         </Avatar>
                                         <Box sx={{ minWidth: 0 }}>
                                           <Typography
@@ -1568,27 +1689,143 @@ export default function CoverageTracker() {
                                           </Typography>
                                         </Box>
                                       </Box>
-
                                     </Box>
 
-                                    <Box sx={{ px: 1.1, py: 0.95, borderLeft: { md: `1px solid ${border}` } }}>
-                                      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 0.55 }}>
-                                        <Box sx={{ borderRadius: "8px", px: 0.75, py: 0.48, backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(53,53,53,0.06)" }}>
-                                          <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", color: "text.disabled", fontWeight: 700 }}>Time in</Typography>
-                                          <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", color: timeInStr !== "—" ? "text.primary" : "text.disabled", fontWeight: 700 }}>{timeInStr}</Typography>
+                                    <Box
+                                      sx={{
+                                        px: 1.1,
+                                        py: 0.95,
+                                        borderLeft: {
+                                          md: `1px solid ${border}`,
+                                        },
+                                      }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          display: "grid",
+                                          gridTemplateColumns: {
+                                            xs: "1fr",
+                                            sm: "1fr 1fr 1fr",
+                                          },
+                                          gap: 0.55,
+                                        }}
+                                      >
+                                        <Box
+                                          sx={{
+                                            borderRadius: "8px",
+                                            px: 0.75,
+                                            py: 0.48,
+                                            backgroundColor: isDark
+                                              ? "rgba(0,0,0,0.2)"
+                                              : "rgba(53,53,53,0.06)",
+                                          }}
+                                        >
+                                          <Typography
+                                            sx={{
+                                              fontFamily: dm,
+                                              fontSize: "0.64rem",
+                                              color: "text.disabled",
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            Time in
+                                          </Typography>
+                                          <Typography
+                                            sx={{
+                                              fontFamily: dm,
+                                              fontSize: "0.84rem",
+                                              color:
+                                                timeInStr !== "—"
+                                                  ? "text.primary"
+                                                  : "text.disabled",
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            {timeInStr}
+                                          </Typography>
                                         </Box>
-                                        <Box sx={{ borderRadius: "8px", px: 0.75, py: 0.48, backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(53,53,53,0.06)" }}>
-                                          <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", color: "text.disabled", fontWeight: 700 }}>Time out</Typography>
-                                          <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", color: completedAtStr !== "—" ? "text.primary" : "text.disabled", fontWeight: 700 }}>{completedAtStr}</Typography>
+                                        <Box
+                                          sx={{
+                                            borderRadius: "8px",
+                                            px: 0.75,
+                                            py: 0.48,
+                                            backgroundColor: isDark
+                                              ? "rgba(0,0,0,0.2)"
+                                              : "rgba(53,53,53,0.06)",
+                                          }}
+                                        >
+                                          <Typography
+                                            sx={{
+                                              fontFamily: dm,
+                                              fontSize: "0.64rem",
+                                              color: "text.disabled",
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            Time out
+                                          </Typography>
+                                          <Typography
+                                            sx={{
+                                              fontFamily: dm,
+                                              fontSize: "0.84rem",
+                                              color:
+                                                completedAtStr !== "—"
+                                                  ? "text.primary"
+                                                  : "text.disabled",
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            {completedAtStr}
+                                          </Typography>
                                         </Box>
-                                        <Box sx={{ borderRadius: "8px", px: 0.75, py: 0.48, backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(53,53,53,0.06)" }}>
-                                          <Typography sx={{ fontFamily: dm, fontSize: "0.64rem", color: "text.disabled", fontWeight: 700 }}>Duration</Typography>
-                                          <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", color: duration !== "—" ? (isDark ? "#f5c52b" : "#d97706") : "text.disabled", fontWeight: 700 }}>{duration}</Typography>
+                                        <Box
+                                          sx={{
+                                            borderRadius: "8px",
+                                            px: 0.75,
+                                            py: 0.48,
+                                            backgroundColor: isDark
+                                              ? "rgba(0,0,0,0.2)"
+                                              : "rgba(53,53,53,0.06)",
+                                          }}
+                                        >
+                                          <Typography
+                                            sx={{
+                                              fontFamily: dm,
+                                              fontSize: "0.64rem",
+                                              color: "text.disabled",
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            Duration
+                                          </Typography>
+                                          <Typography
+                                            sx={{
+                                              fontFamily: dm,
+                                              fontSize: "0.84rem",
+                                              color:
+                                                duration !== "—"
+                                                  ? isDark
+                                                    ? "#f5c52b"
+                                                    : "#d97706"
+                                                  : "text.disabled",
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            {duration}
+                                          </Typography>
                                         </Box>
                                       </Box>
                                     </Box>
 
-                                    <Box sx={{ px: 1.1, py: 0.95, borderLeft: { md: `1px solid ${border}` } }}>
+                                    <Box
+                                      sx={{
+                                        px: 1.1,
+                                        py: 0.95,
+                                        borderLeft: {
+                                          md: `1px solid ${border}`,
+                                        },
+                                      }}
+                                    >
                                       <Box
                                         sx={{
                                           display: "inline-flex",
@@ -1620,7 +1857,15 @@ export default function CoverageTracker() {
                                       </Box>
                                     </Box>
 
-                                    <Box sx={{ px: 1.1, py: 0.95, borderLeft: { md: `1px solid ${border}` } }}>
+                                    <Box
+                                      sx={{
+                                        px: 1.1,
+                                        py: 0.95,
+                                        borderLeft: {
+                                          md: `1px solid ${border}`,
+                                        },
+                                      }}
+                                    >
                                       {hasProof ? (
                                         <Box
                                           sx={{
@@ -1633,7 +1878,10 @@ export default function CoverageTracker() {
                                             backgroundColor: isDark
                                               ? "rgba(17,17,17,0.45)"
                                               : "rgba(53,53,53,0.03)",
-                                            cursor: proofUrl && !isBroken ? "zoom-in" : "default",
+                                            cursor:
+                                              proofUrl && !isBroken
+                                                ? "zoom-in"
+                                                : "default",
                                           }}
                                         >
                                           {proofUrl && !isBroken ? (
@@ -1657,10 +1905,14 @@ export default function CoverageTracker() {
                                                 handleProofMouseEnter({
                                                   id: a.id,
                                                   url: proofUrl,
-                                                  name: a.staff?.full_name || "Proof of attendance",
+                                                  name:
+                                                    a.staff?.full_name ||
+                                                    "Proof of attendance",
                                                 })
                                               }
-                                              onMouseLeave={() => handleProofMouseLeave(a.id)}
+                                              onMouseLeave={() =>
+                                                handleProofMouseLeave(a.id)
+                                              }
                                             />
                                           ) : (
                                             <Box
@@ -1781,7 +2033,13 @@ export default function CoverageTracker() {
             }
           />
 
-          <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.75rem",
+              color: "text.secondary",
+            }}
+          >
             These settings only affect this Coverage Tracker view.
           </Typography>
         </Box>

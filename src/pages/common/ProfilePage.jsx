@@ -102,7 +102,8 @@ function BrandField({ label, type, value, onChange, show, onToggle, isDark }) {
       onChange={onChange}
       size="small"
       fullWidth
-      InputProps={
+      slotProps={{
+        input:
         onToggle
           ? {
               endAdornment: (
@@ -127,8 +128,8 @@ function BrandField({ label, type, value, onChange, show, onToggle, isDark }) {
                 </InputAdornment>
               ),
             }
-          : undefined
-      }
+          : undefined,
+      }}
       sx={{
         "& .MuiOutlinedInput-root": {
           borderRadius: "10px",
@@ -296,30 +297,7 @@ export default function ProfilePage() {
     <Box
       sx={{ p: { xs: 2, sm: 3 }, maxWidth: 560, mx: "auto", fontFamily: dm }}
     >
-      {/* ── Page title ── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontWeight: 700,
-            fontSize: "1rem",
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Profile & Settings
-        </Typography>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.72rem",
-            color: "text.secondary",
-            mt: 0.3,
-          }}
-        >
-          Manage your photo, password, and display preferences.
-        </Typography>
-      </Box>
+      
 
       {/* ── Profile Photo ── */}
       <Card isDark={isDark} sx={{ mb: 2 }}>

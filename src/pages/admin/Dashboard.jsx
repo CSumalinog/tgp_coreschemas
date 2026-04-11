@@ -33,7 +33,7 @@ import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RadioButtonCheckedOutlinedIcon from "@mui/icons-material/RadioButtonCheckedOutlined";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import ReportGenerator from "../../components/admin/ReportGenerator";
@@ -1874,3 +1874,4 @@ export default function Dashboard() {
     </Box>
   );
 }
+

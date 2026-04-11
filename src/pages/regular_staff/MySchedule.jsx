@@ -12,14 +12,14 @@ import {
   Avatar,
   Popover,
 } from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
+import ExpandLessIcon from "@mui/icons-material/ExpandLessOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifyAdmins } from "../../services/NotificationService";
@@ -614,33 +614,6 @@ export default function MySchedule() {
         fontFamily: dm,
       }}
     >
-      {/* ── Header ── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontWeight: 600,
-            fontSize: "0.8rem",
-            color: "text.primary",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          My Duty Schedule
-        </Typography>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            color: "text.secondary",
-            mt: 0.3,
-          }}
-        >
-          {isInitialSetup
-            ? "Set your first weekly duty day for this semester."
-            : "Pick one day — you'll be on duty every week of the semester on that day."}
-        </Typography>
-      </Box>
-
       {noSemester && (
         <Alert
           severity="info"
@@ -1812,3 +1785,4 @@ export default function MySchedule() {
     </Box>
   );
 }
+

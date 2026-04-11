@@ -22,7 +22,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import CleaningServicesOutlinedIcon from "@mui/icons-material/CleaningServicesOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import BrandedLoader from "../../components/common/BrandedLoader";
 
@@ -1764,3 +1764,5 @@ export default function Settings() {
     </Box>
   );
 }
+
+

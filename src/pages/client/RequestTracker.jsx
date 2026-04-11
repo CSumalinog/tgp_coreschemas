@@ -28,15 +28,15 @@ import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import EventRepeatOutlinedIcon from "@mui/icons-material/EventRepeatOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import SearchIcon from "@mui/icons-material/Search";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import { useLocation } from "react-router-dom";
 
 // G��G�� Tab icons G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
@@ -61,6 +61,15 @@ import {
   GridLogicOperator,
   gridFilteredSortedRowIdsSelector,
 } from "../../components/common/AppDataGrid";
+import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+  FILTER_SEARCH_FLEX,
+  FILTER_SEARCH_MAX_WIDTH,
+  FILTER_SEARCH_MIN_WIDTH,
+} from "../../utils/layoutTokens";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
 import { useClientRequests } from "../../hooks/useClientRequests";
@@ -563,8 +572,6 @@ export default function RequestTracker() {
   }, [location.state?.tab]);
 
   const isPipeline = tab === "pipeline";
-  const filterControlHeight = 40;
-
   const handleActionError = (message) => {
     setActionError(message || "Something went wrong. Please try again.");
     setActionErrorOpen(true);
@@ -645,15 +652,27 @@ export default function RequestTracker() {
         sx={{
           mb: 2,
           display: "flex",
-          alignItems: "flex-end",
-          gap: 1.5,
+          alignItems: "center",
+          gap: FILTER_ROW_GAP,
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
-        <FormControl size="small" sx={{ flex: 1, minWidth: 300 }}>
+        <FormControl
+          size="small"
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
+        >
           <OutlinedInput
             placeholder="Search"
             inputProps={{ "aria-label": "Search for request" }}
@@ -665,11 +684,11 @@ export default function RequestTracker() {
               </InputAdornment>
             }
             sx={{
-              height: filterControlHeight,
+              height: FILTER_INPUT_HEIGHT,
               fontFamily: dm,
               fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
+              borderRadius: CONTROL_RADIUS,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
               "& .MuiOutlinedInput-notchedOutline": {
                 borderColor: "rgba(0,0,0,0.12)",
               },
@@ -689,11 +708,11 @@ export default function RequestTracker() {
               <ViewFilterBadge value={v} count={viewCounts[v]} active />
             )}
             sx={{
-              height: filterControlHeight,
+              height: FILTER_INPUT_HEIGHT,
               fontFamily: dm,
               fontSize: "0.78rem",
-              borderRadius: "10px",
-              backgroundColor: "#f7f7f8",
+              borderRadius: CONTROL_RADIUS,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
               "& .MuiOutlinedInput-notchedOutline": {
                 borderColor: "rgba(0,0,0,0.12)",
               },
@@ -748,15 +767,15 @@ export default function RequestTracker() {
             alignItems: "center",
             gap: 0.5,
             px: 1.5,
-            height: filterControlHeight,
-            borderRadius: "10px",
+            height: FILTER_BUTTON_HEIGHT,
+            borderRadius: CONTROL_RADIUS,
             cursor: "pointer",
             border: "1px solid rgba(0,0,0,0.12)",
             fontFamily: dm,
             fontSize: "0.78rem",
             fontWeight: 500,
             color: "text.secondary",
-            backgroundColor: "#f7f7f8",
+            backgroundColor: isDark ? "transparent" : "#f7f7f8",
             transition: "all 0.15s",
             flexShrink: 0,
             opacity: isPipeline ? 0.5 : 1,

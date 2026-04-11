@@ -24,13 +24,13 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { format as formatDate } from "date-fns";
 import { DataGrid } from "../../components/common/AppDataGrid";
-import AddIcon from "@mui/icons-material/Add";
+import AddIcon from "@mui/icons-material/AddOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUncheckedOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "../../lib/supabaseClient";
 import BrandedLoader from "../../components/common/BrandedLoader";
@@ -659,41 +659,14 @@ export default function SemesterManagement() {
       {/* ── Column menu styles ── */}
       <ColumnMenuStyles isDark={isDark} border={border} />
 
-      {/* ── Header ── */}
       <Box
         sx={{
           display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          mb: 3,
-          flexWrap: "wrap",
-          gap: 2,
+          justifyContent: "flex-end",
+          mb: 2,
           flexShrink: 0,
         }}
       >
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontWeight: 600,
-              fontSize: "0.8rem",
-              color: "text.primary",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Semester Management
-          </Typography>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
-              mt: 0.3,
-            }}
-          >
-            Manage semesters and control when staffers can pick their duty days.
-          </Typography>
-        </Box>
         <Box
           onClick={openCreate}
           sx={{
@@ -1425,3 +1398,7 @@ function datePickerSlotProps(border) {
     },
   };
 }
+
+
+
+

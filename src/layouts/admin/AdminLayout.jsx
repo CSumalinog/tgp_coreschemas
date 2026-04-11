@@ -18,23 +18,29 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
-import MenuIcon from "@mui/icons-material/Menu";
+import MenuIcon from "@mui/icons-material/MenuOutlined";
 import CloseIcon from "@mui/icons-material/Close";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import LogoutIcon from "@mui/icons-material/Logout";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import LogoutIcon from "@mui/icons-material/LogoutOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 
 import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
+import TopbarRouteTitle from "../../components/common/TopbarRouteTitle";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import {
+  LAYOUT_ICON_LG,
+  LAYOUT_ICON_MD,
+  LAYOUT_ICON_SM,
+} from "../../utils/layoutTokens";
 import brandLogo from "../../assets/img/cs-logo.png";
 
 const SIDEBAR_W = 228;
@@ -70,8 +76,19 @@ const MENU_SECTIONS = [
       },
       {
         label: "Coverage Tracker",
-        to: "coverage-tracker",
         Icon: TrackChangesOutlinedIcon,
+        children: [
+          {
+            label: "Requests",
+            to: "coverage-tracker/requests",
+            Icon: TrackChangesOutlinedIcon,
+          },
+          {
+            label: "Time Record",
+            to: "coverage-tracker/time-record",
+            Icon: DescriptionOutlinedIcon,
+          },
+        ],
       },
       {
         label: "Scheduling",
@@ -83,14 +100,22 @@ const MENU_SECTIONS = [
             Icon: CalendarMonthOutlinedIcon,
           },
           {
-            label: "Duty Schedule View",
+            label: "Duty Schedule",
             to: "duty-schedule-view",
             Icon: TableChartOutlinedIcon,
           },
         ],
       },
-      { label: "Calendar", to: "calendar-management", Icon: EventOutlinedIcon },
-      { label: "Staffers", to: "staffers-management", Icon: GroupOutlinedIcon },
+      {
+        label: "Calendar Management",
+        to: "calendar-management",
+        Icon: EventOutlinedIcon,
+      },
+      {
+        label: "Staffers Management",
+        to: "staffers-management",
+        Icon: GroupOutlinedIcon,
+      },
     ],
   },
 ];
@@ -193,7 +218,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
         },
         <>
           <AccountCircleOutlinedIcon
-            sx={{ fontSize: 15, color: "rgba(53,53,53,0.45)" }}
+            sx={{ fontSize: LAYOUT_ICON_SM, color: "rgba(53,53,53,0.45)" }}
           />
           <Typography
             sx={{
@@ -211,7 +236,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
         toggleDark,
         <>
           <DarkModeOutlinedIcon
-            sx={{ fontSize: 15, color: "rgba(53,53,53,0.45)" }}
+            sx={{ fontSize: LAYOUT_ICON_SM, color: "rgba(53,53,53,0.45)" }}
           />
           <Typography
             sx={{
@@ -253,7 +278,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
           navigate("/login");
         },
         <>
-          <LogoutIcon sx={{ fontSize: 15, color: "#c62828" }} />
+          <LogoutIcon sx={{ fontSize: LAYOUT_ICON_SM, color: "#c62828" }} />
           <Typography
             sx={{
               fontFamily: dm,
@@ -274,7 +299,10 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
 // ── Sidebar content ───────────────────────────────────────────────────────────
 function SidebarContent({ onClose, isMobile }) {
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState({ Scheduling: true });
+  const [openGroups, setOpenGroups] = useState({
+    Scheduling: true,
+    "Coverage Tracker": true,
+  });
 
   const toggleGroup = (label) =>
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -337,7 +365,7 @@ function SidebarContent({ onClose, isMobile }) {
               "&:hover": { color: TEXT_PRIMARY, backgroundColor: HOVER_BG },
             }}
           >
-            <CloseIcon sx={{ fontSize: 18 }} />
+            <CloseIcon sx={{ fontSize: LAYOUT_ICON_MD }} />
           </IconButton>
         )}
       </Box>
@@ -382,7 +410,7 @@ function SidebarContent({ onClose, isMobile }) {
                       trailing={
                         <KeyboardArrowDownIcon
                           sx={{
-                            fontSize: 15,
+                            fontSize: LAYOUT_ICON_SM,
                             color: TEXT_ICON,
                             transition: "transform 0.22s",
                             transform: isOpen
@@ -640,9 +668,10 @@ function AdminLayout() {
                 },
               }}
             >
-              <MenuIcon sx={{ fontSize: 20 }} />
+              <MenuIcon sx={{ fontSize: LAYOUT_ICON_LG }} />
             </IconButton>
           )}
+          <TopbarRouteTitle role="admin" isMobile={isMobile} />
           <Box sx={{ flex: 1 }} />
           <GlobalSearch
             role="admin"

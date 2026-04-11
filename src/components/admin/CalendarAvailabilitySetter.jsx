@@ -229,6 +229,12 @@ export default function CalendarEventDialog({
         open={open}
         onClose={handleClose}
         fullWidth
+        hideBackdrop
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: "transparent" },
+          },
+        }}
         PaperProps={{
           sx: {
             width: 460,
@@ -434,6 +440,28 @@ export default function CalendarEventDialog({
                 {modePill.label}
               </Typography>
             </Box>
+            {existingEvent && mode === MODE.VIEW && (
+              <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.35 }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  Blocked by: {existingEvent.blocked_by_name || "Unknown"}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.66rem",
+                    color: "text.disabled",
+                  }}
+                >
+                  Created: {existingEvent.created_at ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A") : "Unknown"}
+                </Typography>
+              </Box>
+            )}
           </Box>
 
           {/* Title */}
@@ -698,6 +726,12 @@ export default function CalendarEventDialog({
       <Dialog
         open={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
+        hideBackdrop
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: "transparent" },
+          },
+        }}
         PaperProps={{
           sx: {
             width: 380,
@@ -851,3 +885,5 @@ export default function CalendarEventDialog({
     </>
   );
 }
+
+

@@ -12,7 +12,7 @@ import {
   OutlinedInput,
   InputAdornment,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
@@ -20,6 +20,13 @@ import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import {
+  CONTROL_RADIUS,
+  FILTER_BUTTON_HEIGHT,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+  FILTER_SEARCH_FLEX,
+  FILTER_SEARCH_MAX_WIDTH,
+  FILTER_SEARCH_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -545,7 +552,7 @@ export default function MyStaffers() {
     >
       <ColumnMenuStyles isDark={isDark} border={border} />
 
-      {/* ── Header and Controls ── */}
+      {/* ── Controls ── */}
       <Box
         sx={{
           mb: 3,
@@ -553,45 +560,32 @@ export default function MyStaffers() {
           display: "flex",
           flexDirection: { xs: "column", sm: "row" },
           alignItems: { sm: "center" },
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           gap: 2,
         }}
       >
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontWeight: 600,
-              fontSize: "0.8rem",
-              color: "text.primary",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            My Staffers
-          </Typography>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
-              mt: 0.3,
-            }}
-          >
-            {activeSemester
-              ? `${currentUser.division} division — ${getSemesterDisplayName(activeSemester)}`
-              : `${currentUser.division} division`}
-          </Typography>
-        </Box>
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
+            gap: FILTER_ROW_GAP,
             mt: { xs: 2, sm: 0 },
+            px: 1.25,
+            py: 1,
+            borderRadius: CONTROL_RADIUS,
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
           }}
         >
           {/* Search bar */}
-          <FormControl size="small" sx={{ minWidth: 300 }}>
+          <FormControl
+            size="small"
+            sx={{
+              flex: FILTER_SEARCH_FLEX,
+              minWidth: FILTER_SEARCH_MIN_WIDTH,
+              maxWidth: FILTER_SEARCH_MAX_WIDTH,
+            }}
+          >
             <OutlinedInput
               placeholder="Search staffers..."
               inputProps={{ "aria-label": "Search staffers" }}
@@ -605,7 +599,8 @@ export default function MyStaffers() {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.78rem",
-                borderRadius: "10px",
+                borderRadius: CONTROL_RADIUS,
+                height: FILTER_INPUT_HEIGHT,
                 backgroundColor: isDark ? "transparent" : "#f7f7f8",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "rgba(0,0,0,0.12)",
@@ -659,8 +654,8 @@ export default function MyStaffers() {
               alignItems: "center",
               gap: 0.5,
               px: 1.5,
-              height: 36,
-              borderRadius: "10px",
+              height: FILTER_BUTTON_HEIGHT,
+              borderRadius: CONTROL_RADIUS,
               cursor: "pointer",
               border: "1px solid rgba(0,0,0,0.12)",
               fontFamily: dm,

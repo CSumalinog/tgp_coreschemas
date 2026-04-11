@@ -32,7 +32,7 @@ import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import {
@@ -45,14 +45,14 @@ import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import SearchIcon from "@mui/icons-material/Search";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { useLocation } from "react-router-dom";
@@ -62,6 +62,7 @@ import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
   FILTER_CLIENT_MIN_WIDTH,
+  FILTER_SEARCH_FLEX,
   FILTER_GROUP_GAP,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
@@ -175,7 +176,8 @@ const getTimeInState = (request) => {
 
 const getAssignmentCardKey = (assignment) => {
   const requestId = assignment?.request?.id || "no-request";
-  const dayKey = assignment?.assignment_date || assignment?.request?.event_date || "no-date";
+  const dayKey =
+    assignment?.assignment_date || assignment?.request?.event_date || "no-date";
   const fromKey = assignment?.request?.from_time || "no-from";
   const toKey = assignment?.request?.to_time || "no-to";
   return `${requestId}|${dayKey}|${fromKey}|${toKey}`;
@@ -1030,7 +1032,7 @@ function AssignmentDetailDialog({
               </Box>
             </DetailSection>
           )}
-          {(["Assigned", "Approved"].includes(assignment.status)) &&
+          {["Assigned", "Approved"].includes(assignment.status) &&
             getTimeInState(assignment.request) === "open" && (
               <Box
                 sx={{
@@ -1111,7 +1113,7 @@ function AssignmentDetailDialog({
         }}
       >
         <CancelBtn onClick={onClose} border={isDark ? BORDER_DARK : BORDER} />
-        {(["Assigned", "Approved"].includes(assignment.status)) &&
+        {["Assigned", "Approved"].includes(assignment.status) &&
           (() => {
             const state = getTimeInState(assignment.request);
             if (state === "open")
@@ -1490,35 +1492,31 @@ export default function MyAssignment() {
   const handleArchive = async (requestId) => {
     if (!requestId || !currentUser?.id) return;
     const ts = new Date().toISOString();
-    await supabase
-      .from("request_user_state")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          request_id: requestId,
-          archived_at: ts,
-          trashed_at: null,
-          purged_at: null,
-        },
-        { onConflict: "user_id,request_id" },
-      );
+    await supabase.from("request_user_state").upsert(
+      {
+        user_id: currentUser.id,
+        request_id: requestId,
+        archived_at: ts,
+        trashed_at: null,
+        purged_at: null,
+      },
+      { onConflict: "user_id,request_id" },
+    );
     loadAssignments();
   };
   const handleTrash = async (requestId) => {
     if (!requestId || !currentUser?.id) return;
     const ts = new Date().toISOString();
-    await supabase
-      .from("request_user_state")
-      .upsert(
-        {
-          user_id: currentUser.id,
-          request_id: requestId,
-          archived_at: null,
-          trashed_at: ts,
-          purged_at: null,
-        },
-        { onConflict: "user_id,request_id" },
-      );
+    await supabase.from("request_user_state").upsert(
+      {
+        user_id: currentUser.id,
+        request_id: requestId,
+        archived_at: null,
+        trashed_at: ts,
+        purged_at: null,
+      },
+      { onConflict: "user_id,request_id" },
+    );
     loadAssignments();
   };
 
@@ -1799,21 +1797,6 @@ export default function MyAssignment() {
         fontFamily: dm,
       }}
     >
-      {/* ── Header — no subtitle ── */}
-      <Box sx={{ mb: 2.5 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontWeight: 600,
-            fontSize: "0.8rem",
-            color: "text.primary",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          My Assignments
-        </Typography>
-      </Box>
-
       {error && (
         <Alert
           severity="error"
@@ -1838,11 +1821,20 @@ export default function MyAssignment() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         <FormControl
           size="small"
-          sx={{ flex: 2.4, minWidth: FILTER_SEARCH_MIN_WIDTH, maxWidth: FILTER_SEARCH_MAX_WIDTH }}
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
         >
           <OutlinedInput
             placeholder="Search"
@@ -1878,11 +1870,15 @@ export default function MyAssignment() {
                   : allFiltered.filter((a) => a.status === val).length;
               return (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>{val}</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                    {val}
+                  </Typography>
                   <NumberBadge
                     count={count}
                     active={val !== "All"}
-                    inactiveBg={isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"}
+                    inactiveBg={
+                      isDark ? "rgba(255,255,255,0.28)" : "rgba(53,53,53,0.45)"
+                    }
                     fontFamily={dm}
                     fontSize="0.56rem"
                   />
@@ -1901,7 +1897,11 @@ export default function MyAssignment() {
             }}
           >
             {statusOptions.map((status) => (
-              <MenuItem key={status} value={status} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              <MenuItem
+                key={status}
+                value={status}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
                 {status}
               </MenuItem>
             ))}
@@ -1928,7 +1928,11 @@ export default function MyAssignment() {
               All Semesters
             </MenuItem>
             {semesters.map((s) => (
-              <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              <MenuItem
+                key={s.id}
+                value={s.id}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
                 {getSemesterDisplayName(s)}
               </MenuItem>
             ))}
@@ -1955,7 +1959,11 @@ export default function MyAssignment() {
               All Clients
             </MenuItem>
             {entityOptions.map((name) => (
-              <MenuItem key={name} value={name} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              <MenuItem
+                key={name}
+                value={name}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
                 {name}
               </MenuItem>
             ))}

@@ -356,47 +356,6 @@ export default function SecHeadDashboard() {
         minHeight: "100%",
       }}
     >
-      {/* ── Header ── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          sx={{
-            fontWeight: 800,
-            fontSize: { xs: "1rem", md: "1.1rem" },
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          {getGreeting()}, {currentUser.full_name?.split(" ")[0]} 👋
-        </Typography>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mt: 0.5,
-            flexWrap: "wrap",
-          }}
-        >
-          <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
-            {getSubtitle()}
-          </Typography>
-          {activeSemester && (
-            <Chip
-              label={getSemesterDisplayName(activeSemester)}
-              size="small"
-              sx={{
-                fontSize: "0.7rem",
-                fontWeight: 600,
-                height: 20,
-                backgroundColor: iconWell,
-                color: isDark ? BRAND.gold : "#7a5c00",
-                border: `1px solid ${isDark ? "rgba(245,197,43,0.25)" : "rgba(245,197,43,0.4)"}`,
-              }}
-            />
-          )}
-        </Box>
-      </Box>
-
       {/* ── ROW 1: Hero card + 3 KPI cards ── */}
       <Box
         sx={{

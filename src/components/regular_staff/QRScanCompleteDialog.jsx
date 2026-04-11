@@ -10,9 +10,9 @@ import {
   useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScannerOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import BrandedLoader from "../common/BrandedLoader";
 
@@ -630,3 +630,7 @@ export default function QRScanCompleteDialog({
     </Dialog>
   );
 }
+
+
+
+

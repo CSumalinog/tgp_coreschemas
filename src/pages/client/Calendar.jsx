@@ -1,8 +1,8 @@
 // src/pages/client/MyCalendar.jsx
 import React, { useState, useEffect } from "react";
 import { Box, Typography, IconButton, Tooltip, Button, useTheme } from "@mui/material";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNewOutlined";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIosOutlined";
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import { supabase } from "../../lib/supabaseClient";
 

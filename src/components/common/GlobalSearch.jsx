@@ -33,6 +33,11 @@ import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import {
+  LAYOUT_ICON_BASE,
+  LAYOUT_ICON_LG,
+  LAYOUT_ICON_MD,
+} from "../../utils/layoutTokens";
 
 // ─── Pages per role (no duplicates) ──────────────────────────────────────────
 const PAGES_BY_ROLE = {
@@ -40,128 +45,132 @@ const PAGES_BY_ROLE = {
     {
       label: "Dashboard",
       path: "/admin/dashboard",
-      icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <DashboardOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Pending Requests",
       path: "/admin/request-management",
-      icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <AccessTimeOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Forwarded Requests",
       path: "/admin/forwarded-requests",
-      icon: <ForwardToInboxOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <ForwardToInboxOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "For Approval",
       path: "/admin/for-approval",
-      icon: <HowToRegOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <HowToRegOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Approved Requests",
       path: "/admin/approved-requests",
-      icon: <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: (
+        <CheckCircleOutlineOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />
+      ),
     },
     {
       label: "Declined Requests",
       path: "/admin/declined-requests",
-      icon: <CancelOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <CancelOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Semester Management",
       path: "/admin/semester-management",
-      icon: <CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <CalendarMonthOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Duty Schedule View",
       path: "/admin/duty-schedule-view",
-      icon: <TableChartOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <TableChartOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Calendar Management",
       path: "/admin/calendar-management",
-      icon: <EventOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <EventOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Staffers Management",
       path: "/admin/staffers-management",
-      icon: <GroupOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <GroupOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
   ],
   sec_head: [
     {
       label: "Dashboard",
       path: "/sec_head/dashboard",
-      icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <DashboardOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Coverage Assignment",
       path: "/sec_head/coverage-management/assignment",
-      icon: <AssignmentOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <AssignmentOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Coverage Tracker",
       path: "/sec_head/coverage-management/tracker",
-      icon: <TrackChangesOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <TrackChangesOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "My Staffers",
       path: "/sec_head/my-staffers",
-      icon: <GroupOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <GroupOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
   ],
   staff: [
     {
       label: "Dashboard",
       path: "/staff/dashboard",
-      icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <DashboardOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "My Assignment",
       path: "/staff/my-assignment",
-      icon: <AssignmentIndOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <AssignmentIndOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "My Schedule",
       path: "/staff/my-schedule",
-      icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <CalendarTodayOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
   ],
   client: [
     {
       label: "Calendar",
       path: "/client/calendar",
-      icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <CalendarTodayOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Draft",
       path: "/client/draft",
-      icon: <DescriptionOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <DescriptionOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Pending Requests",
       path: "/client/pending-requests",
-      icon: <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <AccessTimeOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Approved Requests",
       path: "/client/approved-requests",
-      icon: <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: (
+        <CheckCircleOutlineOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />
+      ),
     },
     {
       label: "Declined Requests",
       path: "/client/declined-requests",
-      icon: <CancelOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <CancelOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "History",
       path: "/client/history",
-      icon: <HistoryOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <HistoryOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
     {
       label: "Request Tracker",
       path: "/client/pending-requests",
-      icon: <TrackChangesOutlinedIcon sx={{ fontSize: 16 }} />,
+      icon: <TrackChangesOutlinedIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />,
     },
   ],
 };
@@ -555,7 +564,7 @@ export default function GlobalSearch({
           size="small"
           sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}
         >
-          <SearchOutlinedIcon sx={{ fontSize: 20 }} />
+          <SearchOutlinedIcon sx={{ fontSize: LAYOUT_ICON_LG }} />
         </IconButton>
       )}
 
@@ -586,26 +595,28 @@ export default function GlobalSearch({
                 fontSize: "0.85rem",
               },
             }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  {loading ? (
-                    <CircularProgress size={16} sx={{ color: "#9e9e9e" }} />
-                  ) : (
-                    <SearchOutlinedIcon
-                      sx={{ fontSize: 18, color: "#9e9e9e" }}
-                    />
-                  )}
-                </InputAdornment>
-              ),
-              endAdornment:
-                !alwaysExpanded && query ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={handleClose}>
-                      <CloseIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    {loading ? (
+                      <CircularProgress size={16} sx={{ color: "#9e9e9e" }} />
+                    ) : (
+                      <SearchOutlinedIcon
+                        sx={{ fontSize: LAYOUT_ICON_MD, color: "#9e9e9e" }}
+                      />
+                    )}
                   </InputAdornment>
-                ) : undefined,
+                ),
+                endAdornment:
+                  !alwaysExpanded && query ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={handleClose}>
+                        <CloseIcon sx={{ fontSize: LAYOUT_ICON_BASE }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+              },
             }}
           />
           {!alwaysExpanded && (
@@ -617,7 +628,7 @@ export default function GlobalSearch({
                 "&:hover": { color: "text.primary" },
               }}
             >
-              <CloseIcon sx={{ fontSize: 18 }} />
+              <CloseIcon sx={{ fontSize: LAYOUT_ICON_MD }} />
             </IconButton>
           )}
         </Box>
@@ -694,7 +705,11 @@ export default function GlobalSearch({
                   {results.staffers.map((s) => (
                     <ResultItem
                       key={s.id}
-                      icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
+                      icon={
+                        <PersonOutlineOutlinedIcon
+                          sx={{ fontSize: LAYOUT_ICON_BASE }}
+                        />
+                      }
                       primary={s.full_name}
                       secondary={[s.section, s.division]
                         .filter(Boolean)
@@ -720,7 +735,11 @@ export default function GlobalSearch({
                   {results.requests.map((r) => (
                     <ResultItem
                       key={r.id}
-                      icon={<FolderOutlinedIcon sx={{ fontSize: 16 }} />}
+                      icon={
+                        <FolderOutlinedIcon
+                          sx={{ fontSize: LAYOUT_ICON_BASE }}
+                        />
+                      }
                       primary={r.title}
                       secondary={r.status}
                       path={
@@ -744,7 +763,11 @@ export default function GlobalSearch({
                   {results.semesters.map((s) => (
                     <ResultItem
                       key={s.id}
-                      icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 16 }} />}
+                      icon={
+                        <CalendarMonthOutlinedIcon
+                          sx={{ fontSize: LAYOUT_ICON_BASE }}
+                        />
+                      }
                       primary={getSemesterDisplayName(s)}
                       secondary={s.is_active ? "Active" : "Inactive"}
                       path="/admin/semester-management"
@@ -764,7 +787,11 @@ export default function GlobalSearch({
                   {results.assignments.map((a) => (
                     <ResultItem
                       key={a.id}
-                      icon={<AssignmentOutlinedIcon sx={{ fontSize: 16 }} />}
+                      icon={
+                        <AssignmentOutlinedIcon
+                          sx={{ fontSize: LAYOUT_ICON_BASE }}
+                        />
+                      }
                       primary={a.request?.title || "—"}
                       secondary={a.status}
                       path={

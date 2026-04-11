@@ -15,8 +15,8 @@ import {
   useTheme,
   Menu,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
 import { supabase } from "../../lib/supabaseClient";
@@ -26,6 +26,8 @@ import {
   CONTROL_RADIUS,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
+  FILTER_SEARCH_FLEX,
+  FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
@@ -93,7 +95,9 @@ const buildEventDateDisplay = (req) => {
     return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
   };
   if (req.is_multiday && req.event_days?.length > 0) {
-    const sorted = [...req.event_days].sort((a, b) => a.date.localeCompare(b.date));
+    const sorted = [...req.event_days].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
     const first = fmtDs(sorted[0].date, { month: "short", day: "numeric" });
     const last = fmtDs(sorted[sorted.length - 1].date, {
       month: "short",
@@ -101,7 +105,11 @@ const buildEventDateDisplay = (req) => {
       year: "numeric",
     });
     return sorted.length === 1
-      ? fmtDs(sorted[0].date, { month: "short", day: "numeric", year: "numeric" })
+      ? fmtDs(sorted[0].date, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
       : `${first} – ${last}`;
   }
   return req.event_date
@@ -118,7 +126,10 @@ const resolveSelfieUrl = (rawSelfieUrl) => {
   const value = String(rawSelfieUrl).trim();
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;
-  const supabaseBaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
+  const supabaseBaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").replace(
+    /\/+$/,
+    "",
+  );
   if (value.startsWith("/storage/v1/object/public/login-proof/")) {
     return supabaseBaseUrl ? `${supabaseBaseUrl}${value}` : value;
   }
@@ -126,7 +137,8 @@ const resolveSelfieUrl = (rawSelfieUrl) => {
     .replace(/^\/?storage\/v1\/object\/public\/login-proof\//i, "")
     .replace(/^login-proof\//i, "")
     .replace(/^\/+/, "");
-  return supabase.storage.from("login-proof").getPublicUrl(normalizedPath)?.data?.publicUrl;
+  return supabase.storage.from("login-proof").getPublicUrl(normalizedPath)?.data
+    ?.publicUrl;
 };
 
 const getAssignmentPriority = (assignment) => {
@@ -234,7 +246,13 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
       const { data, error } = await supabase
         .from("coverage_requests")
         .select(baseSelect)
-        .in("status", ["Assigned", "Approved", "On Going", "Coverage Complete", "Completed"])
+        .in("status", [
+          "Assigned",
+          "Approved",
+          "On Going",
+          "Coverage Complete",
+          "Completed",
+        ])
         .contains("forwarded_sections", [currentUser.section])
         .order("event_date", { ascending: false });
 
@@ -326,11 +344,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         .split(/\s+/)
         .filter(Boolean);
       list = list.filter((r) => {
-        const hay = [
-          r.title || "",
-          r.entity?.name || "",
-          r.venue || "",
-        ]
+        const hay = [r.title || "", r.entity?.name || "", r.venue || ""]
           .join(" ")
           .toLowerCase();
         return tokens.every((t) => hay.includes(t));
@@ -362,7 +376,11 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         return;
       }
       attendance.forEach((a) => {
-        const status = a.completed_at ? "Completed" : a.timed_in_at ? "Ongoing" : "Pending";
+        const status = a.completed_at
+          ? "Completed"
+          : a.timed_in_at
+            ? "Ongoing"
+            : "Pending";
         rows.push([
           req.id,
           req.title || "Coverage Request",
@@ -466,11 +484,20 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         <FormControl
           size="small"
-          sx={{ flex: 1.8, minWidth: FILTER_SEARCH_MIN_WIDTH, maxWidth: 460 }}
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
         >
           <OutlinedInput
             placeholder="Search request, client, venue"
@@ -506,7 +533,11 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
               All Semesters
             </MenuItem>
             {semesters.map((s) => (
-              <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              <MenuItem
+                key={s.id}
+                value={s.id}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
                 {getSemesterDisplayName(s)}
               </MenuItem>
             ))}
@@ -578,7 +609,9 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
             No time record entries found.
           </Typography>
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2, pb: 2 }}>
+          <Box
+            sx={{ display: "flex", flexDirection: "column", gap: 1.2, pb: 2 }}
+          >
             {filteredRequests.map((req) => {
               const attendance = attendanceByRequest[req.id] || [];
 
@@ -588,14 +621,20 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                   sx={{
                     border: `1px solid ${border}`,
                     borderRadius: "10px",
-                    backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "#ffffff",
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.01)"
+                      : "#ffffff",
                     overflow: "hidden",
                   }}
                 >
                   {attendance.length === 0 ? (
                     <Box sx={{ px: 1.5, py: 1.2 }}>
                       <Typography
-                        sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.76rem",
+                          color: "text.secondary",
+                        }}
                       >
                         No attendance records for this request.
                       </Typography>
@@ -606,7 +645,9 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                         border: `1px solid ${border}`,
                         borderRadius: "10px",
                         overflow: "hidden",
-                        backgroundColor: isDark ? "rgba(255,255,255,0.015)" : "#fbfbfb",
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.015)"
+                          : "#fbfbfb",
                         m: 1,
                       }}
                     >
@@ -635,12 +676,21 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                             {req.title || "Coverage Request"}
                           </Typography>
                           <Typography
-                            sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary" }}
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.72rem",
+                              color: "text.secondary",
+                            }}
                           >
-                            {req.entity?.name || "—"} · {buildEventDateDisplay(req)}
+                            {req.entity?.name || "—"} ·{" "}
+                            {buildEventDateDisplay(req)}
                           </Typography>
                           <Typography
-                            sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary" }}
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.72rem",
+                              color: "text.secondary",
+                            }}
                           >
                             {req.venue || "—"}
                           </Typography>
@@ -678,26 +728,32 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                             : "rgba(53,53,53,0.02)",
                         }}
                       >
-                        {["Staff Assigned", "Attendance", "Status", "Proof of Attendance"].map(
-                          (col, i) => (
-                            <Typography
-                              key={col}
-                              sx={{
-                                px: 1.1,
-                                py: 0.55,
-                                fontFamily: dm,
-                                fontSize: "0.6rem",
-                                fontWeight: 700,
-                                color: "text.disabled",
-                                letterSpacing: "0.07em",
-                                textTransform: "uppercase",
-                                borderLeft: i > 0 ? { md: `1px solid ${border}` } : undefined,
-                              }}
-                            >
-                              {col}
-                            </Typography>
-                          ),
-                        )}
+                        {[
+                          "Staff Assigned",
+                          "Attendance",
+                          "Status",
+                          "Proof of Attendance",
+                        ].map((col, i) => (
+                          <Typography
+                            key={col}
+                            sx={{
+                              px: 1.1,
+                              py: 0.55,
+                              fontFamily: dm,
+                              fontSize: "0.6rem",
+                              fontWeight: 700,
+                              color: "text.disabled",
+                              letterSpacing: "0.07em",
+                              textTransform: "uppercase",
+                              borderLeft:
+                                i > 0
+                                  ? { md: `1px solid ${border}` }
+                                  : undefined,
+                            }}
+                          >
+                            {col}
+                          </Typography>
+                        ))}
                       </Box>
 
                       {/* Rows */}
@@ -705,7 +761,10 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                         {attendance.map((a, index) => {
                           const timeInStr = fmtTime(a.timed_in_at);
                           const completedAtStr = fmtTime(a.completed_at);
-                          const duration = computeDuration(a.timed_in_at, a.completed_at);
+                          const duration = computeDuration(
+                            a.timed_in_at,
+                            a.completed_at,
+                          );
                           const status = a.completed_at
                             ? "Completed"
                             : a.timed_in_at
@@ -726,12 +785,19 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                                   xs: "1fr",
                                   md: "1.05fr 1.75fr 0.85fr 1fr",
                                 },
-                                borderTop: index === 0 ? "none" : `1px solid ${border}`,
+                                borderTop:
+                                  index === 0 ? "none" : `1px solid ${border}`,
                               }}
                             >
                               {/* Staff */}
                               <Box sx={{ px: 1.1, py: 0.95, minWidth: 0 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.75,
+                                  }}
+                                >
                                   <Avatar
                                     src={avatarUrl || undefined}
                                     sx={{
@@ -744,7 +810,8 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                                       flexShrink: 0,
                                     }}
                                   >
-                                    {!avatarUrl && getInitials(a.staffer?.full_name)}
+                                    {!avatarUrl &&
+                                      getInitials(a.staffer?.full_name)}
                                   </Avatar>
                                   <Typography
                                     sx={{
@@ -784,7 +851,11 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                                   {[
                                     { label: "Time in", val: timeInStr },
                                     { label: "Time out", val: completedAtStr },
-                                    { label: "Duration", val: duration, highlight: true },
+                                    {
+                                      label: "Duration",
+                                      val: duration,
+                                      highlight: true,
+                                    },
                                   ].map(({ label, val, highlight }) => (
                                     <Box
                                       key={label}
@@ -890,7 +961,10 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                                       backgroundColor: isDark
                                         ? "rgba(17,17,17,0.45)"
                                         : "rgba(53,53,53,0.03)",
-                                      cursor: proofUrl && !isBroken ? "zoom-in" : "default",
+                                      cursor:
+                                        proofUrl && !isBroken
+                                          ? "zoom-in"
+                                          : "default",
                                     }}
                                   >
                                     {proofUrl && !isBroken ? (
@@ -910,7 +984,13 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                                             [a.id]: true,
                                           }))
                                         }
-                                        onClick={() => window.open(proofUrl, "_blank", "noopener,noreferrer")}
+                                        onClick={() =>
+                                          window.open(
+                                            proofUrl,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                          )
+                                        }
                                       />
                                     ) : (
                                       <Box
@@ -924,7 +1004,11 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                                         }}
                                       >
                                         <BrokenImageOutlinedIcon
-                                          sx={{ color: "text.disabled", fontSize: 18, mb: 0.2 }}
+                                          sx={{
+                                            color: "text.disabled",
+                                            fontSize: 18,
+                                            mb: 0.2,
+                                          }}
                                         />
                                         <Typography
                                           sx={{

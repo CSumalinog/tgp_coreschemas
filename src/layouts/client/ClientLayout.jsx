@@ -14,18 +14,18 @@ import {
 } from "@mui/material";
 
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import AddIcon from "@mui/icons-material/Add";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
+import AddIcon from "@mui/icons-material/AddOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
-import MenuIcon from "@mui/icons-material/Menu";
+import MenuIcon from "@mui/icons-material/MenuOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import LogoutIcon from "@mui/icons-material/Logout";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import LogoutIcon from "@mui/icons-material/LogoutOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
+import TrackChangesIcon from "@mui/icons-material/TrackChangesOutlined";
 
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import GlobalSearch from "../../components/common/GlobalSearch";
@@ -34,6 +34,12 @@ import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
+import {
+  LAYOUT_ICON_LG,
+  LAYOUT_ICON_MD,
+  LAYOUT_ICON_SM,
+  LAYOUT_ICON_TINY,
+} from "../../utils/layoutTokens";
 import brandLogo from "../../assets/img/cs-logo.png";
 
 if (typeof document !== "undefined" && !document.getElementById("dash-fonts")) {
@@ -134,7 +140,9 @@ function HelpPopover({ open, onClose, anchorRef }) {
           gap: 1,
         }}
       >
-        <HelpOutlineIcon sx={{ fontSize: 15, color: GOLD, flexShrink: 0 }} />
+        <HelpOutlineIcon
+          sx={{ fontSize: LAYOUT_ICON_SM, color: GOLD, flexShrink: 0 }}
+        />
         <Box>
           <Typography
             sx={{
@@ -234,7 +242,11 @@ function HelpPopover({ open, onClose, anchorRef }) {
         }}
       >
         <TrackChangesIcon
-          sx={{ fontSize: 12, color: "rgba(53,53,53,0.4)", flexShrink: 0 }}
+          sx={{
+            fontSize: LAYOUT_ICON_TINY,
+            color: "rgba(53,53,53,0.4)",
+            flexShrink: 0,
+          }}
         />
         <Typography
           sx={{
@@ -334,7 +346,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
         },
         <>
           <AccountCircleOutlinedIcon
-            sx={{ fontSize: 15, color: "rgba(53,53,53,0.45)" }}
+            sx={{ fontSize: LAYOUT_ICON_SM, color: "rgba(53,53,53,0.45)" }}
           />
           <Typography
             sx={{
@@ -352,7 +364,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
         toggleDark,
         <>
           <DarkModeOutlinedIcon
-            sx={{ fontSize: 15, color: "rgba(53,53,53,0.45)" }}
+            sx={{ fontSize: LAYOUT_ICON_SM, color: "rgba(53,53,53,0.45)" }}
           />
           <Typography
             sx={{
@@ -394,7 +406,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
           navigate("/login");
         },
         <>
-          <LogoutIcon sx={{ fontSize: 15, color: "#c62828" }} />
+          <LogoutIcon sx={{ fontSize: LAYOUT_ICON_SM, color: "#c62828" }} />
           <Typography
             sx={{
               fontFamily: dm,
@@ -473,7 +485,7 @@ function SidebarContent({ onClose, isMobile }) {
               "&:hover": { color: TEXT_PRIMARY, backgroundColor: HOVER_BG },
             }}
           >
-            <CloseIcon sx={{ fontSize: 18 }} />
+            <CloseIcon sx={{ fontSize: LAYOUT_ICON_MD }} />
           </IconButton>
         )}
       </Box>
@@ -553,7 +565,9 @@ function SidebarContent({ onClose, isMobile }) {
             },
           }}
         >
-          <HelpOutlineIcon sx={{ fontSize: 13, color: TEXT_SECONDARY }} />
+          <HelpOutlineIcon
+            sx={{ fontSize: LAYOUT_ICON_TINY, color: TEXT_SECONDARY }}
+          />
           <Typography
             sx={{
               fontFamily: dm,
@@ -642,7 +656,7 @@ function CollapsibleLegend({ title, items }) {
         </Typography>
         <KeyboardArrowDownIcon
           sx={{
-            fontSize: 15,
+            fontSize: LAYOUT_ICON_SM,
             color: TEXT_SECONDARY,
             transition: "transform 0.2s",
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
@@ -897,13 +911,13 @@ function ClientLayout() {
                 },
               }}
             >
-              <MenuIcon sx={{ fontSize: 20 }} />
+              <MenuIcon sx={{ fontSize: LAYOUT_ICON_LG }} />
             </IconButton>
           )}
           <Button
             variant="contained"
             size="small"
-            startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+            startIcon={<AddIcon sx={{ fontSize: LAYOUT_ICON_SM }} />}
             onClick={() => setOpenDialog(true)}
             sx={{
               textTransform: "none",
