@@ -2160,11 +2160,14 @@ export default function MyAssignment() {
         anchor="right"
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: "100%", sm: 520, md: 600 },
-            backgroundColor: "background.default",
-            backgroundImage: "none",
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: "100%", sm: "clamp(480px, 33.333vw, 600px)" },
+              maxWidth: "100vw",
+              backgroundColor: "background.default",
+              backgroundImage: "none",
+            },
           },
         }}
       >
@@ -2198,7 +2201,15 @@ export default function MyAssignment() {
             <IconButton
               size="small"
               onClick={() => setSettingsOpen(false)}
-              sx={{ color: "text.secondary" }}
+              sx={{
+                borderRadius: "10px",
+                color: "text.secondary",
+                "&:hover": {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(53,53,53,0.04)",
+                },
+              }}
             >
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>

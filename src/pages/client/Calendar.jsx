@@ -11,8 +11,35 @@ const GOLD     = "#F5C52B";
 const GOLD_08  = "rgba(245,197,43,0.08)";
 const CHARCOAL = "#353535";
 
-const DAYS               = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MAX_EVENTS_PER_DAY = 2;
+const HOLIDAY_TAG_PALETTE = [
+  {
+    light: { bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.35)", text: "#1d4ed8" },
+    dark: { bg: "rgba(59,130,246,0.20)", border: "rgba(96,165,250,0.45)", text: "#93c5fd" },
+  },
+  {
+    light: { bg: "rgba(236,72,153,0.10)", border: "rgba(236,72,153,0.35)", text: "#be185d" },
+    dark: { bg: "rgba(236,72,153,0.20)", border: "rgba(244,114,182,0.45)", text: "#f9a8d4" },
+  },
+  {
+    light: { bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.35)", text: "#c2410c" },
+    dark: { bg: "rgba(249,115,22,0.20)", border: "rgba(251,146,60,0.45)", text: "#fdba74" },
+  },
+  {
+    light: { bg: "rgba(168,85,247,0.10)", border: "rgba(168,85,247,0.35)", text: "#7e22ce" },
+    dark: { bg: "rgba(168,85,247,0.20)", border: "rgba(192,132,252,0.45)", text: "#d8b4fe" },
+  },
+  {
+    light: { bg: "rgba(20,184,166,0.10)", border: "rgba(20,184,166,0.35)", text: "#0f766e" },
+    dark: { bg: "rgba(20,184,166,0.20)", border: "rgba(45,212,191,0.45)", text: "#99f6e4" },
+  },
+  {
+    light: { bg: "rgba(239,68,68,0.10)", border: "rgba(239,68,68,0.35)", text: "#b91c1c" },
+    dark: { bg: "rgba(239,68,68,0.20)", border: "rgba(248,113,113,0.45)", text: "#fca5a5" },
+  },
+];
+
+const DAYS               = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const FALLBACK_DEFAULT_SLOTS = 2;
 
 // ── Timezone-safe ISO helper ──────────────────────────────────────────────
 const toISO = (d) =>
@@ -22,6 +49,16 @@ const parseLocalDate = (str) => {
   const [y, m, d] = str.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
+
+function getHolidayTagStyle(title, isDark) {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = (hash << 5) - hash + title.charCodeAt(i);
+    hash |= 0;
+  }
+  const swatch = HOLIDAY_TAG_PALETTE[Math.abs(hash) % HOLIDAY_TAG_PALETTE.length];
+  return isDark ? swatch.dark : swatch.light;
+}
 
 function getPhilippineHolidays(year) {
   const holidays = {};
@@ -67,6 +104,8 @@ function Calendar() {
   const [eventMap,       setEventMap]       = useState({});
   const [blockedDates,   setBlockedDates]   = useState(new Set());
   const [myRequestDates, setMyRequestDates] = useState(new Set());
+  const [defaultSlots,   setDefaultSlots]   = useState(FALLBACK_DEFAULT_SLOTS);
+  const [slotOverrides,  setSlotOverrides]  = useState({});
 
   const PH_HOLIDAYS = getPhilippineHolidays(currentDate.getFullYear());
 
@@ -80,6 +119,27 @@ function Calendar() {
 
   const fetchMonthData = async (firstDay, lastDay) => {
     try {
+      const [{ data: settingsRow }, { data: overrideRows }] = await Promise.all([
+        supabase
+          .from("calendar_slot_settings")
+          .select("default_slots")
+          .eq("id", 1)
+          .maybeSingle(),
+        supabase
+          .from("calendar_slot_overrides")
+          .select("slot_date, slot_capacity")
+          .gte("slot_date", firstDay)
+          .lte("slot_date", lastDay),
+      ]);
+
+      const resolvedDefault = settingsRow?.default_slots ?? FALLBACK_DEFAULT_SLOTS;
+      setDefaultSlots(resolvedDefault);
+      setSlotOverrides(
+        Object.fromEntries(
+          (overrideRows || []).map((row) => [row.slot_date, row.slot_capacity]),
+        ),
+      );
+
       // ✅ Only count Approved, On Going, and Completed as taken slots
       const { data: requests, error: reqError } = await supabase
         .from("coverage_requests")
@@ -139,7 +199,9 @@ function Calendar() {
   };
 
   const getEventCount     = (iso) => eventMap[iso] || 0;
-  const getRemainingSlots = (iso) => Math.max(0, MAX_EVENTS_PER_DAY - getEventCount(iso));
+  const getCapacityForDate = (iso) => slotOverrides[iso] ?? defaultSlots;
+  const getRemainingSlots = (iso) =>
+    Math.max(0, getCapacityForDate(iso) - getEventCount(iso));
   const isBlocked         = (iso) => blockedDates.has(iso);
   const hasMyRequest      = (iso) => myRequestDates.has(iso);
 
@@ -149,7 +211,7 @@ function Calendar() {
 
   const generateCalendarGrid = () => {
     const year = currentDate.getFullYear(), month = currentDate.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
     const daysInMonth     = new Date(year, month + 1, 0).getDate();
     const prevMonthDays   = new Date(year, month, 0).getDate();
     const totalCells      = Math.ceil((firstDayOfMonth + daysInMonth) / 7) * 7;
@@ -188,7 +250,19 @@ function Calendar() {
   };
 
   return (
-    <Box sx={{ width: "100%", height: "100%", p: { xs: 1.5, md: 3 }, pt: 2, boxSizing: "border-box" }}>
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        p: { xs: 1.5, md: 3 },
+        pt: 2,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        minHeight: 0,
+      }}
+    >
 
       {/* ── Month Header ── */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
@@ -223,29 +297,65 @@ function Calendar() {
         </IconButton>
       </Box>
 
-      {/* ── Weekday Header ── */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 0.5 }}>
-        {DAYS.map((day) => (
-          <Typography key={day} align="center" sx={{
-            fontSize: { xs: "0.65rem", md: "0.75rem" }, fontWeight: 600,
-            color: "text.disabled", letterSpacing: "0.04em", textTransform: "uppercase",
-          }}>
-            {day}
-          </Typography>
-        ))}
-      </Box>
-
       {/* ── Calendar Grid ── */}
-      <Box sx={{
-        display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
-        border: "1px solid",
-        borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.10)",
-        borderRadius: "10px", overflow: "hidden",
-        boxShadow: isDark
-          ? "0 2px 16px rgba(0,0,0,0.3)"
-          : "0 2px 16px rgba(53,53,53,0.07), 0 1px 4px rgba(53,53,53,0.04)",
-      }}>
-        {calendarDays.map((date, idx) => {
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "auto",
+          border: "1px solid",
+          borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(53,53,53,0.10)",
+          borderRadius: "10px",
+          backgroundColor: "background.paper",
+          "&::-webkit-scrollbar": { width: 6, height: 6 },
+          "&::-webkit-scrollbar-track": { background: "transparent" },
+          "&::-webkit-scrollbar-thumb": {
+            background: isDark ? "#3a3a3a" : "#d9d9d9",
+            borderRadius: "10px",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, minmax(120px, 1fr))",
+            minWidth: 7 * 120,
+          }}
+        >
+          {DAYS.map((day) => (
+            <Box
+              key={day}
+              sx={{
+                position: "sticky",
+                top: 0,
+                zIndex: 2,
+                px: 1,
+                py: 1,
+                textAlign: "center",
+                borderLeft: "1px solid",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.02)"
+                  : "rgba(53,53,53,0.02)",
+                "&:first-of-type": { borderLeft: "none" },
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  color: "text.secondary",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {day}
+              </Typography>
+            </Box>
+          ))}
+
+          {calendarDays.map((date, idx) => {
           const d              = date.cellDate;
           const isWeekend      = d.getDay() === 0 || d.getDay() === 6;
           const holidayTitle   = PH_HOLIDAYS[date.iso];
@@ -256,6 +366,9 @@ function Calendar() {
           const hasRequest     = hasMyRequest(date.iso);
           const isDisabled     = !date.isCurrentMonth || isPast || remainingSlots <= 0 || blocked;
           const isClickable    = !isDisabled;
+          const holidayTagStyle = holidayTitle
+            ? getHolidayTagStyle(holidayTitle, isDark)
+            : null;
 
           let cellBg = "background.paper";
           if (isWeekend && date.isCurrentMonth)  cellBg = isDark ? "#1a1a1a" : "rgba(53,53,53,0.02)";
@@ -273,57 +386,84 @@ function Calendar() {
             <Box
               onClick={() => handleDateClick(date)}
               sx={{
-                minHeight: { xs: 60, sm: 75, md: 95 },
-                p: { xs: 0.5, md: 1 },
+                minHeight: 116,
+                p: 1,
+                borderLeft: "1px solid",
+                borderTop: "1px solid",
+                borderColor: "divider",
                 backgroundColor: cellBg,
-                borderRight: ".5px solid", borderBottom: ".5px solid", borderColor: "divider",
-                "&:nth-of-type(7n)":      { borderRight: "none" },
-                "&:nth-last-child(-n+7)": { borderBottom: "none" },
                 position: "relative",
                 cursor: isClickable ? "pointer" : "not-allowed",
-                opacity: !date.isCurrentMonth ? 0.4 : isPast ? 0.45 : 1,
+                opacity: !date.isCurrentMonth ? 0.58 : isPast ? 0.45 : 1,
                 transition: "background-color 0.15s",
                 ...(isClickable && {
                   "&:hover": {
                     backgroundColor: GOLD_08,
-                    "& .day-number-box": { backgroundColor: GOLD, color: CHARCOAL },
                   },
                 }),
               }}
             >
-              {/* Day number */}
-              <Box sx={{ display: "flex", justifyContent: "center", mb: 0.3 }}>
+              {/* Date + holiday label row */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.55, mb: 0.45 }}>
                 <Box className="day-number-box" sx={{
-                  width: { xs: 20, md: 24 }, height: { xs: 20, md: 24 },
+                  width: "auto", height: "auto",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: "50%",
                   fontSize: { xs: "0.7rem", md: "0.8rem" },
                   fontWeight: isToday ? 700 : 400,
-                  transition: "background-color 0.15s, color 0.15s",
+                  transition: "color 0.15s",
                   color: "text.primary",
-                  ...(isToday && { backgroundColor: CHARCOAL, color: "#ffffff" }),
-                  ...(holidayTitle && !isToday && { backgroundColor: "#4caf50", color: "#ffffff" }),
-                  ...(blocked && date.isCurrentMonth && !isToday && { backgroundColor: "#d32f2f", color: "#ffffff" }),
+                  ...(isToday && { color: GOLD }),
+                  ...(holidayTitle && !isToday && { color: "#15803d", fontWeight: 700 }),
+                  ...(blocked && date.isCurrentMonth && !isToday && { color: "#d32f2f", fontWeight: 700 }),
                 }}>
                   {date.dayNumber}
                 </Box>
+
+                {date.isCurrentMonth && holidayTitle && (
+                  <Box
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      px: 0.65,
+                      py: 0.12,
+                      borderRadius: "999px",
+                      border: "1px solid",
+                      borderColor: holidayTagStyle.border,
+                      backgroundColor: holidayTagStyle.bg,
+                    }}
+                  >
+                    <Typography
+                      noWrap
+                      sx={{
+                        fontSize: { xs: "0.5rem", md: "0.56rem" },
+                        lineHeight: 1.2,
+                        fontWeight: 600,
+                        color: holidayTagStyle.text,
+                        letterSpacing: "0.01em",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {holidayTitle}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
 
               {/* Slot status */}
+
               {date.isCurrentMonth && !isPast && (
                 <Typography sx={{
                   fontSize: { xs: "0.55rem", md: "0.63rem" },
-                  textAlign: "center", lineHeight: 1.2, fontWeight: 500,
+                  textAlign: "left", lineHeight: 1.2, fontWeight: 500,
                   color:
                     blocked              ? "#d32f2f" :
                     remainingSlots === 0 ? "#d32f2f" :
-                    remainingSlots === 1 ? GOLD      :
                     "#15803d",
                 }}>
                   {blocked              ? "Unavailable"  :
                    remainingSlots === 0 ? "Fully Booked" :
-                   remainingSlots === 1 ? "1 slot left"  :
-                   `${remainingSlots} slots open`}
+                   `Slots open: ${remainingSlots}`}
                 </Typography>
               )}
 
@@ -339,14 +479,15 @@ function Calendar() {
             </Box>
           );
 
-          return tooltipTitle ? (
-            <Tooltip key={idx} title={tooltipTitle} arrow placement="bottom" disableInteractive>
-              {cellContent}
-            </Tooltip>
-          ) : (
-            <React.Fragment key={idx}>{cellContent}</React.Fragment>
-          );
-        })}
+            return tooltipTitle ? (
+              <Tooltip key={idx} title={tooltipTitle} arrow placement="bottom" disableInteractive>
+                {cellContent}
+              </Tooltip>
+            ) : (
+              <React.Fragment key={idx}>{cellContent}</React.Fragment>
+            );
+          })}
+        </Box>
       </Box>
 
       <CoverageRequestDialog

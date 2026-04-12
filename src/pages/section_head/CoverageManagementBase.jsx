@@ -2480,11 +2480,14 @@ export default function CoverageManagementBase({
         anchor="right"
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: "100%", sm: 520, md: 600 },
-            backgroundColor: "background.default",
-            borderLeft: `1px solid ${border}`,
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: "100%", sm: "clamp(480px, 33.333vw, 600px)" },
+              maxWidth: "100vw",
+              backgroundColor: "background.default",
+              borderLeft: `1px solid ${border}`,
+            },
           },
         }}
       >

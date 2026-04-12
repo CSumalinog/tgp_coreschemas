@@ -169,10 +169,13 @@ function ServiceRow({
     return false;
   });
 
-  // Avoid inflating counts when duplicate assignment rows exist for the same staffer.
+  // Count assignment units as staffer-per-day so multi-day staffing is reflected.
+  // We still dedupe duplicate rows for the exact same staffer+date key.
   const seenStaffers = new Set();
   const colStaffers = sectionStaffers.filter((a) => {
-    const key = a.assigned_to || a.staffer?.id;
+    const stafferId = a.assigned_to || a.staffer?.id;
+    if (!stafferId) return false;
+    const key = `${stafferId}::${a.assignment_date || ""}`;
     if (!key) return false;
     if (seenStaffers.has(key)) return false;
     seenStaffers.add(key);
@@ -638,7 +641,13 @@ export default function RequestDetails({
           (a.staffer?.section === svc.section && !a.assigner),
       );
       const filled = new Set(
-        matching.map((a) => a.assigned_to || a.staffer?.id).filter(Boolean),
+        matching
+          .map((a) => {
+            const stafferId = a.assigned_to || a.staffer?.id;
+            if (!stafferId) return null;
+            return `${stafferId}::${a.assignment_date || ""}`;
+          })
+          .filter(Boolean),
       ).size;
       if (filled === 0) zeros.push({ label: svc.label, pax });
     });
@@ -659,7 +668,13 @@ export default function RequestDetails({
           (a.staffer?.section === svc.section && !a.assigner),
       );
       const filled = new Set(
-        matching.map((a) => a.assigned_to || a.staffer?.id).filter(Boolean),
+        matching
+          .map((a) => {
+            const stafferId = a.assigned_to || a.staffer?.id;
+            if (!stafferId) return null;
+            return `${stafferId}::${a.assignment_date || ""}`;
+          })
+          .filter(Boolean),
       ).size;
       if (filled > 0 && filled < pax)
         partial.push({ label: svc.label, filled, pax });

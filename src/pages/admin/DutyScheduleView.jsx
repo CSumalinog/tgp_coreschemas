@@ -1807,24 +1807,28 @@ export default function DutyScheduleView() {
       field: "created_at",
       headerName: "Time",
       flex: 0.95,
+      minWidth: 130,
       renderCell: (p) => <MetaCell>{formatDateTime(p.value)}</MetaCell>,
     },
     {
       field: "actor_name",
       headerName: "Actor",
       flex: 1,
+      minWidth: 130,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
     {
       field: "target_name",
       headerName: "Target",
       flex: 1,
+      minWidth: 130,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
     {
       field: "action_type",
       headerName: "Action",
       flex: 1.25,
+      minWidth: 150,
       renderCell: (p) => (
         <MetaCell>{String(p.value || "-").replaceAll("_", " ")}</MetaCell>
       ),
@@ -1833,18 +1837,21 @@ export default function DutyScheduleView() {
       field: "from_day",
       headerName: "From",
       flex: 0.8,
+      minWidth: 95,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
     {
       field: "to_day",
       headerName: "To",
       flex: 0.8,
+      minWidth: 95,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
     {
       field: "reason",
       headerName: "Reason / Note",
       flex: 1.6,
+      minWidth: 220,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
   ];
@@ -4019,15 +4026,17 @@ export default function DutyScheduleView() {
         anchor="right"
         open={settingsDrawerOpen}
         onClose={() => setSettingsDrawerOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: "100%", sm: 520, md: 600 },
-            maxWidth: "100vw",
-            backgroundColor: "background.paper",
-            borderLeft: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "-18px 0 48px rgba(0,0,0,0.45)"
-              : "-12px 0 32px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: "100%", sm: "clamp(480px, 33.333vw, 600px)" },
+              maxWidth: "100vw",
+              backgroundColor: "background.paper",
+              borderLeft: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "-18px 0 48px rgba(0,0,0,0.45)"
+                : "-12px 0 32px rgba(53,53,53,0.12)",
+            },
           },
         }}
       >
@@ -4108,7 +4117,7 @@ export default function DutyScheduleView() {
                       justifyContent: "center",
                       px: 1.3,
                       py: 0.6,
-                      borderRadius: "4px",
+                      borderRadius: "10px",
                       cursor: "pointer",
                       border: active
                         ? "1px solid rgba(0,0,0,0.25)"
@@ -4218,7 +4227,7 @@ export default function DutyScheduleView() {
                       "& .MuiOutlinedInput-root": {
                         fontFamily: dm,
                         fontSize: "0.78rem",
-                        borderRadius: "4px",
+                        borderRadius: "10px",
                         backgroundColor: "#f7f7f8",
                       },
                     }}
@@ -4236,7 +4245,7 @@ export default function DutyScheduleView() {
                       "& .MuiOutlinedInput-root": {
                         fontFamily: dm,
                         fontSize: "0.78rem",
-                        borderRadius: "4px",
+                        borderRadius: "10px",
                         backgroundColor: "#f7f7f8",
                       },
                     }}
@@ -4250,7 +4259,7 @@ export default function DutyScheduleView() {
                     sx={{
                       px: 1.35,
                       py: 0.68,
-                      borderRadius: "4px",
+                      borderRadius: "10px",
                       cursor:
                         blackoutSaving || !blackoutDateInput
                           ? "default"
@@ -4381,7 +4390,7 @@ export default function DutyScheduleView() {
                       justifyContent: "center",
                       px: 1.4,
                       py: 0.65,
-                      borderRadius: "4px",
+                      borderRadius: "10px",
                       cursor: publishSaving ? "default" : "pointer",
                       border: "1px solid rgba(0,0,0,0.18)",
                       backgroundColor: "#ffffff",
@@ -4411,7 +4420,7 @@ export default function DutyScheduleView() {
                         justifyContent: "center",
                         px: 1.4,
                         py: 0.65,
-                        borderRadius: "4px",
+                        borderRadius: "10px",
                         cursor: "pointer",
                         border: "1px solid rgba(0,0,0,0.12)",
                         backgroundColor: "#f7f7f8",
@@ -4446,7 +4455,7 @@ export default function DutyScheduleView() {
                       justifyContent: "center",
                       px: 1.4,
                       py: 0.65,
-                      borderRadius: "4px",
+                      borderRadius: "10px",
                       cursor: "pointer",
                       border: "1px solid rgba(0,0,0,0.12)",
                       backgroundColor: "#f7f7f8",
@@ -4706,7 +4715,7 @@ export default function DutyScheduleView() {
                       gap: 0.45,
                       px: 1.05,
                       py: 0.45,
-                      borderRadius: "4px",
+                      borderRadius: "10px",
                       cursor: "pointer",
                       border: "1px solid rgba(0,0,0,0.12)",
                       backgroundColor: "#f7f7f8",
@@ -4741,7 +4750,7 @@ export default function DutyScheduleView() {
                     sx={{
                       fontFamily: dm,
                       fontSize: "0.76rem",
-                      borderRadius: "4px",
+                      borderRadius: "10px",
                       height: FILTER_INPUT_HEIGHT,
                       backgroundColor: "#f7f7f8",
                       "& .MuiOutlinedInput-notchedOutline": {
@@ -4756,7 +4765,8 @@ export default function DutyScheduleView() {
                     minHeight: 420,
                     borderRadius: "10px",
                     border: `1px solid ${border}`,
-                    overflow: "hidden",
+                    overflowX: "auto",
+                    overflowY: "hidden",
                     backgroundColor: "#f7f7f8",
                   }}
                 >
@@ -4769,6 +4779,7 @@ export default function DutyScheduleView() {
                     rowHeight={56}
                     enableSearch={false}
                     apiRef={auditGridApiRef}
+                    sx={{ minWidth: 950 }}
                     slotProps={{
                       toolbar: {
                         csvOptions: { disableToolbarButton: true },

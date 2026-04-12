@@ -93,6 +93,10 @@ export async function submitCoverageRequest(
     );
   }
 
+  if (!resolvedEntityId) {
+    throw new Error("Entity / organization is required to submit a request.");
+  }
+
   // ── Upload file ──
   let fileUrl = null;
   if (file) {
@@ -242,6 +246,10 @@ export async function updateDraftRequest(
       requestData.other_entity,
       requestData.client_type,
     );
+  }
+
+  if (!resolvedEntityId) {
+    throw new Error("Entity / organization is required to submit a request.");
   }
 
   // ── Upload file if new one provided ──

@@ -280,15 +280,7 @@ export default function BlockingDetailsLog() {
           </IconButton>
 
           <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-              }}
-            >
-              Accountability view for all blocked dates
-            </Typography>
+            
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mt: 0.8 }}>
               <Box
                 onClick={() => setActiveTab("all")}

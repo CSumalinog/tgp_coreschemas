@@ -1296,11 +1296,14 @@ export default function StaffersManagement() {
         anchor="right"
         open={recordsDrawerOpen}
         onClose={() => setRecordsDrawerOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: "100%", sm: 520, md: 600 },
-            borderLeft: `1px solid ${border}`,
-            backgroundColor: isDark ? "#171717" : "#ffffff",
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: "100%", sm: "clamp(480px, 33.333vw, 600px)" },
+              maxWidth: "100vw",
+              borderLeft: `1px solid ${border}`,
+              backgroundColor: isDark ? "#171717" : "#ffffff",
+            },
           },
         }}
       >
@@ -1324,7 +1327,19 @@ export default function StaffersManagement() {
               Manage Staff Records
             </Typography>
           </Box>
-          <IconButton size="small" onClick={() => setRecordsDrawerOpen(false)}>
+          <IconButton
+            size="small"
+            onClick={() => setRecordsDrawerOpen(false)}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.06)"
+                  : "rgba(53,53,53,0.04)",
+              },
+            }}
+          >
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>

@@ -26,8 +26,10 @@ import {
   addMonths,
   subMonths,
   startOfMonth,
-  getDaysInMonth,
-  getDay,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
   isBefore,
   startOfDay,
   parseISO,
@@ -56,7 +58,7 @@ const SERVICES = [
   "Camera Operator (for live streaming)",
 ];
 
-const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const CALENDAR_WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MAX_DAY_SELECTION = 7;
 const MAX_PAX = 3; // max staff per service per day (single or multi-day)
 const OTHER_ID = "__others__";
@@ -92,13 +94,10 @@ function formatKey(key) {
 function PopupCalendar({ onSelect, alreadySelected, isDark }) {
   const [viewDate, setViewDate] = useState(new Date());
   const today = startOfDay(new Date());
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDow = getDay(startOfMonth(viewDate));
-  const totalDays = getDaysInMonth(viewDate);
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= totalDays; d++) cells.push(d);
+  const monthStart = startOfMonth(viewDate);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const gridEnd = endOfWeek(addMonths(monthStart, 1), { weekStartsOn: 1 });
+  const monthCells = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   return (
     <Paper
@@ -107,7 +106,7 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
         border: "1px solid",
         borderColor: "divider",
         borderRadius: "10px",
-        p: 1.5,
+        p: 1,
         backgroundColor: "background.paper",
       }}
     >
@@ -145,34 +144,51 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
         sx={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          mb: 0.25,
+          borderTop: "1px solid",
+          borderColor: "divider",
         }}
       >
-        {DAYS_OF_WEEK.map((d) => (
-          <Typography
+        {CALENDAR_WEEK_LABELS.map((d) => (
+          <Box
             key={d}
             sx={{
-              fontSize: "0.65rem",
+              py: 0.65,
               textAlign: "center",
-              color: "text.disabled",
-              fontWeight: 500,
+              borderLeft: "1px solid",
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.02)"
+                : "rgba(53,53,53,0.02)",
+              "&:first-of-type": { borderLeft: "none" },
             }}
           >
-            {d}
-          </Typography>
+            <Typography
+              sx={{
+                fontSize: "0.62rem",
+                color: "text.secondary",
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              {d}
+            </Typography>
+          </Box>
         ))}
       </Box>
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          rowGap: "1px",
         }}
       >
-        {cells.map((day, idx) => {
-          if (!day) return <Box key={`e-${idx}`} />;
+        {monthCells.map((cellDate) => {
+          const year = cellDate.getFullYear();
+          const month = cellDate.getMonth();
+          const day = cellDate.getDate();
           const key = dateKey(year, month, day);
-          const cellDate = startOfDay(new Date(year, month, day));
+          const inCurrentMonth = isSameMonth(cellDate, monthStart);
           const isPast = isBefore(cellDate, today);
           const isAlready = alreadySelected.includes(key);
           const isToday = cellDate.getTime() === today.getTime();
@@ -183,34 +199,65 @@ function PopupCalendar({ onSelect, alreadySelected, isDark }) {
                 if (!isPast && !isAlready) onSelect(key);
               }}
               sx={{
-                height: 30,
-                width: 30,
-                mx: "auto",
+                minHeight: 44,
+                px: 0.5,
+                py: 0.35,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                borderRadius: "50%",
-                fontSize: "0.75rem",
+                borderLeft: "1px solid",
+                borderTop: "1px solid",
+                borderColor: "divider",
+                backgroundColor: isAlready
+                  ? isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(53,53,53,0.07)"
+                  : "transparent",
+                opacity: inCurrentMonth ? 1 : 0.55,
                 cursor: isPast || isAlready ? "default" : "pointer",
-                transition: "background 0.1s",
-                ...(isAlready && {
-                  backgroundColor: isDark ? "#333" : "#e5e7eb",
-                  color: "text.disabled",
-                }),
-                ...(!isAlready &&
-                  isToday && {
-                    backgroundColor: isDark ? "#1e1800" : "#fffbeb",
-                    color: isDark ? "#fbbf24" : "#92400e",
-                  }),
-                ...(!isAlready && isPast && { color: "text.disabled" }),
-                ...(!isAlready && !isPast && { color: "text.primary" }),
-                ...(!isPast &&
-                  !isAlready && {
-                    "&:hover": { backgroundColor: "#f5c52b", color: "#111" },
-                  }),
+                transition: "background-color 0.12s",
+                "&:hover":
+                  !isPast && !isAlready
+                    ? {
+                        backgroundColor: isDark
+                          ? "rgba(245,197,43,0.07)"
+                          : "rgba(245,197,43,0.10)",
+                      }
+                    : undefined,
               }}
             >
-              {day}
+              <Box
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor:
+                    !isAlready && isToday
+                      ? isDark
+                        ? "#1e1800"
+                        : "#fffbeb"
+                      : "transparent",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: "0.74rem",
+                    fontWeight: isToday ? 700 : 500,
+                    color: isPast
+                      ? "text.disabled"
+                      : isToday
+                        ? isDark
+                          ? "#fbbf24"
+                          : "#92400e"
+                        : "text.primary",
+                  }}
+                >
+                  {day}
+                </Typography>
+              </Box>
             </Box>
           );
         })}

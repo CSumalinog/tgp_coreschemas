@@ -321,7 +321,9 @@ export default function NotificationsPage() {
     }
 
     const assignerIds = [
-      ...new Set((assignments || []).map((row) => row.assigned_by).filter(Boolean)),
+      ...new Set(
+        (assignments || []).map((row) => row.assigned_by).filter(Boolean),
+      ),
     ];
 
     if (!assignerIds.length) {
@@ -577,28 +579,7 @@ export default function NotificationsPage() {
           }}
         >
           <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 600,
-                fontSize: "0.8rem",
-                color: "text.primary",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Notifications
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                color: "text.secondary",
-                mt: 0.35,
-              }}
-            >
-              Review updates, manage your inbox, and jump straight to the item
-              that needs attention.
-            </Typography>
+            
           </Box>
 
           <Box
@@ -788,7 +769,8 @@ export default function NotificationsPage() {
                 const assigner =
                   assignmentAssignersByRequest[notification.request_id] || null;
                 if (assigner) {
-                  const assignerName = assigner.full_name || "Your section head";
+                  const assignerName =
+                    assigner.full_name || "Your section head";
                   const assignerDesignation =
                     assigner.designation ||
                     assigner.position ||
@@ -806,10 +788,7 @@ export default function NotificationsPage() {
               const shouldShowRequesterLine =
                 !isAssigned &&
                 requesterName !== "Unknown requester" &&
-                !startsWithRequesterName(
-                displayMessage,
-                requesterName,
-              );
+                !startsWithRequesterName(displayMessage, requesterName);
 
               return (
                 <Box
@@ -1036,6 +1015,3 @@ export default function NotificationsPage() {
     </Box>
   );
 }
-
-
-

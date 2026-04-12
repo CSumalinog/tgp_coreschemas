@@ -14,8 +14,6 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
-import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
-import EventBusyOutlinedIcon from "@mui/icons-material/EventBusyOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import dayjs from "dayjs";
@@ -23,7 +21,6 @@ import dayjs from "dayjs";
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
-const GOLD_16 = "rgba(245,197,43,0.16)";
 const CHARCOAL = "#353535";
 const dm = "'Inter', sans-serif";
 
@@ -51,7 +48,6 @@ export default function CalendarEventDialog({
   const [mode, setMode] = useState(MODE.CREATE);
   const [eventType, setEventType] = useState("single");
   const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
   const [start, setStart] = useState(null);
   const [end, setEnd] = useState(null);
   const [error, setError] = useState("");
@@ -64,14 +60,12 @@ export default function CalendarEventDialog({
     if (existingEvent) {
       setMode(MODE.VIEW);
       setTitle(existingEvent.title || "");
-      setNotes(existingEvent.notes || "");
       setEventType(existingEvent.eventType || "single");
       setStart(dayjs(existingEvent.startDate));
       setEnd(dayjs(existingEvent.endDate));
     } else {
       setMode(MODE.CREATE);
       setTitle("");
-      setNotes("");
       setEventType(initialEventType);
       if (initialEventType === "single") {
         setStart(base);
@@ -126,11 +120,16 @@ export default function CalendarEventDialog({
     handleSave({
       id: existingEvent?.id || Date.now(),
       title,
-      notes,
       eventType,
       startDate: finalStart.toDate(),
       endDate: finalEnd.toDate(),
     });
+  };
+
+  const applyTimeToDate = (baseDate, hhmm) => {
+    if (!baseDate || !hhmm) return baseDate;
+    const [h, m] = hhmm.split(":").map(Number);
+    return dayjs(baseDate).hour(h || 0).minute(m || 0).second(0).millisecond(0);
   };
 
   const confirmDelete = () => {
@@ -197,13 +196,6 @@ export default function CalendarEventDialog({
     </Typography>
   );
 
-  // ── Mode pill ─────────────────────────────────────────────────────────────
-  const modePill = {
-    [MODE.VIEW]: { label: "Viewing", dotColor: "#16a34a" },
-    [MODE.EDIT]: { label: "Editing", dotColor: GOLD },
-    [MODE.CREATE]: { label: "New Block", dotColor: "#2563eb" },
-  }[mode];
-
   // ── Block type options ────────────────────────────────────────────────────
   const typeOptions = [
     {
@@ -265,40 +257,6 @@ export default function CalendarEventDialog({
           }}
         >
           <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.25 }}>
-            {/* Icon badge */}
-            <Box
-              sx={{
-                mt: 0.15,
-                width: 34,
-                height: 34,
-                borderRadius: "10px",
-                backgroundColor: existingEvent
-                  ? isDark
-                    ? "rgba(220,38,38,0.1)"
-                    : "rgba(220,38,38,0.06)"
-                  : GOLD_08,
-                border: `1px solid ${
-                  existingEvent
-                    ? isDark
-                      ? "rgba(220,38,38,0.2)"
-                      : "rgba(220,38,38,0.15)"
-                    : GOLD_16
-                }`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              {existingEvent ? (
-                <EventBusyOutlinedIcon
-                  sx={{ fontSize: 16, color: isDark ? "#f87171" : "#dc2626" }}
-                />
-              ) : (
-                <BlockOutlinedIcon sx={{ fontSize: 16, color: GOLD }} />
-              )}
-            </Box>
-
             <Box>
               <Typography
                 sx={{
@@ -404,72 +362,37 @@ export default function CalendarEventDialog({
             gap: 0,
           }}
         >
-          {/* Mode pill */}
-          <Box sx={{ mb: 2 }}>
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 0.6,
-                px: 1.1,
-                py: 0.35,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                backgroundColor: subtleBg,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  backgroundColor: modePill.dotColor,
-                  flexShrink: 0,
-                }}
-              />
+          {existingEvent && mode === MODE.VIEW && (
+            <Box sx={{ mb: 1.5, display: "flex", flexDirection: "column", gap: 0.3 }}>
               <Typography
                 sx={{
                   fontFamily: dm,
-                  fontSize: "0.65rem",
-                  fontWeight: 700,
+                  fontSize: "0.68rem",
                   color: "text.secondary",
-                  letterSpacing: "0.07em",
-                  textTransform: "uppercase",
                 }}
               >
-                {modePill.label}
+                Blocked by: {existingEvent.blocked_by_name || "Unknown"}
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  color: "text.disabled",
+                }}
+              >
+                Created: {existingEvent.created_at ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A") : "Unknown"}
               </Typography>
             </Box>
-            {existingEvent && mode === MODE.VIEW && (
-              <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.35 }}>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.68rem",
-                    color: "text.secondary",
-                  }}
-                >
-                  Blocked by: {existingEvent.blocked_by_name || "Unknown"}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.66rem",
-                    color: "text.disabled",
-                  }}
-                >
-                  Created: {existingEvent.created_at ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A") : "Unknown"}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+          )}
 
           {/* Title */}
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 1.6 }}>
             <FieldLabel>Title / Reason</FieldLabel>
             <TextField
               inputRef={titleRef}
               fullWidth
+              multiline
+              minRows={2}
               size="small"
               value={title}
               disabled={!isEditable}
@@ -483,7 +406,7 @@ export default function CalendarEventDialog({
           </Box>
 
           {/* Block type */}
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 1.6 }}>
             <FieldLabel>Block Type</FieldLabel>
             <Box sx={{ display: "flex", gap: 1 }}>
               {typeOptions.map(({ value, label, sub, Icon }) => {
@@ -495,7 +418,7 @@ export default function CalendarEventDialog({
                     sx={{
                       flex: 1,
                       px: 1.5,
-                      py: 1.25,
+                      py: 0.95,
                       borderRadius: "10px",
                       border: `1px solid ${selected ? GOLD : border}`,
                       backgroundColor: selected ? GOLD_08 : subtleBg,
@@ -552,7 +475,7 @@ export default function CalendarEventDialog({
           </Box>
 
           {/* Date / time range */}
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: error ? 1.8 : 0 }}>
             <FieldLabel>
               {eventType === "single" ? "Time Range" : "Date Range"}
             </FieldLabel>
@@ -561,23 +484,23 @@ export default function CalendarEventDialog({
                 <>
                   <TextField
                     label="Start"
-                    type="datetime-local"
+                    type="time"
                     size="small"
                     fullWidth
                     disabled={!isEditable}
-                    value={start ? start.format("YYYY-MM-DDTHH:mm") : ""}
-                    onChange={(e) => setStart(dayjs(e.target.value))}
+                    value={start ? start.format("HH:mm") : ""}
+                    onChange={(e) => setStart(applyTimeToDate(start || dayjs(defaultDate || new Date()), e.target.value))}
                     InputLabelProps={{ shrink: true }}
                     sx={inputSx}
                   />
                   <TextField
                     label="End"
-                    type="datetime-local"
+                    type="time"
                     size="small"
                     fullWidth
                     disabled={!isEditable}
-                    value={end ? end.format("YYYY-MM-DDTHH:mm") : ""}
-                    onChange={(e) => setEnd(dayjs(e.target.value))}
+                    value={end ? end.format("HH:mm") : ""}
+                    onChange={(e) => setEnd(applyTimeToDate(end || start || dayjs(defaultDate || new Date()), e.target.value))}
                     InputLabelProps={{ shrink: true }}
                     sx={inputSx}
                   />
@@ -611,22 +534,6 @@ export default function CalendarEventDialog({
                 </>
               )}
             </Box>
-          </Box>
-
-          {/* Notes */}
-          <Box sx={{ mb: error ? 2 : 0 }}>
-            <FieldLabel optional>Notes</FieldLabel>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              size="small"
-              value={notes}
-              disabled={!isEditable}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Internal notes — not visible to clients..."
-              sx={inputSx}
-            />
           </Box>
 
           {/* Error */}
