@@ -54,6 +54,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import { supabase } from "../../lib/supabaseClient";
+import { useAnnounceEmergency } from "../../hooks/useAnnounceEmergency.jsx";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { useLocation } from "react-router-dom";
 import BrandedLoader from "../../components/common/BrandedLoader";
@@ -68,6 +69,7 @@ import {
   FILTER_ROW_GAP,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  MODAL_TAB_HEIGHT,
   FILTER_SEMESTER_MIN_WIDTH,
   FILTER_STATUS_MIN_WIDTH,
 } from "../../utils/layoutTokens";
@@ -300,6 +302,7 @@ function AssignmentCard({
   onComplete,
   onArchive,
   onTrash,
+  onAnnounceEmergency,
 }) {
   const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
   const req = a.request;
@@ -311,332 +314,352 @@ function AssignmentCard({
     <Box
       onClick={() => onView(a)}
       sx={{
-        position: "relative",
+        p: 2,
         borderRadius: "10px",
         border: `1px solid ${border}`,
         backgroundColor: "background.paper",
-        overflow: "hidden",
         cursor: "pointer",
-        transition: "box-shadow 0.18s, transform 0.18s",
+        transition: "box-shadow 0.15s",
         "&:hover": {
           boxShadow: isDark
-            ? "0 4px 20px rgba(0,0,0,0.35)"
-            : "0 4px 20px rgba(53,53,53,0.10)",
-          transform: "translateY(-1px)",
+            ? "0 4px 24px rgba(0,0,0,0.3)"
+            : "0 4px 24px rgba(53,53,53,0.08)",
         },
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.25,
+        position: "relative",
       }}
     >
+      {/* Top row: status + menu */}
       <Box
         sx={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: "3px",
-          borderRadius: "10px 0 0 10px",
-          backgroundColor: cfg.accent,
-        }}
-      />
-      <Box
-        sx={{
-          pl: 2.5,
-          pr: 2,
-          pt: 1.75,
-          pb: 1.75,
           display: "flex",
-          flexDirection: "column",
-          gap: 1.25,
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.75,
-            flexWrap: "wrap",
-          }}
-        >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              width: 2.5,
+              height: 18,
+              borderRadius: "10px",
+              backgroundColor: cfg.accent,
+              flexShrink: 0,
+            }}
+          />
           <StatusPill status={a.status} isDark={isDark} />
           {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
-          <Box sx={{ flex: 1 }} />
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAnchor(e.currentTarget);
-            }}
-            sx={{ mr: -0.5 }}
-          >
-            <MoreVertIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-          <Menu
-            anchorEl={menuAnchor}
-            open={Boolean(menuAnchor)}
-            onClose={(e) => {
-              e.stopPropagation();
+        </Box>
+
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuAnchor(e.currentTarget);
+          }}
+          sx={{ mr: -0.5 }}
+        >
+          <MoreVertIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={(e) => {
+            e.stopPropagation();
+            setMenuAnchor(null);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          slotProps={{
+            paper: {
+              sx: {
+                minWidth: 160,
+                borderRadius: "10px",
+                mt: 0.5,
+                boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+              },
+            },
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              onArchive(req?.id);
               setMenuAnchor(null);
             }}
-            onClick={(e) => e.stopPropagation()}
-            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-            transformOrigin={{ vertical: "top", horizontal: "right" }}
-            slotProps={{
-              paper: {
-                sx: {
-                  minWidth: 160,
-                  borderRadius: "10px",
-                  mt: 0.5,
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-                },
-              },
+            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+          >
+            <ListItemIcon>
+              <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
+            </ListItemIcon>
+            <ListItemText
+              primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+            >
+              Archive
+            </ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              onTrash(req?.id);
+              setMenuAnchor(null);
+            }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              gap: 1,
+              color: "#dc2626",
             }}
           >
-            <MenuItem
-              onClick={() => {
-                onArchive(req?.id);
-                setMenuAnchor(null);
-              }}
-              sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
-            >
-              <ListItemIcon>
-                <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
-              </ListItemIcon>
-              <ListItemText
-                primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
-              >
-                Archive
-              </ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                onTrash(req?.id);
-                setMenuAnchor(null);
-              }}
-              sx={{
+            <ListItemIcon>
+              <DeleteOutlineOutlinedIcon
+                sx={{ fontSize: 18, color: "#dc2626" }}
+              />
+            </ListItemIcon>
+            <ListItemText
+              primaryTypographyProps={{
                 fontFamily: dm,
                 fontSize: "0.82rem",
-                gap: 1,
                 color: "#dc2626",
               }}
             >
-              <ListItemIcon>
-                <DeleteOutlineOutlinedIcon
-                  sx={{ fontSize: 18, color: "#dc2626" }}
-                />
-              </ListItemIcon>
-              <ListItemText
-                primaryTypographyProps={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  color: "#dc2626",
-                }}
-              >
-                Move to Trash
-              </ListItemText>
-            </MenuItem>
-          </Menu>
-        </Box>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontWeight: 700,
-            fontSize: "0.92rem",
-            color: "text.primary",
-            lineHeight: 1.35,
-          }}
-        >
-          {req?.title || "—"}
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          {req?.event_date && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <CalendarTodayOutlinedIcon
-                sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.76rem",
-                  color: "text.secondary",
-                }}
-              >
-                {new Date(req.event_date).toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </Typography>
-            </Box>
-          )}
-          {req?.from_time && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <AccessTimeOutlinedIcon
-                sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.76rem",
-                  color: "text.secondary",
-                }}
-              >
-                {formatTime(req.from_time)}
-                {req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
-              </Typography>
-            </Box>
-          )}
-          {req?.venue && (
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
-              <LocationOnOutlinedIcon
-                sx={{ fontSize: 12, color: GOLD, flexShrink: 0, mt: 0.15 }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.76rem",
-                  color: "text.secondary",
-                  lineHeight: 1.4,
-                }}
-              >
-                {req.venue}
-              </Typography>
-            </Box>
-          )}
-          {req?.entity?.name && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <PersonOutlineOutlinedIcon
-                sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
-              />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.76rem",
-                  color: "text.secondary",
-                }}
-              >
-                {req.entity.name}
-              </Typography>
-            </Box>
-          )}
-        </Box>
-        {a.assigned_by_profile?.full_name && (
-          <Typography
-            sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.disabled" }}
+              Move to Trash
+            </ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              onAnnounceEmergency(a);
+              setMenuAnchor(null);
+            }}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
           >
-            Assigned by {a.assigned_by_profile.full_name}
-          </Typography>
+            <ListItemIcon>
+              <WarningAmberOutlinedIcon sx={{ fontSize: 18, color: GOLD }} />
+            </ListItemIcon>
+            <ListItemText
+              primaryTypographyProps={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                color: GOLD,
+              }}
+            >
+              Announce Emergency
+            </ListItemText>
+          </MenuItem>
+        </Menu>
+      </Box>
+
+      {/* Title */}
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontWeight: 700,
+          fontSize: "0.88rem",
+          color: "text.primary",
+          lineHeight: 1.35,
+        }}
+      >
+        {req?.title || "—"}
+      </Typography>
+
+      {/* Meta info */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+        {req?.event_date && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <CalendarTodayOutlinedIcon
+              sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
+            />
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                color: "text.secondary",
+              }}
+            >
+              {new Date(req.event_date).toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </Typography>
+          </Box>
         )}
-        <Box sx={{ height: "1px", backgroundColor: border }} />
-        <Box onClick={(e) => e.stopPropagation()}>
-          {canTimeIn && state === "open" && (
-            <Box
-              onClick={() => onTimeIn(a)}
+        {req?.from_time && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <AccessTimeOutlinedIcon
+              sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
+            />
+            <Typography
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 0.75,
-                py: 0.9,
-                borderRadius: "10px",
-                cursor: "pointer",
-                backgroundColor: "#212121",
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "#fff",
-                transition: "background-color 0.15s",
-                "&:hover": { backgroundColor: "#333" },
-              }}
-            >
-              <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
-              Time In
-            </Box>
-          )}
-          {canTimeIn && state === "early" && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                py: 0.9,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
                 fontFamily: dm,
                 fontSize: "0.76rem",
-                color: "text.disabled",
+                color: "text.secondary",
               }}
             >
-              Time In opens 10 mins before event
-            </Box>
-          )}
-          {canTimeIn && state === "passed" && (
-            <Box
+              {formatTime(req.from_time)}
+              {req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
+            </Typography>
+          </Box>
+        )}
+        {req?.venue && (
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
+            <LocationOnOutlinedIcon
+              sx={{ fontSize: 12, color: GOLD, flexShrink: 0, mt: 0.15 }}
+            />
+            <Typography
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                py: 0.9,
-                borderRadius: "10px",
-                border: `1px solid rgba(239,68,68,0.25)`,
-                backgroundColor: "rgba(239,68,68,0.04)",
                 fontFamily: dm,
                 fontSize: "0.76rem",
-                color: "#b91c1c",
+                color: "text.secondary",
+                lineHeight: 1.4,
               }}
             >
-              Time In window has passed
-            </Box>
-          )}
-          {a.status === "On Going" && (
-            <Box
-              onClick={() => onComplete(a)}
+              {req.venue}
+            </Typography>
+          </Box>
+        )}
+        {req?.entity?.name && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <PersonOutlineOutlinedIcon
+              sx={{ fontSize: 12, color: GOLD, flexShrink: 0 }}
+            />
+            <Typography
               sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 0.75,
-                py: 0.9,
-                borderRadius: "10px",
-                cursor: "pointer",
-                backgroundColor: "#212121",
-                border: `1px solid #212121`,
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "#fff",
-                transition: "all 0.15s",
-                "&:hover": {
-                  backgroundColor: "#333",
-                  borderColor: "#333",
-                },
-              }}
-            >
-              <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-              Mark Complete
-            </Box>
-          )}
-          {a.status === "Completed" && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 0.75,
-                py: 0.9,
-                borderRadius: "10px",
-                border: `1px solid rgba(34,197,94,0.25)`,
-                backgroundColor: "rgba(34,197,94,0.05)",
                 fontFamily: dm,
                 fontSize: "0.76rem",
-                fontWeight: 600,
-                color: "#15803d",
+                color: "text.secondary",
               }}
             >
-              <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-              Completed
-            </Box>
-          )}
-        </Box>
+              {req.entity.name}
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {a.assigned_by_profile?.full_name && (
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.disabled" }}
+        >
+          Assigned by {a.assigned_by_profile.full_name}
+        </Typography>
+      )}
+
+      <Box sx={{ height: "1px", backgroundColor: border }} />
+
+      {/* Action buttons */}
+      <Box onClick={(e) => e.stopPropagation()}>
+        {canTimeIn && state === "open" && (
+          <Box
+            onClick={() => onTimeIn(a)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.75,
+              py: 0.9,
+              borderRadius: "10px",
+              cursor: "pointer",
+              backgroundColor: "#212121",
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#fff",
+              transition: "background-color 0.15s",
+              "&:hover": { backgroundColor: "#333" },
+            }}
+          >
+            <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
+            Time In
+          </Box>
+        )}
+        {canTimeIn && state === "early" && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 0.9,
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              color: "text.disabled",
+            }}
+          >
+            Time In opens 10 mins before event
+          </Box>
+        )}
+        {canTimeIn && state === "passed" && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 0.9,
+              borderRadius: "10px",
+              border: `1px solid rgba(239,68,68,0.25)`,
+              backgroundColor: "rgba(239,68,68,0.04)",
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              color: "#b91c1c",
+            }}
+          >
+            Time In window has passed
+          </Box>
+        )}
+        {a.status === "On Going" && (
+          <Box
+            onClick={() => onComplete(a)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.75,
+              py: 0.9,
+              borderRadius: "10px",
+              cursor: "pointer",
+              backgroundColor: "#212121",
+              border: `1px solid #212121`,
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#fff",
+              transition: "all 0.15s",
+              "&:hover": {
+                backgroundColor: "#333",
+                borderColor: "#333",
+              },
+            }}
+          >
+            <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
+            Mark Complete
+          </Box>
+        )}
+        {a.status === "Completed" && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.75,
+              py: 0.9,
+              borderRadius: "10px",
+              border: `1px solid rgba(34,197,94,0.25)`,
+              backgroundColor: "rgba(34,197,94,0.05)",
+              fontFamily: dm,
+              fontSize: "0.76rem",
+              fontWeight: 600,
+              color: "#15803d",
+            }}
+          >
+            <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
+            Completed
+          </Box>
+        )}
       </Box>
     </Box>
   );
@@ -1367,6 +1390,8 @@ function ConfirmCompleteDialog({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MyAssignment() {
+  // Emergency announcement integration
+  const { openAnnounce, AnnounceEmergencyDialogWrapper } = useAnnounceEmergency({ supabase, currentUser });
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
@@ -1536,7 +1561,6 @@ export default function MyAssignment() {
       });
       if (match) {
         setOnGoingAlert(match);
-        // Browser notification — fires once per assignment
         if (
           !timeInNotifiedRef.current.has(match.id) &&
           "Notification" in window
@@ -2097,10 +2121,14 @@ export default function MyAssignment() {
               }}
               onArchive={handleArchive}
               onTrash={handleTrash}
+              onAnnounceEmergency={openAnnounce}
             />
           ))
         )}
       </Box>
+
+      {/* Emergency Announce Dialog — rendered outside the list */}
+      <AnnounceEmergencyDialogWrapper />
 
       <AssignmentDetailDialog
         open={!!detailTarget}
@@ -2235,7 +2263,8 @@ export default function MyAssignment() {
                     alignItems: "center",
                     gap: 0.5,
                     px: 1.5,
-                    py: 0.55,
+                    height: MODAL_TAB_HEIGHT,
+                    flexShrink: 0,
                     borderRadius: "10px",
                     cursor: "pointer",
                     fontFamily: dm,

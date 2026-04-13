@@ -36,6 +36,7 @@ import {
   PAGE_PADDING,
   PAGE_CONTENT_MAX_WIDTH,
   PAGE_CONTENT_INNER_GUTTER,
+  MODAL_TAB_HEIGHT,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -571,15 +572,57 @@ export default function NotificationsPage() {
         <Box
           sx={{
             display: "flex",
-            alignItems: { xs: "flex-start", sm: "center" },
-            justifyContent: "space-between",
-            gap: 2,
-            flexWrap: "wrap",
-            mb: 2.5,
+            alignItems: "center",
+            gap: 1,
+            mb: 2,
           }}
         >
-          <Box>
-            
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.75,
+              flexWrap: "nowrap",
+              overflowX: "auto",
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            {filters.map((item) => {
+              const active = item.key === filter;
+              return (
+                <Box
+                  key={item.key}
+                  onClick={() => setFilter(item.key)}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1,
+                    px: 1.25,
+                    height: MODAL_TAB_HEIGHT,
+                    flexShrink: 0,
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    border: `1px solid ${active ? "#212121" : border}`,
+                    backgroundColor: active ? "#212121" : "transparent",
+                    color: active ? "#ffffff" : "text.secondary",
+                    fontFamily: dm,
+                    fontSize: "0.74rem",
+                    fontWeight: active ? 700 : 500,
+                  }}
+                >
+                  {item.label}
+                  {item.key === "unread" && unreadCount > 0 && (
+                    <NumberBadge
+                      count={unreadCount}
+                      active={active}
+                      fontFamily={dm}
+                      fontSize="0.56rem"
+                    />
+                  )}
+                </Box>
+              );
+            })}
           </Box>
 
           <Box
@@ -599,48 +642,12 @@ export default function NotificationsPage() {
               fontSize: "0.76rem",
               fontWeight: 700,
               transition: "all 0.15s",
+              flexShrink: 0,
             }}
           >
             <CheckIcon sx={{ fontSize: 14 }} />
             Mark all read
           </Box>
-        </Box>
-
-        <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", mb: 2 }}>
-          {filters.map((item) => {
-            const active = item.key === filter;
-            return (
-              <Box
-                key={item.key}
-                onClick={() => setFilter(item.key)}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 1,
-                  px: 1.25,
-                  py: 0.55,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  border: `1px solid ${active ? "#212121" : border}`,
-                  backgroundColor: active ? "#212121" : "transparent",
-                  color: active ? "#ffffff" : "text.secondary",
-                  fontFamily: dm,
-                  fontSize: "0.74rem",
-                  fontWeight: active ? 700 : 500,
-                }}
-              >
-                {item.label}
-                {item.key === "unread" && unreadCount > 0 && (
-                  <NumberBadge
-                    count={unreadCount}
-                    active={active}
-                    fontFamily={dm}
-                    fontSize="0.56rem"
-                  />
-                )}
-              </Box>
-            );
-          })}
         </Box>
 
         {error && (

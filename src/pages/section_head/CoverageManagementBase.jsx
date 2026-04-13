@@ -64,6 +64,7 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  MODAL_TAB_HEIGHT,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -2539,6 +2540,8 @@ export default function CoverageManagementBase({
             pb: 2,
             display: "flex",
             gap: "6px",
+            flexWrap: "nowrap",
+            overflowX: "auto",
             flexShrink: 0,
           }}
         >
@@ -2556,7 +2559,8 @@ export default function CoverageManagementBase({
                   alignItems: "center",
                   gap: 0.6,
                   px: 1.5,
-                  py: 0.65,
+                  height: MODAL_TAB_HEIGHT,
+                  flexShrink: 0,
                   borderRadius: "10px",
                   cursor: "pointer",
                   fontFamily: dm,

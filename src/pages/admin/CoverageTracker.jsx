@@ -981,6 +981,8 @@ export default function CoverageTracker() {
             justifyContent: "flex-end",
             width: "100%",
             height: "100%",
+            pr: 1,
+            boxSizing: "border-box",
           }}
         >
           <ViewActionButton

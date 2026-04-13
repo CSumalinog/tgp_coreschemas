@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Button,
   Box,
   Typography,
   IconButton,
@@ -17,6 +18,12 @@ import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import dayjs from "dayjs";
+import {
+  CONTROL_RADIUS,
+  MODAL_ACTION_HEIGHT,
+  MODAL_COMPACT_WIDTH,
+  MODAL_INPUT_HEIGHT,
+} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -141,7 +148,7 @@ export default function CalendarEventDialog({
   // ── Shared input sx ───────────────────────────────────────────────────────
   const inputSx = {
     "& .MuiOutlinedInput-root": {
-      borderRadius: "10px",
+      borderRadius: CONTROL_RADIUS,
       fontSize: "0.85rem",
       fontFamily: dm,
       backgroundColor: isEditable ? subtleBg : "transparent",
@@ -163,38 +170,14 @@ export default function CalendarEventDialog({
     },
   };
 
-  // ── Field label ───────────────────────────────────────────────────────────
-  const FieldLabel = ({ children, optional }) => (
-    <Typography
-      sx={{
-        fontFamily: dm,
-        fontSize: "0.68rem",
-        fontWeight: 700,
-        color: "text.disabled",
-        textTransform: "uppercase",
-        letterSpacing: "0.09em",
-        mb: 0.75,
-      }}
-    >
-      {children}
-      {optional && (
-        <Typography
-          component="span"
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.66rem",
-            fontWeight: 400,
-            color: "text.disabled",
-            textTransform: "none",
-            letterSpacing: 0,
-            ml: 0.5,
-          }}
-        >
-          (optional)
-        </Typography>
-      )}
-    </Typography>
-  );
+    const singleLineInputSx = {
+      ...inputSx,
+      "& .MuiOutlinedInput-root": {
+        ...inputSx["& .MuiOutlinedInput-root"],
+        minHeight: MODAL_INPUT_HEIGHT,
+        alignItems: "center",
+      },
+    };
 
   // ── Block type options ────────────────────────────────────────────────────
   const typeOptions = [
@@ -229,8 +212,8 @@ export default function CalendarEventDialog({
         }}
         PaperProps={{
           sx: {
-            width: 460,
-            borderRadius: "10px",
+            width: MODAL_COMPACT_WIDTH,
+            borderRadius: CONTROL_RADIUS,
             backgroundColor: paperBg,
             backgroundImage: "none",
             border: `1px solid ${border}`,
@@ -386,29 +369,69 @@ export default function CalendarEventDialog({
           )}
 
           {/* Title */}
-          <Box sx={{ mb: 1.6 }}>
-            <FieldLabel>Title / Reason</FieldLabel>
-            <TextField
-              inputRef={titleRef}
-              fullWidth
-              multiline
-              minRows={2}
-              size="small"
-              value={title}
-              disabled={!isEditable}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setError("");
+          <Box
+            sx={{
+              mb: 1.4,
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 1 },
               }}
-              placeholder="e.g. Office Closed, Holiday, Maintenance"
-              sx={inputSx}
-            />
+            >
+              Title / Reason:
+            </Typography>
+            <Box sx={{ flex: 1, width: "100%" }}>
+              <TextField
+                inputRef={titleRef}
+                fullWidth
+                multiline
+                minRows={2}
+                size="small"
+                value={title}
+                disabled={!isEditable}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setError("");
+                }}
+                placeholder="e.g. Office Closed, Holiday, Maintenance"
+                sx={inputSx}
+              />
+            </Box>
           </Box>
 
           {/* Block type */}
-          <Box sx={{ mb: 1.6 }}>
-            <FieldLabel>Block Type</FieldLabel>
-            <Box sx={{ display: "flex", gap: 1 }}>
+          <Box
+            sx={{
+              mb: 1.4,
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 1 },
+              }}
+            >
+              Block Type:
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, flex: 1, width: "100%" }}>
               {typeOptions.map(({ value, label, sub, Icon }) => {
                 const selected = eventType === value;
                 return (
@@ -475,11 +498,28 @@ export default function CalendarEventDialog({
           </Box>
 
           {/* Date / time range */}
-          <Box sx={{ mb: error ? 1.8 : 0 }}>
-            <FieldLabel>
-              {eventType === "single" ? "Time Range" : "Date Range"}
-            </FieldLabel>
-            <Box sx={{ display: "flex", gap: 1.25 }}>
+          <Box
+            sx={{
+              mb: error ? 1.8 : 0,
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 1 },
+              }}
+            >
+              {eventType === "single" ? "Time Range:" : "Date Range:"}
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1.25, flex: 1, width: "100%" }}>
               {eventType === "single" ? (
                 <>
                   <TextField
@@ -491,7 +531,7 @@ export default function CalendarEventDialog({
                     value={start ? start.format("HH:mm") : ""}
                     onChange={(e) => setStart(applyTimeToDate(start || dayjs(defaultDate || new Date()), e.target.value))}
                     InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
+                    sx={singleLineInputSx}
                   />
                   <TextField
                     label="End"
@@ -502,7 +542,7 @@ export default function CalendarEventDialog({
                     value={end ? end.format("HH:mm") : ""}
                     onChange={(e) => setEnd(applyTimeToDate(end || start || dayjs(defaultDate || new Date()), e.target.value))}
                     InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
+                    sx={singleLineInputSx}
                   />
                 </>
               ) : (
@@ -518,7 +558,7 @@ export default function CalendarEventDialog({
                       setStart(dayjs(e.target.value).startOf("day"))
                     }
                     InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
+                    sx={singleLineInputSx}
                   />
                   <TextField
                     label="To"
@@ -529,7 +569,7 @@ export default function CalendarEventDialog({
                     value={end ? end.format("YYYY-MM-DD") : ""}
                     onChange={(e) => setEnd(dayjs(e.target.value).endOf("day"))}
                     InputLabelProps={{ shrink: true }}
-                    sx={inputSx}
+                    sx={singleLineInputSx}
                   />
                 </>
               )}
@@ -577,51 +617,35 @@ export default function CalendarEventDialog({
           <>
             <Divider sx={{ borderColor: border }} />
             <DialogActions sx={{ px: 2.5, py: 1.75, gap: 1 }}>
-              {/* Cancel */}
-              <Box
+              <Button
                 onClick={handleClose}
+                variant="outlined"
                 sx={{
-                  px: 2,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
+                  minWidth: 112,
+                  height: MODAL_ACTION_HEIGHT,
+                  borderRadius: CONTROL_RADIUS,
                   fontFamily: dm,
                   fontSize: "0.8rem",
                   fontWeight: 500,
-                  color: "text.secondary",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    borderColor: GOLD,
-                    backgroundColor: GOLD_08,
-                    color: CHARCOAL,
-                  },
                 }}
               >
                 Cancel
-              </Box>
+              </Button>
 
-              {/* Save / Block */}
-              <Box
+              <Button
                 onClick={handleSubmit}
+                variant="contained"
                 sx={{
-                  px: 2.5,
-                  py: 0.65,
-                  borderRadius: "10px",
-                  backgroundColor: "#212121",
-                  color: "#fff",
+                  minWidth: 132,
+                  height: MODAL_ACTION_HEIGHT,
+                  borderRadius: CONTROL_RADIUS,
                   fontFamily: dm,
                   fontSize: "0.8rem",
                   fontWeight: 700,
-                  cursor: "pointer",
-                  userSelect: "none",
-                  transition: "background-color 0.15s",
-                  "&:hover": { backgroundColor: "#333" },
                 }}
               >
                 {existingEvent ? "Save Changes" : "Block Date"}
-              </Box>
+              </Button>
             </DialogActions>
           </>
         )}

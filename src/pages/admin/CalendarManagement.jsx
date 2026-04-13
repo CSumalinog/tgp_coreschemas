@@ -21,10 +21,17 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/AddOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeftOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import CalendarEventDialog from "../../components/admin/CalendarAvailabilitySetter";
 import { supabase } from "../../lib/supabaseClient";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { getSemesterDisplayName } from "../../utils/semesterLabel";
+import {
+  BUTTON_HEIGHT,
+  CONTROL_RADIUS,
+  MODAL_ACTION_HEIGHT,
+  MODAL_INPUT_HEIGHT,
+} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -34,6 +41,30 @@ const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
 const HOVER_BG = "rgba(53,53,53,0.03)";
 const dm = "'Inter', sans-serif";
+const MODAL_FIELD_SX = {
+  "& .MuiOutlinedInput-root": {
+    fontFamily: dm,
+    fontSize: "0.82rem",
+    borderRadius: CONTROL_RADIUS,
+    minHeight: MODAL_INPUT_HEIGHT,
+    alignItems: "center",
+  },
+  "& .MuiInputLabel-root": {
+    fontFamily: dm,
+    fontSize: "0.8rem",
+  },
+};
+const MODAL_TEXTAREA_SX = {
+  "& .MuiOutlinedInput-root": {
+    fontFamily: dm,
+    fontSize: "0.82rem",
+    borderRadius: CONTROL_RADIUS,
+  },
+  "& .MuiInputLabel-root": {
+    fontFamily: dm,
+    fontSize: "0.8rem",
+  },
+};
 
 // ── Calendar config ───────────────────────────────────────────────────────────
 const SCHEDULER_START_HOUR = 8;
@@ -98,6 +129,7 @@ function BlockedDatesPanel({
   overrideCount,
   slotOverrides,
   onOpenSlotSettings,
+  onOpenDutySettings,
   collapsed,
   onToggle,
 }) {
@@ -117,6 +149,10 @@ function BlockedDatesPanel({
   const handleQuickModifySlots = () => {
     closeQuickAdd();
     onOpenSlotSettings?.();
+  };
+  const handleQuickOpenDutySettings = () => {
+    closeQuickAdd();
+    onOpenDutySettings?.();
   };
 
   const sorted = [...events].sort(
@@ -253,6 +289,12 @@ function BlockedDatesPanel({
             sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
           >
             Modify slots
+          </MenuItem>
+          <MenuItem
+            onClick={handleQuickOpenDutySettings}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
+          >
+            Duty settings
           </MenuItem>
         </Menu>
       </>
@@ -496,7 +538,7 @@ function BlockedDatesPanel({
                 color: "text.secondary",
               }}
             >
-              Manage blocked dates and coverage slots
+              Manage blocked dates, request slots, and duty controls
             </Typography>
           </Box>
 
@@ -579,6 +621,12 @@ function BlockedDatesPanel({
             sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
           >
             Modify slots
+          </MenuItem>
+          <MenuItem
+            onClick={handleQuickOpenDutySettings}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
+          >
+            Duty settings
           </MenuItem>
         </Menu>
 
@@ -837,6 +885,68 @@ function BlockedDatesPanel({
                 )}
               </Box>
             )}
+
+            <Divider sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }} />
+
+            <Box
+              sx={{
+                px: 0.85,
+                py: 0.75,
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.015)"
+                  : "rgba(53,53,53,0.015)",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.74rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
+              >
+                Duty Schedule
+              </Typography>
+              <Typography
+                sx={{
+                  mt: 0.2,
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  color: "text.secondary",
+                }}
+              >
+                Manage duty blackout dates per semester.
+              </Typography>
+              <Box
+                onClick={onOpenDutySettings}
+                sx={{
+                  mt: 0.8,
+                  px: 1,
+                  py: 0.55,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: "#f7f7f8",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  color: "text.secondary",
+                  transition: "all 0.15s",
+                  "&:hover": {
+                    borderColor: "rgba(53,53,53,0.3)",
+                    color: "text.primary",
+                    backgroundColor: "#ededee",
+                  },
+                }}
+              >
+                Open Duty Settings
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Box>
@@ -847,6 +957,7 @@ function BlockedDatesPanel({
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CalendarManagement() {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
@@ -876,10 +987,127 @@ export default function CalendarManagement() {
   const [overrideDateInput, setOverrideDateInput] = useState(formatISO(today));
   const [overrideSlotsInput, setOverrideSlotsInput] = useState("2");
   const [slotOverrides, setSlotOverrides] = useState([]);
+  const [dutySettingsOpen, setDutySettingsOpen] = useState(false);
+  const [dutySettingsLoading, setDutySettingsLoading] = useState(false);
+  const [dutySettingsSaving, setDutySettingsSaving] = useState(false);
+  const [dutySettingsError, setDutySettingsError] = useState("");
+  const [semesters, setSemesters] = useState([]);
+  const [selectedDutySemesterId, setSelectedDutySemesterId] = useState("");
+  const [dutyBlackouts, setDutyBlackouts] = useState([]);
+  const [dutyBlackoutInput, setDutyBlackoutInput] = useState("");
+  const [dutyBlackoutReasonInput, setDutyBlackoutReasonInput] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user));
   }, []);
+
+  const loadSemesters = useCallback(async () => {
+    try {
+      const { data, error: semesterErr } = await supabase
+        .from("semesters")
+        .select("id, name, is_active, start_date, end_date")
+        .order("start_date", { ascending: false });
+
+      if (semesterErr) throw semesterErr;
+
+      const rows = data || [];
+      setSemesters(rows);
+      if (!rows.length) {
+        setSelectedDutySemesterId("");
+        return;
+      }
+
+      setSelectedDutySemesterId((prev) => {
+        if (prev && rows.some((s) => s.id === prev)) return prev;
+        const active = rows.find((s) => s.is_active);
+        return active?.id || rows[0].id;
+      });
+    } catch (err) {
+      setDutySettingsError(err.message || "Failed to load semesters.");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSemesters();
+  }, [loadSemesters]);
+
+  const loadDutyBlackouts = useCallback(async () => {
+    if (!selectedDutySemesterId) {
+      setDutyBlackouts([]);
+      return;
+    }
+
+    setDutySettingsLoading(true);
+    setDutySettingsError("");
+    try {
+      const { data, error: blackoutErr } = await supabase
+        .from("duty_schedule_blackout_dates")
+        .select("id, blackout_date, reason")
+        .eq("semester_id", selectedDutySemesterId)
+        .order("blackout_date", { ascending: true });
+
+      if (blackoutErr) throw blackoutErr;
+      setDutyBlackouts(data || []);
+    } catch (err) {
+      setDutySettingsError(err.message || "Failed to load duty blackout dates.");
+    } finally {
+      setDutySettingsLoading(false);
+    }
+  }, [selectedDutySemesterId]);
+
+  useEffect(() => {
+    loadDutyBlackouts();
+  }, [loadDutyBlackouts]);
+
+  useEffect(() => {
+    if (location.state?.openDutySettings) {
+      setDutySettingsOpen(true);
+    }
+  }, [location.state?.openDutySettings]);
+
+  const addDutyBlackout = async () => {
+    if (!selectedDutySemesterId || !dutyBlackoutInput) return;
+
+    setDutySettingsSaving(true);
+    setDutySettingsError("");
+    try {
+      const { error: insertErr } = await supabase
+        .from("duty_schedule_blackout_dates")
+        .insert({
+          semester_id: selectedDutySemesterId,
+          blackout_date: dutyBlackoutInput,
+          reason: dutyBlackoutReasonInput.trim() || null,
+          created_by: currentUser?.id || null,
+        });
+      if (insertErr) throw insertErr;
+
+      setDutyBlackoutInput("");
+      setDutyBlackoutReasonInput("");
+      await loadDutyBlackouts();
+    } catch (err) {
+      setDutySettingsError(err.message || "Failed to add duty blackout date.");
+    } finally {
+      setDutySettingsSaving(false);
+    }
+  };
+
+  const removeDutyBlackout = async (id) => {
+    if (!id) return;
+    setDutySettingsSaving(true);
+    setDutySettingsError("");
+    try {
+      const { error: deleteErr } = await supabase
+        .from("duty_schedule_blackout_dates")
+        .delete()
+        .eq("id", id);
+      if (deleteErr) throw deleteErr;
+      await loadDutyBlackouts();
+    } catch (err) {
+      setDutySettingsError(err.message || "Failed to remove duty blackout date.");
+    } finally {
+      setDutySettingsSaving(false);
+    }
+  };
 
   const loadSlotSettings = useCallback(async () => {
     setSlotLoading(true);
@@ -2008,6 +2236,7 @@ export default function CalendarManagement() {
           overrideCount={slotOverrides.length}
           slotOverrides={slotOverrides}
           onOpenSlotSettings={() => setSlotDialogOpen(true)}
+          onOpenDutySettings={() => setDutySettingsOpen(true)}
           collapsed={panelCollapsed}
           onToggle={() => setPanelCollapsed((v) => !v)}
         />
@@ -2121,10 +2350,7 @@ export default function CalendarManagement() {
                 fontFamily: dm,
                 fontWeight: 600,
                 width: 140,
-                backgroundColor: "#212121",
-                color: "#fff",
-                height: 46,
-                "&:hover": { backgroundColor: "#333" },
+                height: BUTTON_HEIGHT,
               }}
             >
               Save Default
@@ -2191,10 +2417,7 @@ export default function CalendarManagement() {
                 fontFamily: dm,
                 fontWeight: 600,
                 width: 140,
-                backgroundColor: "#212121",
-                color: "#fff",
-                height: 46,
-                "&:hover": { backgroundColor: "#333" },
+                height: BUTTON_HEIGHT,
               }}
             >
               Save
@@ -2269,6 +2492,278 @@ export default function CalendarManagement() {
                 </Box>
               ))
             )}
+          </Box>
+        </Box>
+      </Dialog>
+
+      <Dialog
+        open={dutySettingsOpen}
+        onClose={() => {
+          if (!dutySettingsSaving) {
+            setDutySettingsOpen(false);
+            setDutySettingsError("");
+          }
+        }}
+        fullWidth
+        maxWidth="sm"
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+            },
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 1.75,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.92rem",
+              color: "text.primary",
+            }}
+          >
+            Duty Settings
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => {
+              if (!dutySettingsSaving) {
+                setDutySettingsOpen(false);
+                setDutySettingsError("");
+              }
+            }}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <ChevronRightIcon sx={{ fontSize: 16, transform: "rotate(180deg)" }} />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+          {dutySettingsError && (
+            <Alert severity="error" sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}>
+              {dutySettingsError}
+            </Alert>
+          )}
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "text.primary",
+                minWidth: 132,
+              }}
+            >
+              Semester:
+            </Typography>
+            <TextField
+              select
+              value={selectedDutySemesterId}
+              onChange={(e) => setSelectedDutySemesterId(e.target.value)}
+              disabled={dutySettingsSaving}
+              sx={{
+                flex: 1,
+                ...MODAL_FIELD_SX,
+              }}
+            >
+              {semesters.map((semester) => (
+                <MenuItem key={semester.id} value={semester.id} sx={{ fontFamily: dm, fontSize: "0.82rem" }}>
+                  {getSemesterDisplayName(semester)}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
+          <Divider sx={{ borderColor: border, my: 0.25 }} />
+
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "text.primary",
+                minWidth: 132,
+                pt: 1.5,
+              }}
+            >
+              Duty Blackout Dates:
+            </Typography>
+
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.85 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                <TextField
+                  label="Date"
+                  type="date"
+                  value={dutyBlackoutInput}
+                  onChange={(e) => setDutyBlackoutInput(e.target.value)}
+                  disabled={dutySettingsSaving || !selectedDutySemesterId}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{
+                    maxWidth: 220,
+                    ...MODAL_FIELD_SX,
+                  }}
+                />
+                <TextField
+                  label="Reason (optional)"
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  value={dutyBlackoutReasonInput}
+                  onChange={(e) => setDutyBlackoutReasonInput(e.target.value)}
+                  disabled={dutySettingsSaving || !selectedDutySemesterId}
+                  sx={MODAL_TEXTAREA_SX}
+                />
+              </Box>
+
+              <Box
+                sx={{
+                  mt: 0.1,
+                  border: `1px solid ${border}`,
+                  borderRadius: "10px",
+                  maxHeight: 210,
+                  overflowY: "auto",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)",
+                }}
+              >
+                {dutySettingsLoading ? (
+                  <Box sx={{ p: 1.25 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                      Loading duty blackout dates...
+                    </Typography>
+                  </Box>
+                ) : dutyBlackouts.length === 0 ? (
+                  <Box sx={{ p: 1.25 }}>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                      No duty blackout dates yet.
+                    </Typography>
+                  </Box>
+                ) : (
+                  dutyBlackouts.map((row, idx) => (
+                    <Box
+                      key={row.id}
+                      sx={{
+                        px: 1.25,
+                        py: 0.9,
+                        borderTop: idx === 0 ? "none" : `1px solid ${border}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 1,
+                      }}
+                    >
+                      <Box>
+                        <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.primary" }}>
+                          {new Date(`${row.blackout_date}T00:00:00`).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </Typography>
+                        {row.reason ? (
+                          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary" }}>
+                            {row.reason}
+                          </Typography>
+                        ) : null}
+                      </Box>
+                      <IconButton
+                        size="small"
+                        disabled={dutySettingsSaving}
+                        onClick={() => removeDutyBlackout(row.id)}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "10px",
+                          color: "text.secondary",
+                          "&:hover": {
+                            color: "#dc2626",
+                            backgroundColor: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
+                          },
+                        }}
+                      >
+                        <DeleteOutlinedIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Box>
+                  ))
+                )}
+              </Box>
+
+              <Box
+                sx={{
+                  pt: 0.75,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 1,
+                }}
+              >
+                <Button
+                  onClick={() => {
+                    if (!dutySettingsSaving) {
+                      setDutySettingsOpen(false);
+                      setDutySettingsError("");
+                    }
+                  }}
+                  disabled={dutySettingsSaving}
+                  variant="outlined"
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: CONTROL_RADIUS,
+                    fontFamily: dm,
+                    fontWeight: 600,
+                    minWidth: 120,
+                    color: "text.secondary",
+                    borderColor: "rgba(0,0,0,0.12)",
+                    height: MODAL_ACTION_HEIGHT,
+                    "&:hover": {
+                      borderColor: "rgba(53,53,53,0.3)",
+                      backgroundColor: "#f7f7f8",
+                    },
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={addDutyBlackout}
+                  disabled={dutySettingsSaving || !selectedDutySemesterId || !dutyBlackoutInput}
+                  variant="contained"
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: CONTROL_RADIUS,
+                    fontFamily: dm,
+                    fontWeight: 600,
+                    minWidth: 132,
+                    height: MODAL_ACTION_HEIGHT,
+                  }}
+                >
+                  Add Date
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Dialog>

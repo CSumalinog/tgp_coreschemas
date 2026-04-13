@@ -6,6 +6,7 @@ import {
   CircularProgress,
   Alert,
   Avatar,
+  Button,
   Dialog,
   Drawer,
   IconButton,
@@ -17,6 +18,7 @@ import {
   OutlinedInput,
   InputAdornment,
   Divider,
+  Tooltip,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
@@ -35,6 +37,9 @@ import {
   FILTER_INPUT_HEIGHT,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  MODAL_ACTION_HEIGHT,
+  MODAL_COMPACT_WIDTH,
+  MODAL_TAB_HEIGHT,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -151,6 +156,7 @@ const AVATAR_COLORS = [
 ];
 
 const ACTION_BTN_HEIGHT = FILTER_BUTTON_HEIGHT;
+const MODAL_ACTION_BTN_HEIGHT = MODAL_ACTION_HEIGHT;
 const REASON_PREVIEW_LIMIT = 88;
 
 const REQUEST_STATUS_META = {
@@ -283,7 +289,7 @@ export default function DutyScheduleView() {
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
   const [publishExportCsv, setPublishExportCsv] = useState(true);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
-  const [settingsPanelTab, setSettingsPanelTab] = useState("operations");
+  const [settingsPanelTab, setSettingsPanelTab] = useState("governance");
   const [selectedPublicationId, setSelectedPublicationId] = useState(null);
   const [snapshotViewerOpen, setSnapshotViewerOpen] = useState(false);
   const gridApiRef = useGridApiRef();
@@ -570,11 +576,6 @@ export default function DutyScheduleView() {
   );
   const settingsPanelMeta = useMemo(
     () => ({
-      operations: {
-        title: "Operations",
-        description:
-          "Manage day-to-day schedule controls such as blackout dates.",
-      },
       governance: {
         title: "Governance",
         description:
@@ -588,7 +589,7 @@ export default function DutyScheduleView() {
     [],
   );
   const activeSettingsMeta =
-    settingsPanelMeta[settingsPanelTab] || settingsPanelMeta.operations;
+    settingsPanelMeta[settingsPanelTab] || settingsPanelMeta.governance;
 
   // Count total APPROVED requests per staffer for quota display
   const requestCountPerStaffer = useMemo(() => {
@@ -737,6 +738,13 @@ export default function DutyScheduleView() {
     auditGridApiRef.current?.exportDataAsCsv({
       utf8WithBom: true,
       fileName: "duty-audit-export",
+    });
+  };
+
+  const handleManageDutySchedule = () => {
+    setSettingsDrawerOpen(false);
+    navigate("/admin/calendar-management", {
+      state: { openDutySettings: true },
     });
   };
 
@@ -2045,7 +2053,11 @@ export default function DutyScheduleView() {
                   </Box>
 
                   <Box
-                    onClick={() => navigate("/admin/duty-schedule-view")}
+                    onClick={() =>
+                      navigate("/admin/calendar-management", {
+                        state: { openDutySettings: true },
+                      })
+                    }
                     sx={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -2068,14 +2080,14 @@ export default function DutyScheduleView() {
                         backgroundColor: "#ededee",
                       },
                     }}
-                    title="Go to duty schedule"
+                    title="Open duty blocking settings"
                   >
-                    Duty Schedule
+                    Duty Blocking
                   </Box>
 
                   <Box
                     onClick={() => {
-                      setSettingsPanelTab("operations");
+                      setSettingsPanelTab("governance");
                       setSettingsDrawerOpen(true);
                     }}
                     sx={{
@@ -2097,7 +2109,7 @@ export default function DutyScheduleView() {
                         backgroundColor: "#ededee",
                       },
                     }}
-                    title="Schedule settings"
+                    title="Open governance and audit"
                   >
                     <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
                   </Box>
@@ -2317,7 +2329,7 @@ export default function DutyScheduleView() {
 
                   <Box
                     onClick={() => {
-                      setSettingsPanelTab("operations");
+                      setSettingsPanelTab("governance");
                       setSettingsDrawerOpen(true);
                     }}
                     sx={{
@@ -2339,7 +2351,7 @@ export default function DutyScheduleView() {
                         backgroundColor: "#ededee",
                       },
                     }}
-                    title="Schedule settings"
+                    title="Open governance and audit"
                   >
                     <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
                   </Box>
@@ -2740,10 +2752,11 @@ export default function DutyScheduleView() {
       <Dialog
         open={requestDetailsOpen}
         onClose={closeRequestDetails}
+        fullWidth
+        maxWidth="sm"
         PaperProps={{
           sx: {
             borderRadius: "10px",
-            width: 560,
             backgroundColor: "background.paper",
             border: `1px solid ${border}`,
             boxShadow: isDark
@@ -2790,281 +2803,258 @@ export default function DutyScheduleView() {
         <Box
           sx={{
             px: 2.5,
-            py: 1.75,
+            py: 2,
             display: "flex",
             flexDirection: "column",
             gap: 1.25,
           }}
         >
-          <Box sx={{ pb: 0.25 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.84rem",
-                fontWeight: 700,
-                color: "text.primary",
-              }}
-            >
-              {requestDetailsTarget?.staffer?.full_name || "Unknown Staffer"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.73rem",
-                color: "text.secondary",
-                mt: 0.25,
-                opacity: 0.85,
-              }}
-            >
-              {(requestDetailsTarget?.staffer?.role
-                ? requestDetailsTarget.staffer.role.charAt(0).toUpperCase() +
-                  requestDetailsTarget.staffer.role.slice(1)
-                : "Staff") +
-                (requestDetailsTarget?.status
-                  ? ` • ${getRequestStatusMeta(requestDetailsTarget.status).label}`
-                  : "") +
-                (requestDetailsTarget?.created_at
-                  ? ` • Requested ${formatDateTime(requestDetailsTarget.created_at)}`
-                  : "")}
-            </Typography>
-          </Box>
-
           <Box
             sx={{
-              borderRadius: "10px",
-              border: "1px solid rgba(245,197,43,0.32)",
-              px: 1.35,
-              py: 1.1,
-              backgroundColor: isDark ? "rgba(245,197,43,0.08)" : "#fff9ec",
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
             }}
           >
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 700,
-                color: "#9a6b00",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                mb: 0.7,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 0.35 },
               }}
             >
-              Change Day Requested
+              Staff:
             </Typography>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.8,
-                flexWrap: "wrap",
-              }}
-            >
-              <DayPill dayIndex={requestDetailsTarget?.current_duty_day} />
+            <Box sx={{ flex: 1 }}>
               <Typography
                 sx={{
                   fontFamily: dm,
-                  fontSize: "0.8rem",
-                  color: "text.secondary",
+                  fontSize: "0.84rem",
                   fontWeight: 700,
+                  color: "text.primary",
                 }}
               >
-                →
+                {requestDetailsTarget?.staffer?.full_name || "Unknown Staffer"}
               </Typography>
-              <DayPill
-                dayIndex={requestDetailsTarget?.requested_duty_day}
-                accent
-              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.73rem",
+                  color: "text.secondary",
+                  mt: 0.25,
+                  lineHeight: 1.45,
+                }}
+              >
+                {(requestDetailsTarget?.staffer?.role
+                  ? requestDetailsTarget.staffer.role.charAt(0).toUpperCase() +
+                    requestDetailsTarget.staffer.role.slice(1)
+                  : "Staff") +
+                  (requestDetailsTarget?.status
+                    ? ` • ${getRequestStatusMeta(requestDetailsTarget.status).label}`
+                    : "") +
+                  (requestDetailsTarget?.created_at
+                    ? ` • Requested ${formatDateTime(requestDetailsTarget.created_at)}`
+                    : "")}
+              </Typography>
             </Box>
           </Box>
 
-          {/* ── Division Composition ── */}
           <Box
             sx={{
-              borderRadius: "10px",
-              border: `1px solid ${border}`,
-              px: 1.35,
-              py: 1.1,
-              backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
             }}
           >
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 700,
-                color: "text.secondary",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                mb: 0.8,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 1 },
               }}
             >
-              Team Composition
+              Requested Change:
             </Typography>
-            <Box sx={{ display: "flex", gap: 1.5 }}>
-              {/* Current day */}
-              <Box sx={{ flex: 1 }}>
+            <Box
+              sx={{
+                flex: 1,
+                width: "100%",
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                px: 1.35,
+                py: 1.1,
+                backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <DayPill dayIndex={requestDetailsTarget?.current_duty_day} />
                 <Typography
                   sx={{
                     fontFamily: dm,
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
+                    fontSize: "0.8rem",
                     color: "text.secondary",
-                    mb: 0.6,
+                    fontWeight: 700,
                   }}
                 >
-                  {DAY_LABELS[requestDetailsTarget?.current_duty_day]} (Today)
+                  →
                 </Typography>
+                <DayPill
+                  dayIndex={requestDetailsTarget?.requested_duty_day}
+                  accent
+                />
+              </Box>
+            </Box>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 1 },
+              }}
+            >
+              Team Composition:
+            </Typography>
+            <Box
+              sx={{
+                flex: 1,
+                width: "100%",
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                px: 1.35,
+                py: 1.1,
+                backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                  gap: 1,
+                }}
+              >
                 <Box
-                  sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
+                  sx={{
+                    borderRadius: "10px",
+                    border: `1px solid ${border}`,
+                    px: 1,
+                    py: 0.9,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.02)"
+                      : "rgba(255,255,255,0.7)",
+                  }}
                 >
-                  <Box
+                  <Typography
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.6,
-                      px: 0.8,
-                      py: 0.45,
-                      borderRadius: "6px",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "rgba(53,53,53,0.03)",
+                      fontFamily: dm,
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      color: "text.secondary",
+                      mb: 0.75,
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        backgroundColor: "#3b82f6",
-                        flexShrink: 0,
-                      }}
-                    />
+                    {DAY_LABELS[requestDetailsTarget?.current_duty_day]} (Today)
+                  </Typography>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.55 }}>
                     <Typography
                       sx={{
                         fontFamily: dm,
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "#1e40af",
+                        fontSize: "0.76rem",
+                        color: "text.primary",
                       }}
                     >
-                      Scribes: {divisionComposition.current.scribes}
+                      Scribes:{" "}
+                      <Box component="span" sx={{ color: "#1e40af", fontWeight: 700 }}>
+                        {divisionComposition.current.scribes}
+                      </Box>
                     </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.6,
-                      px: 0.8,
-                      py: 0.45,
-                      borderRadius: "6px",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "rgba(53,53,53,0.03)",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        backgroundColor: "#f97316",
-                        flexShrink: 0,
-                      }}
-                    />
                     <Typography
                       sx={{
                         fontFamily: dm,
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "#c2410c",
+                        fontSize: "0.76rem",
+                        color: "text.primary",
                       }}
                     >
-                      Creatives: {divisionComposition.current.creatives}
+                      Creatives:{" "}
+                      <Box component="span" sx={{ color: "#c2410c", fontWeight: 700 }}>
+                        {divisionComposition.current.creatives}
+                      </Box>
                     </Typography>
                   </Box>
                 </Box>
-              </Box>
-              {/* Requested day (after change) */}
-              <Box sx={{ flex: 1 }}>
-                <Typography
+
+                <Box
                   sx={{
-                    fontFamily: dm,
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
-                    color: "text.secondary",
-                    mb: 0.6,
+                    borderRadius: "10px",
+                    border: `1px solid ${border}`,
+                    px: 1,
+                    py: 0.9,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.02)"
+                      : "rgba(255,255,255,0.7)",
                   }}
                 >
-                  {DAY_LABELS[requestDetailsTarget?.requested_duty_day]} (After)
-                </Typography>
-                <Box
-                  sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
-                >
-                  <Box
+                  <Typography
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.6,
-                      px: 0.8,
-                      py: 0.45,
-                      borderRadius: "6px",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "rgba(53,53,53,0.03)",
+                      fontFamily: dm,
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      color: "text.secondary",
+                      mb: 0.75,
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        backgroundColor: "#3b82f6",
-                        flexShrink: 0,
-                      }}
-                    />
+                    {DAY_LABELS[requestDetailsTarget?.requested_duty_day]} (After)
+                  </Typography>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.55 }}>
                     <Typography
                       sx={{
                         fontFamily: dm,
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "#1e40af",
+                        fontSize: "0.76rem",
+                        color: "text.primary",
                       }}
                     >
-                      Scribes: {divisionComposition.requested.scribes}
+                      Scribes:{" "}
+                      <Box component="span" sx={{ color: "#1e40af", fontWeight: 700 }}>
+                        {divisionComposition.requested.scribes}
+                      </Box>
                     </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.6,
-                      px: 0.8,
-                      py: 0.45,
-                      borderRadius: "6px",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : "rgba(53,53,53,0.03)",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        backgroundColor: "#f97316",
-                        flexShrink: 0,
-                      }}
-                    />
                     <Typography
                       sx={{
                         fontFamily: dm,
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "#c2410c",
+                        fontSize: "0.76rem",
+                        color: "text.primary",
                       }}
                     >
-                      Creatives: {divisionComposition.requested.creatives}
+                      Creatives:{" "}
+                      <Box component="span" sx={{ color: "#c2410c", fontWeight: 700 }}>
+                        {divisionComposition.requested.creatives}
+                      </Box>
                     </Typography>
                   </Box>
                 </Box>
@@ -3072,26 +3062,35 @@ export default function DutyScheduleView() {
             </Box>
           </Box>
 
-          <Box>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "flex-start",
+              gap: 1,
+            }}
+          >
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 700,
-                color: "text.secondary",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                mb: 0.65,
+                color: "text.primary",
+                minWidth: { sm: 132 },
+                pt: { sm: 1 },
               }}
             >
-              Reason
+              Reason:
             </Typography>
             <Box
               sx={{
+                flex: 1,
+                width: "100%",
                 borderRadius: "10px",
                 border: `1px solid ${border}`,
                 px: 1.25,
                 py: 1.05,
+                minHeight: 88,
                 backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafafa",
               }}
             >
@@ -3159,35 +3158,27 @@ export default function DutyScheduleView() {
                   approval is disabled.
                 </Typography>
               )}
-              <Box
+              <Button
                 onClick={
                   requestActionId === requestDetailsTarget?.id
                     ? undefined
                     : () => openRejectDialog(requestDetailsTarget)
                 }
+                variant="outlined"
+                color="error"
+                disabled={requestActionId === requestDetailsTarget?.id}
                 sx={{
-                  px: 1.75,
-                  py: 0.65,
+                  minWidth: 112,
+                  height: MODAL_ACTION_BTN_HEIGHT,
                   borderRadius: "10px",
-                  cursor:
-                    requestActionId === requestDetailsTarget?.id
-                      ? "default"
-                      : "pointer",
-                  border: "1px solid rgba(220,38,38,0.18)",
-                  backgroundColor: isDark
-                    ? "rgba(220,38,38,0.12)"
-                    : "rgba(220,38,38,0.06)",
                   fontFamily: dm,
                   fontSize: "0.8rem",
                   fontWeight: 600,
-                  color: "#dc2626",
-                  opacity:
-                    requestActionId === requestDetailsTarget?.id ? 0.5 : 1,
                 }}
               >
                 Decline
-              </Box>
-              <Box
+              </Button>
+              <Button
                 onClick={
                   requestActionId === requestDetailsTarget?.id ||
                   !requestDetailsTarget ||
@@ -3195,37 +3186,31 @@ export default function DutyScheduleView() {
                     ? undefined
                     : () => handleApproveRequest(requestDetailsTarget)
                 }
+                variant="contained"
+                disabled={
+                  requestActionId === requestDetailsTarget?.id ||
+                  !requestDetailsTarget ||
+                  !canApprovePendingRequests
+                }
+                startIcon={
+                  requestActionId === requestDetailsTarget?.id ? (
+                    <CircularProgress size={13} sx={{ color: "#fff" }} />
+                  ) : null
+                }
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  px: 1.75,
-                  py: 0.65,
+                  minWidth: 124,
+                  height: MODAL_ACTION_BTN_HEIGHT,
                   borderRadius: "10px",
-                  cursor:
-                    requestActionId === requestDetailsTarget?.id ||
-                    !requestDetailsTarget ||
-                    !canApprovePendingRequests
-                      ? "default"
-                      : "pointer",
-                  backgroundColor: GOLD,
-                  color: "#1a1a1a",
                   fontFamily: dm,
                   fontSize: "0.8rem",
                   fontWeight: 700,
-                  opacity:
-                    requestActionId === requestDetailsTarget?.id ||
-                    !requestDetailsTarget ||
-                    !canApprovePendingRequests
-                      ? 0.7
-                      : 1,
+                  "& .MuiButton-startIcon": {
+                    mr: 0.6,
+                  },
                 }}
               >
-                {requestActionId === requestDetailsTarget?.id && (
-                  <CircularProgress size={13} sx={{ color: "#1a1a1a" }} />
-                )}
                 Approve
-              </Box>
+              </Button>
             </>
           )}
         </Box>
@@ -3341,51 +3326,45 @@ export default function DutyScheduleView() {
               : "rgba(53,53,53,0.01)",
           }}
         >
-          <Box
+          <Button
             onClick={!requestActionId ? closeRejectDialog : undefined}
+            variant="outlined"
+            disabled={!!requestActionId}
             sx={{
-              px: 1.75,
-              py: 0.65,
+              minWidth: 112,
+              height: MODAL_ACTION_BTN_HEIGHT,
               borderRadius: "10px",
-              cursor: requestActionId ? "default" : "pointer",
-              border: `1px solid ${border}`,
               fontFamily: dm,
               fontSize: "0.8rem",
               fontWeight: 500,
-              color: "text.secondary",
-              opacity: requestActionId ? 0.5 : 1,
-              transition: "all 0.15s",
             }}
           >
             Cancel
-          </Box>
-          <Box
+          </Button>
+          <Button
             onClick={!requestActionId ? confirmRejectRequest : undefined}
+            variant="contained"
+            color="error"
+            disabled={!!requestActionId}
+            startIcon={
+              requestActionId === rejectTarget?.id ? (
+                <CircularProgress size={13} sx={{ color: "#fff" }} />
+              ) : null
+            }
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.75,
-              px: 1.75,
-              py: 0.65,
+              minWidth: 148,
+              height: MODAL_ACTION_BTN_HEIGHT,
               borderRadius: "10px",
-              cursor: requestActionId ? "default" : "pointer",
-              backgroundColor: "#dc2626",
-              color: "#fff",
               fontFamily: dm,
               fontSize: "0.8rem",
               fontWeight: 700,
-              opacity: requestActionId ? 0.7 : 1,
-              transition: "background-color 0.15s",
-              "&:hover": {
-                backgroundColor: requestActionId ? "#dc2626" : "#b91c1c",
+              "& .MuiButton-startIcon": {
+                mr: 0.6,
               },
             }}
           >
-            {requestActionId === rejectTarget?.id && (
-              <CircularProgress size={13} sx={{ color: "#fff" }} />
-            )}
             Confirm Decline
-          </Box>
+          </Button>
         </Box>
       </Dialog>
 
@@ -4022,6 +4001,7 @@ export default function DutyScheduleView() {
         </Box>
       </Dialog>
 
+      {/* ── Settings Drawer ── */}
       <Drawer
         anchor="right"
         open={settingsDrawerOpen}
@@ -4047,6 +4027,7 @@ export default function DutyScheduleView() {
             height: "100%",
           }}
         >
+          {/* Drawer header */}
           <Box
             sx={{
               px: 2,
@@ -4097,12 +4078,25 @@ export default function DutyScheduleView() {
             </IconButton>
           </Box>
 
+          {/* Tab bar */}
           <Box
-            sx={{ px: 2, pt: 1.5, pb: 1, borderBottom: `1px solid ${border}` }}
+            sx={{
+              px: 2,
+              pt: 1.5,
+              pb: 1,
+              borderBottom: `1px solid ${border}`,
+            }}
           >
-            <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                flexWrap: "nowrap",
+                overflowX: "auto",
+                alignItems: "center",
+              }}
+            >
               {[
-                { key: "operations", label: "Operations" },
                 { key: "governance", label: "Governance" },
                 { key: "audit", label: "Audit Trail" },
               ].map((tab) => {
@@ -4115,8 +4109,10 @@ export default function DutyScheduleView() {
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      px: 1.3,
-                      py: 0.6,
+                      px: 1.5,
+                      height: MODAL_TAB_HEIGHT,
+                      flexShrink: 0,
+                      minWidth: 108,
                       borderRadius: "10px",
                       cursor: "pointer",
                       border: active
@@ -4129,7 +4125,9 @@ export default function DutyScheduleView() {
                       fontWeight: active ? 700 : 600,
                       transition: "all 0.15s",
                       "&:hover": {
-                        borderColor: active ? "#0f1115" : "rgba(53,53,53,0.3)",
+                        borderColor: active
+                          ? "#0f1115"
+                          : "rgba(53,53,53,0.3)",
                         color: active ? "#ffffff" : "text.primary",
                         backgroundColor: active ? "#0f1115" : "#ededee",
                       },
@@ -4139,32 +4137,55 @@ export default function DutyScheduleView() {
                   </Box>
                 );
               })}
+              <Tooltip title="Manage Duty Sched" arrow>
+                <IconButton
+                  onClick={handleManageDutySchedule}
+                  sx={{
+                    borderRadius: "10px",
+                    color: "text.secondary",
+                    backgroundColor: "#f7f7f8",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    height: MODAL_TAB_HEIGHT,
+                    width: MODAL_TAB_HEIGHT,
+                    "&:hover": {
+                      backgroundColor: "#ededee",
+                      borderColor: "rgba(53,53,53,0.3)",
+                      color: "text.primary",
+                    },
+                  }}
+                >
+                  <ArrowOutwardIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
           </Box>
 
+          {/* Drawer scrollable content */}
           <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
-            <Box sx={{ mb: 1.25 }}>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.78rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                }}
-              >
-                {activeSettingsMeta.title}
-              </Typography>
-              <Typography
-                sx={{
-                  mt: 0.2,
-                  fontFamily: dm,
-                  fontSize: "0.72rem",
-                  color: "text.secondary",
-                }}
-              >
-                {activeSettingsMeta.description}
-              </Typography>
-            </Box>
+            {settingsPanelTab !== "audit" && (
+              <Box sx={{ mb: 1.25 }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    color: "text.primary",
+                  }}
+                >
+                  {activeSettingsMeta.title}
+                </Typography>
+                <Typography
+                  sx={{
+                    mt: 0.2,
+                    fontFamily: dm,
+                    fontSize: "0.72rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  {activeSettingsMeta.description}
+                </Typography>
+              </Box>
+            )}
 
             {settingsPanelTab === "governance" && governanceMessage && (
               <Alert
@@ -4178,165 +4199,6 @@ export default function DutyScheduleView() {
               >
                 {governanceMessage}
               </Alert>
-            )}
-
-            {settingsPanelTab === "operations" && (
-              <Box
-                sx={{
-                  p: 1.5,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(53,53,53,0.02)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    color: "text.secondary",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  Blackout Dates (No Duty Operations)
-                </Typography>
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 1,
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                  }}
-                >
-                  <TextField
-                    type="date"
-                    size="small"
-                    value={blackoutDateInput}
-                    onChange={(event) =>
-                      setBlackoutDateInput(event.target.value)
-                    }
-                    sx={{
-                      minWidth: 190,
-                      "& .MuiOutlinedInput-root": {
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        borderRadius: "10px",
-                        backgroundColor: "#f7f7f8",
-                      },
-                    }}
-                  />
-                  <TextField
-                    size="small"
-                    value={blackoutReasonInput}
-                    onChange={(event) =>
-                      setBlackoutReasonInput(event.target.value)
-                    }
-                    placeholder="Reason (optional)"
-                    sx={{
-                      minWidth: 260,
-                      flex: "1 1 260px",
-                      "& .MuiOutlinedInput-root": {
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        borderRadius: "10px",
-                        backgroundColor: "#f7f7f8",
-                      },
-                    }}
-                  />
-                  <Box
-                    onClick={
-                      blackoutSaving || !blackoutDateInput
-                        ? undefined
-                        : handleAddBlackoutDate
-                    }
-                    sx={{
-                      px: 1.35,
-                      py: 0.68,
-                      borderRadius: "10px",
-                      cursor:
-                        blackoutSaving || !blackoutDateInput
-                          ? "default"
-                          : "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      backgroundColor: "#f7f7f8",
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      color: "text.secondary",
-                      opacity: blackoutSaving || !blackoutDateInput ? 0.6 : 1,
-                    }}
-                  >
-                    Add Date
-                  </Box>
-                </Box>
-
-                <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                  {blackoutDates.length === 0 ? (
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.75rem",
-                        color: "text.secondary",
-                      }}
-                    >
-                      No blackout dates set for this semester.
-                    </Typography>
-                  ) : (
-                    blackoutDates.map((row) => (
-                      <Box
-                        key={row.id}
-                        sx={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 0.6,
-                          px: 1,
-                          py: 0.45,
-                          borderRadius: "999px",
-                          border: `1px solid ${border}`,
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.04)"
-                            : "#ffffff",
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.72rem",
-                            color: "text.primary",
-                          }}
-                        >
-                          {new Date(
-                            `${row.blackout_date}T00:00:00`,
-                          ).toLocaleDateString()}
-                        </Typography>
-                        <Box
-                          onClick={
-                            blackoutSaving
-                              ? undefined
-                              : () => handleRemoveBlackoutDate(row)
-                          }
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.7rem",
-                            color: "#dc2626",
-                            cursor: blackoutSaving ? "default" : "pointer",
-                            opacity: blackoutSaving ? 0.5 : 1,
-                          }}
-                        >
-                          Remove
-                        </Box>
-                      </Box>
-                    ))
-                  )}
-                </Box>
-              </Box>
             )}
 
             {settingsPanelTab === "governance" && (
@@ -4413,7 +4275,9 @@ export default function DutyScheduleView() {
 
                   {selectedPublication?.snapshot?.length > 0 && (
                     <Box
-                      onClick={() => openSnapshotViewer(selectedPublication.id)}
+                      onClick={() =>
+                        openSnapshotViewer(selectedPublication.id)
+                      }
                       sx={{
                         display: "inline-flex",
                         alignItems: "center",
@@ -4763,11 +4627,12 @@ export default function DutyScheduleView() {
                 <Box
                   sx={{
                     minHeight: 420,
-                    borderRadius: "10px",
                     border: `1px solid ${border}`,
                     overflowX: "auto",
                     overflowY: "hidden",
-                    backgroundColor: "#f7f7f8",
+                    backgroundColor: "background.paper",
+                    borderRadius: 0,
+                    boxShadow: "none",
                   }}
                 >
                   <DataGrid

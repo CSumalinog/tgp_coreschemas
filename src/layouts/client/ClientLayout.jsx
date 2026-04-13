@@ -35,6 +35,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import {
+  BUTTON_HEIGHT,
   LAYOUT_ICON_LG,
   LAYOUT_ICON_MD,
   LAYOUT_ICON_SM,
@@ -925,7 +926,7 @@ function ClientLayout() {
               fontWeight: 600,
               fontSize: "0.81rem",
               borderRadius: "10px",
-              height: 34,
+              height: BUTTON_HEIGHT,
               px: { xs: 1, sm: 1.75 },
               minWidth: 0,
               backgroundColor: GOLD,

@@ -1641,10 +1641,6 @@ export default function CoverageRequestDialog({
               textTransform: "none",
               fontSize: "0.82rem",
               fontWeight: 600,
-              backgroundColor: "#f5c52b",
-              color: "#111827",
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
             }}
           >
             Submit
@@ -1808,10 +1804,6 @@ export default function CoverageRequestDialog({
               textTransform: "none",
               fontSize: "0.82rem",
               fontWeight: 600,
-              backgroundColor: "#f5c52b",
-              color: "#111827",
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
             }}
           >
             Submit Now

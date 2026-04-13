@@ -62,6 +62,7 @@ import {
   FILTER_ROW_GAP,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  MODAL_TAB_HEIGHT,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -1345,7 +1346,15 @@ export default function StaffersManagement() {
         </Box>
 
         <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${border}` }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              flexWrap: "nowrap",
+              overflowX: "auto",
+            }}
+          >
             {[
               {
                 key: "deactivated",
@@ -1368,7 +1377,8 @@ export default function StaffersManagement() {
                     alignItems: "center",
                     gap: 0.6,
                     px: 1.35,
-                    py: 0.5,
+                    height: MODAL_TAB_HEIGHT,
+                    flexShrink: 0,
                     borderRadius: "10px",
                     border: `1px solid ${active ? "#212121" : border}`,
                     backgroundColor: active ? "#212121" : "transparent",

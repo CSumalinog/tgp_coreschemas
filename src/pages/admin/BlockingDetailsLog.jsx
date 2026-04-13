@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { supabase } from "../../lib/supabaseClient";
+import { MODAL_TAB_HEIGHT } from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -281,12 +282,25 @@ export default function BlockingDetailsLog() {
 
           <Box>
             
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mt: 0.8 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                mt: 0.8,
+                flexWrap: "nowrap",
+                overflowX: "auto",
+              }}
+            >
               <Box
                 onClick={() => setActiveTab("all")}
                 sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   px: 1.25,
-                  py: 0.55,
+                  height: MODAL_TAB_HEIGHT,
+                  flexShrink: 0,
                   borderRadius: "10px",
                   border: `1px solid ${activeTab === "all" ? "#212121" : border}`,
                   backgroundColor:
@@ -304,8 +318,12 @@ export default function BlockingDetailsLog() {
               <Box
                 onClick={() => setActiveTab("upcoming")}
                 sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   px: 1.25,
-                  py: 0.55,
+                  height: MODAL_TAB_HEIGHT,
+                  flexShrink: 0,
                   borderRadius: "10px",
                   border: `1px solid ${activeTab === "upcoming" ? "#212121" : border}`,
                   backgroundColor:

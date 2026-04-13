@@ -36,7 +36,11 @@ import {
   getNotificationPagePath,
   isNotificationNavigable,
 } from "../../utils/notificationRouting";
-import { LAYOUT_ICON_BASE, LAYOUT_ICON_MD } from "../../utils/layoutTokens";
+import {
+  LAYOUT_ICON_BASE,
+  LAYOUT_ICON_MD,
+  MODAL_TAB_HEIGHT,
+} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -592,7 +596,15 @@ export default function NotificationBell({ userId }) {
                   gap: 0.7,
                 }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.7 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.7,
+                    flexWrap: "nowrap",
+                    overflowX: "auto",
+                  }}
+                >
                   {[
                     { key: "all", label: "All" },
                     { key: "unread", label: "Unread" },
@@ -603,8 +615,12 @@ export default function NotificationBell({ userId }) {
                         key={item.key}
                         onClick={() => setFilterKey(item.key)}
                         sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           px: 1.1,
-                          py: 0.45,
+                          height: MODAL_TAB_HEIGHT,
+                          flexShrink: 0,
                           borderRadius: "10px",
                           border: `1px solid ${active ? "#212121" : border}`,
                           backgroundColor: active ? "#212121" : "transparent",
