@@ -838,7 +838,7 @@ export default function NotificationBell({ userId }) {
                   const requesterAvatarUrl = isAllSectionsSubmission
                     ? null
                     : getAvatarUrl(
-                        assignerProfile?.avatar_url || requester?.avatar_url,
+                        assignerProfile != null ? assignerProfile.avatar_url : requester?.avatar_url,
                       );
                   const isCoverageRequest = notif.type === "new_request";
                   const isRequestCancelled = notif.type === "request_cancelled";

@@ -310,7 +310,12 @@ export default function NotificationsPage() {
     const requestIds = [
       ...new Set(
         rows
-          .filter((row) => row.type === "assigned")
+          .filter(
+            (row) =>
+              row.type === "assigned" ||
+              (row.type === "for_approval" &&
+                row.title === "Coverage Assignment Finalized"),
+          )
           .map((row) => row.request_id)
           .filter(Boolean),
       ),
@@ -761,7 +766,9 @@ export default function NotificationsPage() {
               const displayActorProfile =
                 isAllSectionsSubmission
                   ? null
-                  : notification.type === "assigned" && assignerProfile
+                  : (notification.type === "assigned" ||
+                      notification.title === "Coverage Assignment Finalized") &&
+                    assignerProfile
                   ? assignerProfile
                   : requester;
               const displayActorName = isAllSectionsSubmission
