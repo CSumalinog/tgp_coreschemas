@@ -49,22 +49,27 @@ export function useRealtimeSync(table, callback, filter = null) {
       ...(filterRef.current ? { filter: filterRef.current } : {}),
     };
 
-    const channel = supabase
-      .channel(channelName)
-      .on("postgres_changes", config, () => callbackRef.current?.())
-      .subscribe();
+    // Defer channel creation so React 18 StrictMode's rapid mount→unmount
+    // cycle clears before the WebSocket is ever opened.  If cleanup fires
+    // before the timeout (StrictMode double-invoke), no channel is created
+    // and removeChannel is never called on an unestablished socket.
+    let channel = null;
+    let mounted = true;
+
+    const timerId = setTimeout(() => {
+      if (!mounted) return;
+      channel = supabase
+        .channel(channelName)
+        .on("postgres_changes", config, () => callbackRef.current?.())
+        .subscribe();
+    }, 0);
 
     return () => {
-      // In React 18 StrictMode, effects mount/unmount twice in dev.
-      // Make cleanup resilient so transient socket states do not throw noise.
-      try {
-        channel.unsubscribe();
-      } catch {
-        // no-op
+      mounted = false;
+      clearTimeout(timerId);
+      if (channel) {
+        Promise.resolve(supabase.removeChannel(channel)).catch(() => {});
       }
-      Promise.resolve(supabase.removeChannel(channel)).catch(() => {
-        // no-op
-      });
     };
   }, [table, filter]);
 }

@@ -140,18 +140,6 @@ const CoverageRequestDetailsPage = () => {
         backgroundColor: isDark ? "background.default" : "#ffffff",
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          flexShrink: 0,
-        }}
-      >
-        <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: "text.primary", letterSpacing: "-0.01em" }}>
-          Request Details
-        </Typography>
-      </Box>
-
       <Box sx={{ flex: 1, minHeight: 0 }}>
         {error ? (
           <Alert severity="error" sx={{ borderRadius: "10px" }}>

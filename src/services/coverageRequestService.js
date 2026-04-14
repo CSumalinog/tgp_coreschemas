@@ -206,6 +206,8 @@ export async function fetchMyRequests() {
         id,
         section,
         status,
+        timed_in_at,
+        completed_at,
         staffer:assigned_to (
           id,
           full_name,
@@ -239,12 +241,23 @@ export async function updateDraftRequest(
   } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("Not authenticated.");
 
+  // Use existing draft values as fallback when the caller only sends partial
+  // fields (common from Draft Details submit action).
+  const { data: existingDraft } = await supabase
+    .from("coverage_requests")
+    .select("file_url, entity_id, client_type_id")
+    .eq("id", requestId)
+    .eq("requester_id", user.id)
+    .single();
+
+  const clientTypeId = requestData.client_type || existingDraft?.client_type_id;
+
   // ── Resolve "Others" entity ──
-  let resolvedEntityId = requestData.entity || null;
+  let resolvedEntityId = requestData.entity || existingDraft?.entity_id || null;
   if (requestData.other_entity) {
     resolvedEntityId = await resolveEntityId(
       requestData.other_entity,
-      requestData.client_type,
+      clientTypeId,
     );
   }
 
@@ -253,7 +266,10 @@ export async function updateDraftRequest(
   }
 
   // ── Upload file if new one provided ──
-  let fileUrl = requestData.file_url || null;
+  let fileUrl = requestData.file_url;
+  if (typeof fileUrl === "undefined") {
+    fileUrl = existingDraft?.file_url || null;
+  }
   if (file) {
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/\s+/g, "_");
@@ -272,7 +288,7 @@ export async function updateDraftRequest(
     ...buildDatePayload(requestData),
     venue: requestData.venue,
     services: requestData.services,
-    client_type_id: requestData.client_type,
+    client_type_id: clientTypeId,
     entity_id: resolvedEntityId,
     other_entity: null,
     contact_person: requestData.contact_person,

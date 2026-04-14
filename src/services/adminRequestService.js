@@ -210,7 +210,7 @@ export async function approveRequest(requestId, adminNotes = "") {
   const [{ data: req }, currentUserId] = await Promise.all([
     supabase
       .from("coverage_requests")
-      .select("title, requester_id")
+      .select("title, requester_id, forwarded_sections")
       .eq("id", requestId)
       .single(),
     getCurrentUserId(),
@@ -219,7 +219,7 @@ export async function approveRequest(requestId, adminNotes = "") {
   const { data, error } = await supabase
     .from("coverage_requests")
     .update({
-      status: "Assigned",
+      status: "Approved",
       admin_notes: adminNotes,
       approved_at: new Date().toISOString(),
       approved_by: currentUserId,
@@ -232,15 +232,29 @@ export async function approveRequest(requestId, adminNotes = "") {
 
   const { error: assignErr } = await supabase
     .from("coverage_assignments")
-    .update({ status: "Assigned" })
-    .eq("request_id", requestId);
+    // coverage_assignments_status_check allows the legacy "Approved" value;
+    // request-level status semantics still use Assigned/Approved compatibility.
+    .update({ status: "Approved" })
+    .eq("request_id", requestId)
+    .not("status", "in", "(Completed,Cancelled)");
 
   if (assignErr)
     throw new Error(`Failed to assign assignments: ${assignErr.message}`);
 
   const requestTitle = req?.title || "a coverage request";
 
-  await notifyClient({
+  // Fetch admin profile for use in sec-head notification message.
+  const { data: adminProfile } = await supabase
+    .from("profiles")
+    .select("full_name, designation")
+    .eq("id", currentUserId)
+    .single();
+
+  const adminLabel = adminProfile
+    ? `${adminProfile.full_name}${adminProfile.designation ? ` - ${adminProfile.designation}` : ""}`
+    : "Admin";
+
+  let clientNotif = await notifyClient({
     requesterId: req?.requester_id,
     type: "approved",
     title: "Coverage Request Approved",
@@ -248,6 +262,30 @@ export async function approveRequest(requestId, adminNotes = "") {
     requestId,
     createdBy: currentUserId,
   });
+
+  // Fallback for environments where "approved" may be restricted by DB checks.
+  if (!clientNotif?.ok) {
+    console.warn("[approveRequest] notifyClient(approved) failed, retrying with for_approval", clientNotif?.error?.message || clientNotif?.reason);
+    clientNotif = await notifyClient({
+      requesterId: req?.requester_id,
+      type: "for_approval",
+      title: "Coverage Request Update",
+      message: `Your request "${requestTitle}" has been approved and finalized. Please coordinate with the assigned staffers.`,
+      requestId,
+      createdBy: currentUserId,
+    });
+  }
+
+  if (Array.isArray(req?.forwarded_sections) && req.forwarded_sections.length > 0) {
+    await notifySecHeads({
+      sections: req.forwarded_sections,
+      type: "approved",
+      title: "Forwarded Request Approved",
+      message: `${adminLabel} approved "${requestTitle}." Assignments are finalized.`,
+      requestId,
+      createdBy: currentUserId,
+    });
+  }
 
   const { data: assignmentRows } = await supabase
     .from("coverage_assignments")
@@ -277,7 +315,7 @@ export async function approveRequest(requestId, adminNotes = "") {
   });
 
   await Promise.all(
-    [...staffToAssigner.entries()].map(([staffId, assignerId]) => {
+    [...staffToAssigner.entries()].map(async ([staffId, assignerId]) => {
       const assigner = assignerMap[assignerId] || null;
       const assignerName = assigner?.full_name || "Your section head";
       const assignerDesignation =
@@ -285,14 +323,32 @@ export async function approveRequest(requestId, adminNotes = "") {
         assigner?.position ||
         (assigner?.section ? `${assigner.section} Section Head` : "Section Head");
 
-      return notifySpecificStaff({
+      let staffNotif = await notifySpecificStaff({
         staffIds: [staffId],
         requestId,
         type: "assigned",
         title: "Coverage Assignment Finalized",
         message: `${assignerName} - ${assignerDesignation}, assigned you to cover "${requestTitle}". Admin approval has finalized this assignment.`,
-        createdBy: currentUserId,
+        // Keep actor avatar consistent with the message author.
+        // For assignment-finalized notices, show the original section head
+        // who assigned the staffer, not the admin who clicked Approve.
+        createdBy: assignerId || currentUserId,
       });
+
+      // Fallback for environments where "assigned" may be restricted by DB checks.
+      if (!staffNotif?.ok) {
+        console.warn("[approveRequest] notifySpecificStaff(assigned) failed, retrying with for_approval", staffNotif?.error?.message || staffNotif?.reason);
+        staffNotif = await notifySpecificStaff({
+          staffIds: [staffId],
+          requestId,
+          type: "for_approval",
+          title: "Coverage Assignment Finalized",
+          message: `${assignerName} - ${assignerDesignation}, assigned you to cover "${requestTitle}". Admin approval has finalized this assignment.`,
+          createdBy: assignerId || currentUserId,
+        });
+      }
+
+      return staffNotif;
     }),
   );
 

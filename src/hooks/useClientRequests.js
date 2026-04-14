@@ -15,13 +15,40 @@ export function useClientRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const withComputedStatus = (rows = []) =>
+    rows.map((request) => {
+      const assignments = Array.isArray(request?.coverage_assignments)
+        ? request.coverage_assignments
+        : [];
+
+      if (assignments.length === 0) return request;
+
+      const total = assignments.length;
+      const completed = assignments.filter(
+        (a) => a?.status === "Completed" || !!a?.completed_at,
+      ).length;
+      const onGoing = assignments.filter(
+        (a) => a?.status === "On Going" || !!a?.timed_in_at,
+      ).length;
+
+      if (completed === total) {
+        return { ...request, status: "Completed" };
+      }
+
+      if (onGoing > 0 && request?.status !== "Completed") {
+        return { ...request, status: "On Going" };
+      }
+
+      return request;
+    });
+
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const data = await fetchMyRequests();
-      setRequests(data);
+      setRequests(withComputedStatus(data || []));
     } catch (err) {
       setError(err.message);
       console.error("useClientRequests error:", err);

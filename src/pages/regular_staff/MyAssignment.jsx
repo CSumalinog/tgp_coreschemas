@@ -1390,8 +1390,6 @@ function ConfirmCompleteDialog({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MyAssignment() {
-  // Emergency announcement integration
-  const { openAnnounce, AnnounceEmergencyDialogWrapper } = useAnnounceEmergency({ supabase, currentUser });
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
@@ -1407,6 +1405,9 @@ export default function MyAssignment() {
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState("");
+
+  // Emergency announcement integration - must be after all other useState calls
+  const { openAnnounce, AnnounceEmergencyDialogWrapper } = useAnnounceEmergency({ supabase, currentUser });
 
   const [timeInTarget, setTimeInTarget] = useState(null);
   const [timingIn, setTimingIn] = useState(false);
@@ -1679,16 +1680,9 @@ export default function MyAssignment() {
       setCompleting(false);
       return;
     }
-    const { data: allA } = await supabase
-      .from("coverage_assignments")
-      .select("status")
-      .eq("request_id", confirmTarget.request.id);
-    if ((allA || []).every((a) => a.status === "Completed")) {
-      await supabase
-        .from("coverage_requests")
-        .update({ status: "Completed", completed_at: now })
-        .eq("id", confirmTarget.request.id);
-    }
+    await supabase.rpc("sync_request_status_from_assignments", {
+      p_request_id: confirmTarget.request.id,
+    });
     setConfirmTarget(null);
     setCompleting(false);
     loadAssignments();
@@ -1720,11 +1714,18 @@ export default function MyAssignment() {
         })
         .eq("id", timeInTarget.id);
       if (assignErr) throw assignErr;
-      const { error: reqErr } = await supabase
-        .from("coverage_requests")
-        .update({ status: "On Going" })
-        .eq("id", timeInTarget.request.id);
-      if (reqErr) throw reqErr;
+      const { error: reqSyncErr } = await supabase.rpc(
+        "sync_request_status_from_assignments",
+        {
+          p_request_id: timeInTarget.request.id,
+        },
+      );
+      if (reqSyncErr) {
+        console.warn(
+          "[handleTimeIn] request status sync failed:",
+          reqSyncErr.message,
+        );
+      }
       const { data: admins } = await supabase
         .from("profiles")
         .select("id")

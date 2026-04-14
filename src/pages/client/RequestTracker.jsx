@@ -928,27 +928,17 @@ function PipelineCard({ request, isDark, border, onClick }) {
       const isP2 = stage.phase === 2;
       const { Icon } = stage;
 
-      let wrapBg, wrapBorder, wrapShadow, iconColor;
+      let iconColor;
       if (done) {
-        wrapBg = "#dcfce7";
-        wrapBorder = "transparent";
-        wrapShadow = "none";
         iconColor = "#15803d";
       } else if (current && !isP2) {
-        wrapBg = GOLD;
-        wrapBorder = "transparent";
-        wrapShadow = `0 0 0 4px ${GOLD_08}`;
-        iconColor = CHARCOAL;
+        iconColor = GOLD;
       } else if (current && isP2) {
-        wrapBg = "#dbeafe";
-        wrapBorder = "transparent";
-        wrapShadow = "0 0 0 4px rgba(59,130,246,0.15)";
         iconColor = "#1d4ed8";
-      } else {
-        wrapBg = "transparent";
-        wrapBorder = isDark ? "#444" : "#d1d5db";
-        wrapShadow = "none";
+      } else if (isP2 && currentPhase < 2) {
         iconColor = isDark ? "#555" : "#c4c4c4";
+      } else {
+        iconColor = isDark ? "#6b7280" : "#9ca3af";
       }
 
       return (
@@ -964,29 +954,14 @@ function PipelineCard({ request, isDark, border, onClick }) {
               transition: "opacity 0.2s",
             }}
           >
-            <Box sx={{ mb: 0.6 }}>
-              <Box
+            <Box sx={{ mb: 0.6, display: "flex", alignItems: "center" }}>
+              <Icon
                 sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  backgroundColor: wrapBg,
-                  border: `1.5px solid ${wrapBorder}`,
-                  boxShadow: wrapShadow,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.2s",
+                  fontSize: 16,
+                  color: iconColor,
+                  transition: "color 0.2s",
                 }}
-              >
-                <Icon
-                  sx={{
-                    fontSize: 13,
-                    color: iconColor,
-                    transition: "color 0.2s",
-                  }}
-                />
-              </Box>
+              />
             </Box>
             <Typography
               sx={{
@@ -2381,26 +2356,14 @@ function RequestDetailDialog({
                   const current = idx === currentIdx;
                   const isP2 = stage.phase === 2;
                   const { Icon } = stage;
-                  let wrapBg, wrapBorder, wrapShadow, iconColor;
+                  let iconColor;
                   if (done) {
-                    wrapBg = "#dcfce7";
-                    wrapBorder = "transparent";
-                    wrapShadow = "none";
                     iconColor = "#15803d";
                   } else if (current && !isP2) {
-                    wrapBg = GOLD;
-                    wrapBorder = "transparent";
-                    wrapShadow = `0 0 0 3px ${GOLD_08}`;
-                    iconColor = CHARCOAL;
+                    iconColor = GOLD;
                   } else if (current && isP2) {
-                    wrapBg = "#dbeafe";
-                    wrapBorder = "transparent";
-                    wrapShadow = "0 0 0 3px rgba(59,130,246,0.15)";
                     iconColor = "#1d4ed8";
                   } else {
-                    wrapBg = "transparent";
-                    wrapBorder = isDark ? "#444" : "#d1d5db";
-                    wrapShadow = "none";
                     iconColor = isDark ? "#555" : "#c4c4c4";
                   }
                   return (
@@ -2414,22 +2377,8 @@ function RequestDetailDialog({
                           minWidth: 0,
                         }}
                       >
-                        <Box sx={{ mb: 0.5 }}>
-                          <Box
-                            sx={{
-                              width: 26,
-                              height: 26,
-                              borderRadius: "50%",
-                              backgroundColor: wrapBg,
-                              border: `1.5px solid ${wrapBorder}`,
-                              boxShadow: wrapShadow,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <Icon sx={{ fontSize: 12, color: iconColor }} />
-                          </Box>
+                        <Box sx={{ mb: 0.5, display: "flex", alignItems: "center" }}>
+                          <Icon sx={{ fontSize: 14, color: iconColor }} />
                         </Box>
                         <Typography
                           sx={{

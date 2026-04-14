@@ -721,8 +721,6 @@ export default function RequestDetails({
           .eq("request_id", request.id);
         if (error) {
           console.error("loadAssignments error:", error);
-        } else {
-          console.log("Loaded assignments for request", request.id, ":", data);
         }
         setAssignedStaffers(data || []);
       } catch (err) {
@@ -857,7 +855,11 @@ export default function RequestDetails({
         .map(([name, pax]) => ({ name, pax }))
     : [];
 
-  const statusCfg = STATUS_CONFIG[request?.status] || {
+  const displayStatus =
+    request?.status === "Assigned" && request?.approved_at
+      ? "Approved"
+      : request?.status;
+  const statusCfg = STATUS_CONFIG[displayStatus] || {
     bg: "#f3f4f6",
     color: "#6b7280",
   };
@@ -980,7 +982,7 @@ export default function RequestDetails({
                 lineHeight: 1.2,
               }}
             >
-              {request.status}
+              {displayStatus}
             </Typography>
           </Box>
           <Tooltip
@@ -1542,7 +1544,8 @@ export default function RequestDetails({
           </Button>
         )}
         {/* FIX #2: approve goes through handleApproveClick which checks flags + unfilled slots */}
-        {request.status === "For Approval" && (
+        {/* Show approve button for both "For Approval" and "Assigned" statuses - sec heads may submit as either */}
+        {["For Approval", "Assigned"].includes(request.status) && (
           <Button
             variant="contained"
             size="small"

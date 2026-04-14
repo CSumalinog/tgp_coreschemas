@@ -68,12 +68,14 @@ const DAY_CHIP = {
 const STATUS = {
   light: {
     Forwarded: { bg: BRAND.goldAlpha15, color: "#7a5c00" },
+    "For Approval": { bg: "rgba(124,58,237,0.10)", color: "#6d28d9" },
     Assigned: { bg: BRAND.goldAlpha12, color: "#856900" },
     "On Going": { bg: "rgba(59,130,246,0.10)", color: "#1d4ed8" },
     "Coverage Complete": { bg: "rgba(53,53,53,0.07)", color: "#353535" },
   },
   dark: {
     Forwarded: { bg: BRAND.goldAlpha15, color: BRAND.gold },
+    "For Approval": { bg: "rgba(124,58,237,0.15)", color: "#a78bfa" },
     Assigned: { bg: BRAND.goldAlpha12, color: "#e6b920" },
     "On Going": { bg: "rgba(59,130,246,0.15)", color: "#60a5fa" },
     "Coverage Complete": { bg: "rgba(255,255,255,0.07)", color: "#aaa" },
@@ -233,6 +235,7 @@ export default function SecHeadDashboard() {
         .contains("forwarded_sections", [currentUser.section])
         .in("status", [
           "Forwarded",
+          "For Approval",
           "Assigned",
           "On Going",
           "Coverage Complete",
@@ -253,7 +256,10 @@ export default function SecHeadDashboard() {
 
     const pending = allRequests.filter((r) => r.status === "Forwarded").length;
     const assigned = allRequests.filter(
-      (r) => r.status === "Assigned" || r.status === "On Going",
+      (r) =>
+        r.status === "For Approval" ||
+        r.status === "Assigned" ||
+        r.status === "On Going",
     ).length;
     const complete = allRequests.filter(
       (r) => r.status === "Coverage Complete",
@@ -294,12 +300,21 @@ export default function SecHeadDashboard() {
     if (currentUser && activeSemester) loadData();
   }, [currentUser, activeSemester, loadData]);
 
+  // Silent reloads — notifications come from the layout-level useRealtimeNotify;
+  // coverage_requests can't be filtered by forwarded_sections (array column),
+  // but coverage_assignments can be scoped to this section.
   useRealtimeNotify("coverage_requests", loadData, null, {
     title: "Coverage Request",
+    toast: false,
+    sound: false,
+    tabFlash: false,
   });
-  useRealtimeNotify("coverage_assignments", loadData, null, {
-    title: "Assignment",
-  });
+  useRealtimeNotify(
+    "coverage_assignments",
+    loadData,
+    currentUser?.section ? `section=eq.${currentUser.section}` : null,
+    { title: "Assignment", toast: false, sound: false, tabFlash: false },
+  );
 
   const goToTab = (tab) =>
     navigate(getCoverageManagementPath(tab), { state: { tab } });
@@ -333,8 +348,8 @@ export default function SecHeadDashboard() {
     {
       label: "In Progress",
       value: stats.assigned,
-      sub: "being covered",
-      tab: "assigned",
+      sub: "submitted / ongoing",
+      tab: "for-approval",
       icon: AssignmentOutlinedIcon,
       isRed: false,
     },
@@ -717,13 +732,15 @@ export default function SecHeadDashboard() {
                     borderLeftColor:
                       r.status === "Forwarded"
                         ? BRAND.gold
-                        : r.status === "On Going"
-                          ? "#3b82f6"
-                          : r.status === "Coverage Complete"
-                            ? isDark
-                              ? "#555"
-                              : "#ddd"
-                            : border,
+                        : r.status === "For Approval"
+                          ? "#7c3aed"
+                          : r.status === "On Going"
+                            ? "#3b82f6"
+                            : r.status === "Coverage Complete"
+                              ? isDark
+                                ? "#555"
+                                : "#ddd"
+                              : border,
                   }}
                 >
                   <Box sx={{ flex: 1, minWidth: 0 }}>

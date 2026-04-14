@@ -20,6 +20,7 @@ import DoneAllOutlinedIcon from "@mui/icons-material/DoneAllOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutwardOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
@@ -231,6 +232,18 @@ function buildDutyChangeRejectedMessage(notification, actorLabel) {
   return `${actorLabel} declined your duty day change request from ${fromDay} to ${toDay}.${reason ? ` Reason: ${reason}` : ""}`;
 }
 
+function normalizeTargetPayload(payload) {
+  if (!payload) return {};
+  if (typeof payload === "string") {
+    try {
+      return JSON.parse(payload);
+    } catch {
+      return {};
+    }
+  }
+  return payload;
+}
+
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -258,6 +271,8 @@ export default function NotificationBell({ userId }) {
   const [filterKey, setFilterKey] = useState("all");
   const [headerMenuAnchor, setHeaderMenuAnchor] = useState(null);
   const [requesterProfiles, setRequesterProfiles] = useState({});
+  const [assignmentAssignersByRequest, setAssignmentAssignersByRequest] =
+    useState({});
   const anchorRef = useRef(null);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -298,6 +313,74 @@ export default function NotificationBell({ userId }) {
     setRequesterProfiles(profileMap);
   }, []);
 
+  const loadAssignmentAssigners = useCallback(async (rows, currentUserId) => {
+    const requestIds = [
+      ...new Set(
+        rows
+          .filter(
+            (row) =>
+              row.request_id &&
+              (row.type === "assigned" ||
+                (row.type === "for_approval" &&
+                  row.title === "Coverage Assignment Finalized")),
+          )
+          .map((row) => row.request_id),
+      ),
+    ];
+
+    if (!requestIds.length || !currentUserId) {
+      setAssignmentAssignersByRequest({});
+      return;
+    }
+
+    const { data: assignments, error: assignmentsError } = await supabase
+      .from("coverage_assignments")
+      .select("request_id, assigned_by, assigned_to")
+      .eq("assigned_to", currentUserId)
+      .in("request_id", requestIds);
+
+    if (assignmentsError) {
+      console.error("Assignment fetch failed:", assignmentsError.message);
+      return;
+    }
+
+    const assignerIds = [
+      ...new Set(
+        (assignments || []).map((row) => row.assigned_by).filter(Boolean),
+      ),
+    ];
+
+    if (!assignerIds.length) {
+      setAssignmentAssignersByRequest({});
+      return;
+    }
+
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, section, designation, avatar_url")
+      .in("id", assignerIds);
+
+    if (profilesError) {
+      console.error("Assigner profile fetch failed:", profilesError.message);
+      return;
+    }
+
+    const profileMap = (profiles || []).reduce((acc, profile) => {
+      acc[profile.id] = profile;
+      return acc;
+    }, {});
+
+    const requestMap = {};
+    (assignments || []).forEach((row) => {
+      if (!row.request_id || requestMap[row.request_id]) return;
+      if (row.assigned_by && profileMap[row.assigned_by]) {
+        requestMap[row.request_id] = profileMap[row.assigned_by];
+      }
+    });
+
+    setAssignmentAssignersByRequest(requestMap);
+  }, []);
+
   const fetchNotifications = useCallback(
     async (showSpinner = false) => {
       if (!userId) return;
@@ -306,19 +389,20 @@ export default function NotificationBell({ userId }) {
       let { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", userId)
+        .or(`user_id.eq.${userId},recipient_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(30);
 
       if (!error && data) {
         setNotifications(data);
         loadRequesterProfiles(data);
+        loadAssignmentAssigners(data, userId);
       } else if (error) {
         console.error("Notification fetch failed:", error.message);
       }
       if (showSpinner) setLoading(false);
     },
-    [userId, loadRequesterProfiles],
+    [userId, loadRequesterProfiles, loadAssignmentAssigners],
   );
 
   useEffect(() => {
@@ -724,8 +808,19 @@ export default function NotificationBell({ userId }) {
                   const unread = !notif.is_read;
                   const navigable = isNotificationNavigable(notif);
                   const requester = requesterProfiles[notif.created_by] || null;
+                  const assignerProfile =
+                    assignmentAssignersByRequest[notif.request_id] || null;
                   const requesterName =
                     requester?.full_name || "Unknown requester";
+                  const targetPayload = normalizeTargetPayload(
+                    notif.target_payload,
+                  );
+                  const isAllSectionsSubmission =
+                    notif.type === "for_approval" &&
+                    (targetPayload.actorMode === "system_all_sections" ||
+                      /all sections have submitted/i.test(
+                        String(notif.message || ""),
+                      ));
                   const requesterSection = requester?.section || "";
                   const requesterDesignation =
                     requester?.designation || requesterSection;
@@ -737,9 +832,14 @@ export default function NotificationBell({ userId }) {
                     requesterName === "Unknown requester"
                       ? requesterName
                       : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
-                  const requesterAvatarUrl = getAvatarUrl(
-                    requester?.avatar_url,
-                  );
+                  const displayActorName = isAllSectionsSubmission
+                    ? "All Sections"
+                    : assignerProfile?.full_name || requesterName;
+                  const requesterAvatarUrl = isAllSectionsSubmission
+                    ? null
+                    : getAvatarUrl(
+                        assignerProfile?.avatar_url || requester?.avatar_url,
+                      );
                   const isCoverageRequest = notif.type === "new_request";
                   const isRequestCancelled = notif.type === "request_cancelled";
                   const isRequestRescheduled =
@@ -835,7 +935,13 @@ export default function NotificationBell({ userId }) {
                           }}
                         >
                           {!requesterAvatarUrl &&
-                            getInitials(requesterName || notif.title)}
+                            (isAllSectionsSubmission ? (
+                              <GroupsOutlinedIcon
+                                sx={{ fontSize: 15, color: cfg.dot }}
+                              />
+                            ) : (
+                              getInitials(displayActorName || notif.title)
+                            ))}
                         </Avatar>
 
                         <Box

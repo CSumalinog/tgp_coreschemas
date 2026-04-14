@@ -1467,16 +1467,18 @@ export default function MySchedule() {
             }}
             anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
             transformOrigin={{ vertical: "top", horizontal: "left" }}
-            PaperProps={{
-              sx: {
-                mt: 0.75,
-                width: 310,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                overflow: "hidden",
-                boxShadow: isDark
-                  ? "0 14px 36px rgba(0,0,0,0.45)"
-                  : "0 14px 36px rgba(17,24,39,0.12)",
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 0.75,
+                  width: 450,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  overflow: "hidden",
+                  boxShadow: isDark
+                    ? "0 14px 36px rgba(0,0,0,0.45)"
+                    : "0 14px 36px rgba(17,24,39,0.12)",
+                },
               },
             }}
           >
@@ -1607,13 +1609,15 @@ export default function MySchedule() {
           <Dialog
             open={reasonDialogOpen}
             onClose={handleDialogClose}
-            PaperProps={{
-              sx: {
-                borderRadius: "10px",
-                width: 420,
-                p: 0,
-                fontFamily: dm,
-                bgcolor: "background.paper",
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: "10px",
+                  width: 450,
+                  p: 0,
+                  fontFamily: dm,
+                  bgcolor: "background.paper",
+                },
               },
             }}
           >

@@ -15,12 +15,7 @@ function buildNotificationTarget({
   targetPath,
   targetPayload,
 }) {
-  if (targetPath || targetPayload) {
-    return {
-      target_path: targetPath || null,
-      target_payload: targetPayload || {},
-    };
-  }
+  const customPayload = targetPayload || {};
 
   if (requestId) {
     const requestTargetPath = {
@@ -31,22 +26,24 @@ function buildNotificationTarget({
     }[recipientRole];
 
     if (requestTargetPath) {
+      const basePayload =
+        recipientRole === "client"
+          ? { openRequestId: requestId, tab: "pipeline" }
+          : { openRequestId: requestId };
       return {
-        target_path: requestTargetPath,
-        target_payload:
-          recipientRole === "client"
-            ? { openRequestId: requestId, tab: "pipeline" }
-            : { openRequestId: requestId },
+        target_path: targetPath || requestTargetPath,
+        target_payload: { ...basePayload, ...customPayload },
       };
     }
   }
 
   if (type === "duty_schedule_change_requested" && recipientRole === "admin") {
+    const basePayload = createdBy
+      ? { openDutyChangeRequestStafferId: createdBy }
+      : {};
     return {
-      target_path: "/admin/duty-schedule-view",
-      target_payload: createdBy
-        ? { openDutyChangeRequestStafferId: createdBy }
-        : {},
+      target_path: targetPath || "/admin/duty-schedule-view",
+      target_payload: { ...basePayload, ...customPayload },
     };
   }
 
@@ -57,14 +54,14 @@ function buildNotificationTarget({
     recipientRole === "staff"
   ) {
     return {
-      target_path: "/staff/my-schedule",
-      target_payload: {},
+      target_path: targetPath || "/staff/my-schedule",
+      target_payload: { ...customPayload },
     };
   }
 
   return {
-    target_path: null,
-    target_payload: {},
+    target_path: targetPath || null,
+    target_payload: { ...customPayload },
   };
 }
 
@@ -104,31 +101,59 @@ function buildNotificationRow({
 }
 
 function stripTargetColumns(rows) {
-  return rows.map(({ target_path, target_payload, ...row }) => row);
+  return rows.map((row) => {
+    const next = { ...row };
+    delete next.target_path;
+    delete next.target_payload;
+    return next;
+  });
 }
 
 // ── Base insert ───────────────────────────────────────────────────────────────
 async function insertNotifications(rows) {
-  if (!rows || rows.length === 0) return;
+  if (!rows || rows.length === 0) return { data: [] };
+
+  console.log("[Notification] Attempting to insert", rows.length, "rows:", {
+    users: rows.map((r) => r.user_id),
+    types: rows.map((r) => r.type),
+    requestIds: rows.map((r) => r.request_id),
+  });
+
   const payload = supportsNotificationTargets ? rows : stripTargetColumns(rows);
-  const { error } = await supabase.from("notifications").insert(payload);
+  const { data, error } = await supabase.from("notifications").insert(payload);
 
   if (
     error &&
     supportsNotificationTargets &&
     /target_path|target_payload/i.test(error.message || "")
   ) {
+    console.warn("[Notification] Target columns not supported, retrying without them");
     supportsNotificationTargets = false;
     const retry = await supabase
       .from("notifications")
       .insert(stripTargetColumns(rows));
     if (retry.error) {
-      console.error("Notification insert failed:", retry.error.message);
+      console.error(
+        "[Notification] Insert failed after target fallback:",
+        retry.error.message,
+        { rows },
+      );
+      throw retry.error;
     }
-    return;
+    console.log("[Notification] Fallback insert succeeded");
+    return retry;
   }
 
-  if (error) console.error("Notification insert failed:", error.message);
+  if (error) {
+    console.error("[Notification] Insert failed:", error.message, {
+      rows,
+      errorCode: error.code,
+    });
+    throw error;
+  }
+
+  console.log("[Notification] Successfully inserted", rows.length, "notifications");
+  return { data };
 }
 
 // ── Notify all active admins ──────────────────────────────────────────────────
@@ -141,27 +166,37 @@ export async function notifyAdmins({
   targetPath,
   targetPayload,
 }) {
-  const { data: admins } = await supabase
+  console.log("[notifyAdmins] called with type:", type);
+  const { data: admins, error } = await supabase
     .from("profiles")
     .select("id")
     .eq("role", "admin")
     .eq("is_active", true);
+  if (error) {
+    console.error("[notifyAdmins] profile query failed:", error.message);
+    return;
+  }
+  console.log("[notifyAdmins] found", admins?.length || 0, "admins");
   if (!admins?.length) return;
-  await insertNotifications(
-    admins.map((a) =>
-      buildNotificationRow({
-        userId: a.id,
-        recipientRole: "admin",
-        requestId,
-        type,
-        title,
-        message,
-        createdBy,
-        targetPath,
-        targetPayload,
-      }),
-    ),
-  );
+  try {
+    await insertNotifications(
+      admins.map((a) =>
+        buildNotificationRow({
+          userId: a.id,
+          recipientRole: "admin",
+          requestId,
+          type,
+          title,
+          message,
+          createdBy,
+          targetPath,
+          targetPayload,
+        }),
+      ),
+    );
+  } catch (error) {
+    console.error("[notifyAdmins] failed:", error);
+  }
 }
 
 // ── Notify a single client (requester) ───────────────────────────────────────
@@ -175,20 +210,26 @@ export async function notifyClient({
   targetPath,
   targetPayload,
 }) {
-  if (!requesterId) return;
-  await insertNotifications([
-    buildNotificationRow({
-      userId: requesterId,
-      recipientRole: "client",
-      requestId,
-      type,
-      title,
-      message,
-      createdBy,
-      targetPath,
-      targetPayload,
-    }),
-  ]);
+  if (!requesterId) return { ok: false, reason: "missing_requester_id" };
+  try {
+    await insertNotifications([
+      buildNotificationRow({
+        userId: requesterId,
+        recipientRole: "client",
+        requestId,
+        type,
+        title,
+        message,
+        createdBy,
+        targetPath,
+        targetPayload,
+      }),
+    ]);
+    return { ok: true };
+  } catch (error) {
+    console.error("notifyClient failed:", error);
+    return { ok: false, error };
+  }
 }
 
 // ── Notify sec heads for specific sections ────────────────────────────────────
@@ -204,7 +245,8 @@ export async function notifySecHeads({
 }) {
   // sections: null/undefined → notify ALL active sec heads
   // sections: [] (empty array) → no-op (caller explicitly wants no one)
-  if (Array.isArray(sections) && sections.length === 0) return;
+  if (Array.isArray(sections) && sections.length === 0)
+    return { ok: false, reason: "empty_sections" };
   let query = supabase
     .from("profiles")
     .select("id")
@@ -213,23 +255,33 @@ export async function notifySecHeads({
   if (sections?.length) {
     query = query.in("section", sections);
   }
-  const { data: secHeads } = await query;
-  if (!secHeads?.length) return;
-  await insertNotifications(
-    secHeads.map((s) =>
-      buildNotificationRow({
-        userId: s.id,
-        recipientRole: "sec_head",
-        requestId,
-        type,
-        title,
-        message,
-        createdBy,
-        targetPath,
-        targetPayload,
-      }),
-    ),
-  );
+  const { data: secHeads, error } = await query;
+  if (error) {
+    console.error("notifySecHeads profile query failed:", error.message);
+    return { ok: false, error };
+  }
+  if (!secHeads?.length) return { ok: false, reason: "no_sec_heads" };
+  try {
+    await insertNotifications(
+      secHeads.map((s) =>
+        buildNotificationRow({
+          userId: s.id,
+          recipientRole: "sec_head",
+          requestId,
+          type,
+          title,
+          message,
+          createdBy,
+          targetPath,
+          targetPayload,
+        }),
+      ),
+    );
+    return { ok: true };
+  } catch (error) {
+    console.error("notifySecHeads failed:", error);
+    return { ok: false, error };
+  }
 }
 
 // ── Notify all staff assigned to a request ────────────────────────────────────
@@ -276,21 +328,27 @@ export async function notifySpecificStaff({
   targetPath,
   targetPayload,
 }) {
-  if (!staffIds?.length) return;
+  if (!staffIds?.length) return { ok: false, reason: "empty_staff_ids" };
   const uniqueIds = [...new Set(staffIds)];
-  await insertNotifications(
-    uniqueIds.map((id) =>
-      buildNotificationRow({
-        userId: id,
-        recipientRole: "staff",
-        requestId,
-        type,
-        title,
-        message,
-        createdBy,
-        targetPath,
-        targetPayload,
-      }),
-    ),
-  );
+  try {
+    await insertNotifications(
+      uniqueIds.map((id) =>
+        buildNotificationRow({
+          userId: id,
+          recipientRole: "staff",
+          requestId,
+          type,
+          title,
+          message,
+          createdBy,
+          targetPath,
+          targetPayload,
+        }),
+      ),
+    );
+    return { ok: true };
+  } catch (error) {
+    console.error("notifySpecificStaff failed:", error);
+    return { ok: false, error };
+  }
 }

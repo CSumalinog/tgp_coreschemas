@@ -18,8 +18,11 @@ const ROUTE_TITLE_CONFIG = {
       path: "/admin/coverage-tracker/time-record",
       title: "Coverage Time Record",
     },
-    {
-      path: "/admin/duty-schedule-view",
+    {      path: "/admin/coverage-request-details",
+      title: "Request Details",
+      matchType: "prefix",
+    },
+    {      path: "/admin/duty-schedule-view",
       title: "Duty Schedule View",
       
     },

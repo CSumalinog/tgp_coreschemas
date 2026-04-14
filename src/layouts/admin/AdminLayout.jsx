@@ -81,12 +81,10 @@ const MENU_SECTIONS = [
           {
             label: "Requests",
             to: "coverage-tracker/requests",
-            Icon: TrackChangesOutlinedIcon,
           },
           {
             label: "Time Record",
             to: "coverage-tracker/time-record",
-            Icon: DescriptionOutlinedIcon,
           },
         ],
       },
@@ -97,12 +95,10 @@ const MENU_SECTIONS = [
           {
             label: "Semester Management",
             to: "semester-management",
-            Icon: CalendarMonthOutlinedIcon,
           },
           {
             label: "Duty Schedule",
             to: "duty-schedule-view",
-            Icon: TableChartOutlinedIcon,
           },
         ],
       },
@@ -309,6 +305,10 @@ function SidebarContent({ onClose, isMobile }) {
   const isChildActive = (children) =>
     children?.some((c) => location.pathname.includes(c.to));
 
+  // icon container width + gap to align child text with parent label text
+  // icon box = 24px, gap = 1.25 * 8px = 10px → total offset = 34px
+  const ICON_OFFSET = 34;
+
   return (
     <Box
       sx={{
@@ -421,14 +421,14 @@ function SidebarContent({ onClose, isMobile }) {
                       }
                     />
                     <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                      <Box sx={{ pl: 1.5, mt: 0.25 }}>
+                      {/* Align child items: left-pad by px(1.25) + icon(24px) + gap(10px) */}
+                      <Box sx={{ mt: 0.25 }}>
                         {item.children.map((child) => (
-                          <NavItem
+                          <ChildNavItem
                             key={child.to}
                             label={child.label}
-                            Icon={child.Icon}
                             to={child.to}
-                            isChild
+                            iconOffset={ICON_OFFSET}
                           />
                         ))}
                       </Box>
@@ -450,6 +450,70 @@ function SidebarContent({ onClose, isMobile }) {
       </Box>
     </Box>
   );
+}
+
+// ── Child nav item (no icon, aligned to parent label text) ────────────────────
+function ChildNavItem({ label, to, iconOffset }) {
+  const location = useLocation();
+  const active = to ? location.pathname.includes(to) : false;
+
+  // Hover box matches parent item dimensions (px: 1.25, py: 0.8)
+  // Only the text is indented to align with parent label text
+  // iconOffset = 24px (icon box) + 10px (gap 1.25*8) = 34px
+  const inner = (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        px: 1.25,
+        py: 0.8,
+        borderRadius: "10px",
+        cursor: "pointer",
+        position: "relative",
+        mb: 0.2,
+        backgroundColor: active ? ACTIVE_BG : "transparent",
+        transition: "background 0.15s",
+        "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              left: 0,
+              top: "20%",
+              height: "60%",
+              width: "2.5px",
+              borderRadius: "0 2px 2px 0",
+              backgroundColor: GOLD,
+            }
+          : {},
+      }}
+    >
+      {/* Spacer to push text to align with parent label (icon 24px + gap 10px) */}
+      <Box sx={{ width: `${iconOffset}px`, flexShrink: 0 }} />
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.76rem",
+          fontWeight: active ? 600 : 400,
+          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+          flex: 1,
+          transition: "color 0.15s",
+          lineHeight: 1,
+          "&:hover": { color: active ? ACTIVE_COLOR : TEXT_PRIMARY },
+        }}
+      >
+        {label}
+      </Typography>
+    </Box>
+  );
+
+  if (to)
+    return (
+      <NavLink to={to} style={{ textDecoration: "none", display: "block" }}>
+        {inner}
+      </NavLink>
+    );
+  return inner;
 }
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
@@ -535,7 +599,7 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
 
   if (to)
     return (
-      <NavLink to={to} style={{ textDecoration: "none" }}>
+      <NavLink to={to} style={{ textDecoration: "none", display: "block" }}>
         {inner}
       </NavLink>
     );

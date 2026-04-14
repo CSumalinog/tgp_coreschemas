@@ -16,6 +16,7 @@ import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import MarkunreadOutlinedIcon from "@mui/icons-material/MarkunreadOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlined";
@@ -221,6 +222,18 @@ function startsWithRequesterName(message, requesterName) {
     .startsWith(String(requesterName).toLowerCase());
 }
 
+function normalizeTargetPayload(payload) {
+  if (!payload) return {};
+  if (typeof payload === "string") {
+    try {
+      return JSON.parse(payload);
+    } catch {
+      return {};
+    }
+  }
+  return payload;
+}
+
 export default function NotificationsPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -260,11 +273,9 @@ export default function NotificationsPage() {
     ];
   }, [currentRole]);
 
-  useEffect(() => {
+  const activeFilter = useMemo(() => {
     const hasCurrentFilter = filters.some((item) => item.key === filter);
-    if (!hasCurrentFilter) {
-      setFilter("all");
-    }
+    return hasCurrentFilter ? filter : "all";
   }, [filters, filter]);
 
   const loadRequesterProfiles = useCallback(async (rows) => {
@@ -368,7 +379,7 @@ export default function NotificationsPage() {
       const { data, error: fetchError } = await supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", currentUserId)
+        .or(`user_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`)
         .order("created_at", { ascending: false })
         .limit(200);
 
@@ -426,11 +437,24 @@ export default function NotificationsPage() {
   }, [userId, loadNotifications]);
 
   const filteredNotifications = useMemo(() => {
-    if (filter === "unread") {
+    // Always include 'approved' notifications for clients
+    if (currentRole === "client") {
+      if (activeFilter === "unread") {
+        return notifications.filter(
+          (notification) => !notification.is_read && (notification.type === "approved" || notification.type !== "approved")
+        );
+      }
+      // For 'all', always include 'approved' notifications
+      return notifications.filter(
+        (notification) => notification.type === "approved" || notification.type !== "approved"
+      );
+    }
+
+    if (activeFilter === "unread") {
       return notifications.filter((notification) => !notification.is_read);
     }
 
-    if (filter === "requests") {
+    if (activeFilter === "requests") {
       return notifications.filter(
         (notification) =>
           !!notification.request_id ||
@@ -438,20 +462,20 @@ export default function NotificationsPage() {
       );
     }
 
-    if (filter === "assignments") {
+    if (activeFilter === "assignments") {
       return notifications.filter((notification) =>
         ["assigned", "assignment_cancelled"].includes(notification.type),
       );
     }
 
-    if (filter === "schedule") {
+    if (activeFilter === "schedule") {
       return notifications.filter((notification) =>
         String(notification.type || "").startsWith("duty_schedule_change"),
       );
     }
 
     return notifications;
-  }, [filter, notifications]);
+  }, [activeFilter, notifications, currentRole]);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.is_read).length,
@@ -588,7 +612,7 @@ export default function NotificationsPage() {
             }}
           >
             {filters.map((item) => {
-              const active = item.key === filter;
+              const active = item.key === activeFilter;
               return (
                 <Box
                   key={item.key}
@@ -725,15 +749,27 @@ export default function NotificationsPage() {
                   : `${requesterName}${requesterDesignation ? ` - ${requesterDesignation}` : ""}`;
               const assignerProfile =
                 assignmentAssignersByRequest[notification.request_id] || null;
+              const targetPayload = normalizeTargetPayload(
+                notification.target_payload,
+              );
+              const isAllSectionsSubmission =
+                notification.type === "for_approval" &&
+                (targetPayload.actorMode === "system_all_sections" ||
+                  /all sections have submitted/i.test(
+                    String(notification.message || ""),
+                  ));
               const displayActorProfile =
-                notification.type === "assigned" && assignerProfile
+                isAllSectionsSubmission
+                  ? null
+                  : notification.type === "assigned" && assignerProfile
                   ? assignerProfile
                   : requester;
-              const displayActorName =
-                displayActorProfile?.full_name || requesterName;
-              const displayActorAvatarUrl = getAvatarUrl(
-                displayActorProfile?.avatar_url,
-              );
+              const displayActorName = isAllSectionsSubmission
+                ? "All Sections"
+                : displayActorProfile?.full_name || requesterName;
+              const displayActorAvatarUrl = isAllSectionsSubmission
+                ? null
+                : getAvatarUrl(displayActorProfile?.avatar_url);
               const typeCfg = getTypeCfg(notification.type);
               const TypeIcon = typeCfg.icon;
               const isCoverageRequest = notification.type === "new_request";
@@ -745,6 +781,8 @@ export default function NotificationsPage() {
               const isDutyChangeRejected =
                 notification.type === "duty_schedule_change_rejected";
               const isAssigned = notification.type === "assigned";
+              const isApproved =
+                notification.title === "Forwarded Request Approved";
 
               let displayMessage = notification.message;
               if (isCoverageRequest) {
@@ -790,10 +828,19 @@ export default function NotificationsPage() {
                   );
                   displayMessage = `${assignerName} - ${assignerDesignation}, assigned you to cover "${requestLabel}". Admin approval has finalized this assignment.`;
                 }
+              } else if (isApproved) {
+                const requestLabel = getCoverageRequestLabel(
+                  notification.message,
+                  notification.title,
+                );
+                const actorDesig = requester?.designation || requester?.position || "";
+                displayMessage = `${requesterName}${actorDesig ? ` - ${actorDesig}` : ""} approved "${requestLabel}." Assignments are finalized.`;
               }
 
               const shouldShowRequesterLine =
+                !isAllSectionsSubmission &&
                 !isAssigned &&
+                !isApproved &&
                 requesterName !== "Unknown requester" &&
                 !startsWithRequesterName(displayMessage, requesterName);
 
@@ -863,7 +910,16 @@ export default function NotificationsPage() {
                             }}
                           >
                             {!displayActorAvatarUrl &&
-                              getInitials(displayActorName)}
+                              (isAllSectionsSubmission ? (
+                                <GroupsOutlinedIcon
+                                  sx={{
+                                    fontSize: 16,
+                                    color: typeCfg.dot,
+                                  }}
+                                />
+                              ) : (
+                                getInitials(displayActorName)
+                              ))}
                           </Avatar>
                         </Tooltip>
 

@@ -282,73 +282,9 @@ export default function Dashboard() {
       if (reqErr) throw reqErr;
       if (!isCurrent) return;
 
-      const counts = {};
-      (requests || []).forEach((r) => {
-        counts[r.status] = (counts[r.status] || 0) + 1;
-      });
-      setStatusCounts(counts);
-
-      const total = requests?.length || 0;
-      const approved = (requests || []).filter(
-        (r) => r.status === "Approved",
-      ).length;
-      const declined = (requests || []).filter(
-        (r) => r.status === "Declined",
-      ).length;
-      const onGoing = (requests || []).filter(
-        (r) => r.status === "On Going",
-      ).length;
-      const completed = (requests || []).filter(
-        (r) => r.status === "Completed",
-      ).length;
-      const covered = approved + onGoing + completed;
-      const assigned = (requests || []).filter((r) =>
-        [
-          "Assigned",
-          "For Approval",
-          "Approved",
-          "On Going",
-          "Completed",
-        ].includes(r.status),
-      ).length;
-      const td = (requests || [])
-        .filter((r) => r.approved_at && r.submitted_at)
-        .map(
-          (r) =>
-            (new Date(r.approved_at) - new Date(r.submitted_at)) / 86400000,
-        );
-
-      setPerfStats({
-        total,
-        approved,
-        declined,
-        declineRate: total > 0 ? ((declined / total) * 100).toFixed(1) : 0,
-        completionRate:
-          assigned > 0 ? ((covered / assigned) * 100).toFixed(1) : 0,
-        avgTurnaround:
-          td.length > 0
-            ? (td.reduce((a, b) => a + b, 0) / td.length).toFixed(1)
-            : null,
-      });
-
-      const attention = (requests || [])
-        .filter((r) =>
-          ["Pending", "Forwarded", "Assigned", "For Approval"].includes(
-            r.status,
-          ),
-        )
-        .map((r) => ({ ...r, urgency: getUrgency(r.event_date) }))
-        .sort((a, b) => {
-          const o = { overdue: 0, critical: 1, soon: 2, upcoming: 3 };
-          if (o[a.urgency] !== o[b.urgency]) return o[a.urgency] - o[b.urgency];
-          return new Date(a.event_date || 0) - new Date(b.event_date || 0);
-        })
-        .slice(0, 8);
-      setRecentRequests(attention);
-
       let aq = supabase
         .from("coverage_assignments")
-        .select("section,status,assigned_at");
+        .select("request_id, section, status, assigned_at, timed_in_at, completed_at");
       if (!isAllTime && selectedSemester)
         aq = aq
           .gte("assigned_at", selectedSemester.start_date)
@@ -370,6 +306,99 @@ export default function Dashboard() {
       setSectionWorkload(
         Object.entries(sm).map(([sec, d]) => ({ section: sec, ...d })),
       );
+
+      const assignmentProgressByRequest = new Map();
+      (assignments || []).forEach((a) => {
+        if (!a.request_id) return;
+        const prev = assignmentProgressByRequest.get(a.request_id) || {
+          total: 0,
+          completed: 0,
+          onGoing: 0,
+        };
+        prev.total += 1;
+        if (a.status === "Completed" || !!a.completed_at) prev.completed += 1;
+        if (a.status === "On Going" || !!a.timed_in_at) prev.onGoing += 1;
+        assignmentProgressByRequest.set(a.request_id, prev);
+      });
+
+      const requestsWithComputedStatus = (requests || []).map((r) => {
+        const progress = assignmentProgressByRequest.get(r.id);
+        if (!progress || progress.total === 0) return r;
+
+        if (progress.completed === progress.total) {
+          return { ...r, status: "Completed" };
+        }
+
+        if (progress.onGoing > 0 && r.status !== "Completed") {
+          return { ...r, status: "On Going" };
+        }
+
+        return r;
+      });
+
+      const counts = {};
+      requestsWithComputedStatus.forEach((r) => {
+        counts[r.status] = (counts[r.status] || 0) + 1;
+      });
+      setStatusCounts(counts);
+
+      const total = requestsWithComputedStatus.length;
+      const approved = requestsWithComputedStatus.filter(
+        (r) => r.status === "Approved",
+      ).length;
+      const declined = requestsWithComputedStatus.filter(
+        (r) => r.status === "Declined",
+      ).length;
+      const onGoing = requestsWithComputedStatus.filter(
+        (r) => r.status === "On Going",
+      ).length;
+      const completed = requestsWithComputedStatus.filter(
+        (r) => r.status === "Completed",
+      ).length;
+      const covered = approved + onGoing + completed;
+      const assigned = requestsWithComputedStatus.filter((r) =>
+        [
+          "Assigned",
+          "For Approval",
+          "Approved",
+          "On Going",
+          "Completed",
+        ].includes(r.status),
+      ).length;
+      const td = requestsWithComputedStatus
+        .filter((r) => r.approved_at && r.submitted_at)
+        .map(
+          (r) =>
+            (new Date(r.approved_at) - new Date(r.submitted_at)) / 86400000,
+        );
+
+      setPerfStats({
+        total,
+        approved,
+        declined,
+        declineRate: total > 0 ? ((declined / total) * 100).toFixed(1) : 0,
+        completionRate:
+          assigned > 0 ? ((covered / assigned) * 100).toFixed(1) : 0,
+        avgTurnaround:
+          td.length > 0
+            ? (td.reduce((a, b) => a + b, 0) / td.length).toFixed(1)
+            : null,
+      });
+
+      const attention = requestsWithComputedStatus
+        .filter((r) =>
+          ["Pending", "Forwarded", "Assigned", "For Approval"].includes(
+            r.status,
+          ),
+        )
+        .map((r) => ({ ...r, urgency: getUrgency(r.event_date) }))
+        .sort((a, b) => {
+          const o = { overdue: 0, critical: 1, soon: 2, upcoming: 3 };
+          if (o[a.urgency] !== o[b.urgency]) return o[a.urgency] - o[b.urgency];
+          return new Date(a.event_date || 0) - new Date(b.event_date || 0);
+        })
+        .slice(0, 8);
+      setRecentRequests(attention);
 
       if (activeSemester?.id) {
         const { data: staffers } = await supabase

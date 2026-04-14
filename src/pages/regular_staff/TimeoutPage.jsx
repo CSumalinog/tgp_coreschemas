@@ -210,21 +210,9 @@ export default function TimeoutPage() {
 
       if (updateErr) throw updateErr;
 
-      const { data: freshAssigns } = await supabase
-        .from("coverage_assignments")
-        .select("id, status")
-        .eq("request_id", requestId);
-
-      const allCompleted =
-        freshAssigns?.length > 0 &&
-        freshAssigns.every((a) => a.status === "Completed");
-
-      if (allCompleted) {
-        await supabase
-          .from("coverage_requests")
-          .update({ status: "Completed", completed_at: now })
-          .eq("id", requestId);
-      }
+      await supabase.rpc("sync_request_status_from_assignments", {
+        p_request_id: requestId,
+      });
 
       const assignedSections = [
         ...new Set((assignments || []).map((a) => a.section).filter(Boolean)),

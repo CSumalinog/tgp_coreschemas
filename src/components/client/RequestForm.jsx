@@ -18,6 +18,9 @@ import {
   IconButton,
   Collapse,
   Paper,
+   Radio,
+  RadioGroup,
+  FormControlLabel,
 } from "@mui/material";
 import { TimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -62,6 +65,12 @@ const CALENDAR_WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MAX_DAY_SELECTION = 7;
 const MAX_PAX = 3; // max staff per service per day (single or multi-day)
 const OTHER_ID = "__others__";
+const DEFAULT_CONTACT_INFO_TYPE = "phone";
+const CONTACT_INFO_OPTIONS = [
+  { value: "phone", label: "Phone" },
+  { value: "messenger", label: "Messenger" },
+  { value: "email", label: "Email" },
+];
 
 const EMPTY_ERRORS = {
   title: "",
@@ -86,6 +95,31 @@ function dateKey(year, month, day) {
 
 function formatKey(key) {
   return format(parseISO(key), "MMM d");
+}
+
+function parseContactInfo(value) {
+  if (!value) {
+    return { type: DEFAULT_CONTACT_INFO_TYPE, value: "" };
+  }
+
+  const match = String(value).match(/^(Phone|Messenger|Email):\s*(.*)$/i);
+  if (!match) {
+    return { type: DEFAULT_CONTACT_INFO_TYPE, value: value };
+  }
+
+  return {
+    type: match[1].toLowerCase(),
+    value: match[2] || "",
+  };
+}
+
+function buildContactInfo(type, value) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+
+  const option = CONTACT_INFO_OPTIONS.find((o) => o.value === type);
+  const label = option?.label || "Phone";
+  return `${label}: ${trimmed}`;
 }
 
 // ─────────────────────────────────────────────
@@ -529,6 +563,7 @@ function DateChipInput({
                         onTimeChange(dayObj.date, "fromTime", val)
                       }
                       slotProps={{
+                        popper: { disablePortal: true },
                         textField: {
                           size: "small",
                           sx: timePickerSx(!!dayObj.fromTime),
@@ -560,6 +595,7 @@ function DateChipInput({
                         onTimeChange(dayObj.date, "toTime", val)
                       }
                       slotProps={{
+                        popper: { disablePortal: true },
                         textField: {
                           size: "small",
                           sx: timePickerSx(!!dayObj.toTime),
@@ -657,6 +693,9 @@ export default function CoverageRequestDialog({
   const [entity, setEntity] = useState("");
   const [otherEntity, setOtherEntity] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [contactInfoType, setContactInfoType] = useState(
+    DEFAULT_CONTACT_INFO_TYPE,
+  );
   const [contactInfo, setContactInfo] = useState("");
   const [file, setFile] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -768,7 +807,9 @@ export default function CoverageRequestDialog({
       setEntity(existingRequest.entity?.id || existingRequest.entity_id || "");
       setOtherEntity("");
       setContactPerson(existingRequest.contact_person || "");
-      setContactInfo(existingRequest.contact_info || "");
+      const parsedContact = parseContactInfo(existingRequest.contact_info || "");
+      setContactInfoType(parsedContact.type || DEFAULT_CONTACT_INFO_TYPE);
+      setContactInfo(parsedContact.value || "");
       setFile(null);
     } else {
       resetForm();
@@ -778,7 +819,7 @@ export default function CoverageRequestDialog({
         setEventDays([{ date: key, fromTime: null, toTime: null }]);
       }
     }
-  }, [open, existingRequest]);
+  }, [open, existingRequest, defaultDate]);
 
   useEffect(() => {
     if (!clientType) {
@@ -796,8 +837,6 @@ export default function CoverageRequestDialog({
       } finally {
         setEntitiesLoading(false);
       }
-      setEntity("");
-      setOtherEntity("");
     }
     load();
   }, [clientType]);
@@ -823,6 +862,7 @@ export default function CoverageRequestDialog({
     setEntity("");
     setOtherEntity("");
     setContactPerson("");
+    setContactInfoType(DEFAULT_CONTACT_INFO_TYPE);
     setContactInfo("");
     setFile(null);
     setErrors(EMPTY_ERRORS);
@@ -933,7 +973,8 @@ export default function CoverageRequestDialog({
         entity: isOthers ? null : entity,
         other_entity: isOthers ? otherEntity.trim() : null,
         contact_person: contactPerson,
-        contact_info: contactInfo,
+        contact_info: buildContactInfo(contactInfoType, contactInfo),
+        file_url: existingRequest?.file_url || null,
       };
 
       if (existingRequest) {
@@ -986,18 +1027,20 @@ export default function CoverageRequestDialog({
         fullWidth
         open={open}
         onClose={handleClose}
-        PaperProps={{
-          sx: {
-            borderRadius: "10px",
-            width: 600,
-            height: "90vh",
-            maxHeight: "90vh",
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "background.paper",
-            boxShadow: isDark
-              ? "0 8px 32px rgba(0,0,0,0.5)"
-              : "0 4px 24px rgba(0,0,0,0.08)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              width: 600,
+              height: "90vh",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "background.paper",
+              boxShadow: isDark
+                ? "0 8px 32px rgba(0,0,0,0.5)"
+                : "0 4px 24px rgba(0,0,0,0.08)",
+            },
           },
         }}
       >
@@ -1062,7 +1105,7 @@ export default function CoverageRequestDialog({
               error={!!errors.title}
               helperText={errors.title}
               sx={errorFieldSx(!!errors.title)}
-              FormHelperTextProps={{ sx: helperSx }}
+              slotProps={{ formHelperText: { sx: helperSx } }}
             />
             <TextField
               label="Description"
@@ -1081,7 +1124,7 @@ export default function CoverageRequestDialog({
               error={!!errors.description}
               helperText={errors.description}
               sx={errorFieldSx(!!errors.description)}
-              FormHelperTextProps={{ sx: helperSx }}
+              slotProps={{ formHelperText: { sx: helperSx } }}
             />
             <Box sx={{ mt: 1.5 }}>
               <Typography
@@ -1113,7 +1156,7 @@ export default function CoverageRequestDialog({
               error={!!errors.venue}
               helperText={errors.venue}
               sx={{ ...errorFieldSx(!!errors.venue), mt: 1.5 }}
-              FormHelperTextProps={{ sx: helperSx }}
+              slotProps={{ formHelperText: { sx: helperSx } }}
             />
           </FormSection>
 
@@ -1312,7 +1355,7 @@ export default function CoverageRequestDialog({
                               });
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            inputProps={{ min: 0, max: MAX_PAX }}
+                            slotProps={{ htmlInput: { min: 0, max: MAX_PAX } }}
                             disabled={!isChecked || loading}
                             sx={{
                               width: 80,
@@ -1396,15 +1439,44 @@ export default function CoverageRequestDialog({
               error={!!errors.contactPerson}
               helperText={errors.contactPerson}
               sx={errorFieldSx(!!errors.contactPerson)}
-              FormHelperTextProps={{ sx: helperSx }}
+              slotProps={{ formHelperText: { sx: helperSx } }}
             />
+            <FormControl sx={{ mt: 0.75 }}>
+              <Typography
+                sx={{ fontSize: "0.76rem", color: "text.secondary", mb: 0.5 }}
+              >
+                Contact Information Type
+              </Typography>
+              <RadioGroup
+                row
+                value={contactInfoType}
+                onChange={(e) => setContactInfoType(e.target.value)}
+              >
+                {CONTACT_INFO_OPTIONS.map((option) => (
+                  <FormControlLabel
+                    key={option.value}
+                    value={option.value}
+                    control={<Radio size="small" disabled={loading} />}
+                    label={option.label}
+                    sx={{
+                      mr: 2,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: "0.8rem",
+                        color: "text.primary",
+                      },
+                    }}
+                  />
+                ))}
+              </RadioGroup>
+            </FormControl>
             <TextField
-              label="Contact Info (phone / messenger / email)"
+              label="Contact Information"
               fullWidth
               margin="dense"
               value={contactInfo}
               required
               disabled={loading}
+              placeholder={`Enter ${contactInfoType}`}
               onChange={(e) => {
                 setContactInfo(e.target.value);
                 if (e.target.value)
@@ -1413,7 +1485,7 @@ export default function CoverageRequestDialog({
               error={!!errors.contactInfo}
               helperText={errors.contactInfo}
               sx={errorFieldSx(!!errors.contactInfo)}
-              FormHelperTextProps={{ sx: helperSx }}
+              slotProps={{ formHelperText: { sx: helperSx } }}
             />
             <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
               <FormControl
@@ -1424,6 +1496,7 @@ export default function CoverageRequestDialog({
                 sx={fieldSx}
               >
                 <InputLabel
+                  id="client-type-label"
                   sx={{
                     fontSize: "0.85rem",
                     ...(errors.clientType && { color: "#ef4444" }),
@@ -1432,11 +1505,15 @@ export default function CoverageRequestDialog({
                   Client Type
                 </InputLabel>
                 <Select
+                  id="client-type-select"
+                  labelId="client-type-label"
                   label="Client Type"
                   value={clientType}
                   disabled={loading}
                   onChange={(e) => {
                     setClientType(e.target.value);
+                    setEntity("");
+                    setOtherEntity("");
                     if (e.target.value)
                       setErrors((p) => ({ ...p, clientType: "" }));
                   }}
@@ -1473,6 +1550,7 @@ export default function CoverageRequestDialog({
                 sx={fieldSx}
               >
                 <InputLabel
+                  id="entity-name-label"
                   sx={{
                     fontSize: "0.85rem",
                     ...(errors.entity && { color: "#ef4444" }),
@@ -1481,6 +1559,8 @@ export default function CoverageRequestDialog({
                   {entitiesLoading ? "Loading…" : "Entity Name"}
                 </InputLabel>
                 <Select
+                  id="entity-name-select"
+                  labelId="entity-name-label"
                   label={entitiesLoading ? "Loading…" : "Entity Name"}
                   value={entity}
                   onChange={(e) => {
@@ -1490,14 +1570,25 @@ export default function CoverageRequestDialog({
                       setErrors((p) => ({ ...p, entity: "", otherEntity: "" }));
                   }}
                   MenuProps={{
-                    PaperProps: { sx: { maxHeight: 240, overflowY: "auto" } },
-                    MenuListProps: {
-                      style: { maxHeight: 240, overflow: "auto" },
+                    slotProps: {
+                      paper: {
+                        sx: {
+                          maxHeight: 300,
+                          overflowY: "auto",
+                          "&::-webkit-scrollbar": { width: 6 },
+                          "&::-webkit-scrollbar-track": { background: "transparent" },
+                          "&::-webkit-scrollbar-thumb": {
+                            background: isDark ? "#444" : "#ccc",
+                            borderRadius: "6px",
+                          },
+                          "&::-webkit-scrollbar-thumb:hover": {
+                            background: isDark ? "#555" : "#aaa",
+                          },
+                        },
+                      },
                     },
-                    getContentAnchorEl: null,
                     anchorOrigin: { vertical: "bottom", horizontal: "left" },
                     transformOrigin: { vertical: "top", horizontal: "left" },
-                    disablePortal: false,
                   }}
                   sx={{
                     borderRadius: "10px",
@@ -1551,7 +1642,7 @@ export default function CoverageRequestDialog({
                 error={!!errors.otherEntity}
                 helperText={errors.otherEntity}
                 sx={errorFieldSx(!!errors.otherEntity)}
-                FormHelperTextProps={{ sx: helperSx }}
+                slotProps={{ formHelperText: { sx: helperSx } }}
               />
             )}
           </FormSection>
@@ -1654,13 +1745,15 @@ export default function CoverageRequestDialog({
         onClose={() => !loading && setConfirmOpen(false)}
         fullWidth
         maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            boxShadow: isDark
-              ? "0 8px 32px rgba(0,0,0,0.5)"
-              : "0 4px 24px rgba(0,0,0,0.08)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              boxShadow: isDark
+                ? "0 8px 32px rgba(0,0,0,0.5)"
+                : "0 4px 24px rgba(0,0,0,0.08)",
+            },
           },
         }}
       >

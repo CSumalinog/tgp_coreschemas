@@ -174,6 +174,9 @@ const VIEW_LABEL_BY_KEY = {
   completed: "Completed",
 };
 
+const buildPendingAssignmentsKey = (userId, section) =>
+  `section-head-pending-assignments:${userId}:${section || "none"}`;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const jsDateToDutyDay = (dateStr) => {
   if (!dateStr) return null;
@@ -740,6 +743,7 @@ export default function CoverageManagementBase({
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignRequest, setAssignRequest] = useState(null);
   const [postAssignReview, setPostAssignReview] = useState(null);
+  const [pendingAssignments, setPendingAssignments] = useState({});
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
   const [dayStaffers, setDayStaffers] = useState({});
   const [daySelected, setDaySelected] = useState({});
@@ -751,6 +755,57 @@ export default function CoverageManagementBase({
   const [selectedCompletionAssignment, setSelectedCompletionAssignment] =
     useState(null);
   const openedFromNotificationRef = useRef(null);
+  const pendingAssignmentsKey = useMemo(
+    () =>
+      currentUser?.id
+        ? buildPendingAssignmentsKey(currentUser.id, currentUser.section)
+        : null,
+    [currentUser?.id, currentUser?.section],
+  );
+
+  useEffect(() => {
+    if (!pendingAssignmentsKey) {
+      setPendingAssignments({});
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(pendingAssignmentsKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      setPendingAssignments(
+        parsed && typeof parsed === "object" ? parsed : {},
+      );
+    } catch {
+      setPendingAssignments({});
+    }
+  }, [pendingAssignmentsKey]);
+
+  useEffect(() => {
+    if (!pendingAssignmentsKey) return;
+    try {
+      window.localStorage.setItem(
+        pendingAssignmentsKey,
+        JSON.stringify(pendingAssignments),
+      );
+    } catch {
+      // no-op
+    }
+  }, [pendingAssignmentsKey, pendingAssignments]);
+
+  const hasUnsavedModalChanges =
+    assignDialogOpen &&
+    Object.values(daySelected).some(
+      (stafferIds) => Array.isArray(stafferIds) && stafferIds.length > 0,
+    );
+
+  useEffect(() => {
+    if (!hasUnsavedModalChanges) return;
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedModalChanges]);
 
   // ── Load user ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -903,9 +958,12 @@ export default function CoverageManagementBase({
 
       const mySection = currentUser.section;
       const forwardedData = allForwarded.data || [];
+      const pendingRequestIds = new Set(Object.keys(pendingAssignments || {}));
 
       const forAssignRows = forwardedData.filter((req) => {
         if (req.status !== "Forwarded") return false;
+        if (pendingRequestIds.has(req.id)) return false;
+        if ((req.submitted_sections || []).includes(mySection)) return false;
         const myAssignments = (req.coverage_assignments || []).filter(
           (a) => a.section === mySection,
         );
@@ -922,6 +980,21 @@ export default function CoverageManagementBase({
       const assignedData = assigned.data || [];
       const onGoingData = onGoing.data || [];
       const completedData = completed.data || [];
+      const sectionForApprovalMap = new Map();
+      [...(forApproval.data || []), ...forwardedData, ...assignedData].forEach(
+        (req) => {
+          const myHasSubmitted = (req.submitted_sections || []).includes(
+            mySection,
+          );
+          if (req.status === "For Approval" || myHasSubmitted) {
+            sectionForApprovalMap.set(req.id, req);
+          }
+        },
+      );
+      const sectionForApprovalRows = Array.from(sectionForApprovalMap.values());
+      const sectionForApprovalIds = new Set(
+        sectionForApprovalRows.map((r) => r.id),
+      );
       const allProgressRows = Array.from(
         new Map(
           [...assignedData, ...onGoingData, ...completedData].map((req) => [
@@ -950,7 +1023,31 @@ export default function CoverageManagementBase({
       const onGoingIds = new Set(sectionOnGoingRows.map((r) => r.id));
 
       const cleanAssigned = assignedData.filter(
-        (req) => !onGoingIds.has(req.id) && !completedIds.has(req.id),
+        (req) =>
+          !onGoingIds.has(req.id) &&
+          !completedIds.has(req.id) &&
+          !sectionForApprovalIds.has(req.id),
+      );
+      const forwardedAssignedRows = forwardedData.filter((req) => {
+        if ((req.submitted_sections || []).includes(mySection)) return false;
+        const myAssignments = (req.coverage_assignments || []).filter(
+          (a) => a.section === mySection,
+        );
+        return myAssignments.length > 0;
+      });
+      const pendingAssignedRows = forwardedData
+        .filter((req) => pendingRequestIds.has(req.id))
+        .map((req) => ({
+          ...req,
+          _pendingDraft: pendingAssignments[req.id],
+          _sectionHeadView: "assigned",
+        }));
+      const mergedAssigned = Array.from(
+        new Map(
+          [...cleanAssigned, ...forwardedAssignedRows, ...pendingAssignedRows].map(
+            (req) => [req.id, req],
+          ),
+        ).values(),
       );
       const mergedOnGoing = new Map();
       [...onGoingData, ...sectionOnGoingRows].forEach((r) => {
@@ -963,8 +1060,8 @@ export default function CoverageManagementBase({
       });
 
       setForAssignmentReqs(forAssignRows);
-      setForApprovalReqs(forApproval.data || []);
-      setAssignedReqs(cleanAssigned);
+        setForApprovalReqs(sectionForApprovalRows);
+  setAssignedReqs(mergedAssigned);
       setOnGoingReqs(Array.from(mergedOnGoing.values()));
       setCompletedReqs(Array.from(mergedCompleted.values()));
     } catch (err) {
@@ -972,14 +1069,22 @@ export default function CoverageManagementBase({
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, pendingAssignments]);
 
   useEffect(() => {
     if (currentUser) loadAll();
   }, [currentUser, loadAll]);
-  useRealtimeNotify("coverage_assignments", loadAll, null, {
-    title: "Assignment",
-  });
+  useRealtimeNotify(
+    "coverage_assignments",
+    loadAll,
+    currentUser?.section ? `section=eq.${currentUser.section}` : null,
+    {
+      title: "Assignment",
+      toast: false,
+      sound: false,
+      tabFlash: false,
+    },
+  );
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleBulkArchive = async (ids) => {
@@ -1272,7 +1377,9 @@ export default function CoverageManagementBase({
       setAssignError("");
       setAssignRequest(req);
       setSelectedDayIdx(0);
-      setDaySelected({});
+      const requestId = req._raw?.id || req.id;
+      const draft = pendingAssignments[requestId];
+      setDaySelected(draft?.daySelected || {});
       setDayStaffers({});
       setAssignDialogOpen(true);
 
@@ -1307,7 +1414,7 @@ export default function CoverageManagementBase({
       setDayAssigned(byDate);
       await loadStaffersForDate(dates[0]);
     },
-    [loadStaffersForDate, currentUser?.section],
+    [loadStaffersForDate, currentUser?.section, pendingAssignments],
   );
 
   const handleSelectDay = useCallback(
@@ -1347,7 +1454,9 @@ export default function CoverageManagementBase({
 
     queueMicrotask(() => {
       setViewFilter(view);
-      openAssignDialog(request);
+      if (view === "for-assignment") {
+        openAssignDialog(request);
+      }
     });
   }, [
     location.state?.openRequestId,
@@ -1386,7 +1495,7 @@ export default function CoverageManagementBase({
     if (totalSelected === 0 && totalAlreadyAssigned > 0) {
       setAssignDialogOpen(false);
       await loadAll();
-      setViewFilter("for-assignment");
+      setViewFilter("assigned");
       setToast({
         open: true,
         text: "Assignment already saved. Please submit for approval when ready.",
@@ -1398,61 +1507,6 @@ export default function CoverageManagementBase({
     setAssignLoading(true);
     setAssignError("");
     try {
-      const rows = [];
-      const buildRows = (stafferIds, dateStr, fromTime, toTime) => {
-        stafferIds.forEach((stafferId) => {
-          const serviceKeys = getServiceKeysForAssignment(req);
-          if (serviceKeys.length === 0) {
-            rows.push({
-              request_id: req.id,
-              assigned_to: stafferId,
-              assigned_by: currentUser.id,
-              section: currentUser.section,
-              assignment_date: dateStr,
-              from_time: fromTime,
-              to_time: toTime,
-            });
-          } else {
-            serviceKeys.forEach((serviceKey) => {
-              rows.push({
-                request_id: req.id,
-                assigned_to: stafferId,
-                assigned_by: currentUser.id,
-                section: currentUser.section,
-                service_key: serviceKey,
-                assignment_date: dateStr,
-                from_time: fromTime,
-                to_time: toTime,
-              });
-            });
-          }
-        });
-      };
-
-      if (isMultiDay) {
-        req.event_days.forEach((dayObj) => {
-          const stafferIds = daySelected[dayObj.date] || [];
-          buildRows(stafferIds, dayObj.date, dayObj.from_time, dayObj.to_time);
-        });
-      } else {
-        buildRows(
-          daySelected[req.event_date] || [],
-          req.event_date,
-          req.from_time,
-          req.to_time,
-        );
-      }
-
-      if (rows.length === 0) {
-        setAssignError("No staffers selected.");
-        setAssignLoading(false);
-        return;
-      }
-
-      const { error: assignErr } = await supabase
-        .from("coverage_assignments")
-        .insert(rows);
-      if (assignErr) throw assignErr;
 
       const totalDays = isMultiDay ? req.event_days.length : 1;
       const previouslyCoveredDates = new Set(
@@ -1473,9 +1527,8 @@ export default function CoverageManagementBase({
         ? coveredDateCount >= totalDays
         : coveredDateCount > 0;
 
-      // Note: Status is NOT changed here. Assignments are saved but status
-      // remains "For Assignment" until SEC head submits for approval.
-      // handleSubmitForApproval() will handle the status transition.
+      // Note: Nothing is persisted yet. We store a local pending draft and only
+      // create coverage_assignments after final submit-for-approval confirmation.
 
       // Build staffers-by-day for the post-assign review dialog
       const staffersByDay = {};
@@ -1504,6 +1557,26 @@ export default function CoverageManagementBase({
           .filter(Boolean);
       }
 
+      const hasPendingSelections = Object.values(daySelected).some(
+        (stafferIds) => Array.isArray(stafferIds) && stafferIds.length > 0,
+      );
+      if (!hasPendingSelections) {
+        setAssignError("No staffers selected.");
+        setAssignLoading(false);
+        return;
+      }
+
+      setPendingAssignments((prev) => ({
+        ...prev,
+        [req.id]: {
+          requestId: req.id,
+          isMultiDay,
+          daySelected,
+          staffersByDay,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+
       setAssignDialogOpen(false);
       setPostAssignReview({
         requestId: req.id,
@@ -1519,7 +1592,7 @@ export default function CoverageManagementBase({
         mySectionFullyAssigned,
       });
       await loadAll();
-      setViewFilter("for-assignment");
+      setViewFilter("assigned");
     } catch (err) {
       setAssignError(err.message);
     } finally {
@@ -1532,7 +1605,7 @@ export default function CoverageManagementBase({
     dayAssigned,
     dayStaffers,
     loadAll,
-    getServiceKeysForAssignment,
+    setPendingAssignments,
   ]);
 
   const handleSubmitForApproval = async (requestId) => {
@@ -1540,9 +1613,76 @@ export default function CoverageManagementBase({
     try {
       const { data: req } = await supabase
         .from("coverage_requests")
-        .select("title, forwarded_sections, submitted_sections, status")
+        .select(
+          "title, forwarded_sections, submitted_sections, status, is_multiday, event_days, event_date, from_time, to_time, services",
+        )
         .eq("id", requestId)
         .single();
+
+      const pendingDraft = pendingAssignments[requestId];
+      if (pendingDraft) {
+        const rows = [];
+        const serviceKeys = getServiceKeysForAssignment(req);
+
+        const pushRowsForDay = (stafferIds, dateStr, fromTime, toTime) => {
+          stafferIds.forEach((stafferId) => {
+            if (serviceKeys.length === 0) {
+              rows.push({
+                request_id: requestId,
+                assigned_to: stafferId,
+                assigned_by: currentUser.id,
+                section: currentUser.section,
+                assignment_date: dateStr,
+                from_time: fromTime,
+                to_time: toTime,
+              });
+              return;
+            }
+
+            serviceKeys.forEach((serviceKey) => {
+              rows.push({
+                request_id: requestId,
+                assigned_to: stafferId,
+                assigned_by: currentUser.id,
+                section: currentUser.section,
+                service_key: serviceKey,
+                assignment_date: dateStr,
+                from_time: fromTime,
+                to_time: toTime,
+              });
+            });
+          });
+        };
+
+        if (req.is_multiday && req.event_days?.length > 0) {
+          req.event_days.forEach((dayObj) => {
+            const ids = pendingDraft.daySelected?.[dayObj.date] || [];
+            if (ids.length > 0) {
+              pushRowsForDay(ids, dayObj.date, dayObj.from_time, dayObj.to_time);
+            }
+          });
+        } else {
+          const ids = pendingDraft.daySelected?.[req.event_date] || [];
+          if (ids.length > 0) {
+            pushRowsForDay(ids, req.event_date, req.from_time, req.to_time);
+          }
+        }
+
+        if (rows.length === 0) {
+          throw new Error("No pending staff selections found to submit.");
+        }
+
+        const { error: assignErr } = await supabase
+          .from("coverage_assignments")
+          .insert(rows);
+        if (assignErr) throw assignErr;
+
+        setPendingAssignments((prev) => {
+          const next = { ...prev };
+          delete next[requestId];
+          return next;
+        });
+      }
 
       const alreadySubmitted = req.submitted_sections || [];
       const updatedSubmitted = alreadySubmitted.includes(currentUser.section)
@@ -1568,6 +1708,9 @@ export default function CoverageManagementBase({
           message: `All sections have submitted their staff assignments for "${req?.title || "a coverage request"}" — ready for your approval.`,
           requestId,
           createdBy: currentUser.id,
+          targetPayload: {
+            actorMode: "system_all_sections",
+          },
         });
       }
       setConfirmRequest(null);
@@ -1592,6 +1735,7 @@ export default function CoverageManagementBase({
   const buildRows = (source) =>
     source.map((req) => {
       const rowView = req._sectionHeadView || viewFilter;
+      const pendingDraft = req._pendingDraft || pendingAssignments[req.id];
       const sectionAssignments = (req.coverage_assignments || []).filter(
         (a) => a.section === currentUser?.section,
       );
@@ -1616,16 +1760,42 @@ export default function CoverageManagementBase({
           selfie_url: a.selfie_url,
         }));
 
+      if (uniqueStaffers.length === 0 && pendingDraft?.staffersByDay) {
+        const pendingSeen = new Set();
+        Object.values(pendingDraft.staffersByDay).forEach((staffers) => {
+          (staffers || []).forEach((s) => {
+            if (!s?.id || pendingSeen.has(s.id)) return;
+            pendingSeen.add(s.id);
+            uniqueStaffers.push({
+              id: s.id,
+              full_name: s.full_name,
+              avatar_url: s.avatar_url,
+              section: s.section,
+            });
+          });
+        });
+      }
+
       const isMultiDay = !!(req.is_multiday && req.event_days?.length > 0);
       const assignedDates = new Set(
         sectionAssignments.map((a) => a.assignment_date),
       );
+      if (pendingDraft?.daySelected) {
+        Object.entries(pendingDraft.daySelected).forEach(([date, ids]) => {
+          if (Array.isArray(ids) && ids.length > 0) assignedDates.add(date);
+        });
+      }
       const totalDays = isMultiDay ? req.event_days?.length || 1 : 1;
       const assignedDayCount = isMultiDay
         ? (req.event_days || []).filter((d) => assignedDates.has(d.date)).length
         : sectionAssignments.length > 0
           ? 1
-          : 0;
+          : pendingDraft?.daySelected?.[req.event_date]?.length > 0
+            ? 1
+            : 0;
+
+      const hasPendingAssignments = Object.values(pendingDraft?.daySelected || {})
+        .some((ids) => Array.isArray(ids) && ids.length > 0);
 
       return {
         id: req.id,
@@ -1654,7 +1824,7 @@ export default function CoverageManagementBase({
         myHasSubmitted: (req.submitted_sections || []).includes(
           currentUser?.section,
         ),
-        myHasAssignments: sectionAssignments.length > 0,
+        myHasAssignments: sectionAssignments.length > 0 || hasPendingAssignments,
         myDone: assignedDayCount >= totalDays,
         myPartial: assignedDayCount > 0 && assignedDayCount < totalDays,
         assignedDayCount,
@@ -2611,7 +2781,7 @@ export default function CoverageManagementBase({
 
       <Snackbar
         open={toast.open}
-        autoHideDuration={2200}
+        autoHideDuration={3200}
         onClose={(_, reason) => {
           if (reason === "clickaway") return;
           setToast((prev) => ({ ...prev, open: false }));
@@ -2682,9 +2852,8 @@ export default function CoverageManagementBase({
                 fontSize: "0.67rem",
                 color: "text.secondary",
                 mt: 0.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                whiteSpace: "normal",
+                lineHeight: 1.35,
               }}
             >
               {toast.text}

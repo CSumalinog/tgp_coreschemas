@@ -164,7 +164,7 @@ function Calendar() {
         const { data: myReqs } = await supabase
           .from("coverage_requests")
           .select("event_date")
-          .eq("client_id", user.id)
+          .eq("requester_id", user.id)
           .not("status", "eq", "Draft")
           .is("archived_at", null)
           .is("trashed_at", null)

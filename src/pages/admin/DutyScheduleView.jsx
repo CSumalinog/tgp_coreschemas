@@ -4085,6 +4085,9 @@ export default function DutyScheduleView() {
               pt: 1.5,
               pb: 1,
               borderBottom: `1px solid ${border}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
             <Box
@@ -4137,27 +4140,28 @@ export default function DutyScheduleView() {
                   </Box>
                 );
               })}
-              <Tooltip title="Manage Duty Sched" arrow>
-                <IconButton
-                  onClick={handleManageDutySchedule}
-                  sx={{
-                    borderRadius: "10px",
-                    color: "text.secondary",
-                    backgroundColor: "#f7f7f8",
-                    border: "1px solid rgba(0,0,0,0.12)",
-                    height: MODAL_TAB_HEIGHT,
-                    width: MODAL_TAB_HEIGHT,
-                    "&:hover": {
-                      backgroundColor: "#ededee",
-                      borderColor: "rgba(53,53,53,0.3)",
-                      color: "text.primary",
-                    },
-                  }}
-                >
-                  <ArrowOutwardIcon />
-                </IconButton>
-              </Tooltip>
             </Box>
+            <Tooltip title="Manage Duty Sched" arrow>
+              <IconButton
+                onClick={handleManageDutySchedule}
+                sx={{
+                  borderRadius: "10px",
+                  color: "text.secondary",
+                  backgroundColor: "#f7f7f8",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  height: MODAL_TAB_HEIGHT,
+                  width: MODAL_TAB_HEIGHT,
+                  flexShrink: 0,
+                  "&:hover": {
+                    backgroundColor: "#ededee",
+                    borderColor: "rgba(53,53,53,0.3)",
+                    color: "text.primary",
+                  },
+                }}
+              >
+                <ArrowOutwardIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
 
           {/* Drawer scrollable content */}
@@ -4550,80 +4554,6 @@ export default function DutyScheduleView() {
                   gap: 1,
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      color: "text.secondary",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                    }}
-                  >
-                    Audit Trail
-                  </Typography>
-                  <Box
-                    onClick={handleExportAuditCsv}
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.45,
-                      px: 1.05,
-                      py: 0.45,
-                      borderRadius: "10px",
-                      cursor: "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      backgroundColor: "#f7f7f8",
-                      fontFamily: dm,
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      color: "text.secondary",
-                      "&:hover": {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: "text.primary",
-                        backgroundColor: "#ededee",
-                      },
-                    }}
-                  >
-                    <FileDownloadOutlinedIcon sx={{ fontSize: 13 }} />
-                    Export
-                  </Box>
-                </Box>
-
-                <FormControl size="small" fullWidth>
-                  <OutlinedInput
-                    placeholder="Search audit log"
-                    value={auditSearchText}
-                    onChange={(e) => setAuditSearchText(e.target.value)}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <SearchIcon
-                          sx={{ fontSize: 15, color: "text.disabled" }}
-                        />
-                      </InputAdornment>
-                    }
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      borderRadius: "10px",
-                      height: FILTER_INPUT_HEIGHT,
-                      backgroundColor: "#f7f7f8",
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "rgba(0,0,0,0.12)",
-                      },
-                    }}
-                  />
-                </FormControl>
-
                 <Box
                   sx={{
                     minHeight: 420,
