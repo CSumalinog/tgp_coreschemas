@@ -22,10 +22,12 @@ import {
   InputAdornment,
   Snackbar,
   Alert,
+  Tooltip,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
@@ -76,7 +78,7 @@ import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import { generateConfirmationPDF } from "../../utils/generateConfirmationPDF";
+import { generateConfirmationPDF, previewConfirmationPDF } from "../../utils/generateConfirmationPDF";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   cancelRequest,
@@ -2307,6 +2309,40 @@ function RequestDetailDialog({
                 </Menu>
               </>
             )}
+            {["Approved", "On Going", "Completed"].includes(request.status) && (
+              <>
+                <Tooltip title="View Confirmation" placement="top">
+                  <IconButton
+                    size="small"
+                    onClick={() => previewConfirmationPDF(request, teamBySection)}
+                    sx={{
+                      color: "text.secondary",
+                      borderRadius: "10px",
+                      "&:hover": {
+                        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                      },
+                    }}
+                  >
+                    <OpenInNewOutlinedIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download Confirmation" placement="top">
+                  <IconButton
+                    size="small"
+                    onClick={() => generateConfirmationPDF(request, teamBySection)}
+                    sx={{
+                      color: "text.secondary",
+                      borderRadius: "10px",
+                      "&:hover": {
+                        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                      },
+                    }}
+                  >
+                    <DownloadOutlinedIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
             <IconButton
               onClick={onClose}
               size="small"
@@ -2958,37 +2994,6 @@ function RequestDetailDialog({
                         )
                       : "N/A"}
                   </Typography>
-                </Box>
-                <Box
-                  onClick={() =>
-                    generateConfirmationPDF(request, teamBySection)
-                  }
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                    px: 1.5,
-                    py: 0.7,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    border: `1px solid ${border}`,
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    fontWeight: 500,
-                    color: "text.secondary",
-                    flexShrink: 0,
-                    transition: "all 0.15s",
-                    "&:hover": {
-                      borderColor: "rgba(53,53,53,0.35)",
-                      color: "text.primary",
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.04)"
-                        : HOVER_BG,
-                    },
-                  }}
-                >
-                  <DownloadOutlinedIcon sx={{ fontSize: 14 }} />
-                  Download Confirmation
                 </Box>
               </Box>
             </Section>

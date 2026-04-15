@@ -1164,6 +1164,94 @@ The MySchedule page received comprehensive UI enhancements for duty day manageme
 - **Validation**: Prevents submission without reason text
 - **Loading State**: Circular progress indicator during submission
 
+### 9.31 Emergency Announcement System (v2.6)
+
+The system received a comprehensive emergency announcement system enabling staff to proactively declare unavailability for their assigned coverage:
+
+#### AnnounceEmergencyDialog Component ([`AnnounceEmergencyDialog.jsx`](src/components/regular_staff/AnnounceEmergencyDialog.jsx:1))
+
+A new dialog component for staff to announce emergencies in advance:
+
+- **Reason Input**: Multi-line text field for providing detailed reason for unavailability
+- **Proof Upload**: Mandatory file attachment supporting images and PDFs (max 10MB)
+- **File Validation**: Client-side validation for file type (image/pdf) and size
+- **Loading States**: Progress indicator during submission
+- **Error Handling**: Clear validation messages for reason and proof requirements
+- **Form Reset**: Automatic cleanup when dialog closes
+
+#### useAnnounceEmergency Hook ([`useAnnounceEmergency.jsx`](src/hooks/useAnnounceEmergency.jsx:1))
+
+Centralized logic for emergency announcements:
+
+- **Proof Upload**: Handles image/PDF upload to Supabase Storage (`emergency-proof` bucket)
+- **Assignment Update**: Updates assignment status to "Cancelled" with cancellation reason
+- **Notification System**: 
+  - Notifies section head immediately upon announcement
+  - Notifies admins about the emergency
+  - Triggers reassignment workflow for section head
+- **Error Handling**: Comprehensive error handling with user feedback
+
+#### Emergency Reassignment Workflow
+
+The [`ReassignmentService.js`](src/services/ReassignmentService.js:1) was enhanced to support announced emergencies:
+
+- **Trigger Types**: Distinguishes between "announced-emergency" and "unannounced-no-show"
+- **Status Preservation**: Maintains emergency announcement with proof attachment
+- **Cancellation Recording**: Stores cancellation reason with embedded proof path
+- **Proof Path Extraction**: Utility functions to extract and display proof from cancellation reasons
+
+#### Regular Staff Integration ([`MyAssignment.jsx`](src/pages/regular_staff/MyAssignment.jsx:1))
+
+The My Assignment page now includes emergency announcement capability:
+
+- **Action Button**: "Announce Emergency" button appears on assignment cards
+- **Dialog Integration**: Opens AnnounceEmergencyDialog with assignment context
+- **Status Aware**: Only visible when assignment is in "Approved" or "On Going" status
+- **Toast Feedback**: Success/error notifications after announcement
+
+#### Section Head Integration ([`CoverageManagementBase.jsx`](src/pages/section_head/CoverageManagementBase.jsx:1))
+
+Enhanced to handle emergency reassignments:
+
+- **Emergency Detection**: Identifies assignments with emergency cancellation status
+- **Reassignment Types**: Visual differentiation between "emergency" and "no-show" candidates
+- **Status Indicators**: 
+  - Red indicator for announced emergencies
+  - Amber indicator for unannounced no-shows
+- **Reassign Action**: "Reassign" button appears for emergency-affected assignments
+- **Notification Handling**: Proper notification delivery for emergency reassignments
+
+#### Request Tracker Enhancements ([`RequestTracker.jsx`](src/pages/client/RequestTracker.jsx:1))
+
+Client-side improvements:
+
+- **Status Display**: Better visualization of cancelled assignments
+- **Staff Availability**: Shows "Not yet" when assigned staff hasn't timed in
+- **Detail View**: Enhanced completion details with staff timing information
+
+### 9.32 Coverage Completion Details Enhancement
+
+The completion details viewing experience was improved:
+
+- **Section Head View** ([`CoverageManagementBase.jsx`](src/pages/section_head/CoverageManagementBase.jsx:1)):
+  - "View Details" action available in completed view
+  - CoverageCompletionDialog displays full assignment details
+  - Staff timing information (time in, completion, duration)
+  - Selfie proof display from Supabase Storage
+
+- **Admin Coverage Tracker** ([`CoverageTracker.jsx`](src/pages/admin/CoverageTracker.jsx:1)):
+  - Enhanced completion details viewing
+  - Improved staff information display
+  - Duration calculation and display
+
+### 9.33 PDF Confirmation Improvements ([`generateConfirmationPDF.js`](src/utils/generateConfirmationPDF.js:1))
+
+The PDF confirmation generator received minor refinements:
+
+- Better handling of null/undefined values
+- Improved date formatting consistency
+- Enhanced error handling for missing data
+
 ---
 
 ## 10. Conclusion

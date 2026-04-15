@@ -7,6 +7,7 @@ export default function ViewActionButton({
   onClick,
   children = "View",
   disabled = false,
+  sx = {},
 }) {
   return (
     <Button
@@ -35,6 +36,7 @@ export default function ViewActionButton({
           outline: "2px solid #111111",
           outlineOffset: 1,
         },
+        ...sx,
       }}
     >
       {children}

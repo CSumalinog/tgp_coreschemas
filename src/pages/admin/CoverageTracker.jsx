@@ -112,6 +112,11 @@ const hasAnyCompleted = (request) =>
 const hasAnyAssignments = (request) =>
   (request?.coverage_assignments || []).length > 0;
 
+const hasAnyAssignmentPending = (request) => {
+  const assignments = request?.coverage_assignments || [];
+  return assignments.some((a) => !a?.completed_at);
+};
+
 const isCtrEligibleStatus = (status) => {
   const normalized = String(status || "")
     .trim()
@@ -507,7 +512,7 @@ export default function CoverageTracker() {
       return dedupeById([
         ...(onGoing || []),
         ...requests.filter((r) => hasAnyTimeIn(r)),
-      ]).filter((r) => hasAnyAssignments(r) && hasAnyTimeIn(r));
+      ]).filter((r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r));
     }
     if (stageFilter === "Completed") {
       return dedupeById([
@@ -524,6 +529,34 @@ export default function CoverageTracker() {
       ),
     ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status));
   }, [stageFilter, onGoing, completed, requests]);
+
+  const trackerStageCounts = useMemo(() => {
+    const onGoingList = dedupeById([
+      ...(onGoing || []),
+      ...requests.filter((r) => hasAnyTimeIn(r)),
+    ]).filter(
+      (r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
+    );
+
+    const completedList = dedupeById([
+      ...(completed || []),
+      ...requests.filter((r) => hasAnyCompleted(r)),
+    ]).filter((r) => hasAnyAssignments(r) && hasAnyCompleted(r));
+
+    const allList = dedupeById([
+      ...(onGoing || []),
+      ...(completed || []),
+      ...requests.filter(
+        (r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status),
+      ),
+    ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status));
+
+    return {
+      all: allList.length,
+      "On Going": onGoingList.length,
+      Completed: completedList.length,
+    };
+  }, [onGoing, completed, requests]);
 
   const ctrBaseSource = useMemo(
     () =>
@@ -1068,7 +1101,7 @@ export default function CoverageTracker() {
               IconComponent={UnfoldMoreIcon}
               sx={selectSx}
               renderValue={(val) => {
-                const count = rows.length;
+                const count = trackerStageCounts[val] ?? 0;
                 const label =
                   STAGE_OPTIONS.find((o) => o.key === val)?.label ?? val;
                 return (
@@ -1090,9 +1123,25 @@ export default function CoverageTracker() {
                 <MenuItem
                   key={opt.key}
                   value={opt.key}
-                  sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    minWidth: 180,
+                  }}
                 >
-                  {opt.label}
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+                    {opt.label}
+                  </Typography>
+                  <NumberBadge
+                    count={trackerStageCounts[opt.key] ?? 0}
+                    active={stageFilter === opt.key}
+                    fontFamily={dm}
+                    fontSize="0.56rem"
+                  />
                 </MenuItem>
               ))}
             </Select>

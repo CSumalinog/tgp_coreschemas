@@ -2181,7 +2181,7 @@ export default function DutyScheduleView() {
                             <NumberBadge
                               count={triggerCount}
                               active={isSectionFiltered}
-                              activeBg="#111111"
+                              activeBg="#F5C52B"
                               inactiveBg={
                                 isDark
                                   ? "rgba(255,255,255,0.28)"
@@ -2236,7 +2236,7 @@ export default function DutyScheduleView() {
                             <NumberBadge
                               count={count}
                               active={isSelected}
-                              activeBg="#111111"
+                              activeBg="#F5C52B"
                               inactiveBg={
                                 isDark
                                   ? "rgba(255,255,255,0.28)"

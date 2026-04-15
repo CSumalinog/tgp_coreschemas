@@ -30,6 +30,7 @@ import {
   Tooltip,
   Snackbar,
   Divider,
+  Radio,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -57,7 +58,12 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
-import { notifyAdmins } from "../../services/NotificationService";
+import {
+  notifyAdmins,
+  notifySecHeads,
+  notifySpecificStaff,
+} from "../../services/NotificationService";
+import { reassignAfterNoShow } from "../../services/ReassignmentService";
 import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
@@ -209,6 +215,20 @@ const getFileName = (filePath) => {
   if (!filePath) return null;
   return filePath.split("/").pop().replace(/^\d+_/, "");
 };
+const extractEmergencyProofPath = (reasonText) => {
+  if (!reasonText) return null;
+  const match = String(reasonText).match(/\(Proof:\s*([^)]+)\)\s*$/i);
+  return match?.[1]?.trim() || null;
+};
+const extractEmergencyReasonText = (reasonText) => {
+  const raw = String(reasonText || "").trim();
+  if (!raw) return "Emergency announced";
+  const withoutProof = raw.replace(/\(Proof:\s*([^)]+)\)\s*$/i, "").trim();
+  return (
+    withoutProof.replace(/^Emergency announced:\s*/i, "").trim() ||
+    "Emergency announced"
+  );
+};
 const computeDuration = (timedIn, completedAt) => {
   if (!timedIn || !completedAt) return null;
   const diffMs = new Date(completedAt) - new Date(timedIn);
@@ -250,6 +270,21 @@ const fmtWeekday = (d) => {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "short",
   });
+};
+const isAnnouncedEmergencyAssignment = (assignment) => {
+  if (!assignment) return false;
+  if (assignment.status !== "Cancelled") return false;
+  const reason = String(assignment.cancellation_reason || "").toLowerCase();
+  return reason.includes("emergency");
+};
+const isUnannouncedNoShowCandidate = (assignment, currentSection, endOfToday) => {
+  if (!assignment) return false;
+  if (assignment.section !== currentSection) return false;
+  if (assignment.timed_in_at) return false;
+  if (!assignment.assignment_date) return false;
+  if (["Cancelled", "No Show", "Completed"].includes(assignment.status))
+    return false;
+  return new Date(assignment.assignment_date + "T00:00:00") <= endOfToday;
 };
 
 // ── Small shared UI pieces ────────────────────────────────────────────────────
@@ -754,6 +789,16 @@ export default function CoverageManagementBase({
   const [completionDetailsOpen, setCompletionDetailsOpen] = useState(false);
   const [selectedCompletionAssignment, setSelectedCompletionAssignment] =
     useState(null);
+
+  // ── Reassign dialog state ──────────────────────────────────────────────────
+  const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const [reassignRequest, setReassignRequest] = useState(null); // the request row
+  const [reassignAssignment, setReassignAssignment] = useState(null); // the specific assignment to replace
+  const [reassignStaffers, setReassignStaffers] = useState([]);
+  const [reassignStaffersLoading, setReassignStaffersLoading] = useState(false);
+  const [reassignSelectedId, setReassignSelectedId] = useState("");
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignError, setReassignError] = useState("");
   const openedFromNotificationRef = useRef(null);
   const pendingAssignmentsKey = useMemo(
     () =>
@@ -887,6 +932,7 @@ export default function CoverageManagementBase({
         entity:client_entities ( id, name ),
         coverage_assignments (
           id, status, assigned_to, section, service_key, timed_in_at, completed_at,
+          cancellation_reason, cancelled_at,
           assignment_date, from_time, to_time, selfie_url,
           staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
         )
@@ -981,12 +1027,23 @@ export default function CoverageManagementBase({
       const onGoingData = onGoing.data || [];
       const completedData = completed.data || [];
       const sectionForApprovalMap = new Map();
-      [...(forApproval.data || []), ...forwardedData, ...assignedData].forEach(
+      [...(forApproval.data || []), ...forwardedData].forEach(
         (req) => {
           const myHasSubmitted = (req.submitted_sections || []).includes(
             mySection,
           );
-          if (req.status === "For Approval" || myHasSubmitted) {
+          // Only show in "For Approval" if the request hasn't been acted on by
+          // admin yet. Once status is Assigned/Approved/On Going/Completed the
+          // request must leave this bucket regardless of submitted_sections.
+          const adminNotActed = ![
+            "Assigned",
+            "Approved",
+            "On Going",
+            "Coverage Complete",
+            "Completed",
+            "No-show",
+          ].includes(req.status);
+          if (adminNotActed && (req.status === "For Approval" || myHasSubmitted)) {
             sectionForApprovalMap.set(req.id, req);
           }
         },
@@ -1074,12 +1131,35 @@ export default function CoverageManagementBase({
   useEffect(() => {
     if (currentUser) loadAll();
   }, [currentUser, loadAll]);
+
+  // Re-fetch when the user switches back to this tab — guards against stale
+  // state when admin approves a request while the section head is away.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && currentUser) loadAll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [currentUser, loadAll]);
+
   useRealtimeNotify(
     "coverage_assignments",
     loadAll,
     currentUser?.section ? `section=eq.${currentUser.section}` : null,
     {
       title: "Assignment",
+      toast: false,
+      sound: false,
+      tabFlash: false,
+    },
+  );
+  // Re-fetch when admin changes coverage_request status (e.g. Approved).
+  useRealtimeNotify(
+    "coverage_requests",
+    loadAll,
+    null,
+    {
+      title: "Request",
       toast: false,
       sound: false,
       tabFlash: false,
@@ -1731,6 +1811,177 @@ export default function CoverageManagementBase({
     }
   };
 
+  // ── Reassign handlers ─────────────────────────────────────────────────────
+  const openReassignDialog = useCallback(
+    async (req, assignment) => {
+      setReassignError("");
+      setReassignSelectedId("");
+      setReassignRequest(req);
+      setReassignAssignment(assignment);
+      setReassignStaffers([]);
+      setReassignDialogOpen(true);
+
+      const dateStr = assignment.assignment_date || req.event_date;
+      if (!dateStr) return;
+
+      setReassignStaffersLoading(true);
+      try {
+        const weekend = isWeekendDate(dateStr);
+        const dutyDay = jsDateToDutyDay(dateStr);
+        const primaryPositions =
+          SECTION_PRIMARY_POSITIONS[currentUser?.section] || [];
+
+        const { data: allProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, section, role, position, avatar_url")
+          .eq("division", currentUser.division)
+          .eq("role", "staff")
+          .eq("is_active", true);
+
+        if (!allProfiles || allProfiles.length === 0) {
+          setReassignStaffers([]);
+          return;
+        }
+
+        let eligible = allProfiles;
+        if (!weekend && dutyDay !== null) {
+          const { data: semester } = await supabase
+            .from("semesters")
+            .select("id")
+            .eq("is_active", true)
+            .single();
+          if (semester?.id) {
+            const { data: dutySchedules } = await supabase
+              .from("duty_schedules")
+              .select("staffer_id")
+              .eq("semester_id", semester.id)
+              .eq("duty_day", dutyDay);
+            const eligibleIds = new Set(
+              (dutySchedules || []).map((d) => d.staffer_id),
+            );
+            eligible = allProfiles.filter((p) => eligibleIds.has(p.id));
+          }
+        }
+
+        // Exclude the original assignee
+        eligible = eligible.filter((p) => p.id !== assignment.assigned_to);
+
+        // Get assignment counts + conflict flags
+        const ids = eligible.map((p) => p.id);
+        let assignmentCounts = {};
+        let conflictIds = new Set();
+        if (ids.length > 0) {
+          const { data: assignments } = await supabase
+            .from("coverage_assignments")
+            .select("assigned_to, assignment_date")
+            .in("assigned_to", ids);
+          (assignments || []).forEach((a) => {
+            assignmentCounts[a.assigned_to] =
+              (assignmentCounts[a.assigned_to] || 0) + 1;
+            if (a.assignment_date === dateStr) conflictIds.add(a.assigned_to);
+          });
+        }
+
+        const withMeta = eligible
+          .map((p) => ({
+            ...p,
+            assignmentCount: assignmentCounts[p.id] || 0,
+            hasConflict: conflictIds.has(p.id),
+          }))
+          .sort((a, b) => a.assignmentCount - b.assignmentCount);
+
+        const primary = withMeta.filter((p) =>
+          primaryPositions.includes(p.position),
+        );
+        const others = withMeta.filter(
+          (p) => !primaryPositions.includes(p.position),
+        );
+        setReassignStaffers([...primary, ...others]);
+      } finally {
+        setReassignStaffersLoading(false);
+      }
+    },
+    [currentUser],
+  );
+
+  const handleReassign = useCallback(async () => {
+    if (!reassignAssignment || !reassignSelectedId || !currentUser) return;
+    setReassigning(true);
+    setReassignError("");
+    try {
+      const isAnnouncedEmergency = isAnnouncedEmergencyAssignment(reassignAssignment);
+      const reason = isAnnouncedEmergency ? "Emergency announced" : "No Show";
+      const result = await reassignAfterNoShow({
+        requestId: reassignAssignment.request_id,
+        assignmentId: reassignAssignment.id,
+        newStaffId: reassignSelectedId,
+        section: currentUser.section,
+        assignedBy: currentUser.id,
+        triggerType: isAnnouncedEmergency
+          ? "announced-emergency"
+          : "unannounced-no-show",
+        reason,
+      });
+      if (result?.error) throw result.error;
+
+      await notifySecHeads({
+        sections: reassignRequest?.forwarded_sections?.length
+          ? reassignRequest.forwarded_sections
+          : [reassignAssignment.section || currentUser.section],
+        type: "reassignment_triggered",
+        title: "Reassignment Triggered",
+        message: `A reassignment was applied for "${reassignRequest?.title || "a coverage request"}".`,
+        requestId: reassignAssignment.request_id,
+        createdBy: currentUser.id,
+      });
+
+      // Notify the new staffer
+      await notifySpecificStaff({
+        staffIds: [reassignSelectedId],
+        type: "assignment",
+        title: "New Assignment",
+        message: `You have been assigned as a replacement for "${reassignRequest?.title || "a coverage request"}".`,
+        requestId: reassignAssignment.request_id,
+        createdBy: currentUser.id,
+      });
+
+      // Notify the original staffer
+      if (reassignAssignment.assigned_to) {
+        await notifySpecificStaff({
+          staffIds: [reassignAssignment.assigned_to],
+          type: "assignment",
+          title: "Assignment Reassigned",
+          message: `Your assignment for "${reassignRequest?.title || "a coverage request"}" has been reassigned to another staffer.`,
+          requestId: reassignAssignment.request_id,
+          createdBy: currentUser.id,
+        });
+      }
+
+      setReassignDialogOpen(false);
+      setReassignAssignment(null);
+      setReassignRequest(null);
+      setReassignSelectedId("");
+      await loadAll();
+      setToast({
+        open: true,
+        text: isAnnouncedEmergency
+          ? "Emergency replacement assigned successfully."
+          : "No-show replacement assigned successfully.",
+        severity: "success",
+      });
+    } catch (err) {
+      setReassignError(err.message || "Reassignment failed.");
+    } finally {
+      setReassigning(false);
+    }
+  }, [
+    reassignAssignment,
+    reassignRequest,
+    reassignSelectedId,
+    currentUser,
+    loadAll,
+  ]);
+
   // ── Row builder ───────────────────────────────────────────────────────────
   const buildRows = (source) =>
     source.map((req) => {
@@ -1739,6 +1990,22 @@ export default function CoverageManagementBase({
       const sectionAssignments = (req.coverage_assignments || []).filter(
         (a) => a.section === currentUser?.section,
       );
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      const emergencyAssignment = (req.coverage_assignments || []).find(
+        (a) =>
+          a.section === currentUser?.section &&
+          isAnnouncedEmergencyAssignment(a),
+      );
+      const noShowCandidate = (req.coverage_assignments || []).find((a) =>
+        isUnannouncedNoShowCandidate(a, currentUser?.section, endOfToday),
+      );
+      const reassignmentCandidate = emergencyAssignment || noShowCandidate;
+      const reassignmentType = emergencyAssignment
+        ? "emergency"
+        : noShowCandidate
+          ? "no-show"
+          : null;
       const myAssignments =
         rowView === "on-going"
           ? sectionAssignments.filter(isAssignmentOnGoing)
@@ -1831,6 +2098,9 @@ export default function CoverageManagementBase({
         totalDays,
         venue: req.venue || "—",
         assignments: req.coverage_assignments || [],
+        reassignmentCandidate,
+        reassignmentType,
+        needsReassignment: !!reassignmentCandidate,
         rowView,
         stageLabel: VIEW_LABEL_BY_KEY[rowView] || req.status,
         _raw: req,
@@ -1844,7 +2114,16 @@ export default function CoverageManagementBase({
     flex: 1.4,
     minWidth: 180,
     renderCell: (p) => (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0.7,
+          width: "100%",
+          height: "100%",
+          minWidth: 0,
+        }}
+      >
         <Typography
           sx={{
             fontFamily: dm,
@@ -1854,10 +2133,38 @@ export default function CoverageManagementBase({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            minWidth: 0,
+            flex: 1,
           }}
         >
           {p.value}
         </Typography>
+        {p.row?.needsReassignment && (
+          <Tooltip
+            title={
+              p.row?.reassignmentType === "emergency"
+                ? "Announced emergency"
+                : "Unannounced no-show"
+            }
+            placement="top"
+            arrow
+          >
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "999px",
+                flexShrink: 0,
+                backgroundColor:
+                  p.row?.reassignmentType === "emergency" ? "#dc2626" : "#d97706",
+                boxShadow:
+                  p.row?.reassignmentType === "emergency"
+                    ? "0 0 0 2px rgba(220,38,38,0.18)"
+                    : "0 0 0 2px rgba(217,119,6,0.18)",
+              }}
+            />
+          </Tooltip>
+        )}
       </Box>
     ),
   };
@@ -2115,6 +2422,36 @@ export default function CoverageManagementBase({
               View Details
             </ViewActionButton>
           )}
+        {(() => {
+          const inReassignView =
+            viewFilter === "on-going" ||
+            p.row?.rowView === "on-going" ||
+            viewFilter === "assigned" ||
+            p.row?.rowView === "assigned";
+          if (!inReassignView || hasBulkSelection) return null;
+          const reassignCandidate = p.row?.reassignmentCandidate;
+          if (!reassignCandidate) return null;
+          return (
+            <ViewActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                openReassignDialog(p.row, reassignCandidate);
+              }}
+              sx={{
+                backgroundColor: "#d32f2f",
+                border: "1px solid #b71c1c",
+                color: "#fff",
+                "&:hover": {
+                  backgroundColor: "#b71c1c",
+                  borderColor: "#7f0000",
+                },
+                "&:active": { backgroundColor: "#7f0000" },
+              }}
+            >
+              Reassign
+            </ViewActionButton>
+          );
+        })()}
         <IconButton
           size="small"
           disabled={hasBulkSelection}
@@ -2934,6 +3271,30 @@ export default function CoverageManagementBase({
         isDark={isDark}
         border={border}
         onClose={() => setCompletionDetailsOpen(false)}
+      />
+
+      {/* ── Reassign Picker Dialog ── */}
+      <ReassignPickerDialog
+        open={reassignDialogOpen}
+        request={reassignRequest}
+        assignment={reassignAssignment}
+        staffers={reassignStaffers}
+        loading={reassignStaffersLoading}
+        selectedId={reassignSelectedId}
+        onSelect={setReassignSelectedId}
+        reassigning={reassigning}
+        error={reassignError}
+        isDark={isDark}
+        border={border}
+        onClose={() => {
+          if (reassigning) return;
+          setReassignDialogOpen(false);
+          setReassignAssignment(null);
+          setReassignRequest(null);
+          setReassignSelectedId("");
+          setReassignError("");
+        }}
+        onConfirm={handleReassign}
       />
     </Box>
   );
@@ -3807,6 +4168,139 @@ function AssignmentDialog({
               ]}
             />
           </Section>
+          <Section label="Emergency Announcements" border={border}>
+            {(() => {
+              const emergencyAssignments = (req.coverage_assignments || []).filter(
+                (a) => isAnnouncedEmergencyAssignment(a),
+              );
+              if (emergencyAssignments.length === 0) {
+                return (
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.8rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    No emergency announcements for this request.
+                  </Typography>
+                );
+              }
+
+              return (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.9 }}>
+                  {emergencyAssignments.map((a) => {
+                    const reasonText = extractEmergencyReasonText(
+                      a.cancellation_reason,
+                    );
+                    const proofPath = extractEmergencyProofPath(
+                      a.cancellation_reason,
+                    );
+                    const staffName =
+                      a.staffer?.full_name || a.profiles?.full_name || "Unknown staff";
+
+                    return (
+                      <Box
+                        key={a.id}
+                        sx={{
+                          border: `1px solid ${border}`,
+                          borderRadius: "8px",
+                          px: 1.25,
+                          py: 1,
+                          backgroundColor: isDark
+                            ? "rgba(245,197,43,0.06)"
+                            : "rgba(245,197,43,0.05)",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 1,
+                            mb: 0.4,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.76rem",
+                              fontWeight: 700,
+                              color: "text.primary",
+                            }}
+                          >
+                            {staffName}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.7rem",
+                              color: "text.secondary",
+                            }}
+                          >
+                            {a.assignment_date ? fmtDateShort(a.assignment_date) : "—"}
+                            {a.from_time && a.to_time
+                              ? ` · ${fmtTimeStr(a.from_time)} - ${fmtTimeStr(a.to_time)}`
+                              : ""}
+                          </Typography>
+                        </Box>
+
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.78rem",
+                            color: "text.secondary",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {reasonText}
+                        </Typography>
+
+                        {proofPath && (
+                          <Box
+                            onClick={() => openFile(proofPath)}
+                            sx={{
+                              mt: 0.8,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 0.7,
+                              px: 1,
+                              py: 0.45,
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              border: `1px solid ${border}`,
+                              transition: "all 0.15s",
+                              "&:hover": {
+                                borderColor: GOLD,
+                                backgroundColor: GOLD_08,
+                              },
+                            }}
+                          >
+                            <InsertDriveFileOutlinedIcon
+                              sx={{ fontSize: 13, color: "text.secondary" }}
+                            />
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.74rem",
+                                color: "text.secondary",
+                              }}
+                            >
+                              {getFileName(proofPath) || "Open proof"}
+                            </Typography>
+                            <ChevronRightIcon
+                              sx={{ fontSize: 13, color: "text.disabled" }}
+                            />
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              );
+            })()}
+          </Section>
           <Section label="Attachment" border={border}>
             {req.file_url ? (
               <Box
@@ -4594,5 +5088,384 @@ function PrimaryBtn({ onClick, loading, children }) {
       {loading && <CircularProgress size={13} sx={{ color: CHARCOAL }} />}
       {children}
     </Box>
+  );
+}
+// ── Reassign Picker Dialog ────────────────────────────────────────────────────
+function ReassignPickerDialog({
+  open,
+  request,
+  assignment,
+  staffers,
+  loading,
+  selectedId,
+  onSelect,
+  reassigning,
+  error,
+  isDark,
+  border,
+  onClose,
+  onConfirm,
+}) {
+  if (!open) return null;
+
+  const originalName =
+    assignment?.staffer?.full_name || "the original assignee";
+  const dateStr = assignment?.assignment_date;
+  const isAnnouncedEmergency = isAnnouncedEmergencyAssignment(assignment);
+  const selectedStaffer = staffers.find((s) => s.id === selectedId);
+  const selectedHasConflict = !!selectedStaffer?.hasConflict;
+
+  const fmtDateLabel = (d) => {
+    if (!d) return "—";
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => !reassigning && onClose()}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: "14px",
+          backgroundColor: "background.paper",
+          border: `1px solid ${border}`,
+          boxShadow: isDark
+            ? "0 24px 64px rgba(0,0,0,0.6)"
+            : "0 8px 40px rgba(53,53,53,0.12)",
+        },
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: `1px solid ${border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 2.5,
+              height: 26,
+              borderRadius: "2px",
+              backgroundColor: GOLD,
+              flexShrink: 0,
+            }}
+          />
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                color: "text.primary",
+              }}
+            >
+              Reassign Staffer
+            </Typography>
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}
+            >
+              {isAnnouncedEmergency
+                ? `Emergency announced by ${originalName}. Select a replacement.`
+                : `No check-in from ${originalName}. Select a replacement.`}
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          disabled={reassigning}
+          sx={{
+            borderRadius: "8px",
+            color: "text.secondary",
+            "&:hover": { backgroundColor: HOVER_BG },
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Box>
+
+      {/* Body */}
+      <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Context card */}
+        <Box
+          sx={{
+            px: 1.75,
+            py: 1.25,
+            borderRadius: "8px",
+            border: `1px solid ${border}`,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.02)"
+              : "rgba(53,53,53,0.02)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.84rem",
+              fontWeight: 600,
+              color: "text.primary",
+            }}
+          >
+            {request?.title || "Coverage Request"}
+          </Typography>
+          {dateStr && (
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.73rem", color: "text.secondary", mt: 0.3 }}
+            >
+              {fmtDateLabel(dateStr)} · Replacing {originalName}
+            </Typography>
+          )}
+        </Box>
+
+        {/* Staffer list */}
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.62rem",
+              fontWeight: 700,
+              color: "text.disabled",
+              textTransform: "uppercase",
+              letterSpacing: "0.09em",
+              mb: 0.75,
+            }}
+          >
+            {loading ? "Loading eligible staffers…" : "Choose replacement"}
+          </Typography>
+
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+              <CircularProgress size={24} sx={{ color: GOLD }} />
+            </Box>
+          ) : staffers.length === 0 ? (
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", py: 1 }}
+            >
+              No eligible staffers found for this date.
+            </Typography>
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.6,
+                maxHeight: 280,
+                overflowY: "auto",
+              }}
+            >
+              {staffers.map((s) => {
+                const isSelected = selectedId === s.id;
+                const url = getAvatarUrl(s.avatar_url);
+                const clr = getAvatarColor(s.id);
+                return (
+                  <Box
+                    key={s.id}
+                    onClick={() => {
+                      if (s.hasConflict) return;
+                      onSelect(s.id);
+                    }}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.25,
+                      px: 1.25,
+                      py: 0.9,
+                      borderRadius: "8px",
+                      cursor: s.hasConflict ? "not-allowed" : "pointer",
+                      border: `1px solid ${isSelected ? "rgba(245,197,43,0.5)" : border}`,
+                      backgroundColor: isSelected
+                        ? isDark
+                          ? GOLD_08
+                          : "rgba(245,197,43,0.04)"
+                        : "transparent",
+                      transition: "all 0.15s",
+                      opacity: s.hasConflict ? 0.65 : 1,
+                      "&:hover": s.hasConflict
+                        ? {}
+                        : { borderColor: "rgba(245,197,43,0.5)" },
+                    }}
+                  >
+                    <Avatar
+                      src={url || undefined}
+                      sx={{
+                        width: TABLE_USER_AVATAR_SIZE,
+                        height: TABLE_USER_AVATAR_SIZE,
+                        fontSize: TABLE_USER_AVATAR_FONT_SIZE,
+                        fontWeight: 500,
+                        backgroundColor: isSelected ? GOLD : clr.bg,
+                        color: isSelected ? CHARCOAL : clr.color,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {!url && getInitials(s.full_name)}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.8rem",
+                          fontWeight: 500,
+                          color: "text.primary",
+                        }}
+                      >
+                        {s.full_name}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.68rem",
+                          color: s.hasConflict ? "#b45309" : "text.secondary",
+                        }}
+                      >
+                        {s.hasConflict
+                          ? "Already assigned on this date"
+                          : s.assignmentCount === 0
+                            ? "No assignments yet"
+                            : `${s.assignmentCount} assignment${s.assignmentCount > 1 ? "s" : ""}`}
+                      </Typography>
+                    </Box>
+                    {s.hasConflict && (
+                      <Box
+                        sx={{
+                          px: 0.8,
+                          py: 0.2,
+                          borderRadius: "5px",
+                          backgroundColor: isDark
+                            ? "rgba(245,158,11,0.12)"
+                            : "#fffbeb",
+                          border: "1px solid rgba(245,158,11,0.3)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.62rem",
+                            fontWeight: 600,
+                            color: "#b45309",
+                          }}
+                        >
+                          Conflict
+                        </Typography>
+                      </Box>
+                    )}
+                    <Radio
+                      checked={isSelected}
+                      disabled={s.hasConflict || reassigning}
+                      size="small"
+                      sx={{ p: 0, color: border, "&.Mui-checked": { color: GOLD } }}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => onSelect(s.id)}
+                    />
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
+        </Box>
+
+        {error && (
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.75rem", color: "error.main" }}
+          >
+            {error}
+          </Typography>
+        )}
+        {selectedHasConflict && (
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.75rem", color: "#b45309" }}
+          >
+            Selected staffer already has an assignment on this date. Choose a
+            non-conflicting replacement.
+          </Typography>
+        )}
+      </Box>
+
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1,
+        }}
+      >
+        <Box
+          onClick={() => !reassigning && onClose()}
+          sx={{
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "4px",
+            cursor: reassigning ? "default" : "pointer",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            color: "text.secondary",
+            border: `1px solid ${border}`,
+            backgroundColor: "transparent",
+            opacity: reassigning ? 0.5 : 1,
+            "&:hover": { backgroundColor: HOVER_BG },
+          }}
+        >
+          Cancel
+        </Box>
+        <Box
+          onClick={
+            !reassigning && selectedId && !selectedHasConflict
+              ? onConfirm
+              : undefined
+          }
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.6,
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "4px",
+            cursor:
+              !selectedId || selectedHasConflict || reassigning
+                ? "default"
+                : "pointer",
+            backgroundColor:
+              !selectedId || selectedHasConflict || reassigning
+                ? "action.disabledBackground"
+                : "#111",
+            color:
+              !selectedId || selectedHasConflict || reassigning
+                ? "text.disabled"
+                : "#fff",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            transition: "background-color 0.15s",
+            "&:hover": {
+              backgroundColor:
+                !selectedId || selectedHasConflict || reassigning
+                  ? undefined
+                  : "#333",
+            },
+          }}
+        >
+          {reassigning && <CircularProgress size={12} sx={{ color: "inherit" }} />}
+          {isAnnouncedEmergency
+            ? "Confirm Emergency Replacement"
+            : "Confirm Replacement"}
+        </Box>
+      </Box>
+    </Dialog>
   );
 }

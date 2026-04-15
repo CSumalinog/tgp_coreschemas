@@ -10,7 +10,7 @@ const GREEN    = [21,  128, 61];
 const GREENBG  = [220, 252, 231];
 const WHITE    = [255, 255, 255];
 
-export async function generateConfirmationPDF(request, teamBySection) {
+async function _buildPDF(request, teamBySection, mode = "save") {
   const { default: jsPDF } = await import("jspdf");
   const doc    = new jsPDF({ unit: "mm", format: "a4" });
   const PAGE_W = 210;
@@ -346,7 +346,19 @@ export async function generateConfirmationPDF(request, teamBySection) {
     PAGE_W - MARGIN, PAGE_H - 9, { align: "right" }
   );
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save or preview ───────────────────────────────────────────────────────
   const slug = request.title.replace(/\s+/g, "_").slice(0, 30);
+  if (mode === "bloburl") {
+    return doc.output("bloburl");
+  }
   doc.save(`Coverage_Confirmation_${slug}.pdf`);
+}
+
+export async function generateConfirmationPDF(request, teamBySection) {
+  await _buildPDF(request, teamBySection, "save");
+}
+
+export async function previewConfirmationPDF(request, teamBySection) {
+  const blobUrl = await _buildPDF(request, teamBySection, "bloburl");
+  window.open(blobUrl, "_blank", "noopener,noreferrer");
 }

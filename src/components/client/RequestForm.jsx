@@ -122,6 +122,10 @@ function buildContactInfo(type, value) {
   return `${label}: ${trimmed}`;
 }
 
+function normalizeId(value) {
+  return value === null || typeof value === "undefined" ? "" : String(value);
+}
+
 // ─────────────────────────────────────────────
 // Popup Mini Calendar
 // ─────────────────────────────────────────────
@@ -746,7 +750,8 @@ export default function CoverageRequestDialog({
     if (!open) return;
     async function load() {
       try {
-        setClientTypes((await fetchClientTypes()) || []);
+        const rows = (await fetchClientTypes()) || [];
+        setClientTypes(rows.map((row) => ({ ...row, id: normalizeId(row.id) })));
       } catch {
         setClientTypes([]);
       }
@@ -802,9 +807,9 @@ export default function CoverageRequestDialog({
       );
       setVenue(existingRequest.venue || "");
       setClientType(
-        existingRequest.client_type?.id || existingRequest.client_type_id || "",
+        normalizeId(existingRequest.client_type?.id || existingRequest.client_type_id),
       );
-      setEntity(existingRequest.entity?.id || existingRequest.entity_id || "");
+      setEntity(normalizeId(existingRequest.entity?.id || existingRequest.entity_id));
       setOtherEntity("");
       setContactPerson(existingRequest.contact_person || "");
       const parsedContact = parseContactInfo(existingRequest.contact_info || "");
@@ -831,7 +836,16 @@ export default function CoverageRequestDialog({
     async function load() {
       setEntitiesLoading(true);
       try {
-        setEntities((await fetchEntitiesByType(clientType)) || []);
+        const rows = (await fetchEntitiesByType(clientType)) || [];
+        const normalizedRows = rows.map((row) => ({
+          ...row,
+          id: normalizeId(row.id),
+        }));
+        setEntities(normalizedRows);
+        setEntity((prev) => {
+          if (!prev || prev === OTHER_ID) return prev;
+          return normalizedRows.some((row) => row.id === prev) ? prev : "";
+        });
       } catch {
         setEntities([]);
       } finally {
@@ -1511,7 +1525,7 @@ export default function CoverageRequestDialog({
                   value={clientType}
                   disabled={loading}
                   onChange={(e) => {
-                    setClientType(e.target.value);
+                    setClientType(normalizeId(e.target.value));
                     setEntity("");
                     setOtherEntity("");
                     if (e.target.value)
@@ -1528,7 +1542,7 @@ export default function CoverageRequestDialog({
                   {clientTypes.map((type) => (
                     <MenuItem
                       key={type.id}
-                      value={type.id}
+                      value={normalizeId(type.id)}
                       sx={{ fontSize: "0.85rem" }}
                     >
                       {type.name}
@@ -1564,7 +1578,7 @@ export default function CoverageRequestDialog({
                   label={entitiesLoading ? "Loading…" : "Entity Name"}
                   value={entity}
                   onChange={(e) => {
-                    setEntity(e.target.value);
+                    setEntity(normalizeId(e.target.value));
                     setOtherEntity("");
                     if (e.target.value)
                       setErrors((p) => ({ ...p, entity: "", otherEntity: "" }));
@@ -1573,20 +1587,27 @@ export default function CoverageRequestDialog({
                     slotProps: {
                       paper: {
                         sx: {
-                          maxHeight: 300,
+                          maxHeight: "260px !important",
+                          overflow: "hidden",
+                        },
+                      },
+                      list: {
+                        sx: {
+                          maxHeight: "260px !important",
                           overflowY: "auto",
                           "&::-webkit-scrollbar": { width: 6 },
                           "&::-webkit-scrollbar-track": { background: "transparent" },
                           "&::-webkit-scrollbar-thumb": {
-                            background: isDark ? "#444" : "#ccc",
-                            borderRadius: "6px",
+                            background: isDark ? "#444" : "#ddd",
+                            borderRadius: "10px",
                           },
                           "&::-webkit-scrollbar-thumb:hover": {
-                            background: isDark ? "#555" : "#aaa",
+                            background: "#f5c52b",
                           },
                         },
                       },
                     },
+                    disableScrollLock: true,
                     anchorOrigin: { vertical: "bottom", horizontal: "left" },
                     transformOrigin: { vertical: "top", horizontal: "left" },
                   }}
@@ -1601,7 +1622,7 @@ export default function CoverageRequestDialog({
                   {entities.map((ent) => (
                     <MenuItem
                       key={ent.id}
-                      value={ent.id}
+                      value={normalizeId(ent.id)}
                       sx={{ fontSize: "0.85rem" }}
                     >
                       {ent.name}

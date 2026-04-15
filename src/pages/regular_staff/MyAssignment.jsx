@@ -1,4 +1,4 @@
-// src/pages/regular_staff/MyAssignment.jsx
+﻿// src/pages/regular_staff/MyAssignment.jsx
 import React, {
   useState,
   useEffect,
@@ -45,6 +45,7 @@ import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
@@ -80,7 +81,7 @@ import {
 } from "../../components/regular_staff/TimeIn";
 import QRScanCompleteDialog from "../../components/regular_staff/QRScanCompleteDialog";
 
-// ── Brand tokens ──────────────────────────────────────────────────────────────
+// â”€â”€ Brand tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
 const GOLD_18 = "rgba(245,197,43,0.18)";
@@ -129,7 +130,7 @@ const STATUS_CFG = {
   },
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const openFile = (filePath) => {
   if (!filePath) return;
   const { data } = supabase.storage
@@ -197,7 +198,8 @@ const dedupeAssignments = (list = []) => {
   return out;
 };
 
-// ── Status pill ───────────────────────────────────────────────────────────────
+
+// â”€â”€ Status pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CFG[status] || {
     dot: "#9ca3af",
@@ -292,7 +294,7 @@ function DetailSection({ label, icon, children }) {
   );
 }
 
-// ── Assignment Card ───────────────────────────────────────────────────────────
+// â”€â”€ Assignment Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AssignmentCard({
   a,
   isDark,
@@ -302,6 +304,7 @@ function AssignmentCard({
   onComplete,
   onArchive,
   onTrash,
+  onRectification,
   onAnnounceEmergency,
 }) {
   const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
@@ -431,6 +434,25 @@ function AssignmentCard({
           </MenuItem>
           <MenuItem
             onClick={() => {
+              onRectification?.(a);
+              setMenuAnchor(null);
+            }}
+            sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+          >
+            <ListItemIcon>
+              <FactCheckOutlinedIcon sx={{ fontSize: 18, color: "#111" }} />
+            </ListItemIcon>
+            <ListItemText
+              primaryTypographyProps={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+              }}
+            >
+              Request Rectification
+            </ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
               onAnnounceEmergency(a);
               setMenuAnchor(null);
             }}
@@ -462,7 +484,7 @@ function AssignmentCard({
           lineHeight: 1.35,
         }}
       >
-        {req?.title || "—"}
+        {req?.title || "â€”"}
       </Typography>
 
       {/* Meta info */}
@@ -501,7 +523,7 @@ function AssignmentCard({
               }}
             >
               {formatTime(req.from_time)}
-              {req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
+              {req.to_time ? ` â€” ${formatTime(req.to_time)}` : ""}
             </Typography>
           </Box>
         )}
@@ -599,16 +621,20 @@ function AssignmentCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              gap: 0.75,
               py: 0.9,
               borderRadius: "10px",
-              border: `1px solid rgba(239,68,68,0.25)`,
+              border: `1px solid rgba(239,68,68,0.3)`,
               backgroundColor: "rgba(239,68,68,0.04)",
               fontFamily: dm,
               fontSize: "0.76rem",
+              fontWeight: 600,
               color: "#b91c1c",
+              cursor: "default",
             }}
           >
-            Time In window has passed
+            <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} />
+            Time in window has passed. For rectification use the menu to acess the form.
           </Box>
         )}
         {a.status === "On Going" && (
@@ -665,7 +691,7 @@ function AssignmentCard({
   );
 }
 
-// ── Assignment Detail Dialog ──────────────────────────────────────────────────
+// â”€â”€ Assignment Detail Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AssignmentDetailDialog({
   assignment,
   open,
@@ -758,7 +784,7 @@ function AssignmentDetailDialog({
               pl: 0.5,
             }}
           >
-            {req?.title || "—"}
+            {req?.title || "â€”"}
           </Typography>
           {assignment.assigned_by_profile?.full_name && (
             <Typography
@@ -822,7 +848,7 @@ function AssignmentDetailDialog({
             label="Time"
           >
             {formatTime(req.from_time)}
-            {req.to_time ? ` — ${formatTime(req.to_time)}` : ""}
+            {req.to_time ? ` â€” ${formatTime(req.to_time)}` : ""}
           </InfoChip>
         )}
         {req?.venue && (
@@ -1200,7 +1226,7 @@ function AssignmentDetailDialog({
   );
 }
 
-// ── Confirm Complete Dialog ───────────────────────────────────────────────────
+// â”€â”€ Confirm Complete Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ConfirmCompleteDialog({
   assignment,
   open,
@@ -1388,7 +1414,7 @@ function ConfirmCompleteDialog({
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function MyAssignment() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -1410,9 +1436,11 @@ export default function MyAssignment() {
   const { openAnnounce, AnnounceEmergencyDialogWrapper } = useAnnounceEmergency({ supabase, currentUser });
 
   const [timeInTarget, setTimeInTarget] = useState(null);
+  const [timeInConfirmTarget, setTimeInConfirmTarget] = useState(null);
   const [timingIn, setTimingIn] = useState(false);
   const [timeInError, setTimeInError] = useState("");
   const [onGoingAlert, setOnGoingAlert] = useState(null);
+  const [rectificationTarget, setRectificationTarget] = useState(null);
 
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
@@ -1569,7 +1597,7 @@ export default function MyAssignment() {
           timeInNotifiedRef.current.add(match.id);
           const fire = () => {
             try {
-              new Notification("TGP — Time to Check In", {
+              new Notification("TGP â€” Time to Check In", {
                 body: `"${match.request?.title || "Your event"}" starts in 10 minutes. Open the app to time in now.`,
                 icon: "/favicon.ico",
                 tag: `timein-${match.id}`,
@@ -1736,10 +1764,10 @@ export default function MyAssignment() {
         minute: "2-digit",
       });
       const gpsNote = gpsData?.verified
-        ? " · GPS verified ✓"
+        ? " Â· GPS verified âœ“"
         : gpsData?.lat
-          ? " · GPS unverified"
-          : " · GPS unavailable";
+          ? " Â· GPS unverified"
+          : " Â· GPS unavailable";
       const adminNotifs = (admins || []).map((admin) => ({
         user_id: admin.id,
         recipient_id: admin.id,
@@ -1836,7 +1864,7 @@ export default function MyAssignment() {
         </Alert>
       )}
 
-      {/* ── Controls row ── */}
+      {/* â”€â”€ Controls row â”€â”€ */}
       <Box
         sx={{
           mb: 2,
@@ -2014,7 +2042,7 @@ export default function MyAssignment() {
             flexShrink: 0,
           }}
         >
-          {/* ── Settings gear ── */}
+          {/* â”€â”€ Settings gear â”€â”€ */}
           <Tooltip title="Archive & Trash" arrow>
             <IconButton
               size="small"
@@ -2114,7 +2142,7 @@ export default function MyAssignment() {
               onView={(assignment) => setDetailTarget(assignment)}
               onTimeIn={(assignment) => {
                 setTimeInError("");
-                setTimeInTarget(assignment);
+                setTimeInConfirmTarget(assignment);
               }}
               onComplete={(assignment) => {
                 setCompleteError("");
@@ -2122,14 +2150,84 @@ export default function MyAssignment() {
               }}
               onArchive={handleArchive}
               onTrash={handleTrash}
+              onRectification={(assignment) => setRectificationTarget(assignment)}
               onAnnounceEmergency={openAnnounce}
             />
           ))
         )}
       </Box>
 
-      {/* Emergency Announce Dialog — rendered outside the list */}
+      {/* Emergency Announce Dialog â€” rendered outside the list */}
       <AnnounceEmergencyDialogWrapper />
+
+      <Dialog
+        open={!!rectificationTarget}
+        onClose={() => setRectificationTarget(null)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "14px",
+            border: `1px solid ${border}`,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+            Request Rectification
+          </Typography>
+          <IconButton size="small" onClick={() => setRectificationTarget(null)}>
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ px: 3, py: 2.5 }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}>
+            Rectification entry is now accessible from the 3-dot menu. Full
+            rectification form implementation will be added in the next step.
+          </Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary", mt: 1.25, fontWeight: 600 }}>
+            {rectificationTarget?.request?.title || "Selected assignment"}
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            px: 3,
+            py: 1.75,
+            borderTop: `1px solid ${border}`,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <Box
+            onClick={() => setRectificationTarget(null)}
+            sx={{
+              px: 1.75,
+              py: 0.65,
+              borderRadius: "10px",
+              cursor: "pointer",
+              border: `1px solid ${border}`,
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              color: "text.secondary",
+              "&:hover": { backgroundColor: HOVER_BG },
+            }}
+          >
+            Close
+          </Box>
+        </Box>
+      </Dialog>
 
       <AssignmentDetailDialog
         open={!!detailTarget}
@@ -2143,7 +2241,7 @@ export default function MyAssignment() {
         }}
         onTimeIn={(a) => {
           setTimeInError("");
-          setTimeInTarget(a);
+          setTimeInConfirmTarget(a);
         }}
       />
       <QRScanCompleteDialog
@@ -2158,6 +2256,81 @@ export default function MyAssignment() {
         }}
         onConfirm={handleComplete}
       />
+      {/* Time In confirmation dialog */}
+      <Dialog
+        open={!!timeInConfirmTarget}
+        onClose={() => setTimeInConfirmTarget(null)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+            },
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <Box
+            sx={{
+              width: 3,
+              height: 22,
+              borderRadius: "2px",
+              backgroundColor: GOLD,
+              flexShrink: 0,
+            }}
+          />
+          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary", fontFamily: dm }}>
+            Confirm Time In
+          </Typography>
+        </Box>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", color: "text.primary", lineHeight: 1.6 }}>
+            You're about to time in for{" "}
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              {timeInConfirmTarget?.request?.title || "this assignment"}
+            </Box>
+            . You'll be asked to take a selfie and confirm your location.
+          </Typography>
+        </DialogContent>
+        <Box
+          sx={{
+            px: 3,
+            py: 1.75,
+            borderTop: `1px solid ${border}`,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
+            backgroundColor: isDark ? "#161616" : "#fafafa",
+          }}
+        >
+          <CancelBtn
+            onClick={() => setTimeInConfirmTarget(null)}
+            border={isDark ? BORDER_DARK : BORDER}
+          />
+          <PrimaryBtn
+            onClick={() => {
+              const target = timeInConfirmTarget;
+              setTimeInConfirmTarget(null);
+              setTimeInError("");
+              setTimeInTarget(target);
+            }}
+          >
+            <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
+            Proceed
+          </PrimaryBtn>
+        </Box>
+      </Dialog>
       <TimeInModal
         open={!!timeInTarget}
         assignment={timeInTarget}
@@ -2180,11 +2353,11 @@ export default function MyAssignment() {
         onTimeIn={(a) => {
           setOnGoingAlert(null);
           setTimeInError("");
-          setTimeInTarget(a);
+          setTimeInConfirmTarget(a);
         }}
       />
 
-      {/* ── Settings Drawer (Archive / Trash) ── */}
+      {/* â”€â”€ Settings Drawer (Archive / Trash) â”€â”€ */}
       <Drawer
         anchor="right"
         open={settingsOpen}
@@ -2300,7 +2473,7 @@ export default function MyAssignment() {
   );
 }
 
-// ── Shared micro-components ───────────────────────────────────────────────────
+// â”€â”€ Shared micro-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SemStat({ label, value }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>

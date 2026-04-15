@@ -214,6 +214,16 @@ export default function TimeoutPage() {
         p_request_id: requestId,
       });
 
+      const { data: refreshedAssignments, error: refreshErr } = await supabase
+        .from("coverage_assignments")
+        .select("status")
+        .eq("request_id", requestId);
+      if (refreshErr) throw refreshErr;
+
+      const allCompleted =
+        (refreshedAssignments || []).length > 0 &&
+        (refreshedAssignments || []).every((a) => a.status === "Completed");
+
       const assignedSections = [
         ...new Set((assignments || []).map((a) => a.section).filter(Boolean)),
       ];
