@@ -1416,6 +1416,7 @@ export default function CoverageManagementBase({
         }
 
         let eligibleProfiles = allProfiles;
+        let isExpandedSearch = false;
         if (!weekend && dutyDay !== null) {
           const { data: semester } = await supabase
             .from("semesters")
@@ -1423,6 +1424,7 @@ export default function CoverageManagementBase({
             .eq("is_active", true)
             .single();
           if (semester?.id) {
+            // First try exact duty day match
             const { data: dutySchedules } = await supabase
               .from("duty_schedules")
               .select("staffer_id")
@@ -1432,6 +1434,24 @@ export default function CoverageManagementBase({
               (dutySchedules || []).map((d) => d.staffer_id),
             );
             eligibleProfiles = allProfiles.filter((p) => eligibleIds.has(p.id));
+
+            // If not enough options, expand to nearby duty days
+            if (eligibleProfiles.length < 3) {
+              isExpandedSearch = true;
+              const dutyDaysToFetch = [dutyDay];
+              if (dutyDay > 0) dutyDaysToFetch.push(dutyDay - 1);
+              if (dutyDay < 4) dutyDaysToFetch.push(dutyDay + 1);
+
+              const { data: nearbySchedules } = await supabase
+                .from("duty_schedules")
+                .select("staffer_id")
+                .eq("semester_id", semester.id)
+                .in("duty_day", dutyDaysToFetch);
+              const expandedIds = new Set(
+                (nearbySchedules || []).map((d) => d.staffer_id),
+              );
+              eligibleProfiles = allProfiles.filter((p) => expandedIds.has(p.id));
+            }
           }
         }
 
@@ -1451,6 +1471,7 @@ export default function CoverageManagementBase({
         const withCounts = eligibleProfiles.map((p) => ({
           ...p,
           assignmentCount: assignmentCounts[p.id] || 0,
+          isFromNearbyDay: isExpandedSearch,
         }));
         const primary = withCounts
           .filter((p) => primaryPositions.includes(p.position))
@@ -1859,6 +1880,9 @@ export default function CoverageManagementBase({
         }
 
         let eligible = allProfiles;
+        let dutyDaysToFetch = [dutyDay];
+        let isExpandedSearch = false;
+
         if (!weekend && dutyDay !== null) {
           const { data: semester } = await supabase
             .from("semesters")
@@ -1866,6 +1890,7 @@ export default function CoverageManagementBase({
             .eq("is_active", true)
             .single();
           if (semester?.id) {
+            // First, try exact duty day match
             const { data: dutySchedules } = await supabase
               .from("duty_schedules")
               .select("staffer_id")
@@ -1875,6 +1900,24 @@ export default function CoverageManagementBase({
               (dutySchedules || []).map((d) => d.staffer_id),
             );
             eligible = allProfiles.filter((p) => eligibleIds.has(p.id));
+
+            // If no eligible staffers, expand to nearby duty days (±1 day)
+            if (eligible.length < 2) {
+              isExpandedSearch = true;
+              dutyDaysToFetch = [dutyDay];
+              if (dutyDay > 0) dutyDaysToFetch.push(dutyDay - 1);
+              if (dutyDay < 4) dutyDaysToFetch.push(dutyDay + 1);
+
+              const { data: nearbySchedules } = await supabase
+                .from("duty_schedules")
+                .select("staffer_id")
+                .eq("semester_id", semester.id)
+                .in("duty_day", dutyDaysToFetch);
+              const expandedIds = new Set(
+                (nearbySchedules || []).map((d) => d.staffer_id),
+              );
+              eligible = allProfiles.filter((p) => expandedIds.has(p.id));
+            }
           }
         }
 
@@ -1902,8 +1945,14 @@ export default function CoverageManagementBase({
             ...p,
             assignmentCount: assignmentCounts[p.id] || 0,
             hasConflict: conflictIds.has(p.id),
+            isFromNearbyDay: isExpandedSearch,
           }))
-          .sort((a, b) => a.assignmentCount - b.assignmentCount);
+          .sort((a, b) => {
+            // Sort by conflict (no conflict first), then by count (least loaded first)
+            if (a.hasConflict !== b.hasConflict)
+              return a.hasConflict ? 1 : -1;
+            return a.assignmentCount - b.assignmentCount;
+          });
 
         const primary = withMeta.filter((p) =>
           primaryPositions.includes(p.position),
@@ -3693,7 +3742,11 @@ function AssignmentDialog({
             sx={{
               fontFamily: dm,
               fontSize: "0.68rem",
-              color: isAlreadyAssigned ? "#15803d" : "text.secondary",
+              color: isAlreadyAssigned
+                ? "#15803d"
+                : staffer.assignmentCount > 4
+                  ? "#dc2626"
+                  : "text.secondary",
             }}
           >
             {isAlreadyAssigned
@@ -3705,6 +3758,33 @@ function AssignmentDialog({
                   : `${staffer.assignmentCount} assignment${staffer.assignmentCount > 1 ? "s" : ""}`}
           </Typography>
         </Box>
+        {staffer.isFromNearbyDay && !isAlreadyAssigned && (
+          <Box
+            sx={{
+              px: 0.6,
+              py: 0.3,
+              borderRadius: "4px",
+              backgroundColor: isDark
+                ? "rgba(96, 165, 250, 0.12)"
+                : "rgba(96, 165, 250, 0.08)",
+              border: `1px solid ${isDark ? "rgba(96, 165, 250, 0.25)" : "rgba(96, 165, 250, 0.15)"}`,
+              flexShrink: 0,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.58rem",
+                fontWeight: 600,
+                color: isDark ? "#60a5fa" : "#0c4a6e",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Nearby
+            </Typography>
+          </Box>
+        )}
         {showPosition && !isAlreadyAssigned && (
           <Box
             sx={{
@@ -5341,7 +5421,11 @@ function ReassignPickerDialog({
                         sx={{
                           fontFamily: dm,
                           fontSize: "0.68rem",
-                          color: s.hasConflict ? "#b45309" : "text.secondary",
+                          color: s.hasConflict
+                            ? "#b45309"
+                            : s.assignmentCount > 4
+                              ? "#dc2626"
+                              : "text.secondary",
                         }}
                       >
                         {s.hasConflict
@@ -5351,6 +5435,32 @@ function ReassignPickerDialog({
                             : `${s.assignmentCount} assignment${s.assignmentCount > 1 ? "s" : ""}`}
                       </Typography>
                     </Box>
+                    {s.isFromNearbyDay && (
+                      <Box
+                        sx={{
+                          px: 0.8,
+                          py: 0.4,
+                          borderRadius: "4px",
+                          backgroundColor: isDark
+                            ? "rgba(96, 165, 250, 0.12)"
+                            : "rgba(96, 165, 250, 0.08)",
+                          border: `1px solid ${isDark ? "rgba(96, 165, 250, 0.25)" : "rgba(96, 165, 250, 0.15)"}`,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.62rem",
+                            fontWeight: 600,
+                            color: isDark ? "#60a5fa" : "#0c4a6e",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Nearby
+                        </Typography>
+                      </Box>
+                    )}
                     {s.hasConflict && (
                       <Box
                         sx={{
