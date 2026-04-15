@@ -938,7 +938,7 @@ export default function CoverageManagementBase({
         )
       `;
 
-      const [allForwarded, forApproval, assigned, onGoing, completed] =
+      const [allForwarded, forApproval, assigned, onGoing, completed, cancelled] =
         await Promise.all([
           applyHiddenFilter(
             supabase
@@ -985,6 +985,14 @@ export default function CoverageManagementBase({
               .contains("forwarded_sections", [currentUser.section])
               .order("event_date", { ascending: false }),
           ),
+          applyHiddenFilter(
+            supabase
+              .from("coverage_requests")
+              .select(baseSelect)
+              .eq("status", "Cancelled")
+              .contains("forwarded_sections", [currentUser.section])
+              .order("event_date", { ascending: false }),
+          ),
         ]);
 
       if (
@@ -992,14 +1000,16 @@ export default function CoverageManagementBase({
         forApproval.error ||
         assigned.error ||
         onGoing.error ||
-        completed.error
+        completed.error ||
+        cancelled.error
       )
         throw (
           allForwarded.error ||
           forApproval.error ||
           assigned.error ||
           onGoing.error ||
-          completed.error
+          completed.error ||
+          cancelled.error
         );
 
       const mySection = currentUser.section;
@@ -1026,6 +1036,7 @@ export default function CoverageManagementBase({
       const assignedData = assigned.data || [];
       const onGoingData = onGoing.data || [];
       const completedData = completed.data || [];
+      const cancelledData = cancelled.data || [];
       const sectionForApprovalMap = new Map();
       [...(forApproval.data || []), ...forwardedData].forEach(
         (req) => {
@@ -1092,6 +1103,11 @@ export default function CoverageManagementBase({
         );
         return myAssignments.length > 0;
       });
+      const emergencyCancelledRows = cancelledData.filter((req) =>
+        (req.coverage_assignments || []).some(
+          (a) => a.section === mySection && isAnnouncedEmergencyAssignment(a),
+        ),
+      );
       const pendingAssignedRows = forwardedData
         .filter((req) => pendingRequestIds.has(req.id))
         .map((req) => ({
@@ -1101,7 +1117,12 @@ export default function CoverageManagementBase({
         }));
       const mergedAssigned = Array.from(
         new Map(
-          [...cleanAssigned, ...forwardedAssignedRows, ...pendingAssignedRows].map(
+          [
+            ...cleanAssigned,
+            ...forwardedAssignedRows,
+            ...pendingAssignedRows,
+            ...emergencyCancelledRows,
+          ].map(
             (req) => [req.id, req],
           ),
         ).values(),

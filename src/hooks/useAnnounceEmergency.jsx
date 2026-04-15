@@ -64,11 +64,8 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
         ? `${reasonWithEmergencyPrefix} (Proof: ${proofPath})`
         : reasonWithEmergencyPrefix;
 
-      const notifySections =
-        Array.isArray(request?.forwarded_sections) && request.forwarded_sections.length > 0
-          ? request.forwarded_sections
-          : [announceAssignment.section].filter(Boolean);
-      
+      const notifySections = [announceAssignment.section].filter(Boolean);
+
       const { error: updateError } = await supabase
         .from("coverage_assignments")
         .update({
@@ -76,7 +73,6 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
           completed_at: now,
           cancelled_at: now,
           cancellation_reason: cancellationReason,
-          updated_at: now,
         })
         .eq("id", announceAssignment.id);
       if (updateError) throw updateError;

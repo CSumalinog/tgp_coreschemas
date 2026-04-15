@@ -50,7 +50,6 @@ export async function reassignAfterNoShow({
       reason ||
       existingReason ||
       (isAnnouncedEmergency ? "Emergency announced" : "No Show"),
-    updated_at: now,
   };
   if (!isAnnouncedEmergency) {
     previousUpdate.completed_at = now;
@@ -80,7 +79,6 @@ export async function reassignAfterNoShow({
         is_reassigned: true,
         cancellation_reason: null,
         created_at: now,
-        updated_at: now,
       },
     ])
     .select()
