@@ -47,8 +47,8 @@ export async function reassignAfterNoShow({
   const previousUpdate = {
     status: isAnnouncedEmergency ? "Cancelled" : "No Show",
     cancellation_reason:
-      reason ||
       existingReason ||
+      reason ||
       (isAnnouncedEmergency ? "Emergency announced" : "No Show"),
   };
   if (!isAnnouncedEmergency) {

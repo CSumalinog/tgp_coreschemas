@@ -1864,13 +1864,13 @@ export default function CoverageManagementBase({
       try {
         const weekend = isWeekendDate(dateStr);
         const dutyDay = jsDateToDutyDay(dateStr);
+        const isEmergencyReassignment = isAnnouncedEmergencyAssignment(assignment);
         const primaryPositions =
           SECTION_PRIMARY_POSITIONS[currentUser?.section] || [];
 
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, full_name, section, role, position, avatar_url")
-          .eq("division", currentUser.division)
+          .select("id, full_name, section, division, role, position, avatar_url")
           .eq("role", "staff")
           .eq("is_active", true);
 
@@ -1879,10 +1879,16 @@ export default function CoverageManagementBase({
           return;
         }
 
-        let eligible = allProfiles;
-        let dutyDaysToFetch = [dutyDay];
-        let isExpandedSearch = false;
+        const sameDivisionProfiles = allProfiles.filter(
+          (profile) => profile.division === currentUser.division,
+        );
+        const crossDivisionProfiles = allProfiles.filter(
+          (profile) =>
+            profile.division && profile.division !== currentUser.division,
+        );
 
+        let exactDutyIds = null;
+        let nearbyDutyIds = null;
         if (!weekend && dutyDay !== null) {
           const { data: semester } = await supabase
             .from("semesters")
@@ -1890,69 +1896,105 @@ export default function CoverageManagementBase({
             .eq("is_active", true)
             .single();
           if (semester?.id) {
-            // First, try exact duty day match
-            const { data: dutySchedules } = await supabase
+            const { data: exactSchedules } = await supabase
               .from("duty_schedules")
               .select("staffer_id")
               .eq("semester_id", semester.id)
               .eq("duty_day", dutyDay);
-            const eligibleIds = new Set(
-              (dutySchedules || []).map((d) => d.staffer_id),
+            exactDutyIds = new Set(
+              (exactSchedules || []).map((schedule) => schedule.staffer_id),
             );
-            eligible = allProfiles.filter((p) => eligibleIds.has(p.id));
 
-            // If no eligible staffers, expand to nearby duty days (±1 day)
-            if (eligible.length < 2) {
-              isExpandedSearch = true;
-              dutyDaysToFetch = [dutyDay];
-              if (dutyDay > 0) dutyDaysToFetch.push(dutyDay - 1);
-              if (dutyDay < 4) dutyDaysToFetch.push(dutyDay + 1);
-
-              const { data: nearbySchedules } = await supabase
-                .from("duty_schedules")
-                .select("staffer_id")
-                .eq("semester_id", semester.id)
-                .in("duty_day", dutyDaysToFetch);
-              const expandedIds = new Set(
-                (nearbySchedules || []).map((d) => d.staffer_id),
-              );
-              eligible = allProfiles.filter((p) => expandedIds.has(p.id));
-            }
+            const nearbyDutyDays = [dutyDay];
+            if (dutyDay > 0) nearbyDutyDays.push(dutyDay - 1);
+            if (dutyDay < 4) nearbyDutyDays.push(dutyDay + 1);
+            const { data: nearbySchedules } = await supabase
+              .from("duty_schedules")
+              .select("staffer_id")
+              .eq("semester_id", semester.id)
+              .in("duty_day", nearbyDutyDays);
+            nearbyDutyIds = new Set(
+              (nearbySchedules || []).map((schedule) => schedule.staffer_id),
+            );
           }
         }
 
-        // Exclude the original assignee
-        eligible = eligible.filter((p) => p.id !== assignment.assigned_to);
+        const decorateCandidates = async (
+          profiles,
+          { isCrossDivision = false, useNearbyBadge = false } = {},
+        ) => {
+          let pool = profiles.filter(
+            (profile) => profile.id !== assignment.assigned_to,
+          );
+          if (exactDutyIds && !useNearbyBadge) {
+            pool = pool.filter((profile) => exactDutyIds.has(profile.id));
+          }
+          if (nearbyDutyIds && useNearbyBadge) {
+            pool = pool.filter((profile) => nearbyDutyIds.has(profile.id));
+          }
 
-        // Get assignment counts + conflict flags
-        const ids = eligible.map((p) => p.id);
-        let assignmentCounts = {};
-        let conflictIds = new Set();
-        if (ids.length > 0) {
-          const { data: assignments } = await supabase
-            .from("coverage_assignments")
-            .select("assigned_to, assignment_date")
-            .in("assigned_to", ids);
-          (assignments || []).forEach((a) => {
-            assignmentCounts[a.assigned_to] =
-              (assignmentCounts[a.assigned_to] || 0) + 1;
-            if (a.assignment_date === dateStr) conflictIds.add(a.assigned_to);
+          const ids = pool.map((profile) => profile.id);
+          const assignmentCounts = {};
+          const conflictIds = new Set();
+          if (ids.length > 0) {
+            const { data: assignments } = await supabase
+              .from("coverage_assignments")
+              .select("assigned_to, assignment_date")
+              .in("assigned_to", ids);
+            (assignments || []).forEach((assigned) => {
+              assignmentCounts[assigned.assigned_to] =
+                (assignmentCounts[assigned.assigned_to] || 0) + 1;
+              if (assigned.assignment_date === dateStr) {
+                conflictIds.add(assigned.assigned_to);
+              }
+            });
+          }
+
+          return pool
+            .map((profile) => ({
+              ...profile,
+              assignmentCount: assignmentCounts[profile.id] || 0,
+              hasConflict: conflictIds.has(profile.id),
+              isCrossDivision,
+              isFromNearbyDay:
+                !!(useNearbyBadge && nearbyDutyIds && !exactDutyIds?.has(profile.id)),
+            }))
+            .sort((a, b) => {
+              if (a.hasConflict !== b.hasConflict) {
+                return a.hasConflict ? 1 : -1;
+              }
+              return a.assignmentCount - b.assignmentCount;
+            });
+        };
+
+        const getSelectableCount = (profiles) =>
+          profiles.filter((profile) => !profile.hasConflict).length;
+
+        let withMeta = await decorateCandidates(sameDivisionProfiles);
+        if (getSelectableCount(withMeta) < 2) {
+          const nearbySameDivision = await decorateCandidates(sameDivisionProfiles, {
+            useNearbyBadge: true,
           });
+          if (
+            getSelectableCount(nearbySameDivision) > 0 ||
+            withMeta.length === 0
+          ) {
+            withMeta = nearbySameDivision;
+          }
         }
 
-        const withMeta = eligible
-          .map((p) => ({
-            ...p,
-            assignmentCount: assignmentCounts[p.id] || 0,
-            hasConflict: conflictIds.has(p.id),
-            isFromNearbyDay: isExpandedSearch,
-          }))
-          .sort((a, b) => {
-            // Sort by conflict (no conflict first), then by count (least loaded first)
-            if (a.hasConflict !== b.hasConflict)
-              return a.hasConflict ? 1 : -1;
-            return a.assignmentCount - b.assignmentCount;
-          });
+        if (isEmergencyReassignment && getSelectableCount(withMeta) === 0) {
+          const crossDivisionFallback = await decorateCandidates(
+            crossDivisionProfiles,
+            {
+              isCrossDivision: true,
+              useNearbyBadge: !!nearbyDutyIds,
+            },
+          );
+          if (crossDivisionFallback.length > 0) {
+            withMeta = crossDivisionFallback;
+          }
+        }
 
         const primary = withMeta.filter((p) =>
           primaryPositions.includes(p.position),
@@ -1974,7 +2016,12 @@ export default function CoverageManagementBase({
     setReassignError("");
     try {
       const isAnnouncedEmergency = isAnnouncedEmergencyAssignment(reassignAssignment);
-      const reason = isAnnouncedEmergency ? "Emergency announced" : "No Show";
+      const selectedStaffer = reassignStaffers.find(
+        (staffer) => staffer.id === reassignSelectedId,
+      );
+      const isCrossDivisionEmergency =
+        isAnnouncedEmergency && !!selectedStaffer?.isCrossDivision;
+      const reason = isAnnouncedEmergency ? undefined : "No Show";
       const result = await reassignAfterNoShow({
         requestId: reassignAssignment.request_id,
         assignmentId: reassignAssignment.id,
@@ -1987,6 +2034,23 @@ export default function CoverageManagementBase({
         reason,
       });
       if (result?.error) throw result.error;
+
+      if (isCrossDivisionEmergency) {
+        await notifyAdmins({
+          type: "cross_division_emergency_reassignment",
+          title: "Cross-Division Emergency Reassignment",
+          message: `${currentUser.full_name} reassigned "${reassignRequest?.title || "a coverage request"}" to ${selectedStaffer?.full_name || "a replacement staffer"} from ${selectedStaffer?.division || "another division"} because no same-division replacement was available.`,
+          requestId: reassignAssignment.request_id,
+          createdBy: currentUser.id,
+          targetPayload: {
+            replacementStaffId: selectedStaffer?.id,
+            replacementSection: selectedStaffer?.section || null,
+            replacementDivision: selectedStaffer?.division || null,
+            sourceDivision: currentUser.division || null,
+            actorMode: "cross_division_emergency",
+          },
+        });
+      }
 
       await notifySecHeads({
         sections: reassignRequest?.forwarded_sections?.length
@@ -2029,7 +2093,9 @@ export default function CoverageManagementBase({
       setToast({
         open: true,
         text: isAnnouncedEmergency
-          ? "Emergency replacement assigned successfully."
+          ? isCrossDivisionEmergency
+            ? "Emergency replacement assigned across divisions. Admins were notified."
+            : "Emergency replacement assigned successfully."
           : "No-show replacement assigned successfully.",
         severity: "success",
       });
@@ -2042,6 +2108,7 @@ export default function CoverageManagementBase({
     reassignAssignment,
     reassignRequest,
     reassignSelectedId,
+    reassignStaffers,
     currentUser,
     loadAll,
   ]);
@@ -3350,6 +3417,7 @@ export default function CoverageManagementBase({
         error={reassignError}
         isDark={isDark}
         border={border}
+        currentDivision={currentUser?.division}
         onClose={() => {
           if (reassigning) return;
           setReassignDialogOpen(false);
@@ -5198,6 +5266,7 @@ function ReassignPickerDialog({
   error,
   isDark,
   border,
+  currentDivision,
   onClose,
   onConfirm,
 }) {
@@ -5209,6 +5278,8 @@ function ReassignPickerDialog({
   const isAnnouncedEmergency = isAnnouncedEmergencyAssignment(assignment);
   const selectedStaffer = staffers.find((s) => s.id === selectedId);
   const selectedHasConflict = !!selectedStaffer?.hasConflict;
+  const hasCrossDivisionOptions = staffers.some((s) => s.isCrossDivision);
+  const hasNearbyOptions = staffers.some((s) => s.isFromNearbyDay);
 
   const fmtDateLabel = (d) => {
     if (!d) return "—";
@@ -5326,6 +5397,40 @@ function ReassignPickerDialog({
 
         {/* Staffer list */}
         <Box>
+          {hasCrossDivisionOptions && (
+            <Alert
+              severity="warning"
+              sx={{
+                mb: 1.25,
+                borderRadius: "8px",
+                fontFamily: dm,
+                alignItems: "center",
+                "& .MuiAlert-message": {
+                  fontSize: "0.8rem",
+                  lineHeight: 1.35,
+                },
+              }}
+            >
+              Same-division replacements were unavailable. Outside-division staffers are shown as an emergency fallback, and admins will be notified if you confirm one.
+            </Alert>
+          )}
+          {!hasCrossDivisionOptions && hasNearbyOptions && (
+            <Alert
+              severity="info"
+              sx={{
+                mb: 1.25,
+                borderRadius: "8px",
+                fontFamily: dm,
+                alignItems: "center",
+                "& .MuiAlert-message": {
+                  fontSize: "0.8rem",
+                  lineHeight: 1.35,
+                },
+              }}
+            >
+              Exact-day coverage was limited, so nearby duty-day staffers are shown and sorted by lightest workload first.
+            </Alert>
+          )}
           <Typography
             sx={{
               fontFamily: dm,
@@ -5348,7 +5453,9 @@ function ReassignPickerDialog({
             <Typography
               sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", py: 1 }}
             >
-              No eligible staffers found for this date.
+              {isAnnouncedEmergency
+                ? "No eligible staffers found after same-division and emergency fallback checks."
+                : "No eligible staffers found for this date."}
             </Typography>
           ) : (
             <Box
@@ -5434,6 +5541,19 @@ function ReassignPickerDialog({
                             ? "No assignments yet"
                             : `${s.assignmentCount} assignment${s.assignmentCount > 1 ? "s" : ""}`}
                       </Typography>
+                      {s.isCrossDivision && (
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.65rem",
+                            color: "text.secondary",
+                            mt: 0.15,
+                          }}
+                        >
+                          {s.section || "Other section"} · {s.division || "Other division"}
+                          {currentDivision ? ` vs ${currentDivision}` : ""}
+                        </Typography>
+                      )}
                     </Box>
                     {s.isFromNearbyDay && (
                       <Box
@@ -5458,6 +5578,32 @@ function ReassignPickerDialog({
                           }}
                         >
                           Nearby
+                        </Typography>
+                      </Box>
+                    )}
+                    {s.isCrossDivision && (
+                      <Box
+                        sx={{
+                          px: 0.8,
+                          py: 0.4,
+                          borderRadius: "4px",
+                          backgroundColor: isDark
+                            ? "rgba(239,68,68,0.12)"
+                            : "rgba(239,68,68,0.08)",
+                          border: `1px solid ${isDark ? "rgba(239,68,68,0.24)" : "rgba(239,68,68,0.18)"}`,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.62rem",
+                            fontWeight: 600,
+                            color: "#b91c1c",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Outside Division
                         </Typography>
                       </Box>
                     )}
@@ -5514,6 +5660,13 @@ function ReassignPickerDialog({
           >
             Selected staffer already has an assignment on this date. Choose a
             non-conflicting replacement.
+          </Typography>
+        )}
+        {!selectedHasConflict && selectedStaffer?.isCrossDivision && (
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.75rem", color: "#b91c1c" }}
+          >
+            This replacement is outside {currentDivision || "your current"} division. Confirm only for emergency coverage when no same-division option is available.
           </Typography>
         )}
       </Box>
