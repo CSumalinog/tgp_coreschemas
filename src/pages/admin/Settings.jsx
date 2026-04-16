@@ -25,6 +25,7 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -159,7 +160,7 @@ function ConfirmDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           width: 400,
@@ -167,7 +168,7 @@ function ConfirmDialog({
           fontFamily: dm,
           bgcolor: "background.paper",
         },
-      }}
+      } }}
     >
       <Box sx={{ p: 3 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
@@ -535,8 +536,8 @@ export default function Settings() {
       {
         field: "title",
         headerName: "Title",
-        flex: 1,
-        minWidth: 200,
+        flex: TABLE_FIRST_COL_FLEX,
+        minWidth: TABLE_FIRST_COL_MIN_WIDTH,
         renderCell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
             <Typography

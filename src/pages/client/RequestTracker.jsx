@@ -71,6 +71,8 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
 } from "../../utils/layoutTokens";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
@@ -1415,11 +1417,11 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
             </ListItemIcon>
             <ListItemText
               primary="Reschedule"
-              primaryTypographyProps={{
+              slotProps={{ primary: {
                 fontFamily: dm,
                 fontSize: "0.8rem",
                 fontWeight: 500,
-              }}
+              } }}
             />
           </MenuItem>
         )}
@@ -1442,12 +1444,12 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
             </ListItemIcon>
             <ListItemText
               primary="Cancel Request"
-              primaryTypographyProps={{
+              slotProps={{ primary: {
                 fontFamily: dm,
                 fontSize: "0.8rem",
                 fontWeight: 500,
                 color: "#ef4444",
-              }}
+              } }}
             />
           </MenuItem>
         )}
@@ -1461,8 +1463,8 @@ function useGridColumns(isDark, { onView, onReschedule, onCancel } = {}) {
   const titleCol = {
     field: "eventTitle",
     headerName: "Event Title",
-    flex: 1.4,
-    minWidth: 180,
+    flex: TABLE_FIRST_COL_FLEX,
+    minWidth: TABLE_FIRST_COL_MIN_WIDTH,
     renderCell: (p) => (
       <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
         <Typography
@@ -2133,7 +2135,7 @@ function RequestDetailDialog({
         onClose={onClose}
         fullWidth
         maxWidth="sm"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             maxHeight: "90vh",
@@ -2143,7 +2145,7 @@ function RequestDetailDialog({
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         {/* Header */}
         <Box
@@ -2268,11 +2270,11 @@ function RequestDetailDialog({
                       </ListItemIcon>
                       <ListItemText
                         primary="Reschedule"
-                        primaryTypographyProps={{
+                        slotProps={{ primary: {
                           fontFamily: dm,
                           fontSize: "0.8rem",
                           fontWeight: 500,
-                        }}
+                        } }}
                       />
                     </MenuItem>
                   )}
@@ -2297,12 +2299,12 @@ function RequestDetailDialog({
                       </ListItemIcon>
                       <ListItemText
                         primary="Cancel Request"
-                        primaryTypographyProps={{
+                        slotProps={{ primary: {
                           fontFamily: dm,
                           fontSize: "0.8rem",
                           fontWeight: 500,
                           color: "#ef4444",
-                        }}
+                        } }}
                       />
                     </MenuItem>
                   )}

@@ -123,7 +123,7 @@ function AnnounceEmergencyDialog({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "14px",
           backgroundColor: "background.paper",
@@ -132,7 +132,7 @@ function AnnounceEmergencyDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       <Box
         sx={{

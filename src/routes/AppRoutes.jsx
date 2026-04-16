@@ -33,6 +33,7 @@ import CoverageAssignmentPage from "../pages/section_head/CoverageAssignmentPage
 import CoverageTrackerPage from "../pages/section_head/CoverageTrackerPage";
 import CoverageTimeRecordPage from "../pages/section_head/CoverageTimeRecordPage";
 import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
+import ReassignmentHistoryPage from "../pages/section_head/ReassignmentHistoryPage";
 
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
@@ -145,17 +146,9 @@ function AppRoutes() {
         <Route path="coverage-management" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
         <Route path="coverage-management/assignment" element={<CoverageAssignmentPage />} />
         <Route path="coverage-management/tracker" element={<CoverageTrackerPage />} />
-        <Route
-          path="coverage-management/time-record"
-          element={
-            <Navigate
-              to="/sec_head/coverage-management/tracker"
-              replace
-              state={{ tab: "time-record" }}
-            />
-          }
-        />
+        <Route path="coverage-management/time-record" element={<CoverageTimeRecordPage />} />
         <Route path="my-staffers" element={<SecHeadMyStaffers />} />
+        <Route path="reassignment-history" element={<ReassignmentHistoryPage />} />
         <Route path="archive" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
         <Route path="trash" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />
         <Route path="notification-cleanup" element={<Navigate to="/sec_head/coverage-management/assignment" replace />} />

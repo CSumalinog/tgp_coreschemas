@@ -47,6 +47,8 @@ import {
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   MODAL_TAB_HEIGHT,
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -560,8 +562,8 @@ export default function AdminRequestManagement() {
   const titleCol = {
     field: "requestTitle",
     headerName: "Request Title",
-    flex: 1.4,
-    minWidth: 180,
+    flex: TABLE_FIRST_COL_FLEX,
+    minWidth: TABLE_FIRST_COL_MIN_WIDTH,
     renderCell: (p) => {
       const isUnread = !viewedIds.has(p.row.id);
       return (
@@ -1272,7 +1274,7 @@ export default function AdminRequestManagement() {
             <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+            slotProps={{ primary: { fontFamily: dm, fontSize: "0.82rem" } }}
           >
             Archive
           </ListItemText>
@@ -1291,11 +1293,11 @@ export default function AdminRequestManagement() {
             />
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{
+            slotProps={{ primary: {
               fontFamily: dm,
               fontSize: "0.82rem",
               color: "#dc2626",
-            }}
+            } }}
           >
             Move to Trash
           </ListItemText>

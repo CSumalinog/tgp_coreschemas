@@ -172,7 +172,7 @@ export default function QRScanCompleteDialog({
       onClose={handleClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -182,7 +182,7 @@ export default function QRScanCompleteDialog({
             : "0 8px 40px rgba(53,53,53,0.12)",
           overflow: "hidden",
         },
-      }}
+      } }}
     >
       {/* ── Header ── */}
       <Box

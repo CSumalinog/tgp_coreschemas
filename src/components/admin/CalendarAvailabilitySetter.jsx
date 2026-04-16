@@ -210,7 +210,7 @@ export default function CalendarEventDialog({
             sx: { backgroundColor: "transparent" },
           },
         }}
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             width: MODAL_COMPACT_WIDTH,
             borderRadius: CONTROL_RADIUS,
@@ -222,7 +222,7 @@ export default function CalendarEventDialog({
               : "0 8px 40px rgba(53,53,53,0.12)",
             overflow: "hidden",
           },
-        }}
+        } }}
       >
         {/* ── Header ── */}
         <Box
@@ -663,7 +663,7 @@ export default function CalendarEventDialog({
             sx: { backgroundColor: "transparent" },
           },
         }}
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             width: 380,
             borderRadius: "10px",
@@ -675,7 +675,7 @@ export default function CalendarEventDialog({
               : "0 8px 40px rgba(53,53,53,0.12)",
             overflow: "hidden",
           },
-        }}
+        } }}
       >
         {/* Header */}
         <Box

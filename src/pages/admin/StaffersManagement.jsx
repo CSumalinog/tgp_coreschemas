@@ -63,6 +63,8 @@ import {
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   MODAL_TAB_HEIGHT,
+  TABLE_FIRST_COL_STAFF_FLEX,
+  TABLE_FIRST_COL_STAFF_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -604,8 +606,8 @@ export default function StaffersManagement() {
       {
         field: "full_name",
         headerName: "Full Name",
-        flex: 1.5,
-        minWidth: 200,
+        flex: TABLE_FIRST_COL_STAFF_FLEX,
+        minWidth: TABLE_FIRST_COL_STAFF_MIN_WIDTH,
         renderCell: (p) => {
           const url = getAvatarUrl(p.row.avatar_url);
           const avatarColor = getAvatarColor(p.row.id || p.value);
@@ -1156,10 +1158,10 @@ export default function StaffersManagement() {
             <EditOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} />
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{
+            slotProps={{ primary: {
               fontFamily: dm,
               fontSize: "0.78rem",
-            }}
+            } }}
           >
             Edit
           </ListItemText>
@@ -1180,10 +1182,10 @@ export default function StaffersManagement() {
             )}
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{
+            slotProps={{ primary: {
               fontFamily: dm,
               fontSize: "0.78rem",
-            }}
+            } }}
           >
             {menuRow?.is_active ? "Deactivate" : "Reactivate"}
           </ListItemText>
@@ -1208,11 +1210,11 @@ export default function StaffersManagement() {
             />
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{
+            slotProps={{ primary: {
               fontFamily: dm,
               fontSize: "0.78rem",
               color: "#dc2626",
-            }}
+            } }}
           >
             Delete
           </ListItemText>
@@ -2384,7 +2386,7 @@ function BrandDialog({
       onClose={onClose}
       fullWidth
       maxWidth="xs"
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -2396,7 +2398,7 @@ function BrandDialog({
           flexDirection: "column",
           maxHeight: "90vh",
         },
-      }}
+      } }}
     >
       {/* ── Header ── */}
       <Box

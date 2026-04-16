@@ -301,7 +301,7 @@ export default function RescheduleDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -311,7 +311,7 @@ export default function RescheduleDialog({
             : "0 8px 40px rgba(53,53,53,0.12)",
           maxHeight: "90vh",
         },
-      }}
+      } }}
     >
       <Box
         sx={{

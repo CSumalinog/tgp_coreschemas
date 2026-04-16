@@ -15,6 +15,7 @@ import { DataGrid } from "../../../components/common/AppDataGrid";
 import RequestBulkBar from "./RequestBulkBar";
 import RequestConfirmDialog from "./RequestConfirmDialog";
 import BrandedLoader from "../../../components/common/BrandedLoader";
+import { TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../../utils/layoutTokens";
 import {
   BORDER,
   BORDER_DARK,
@@ -157,8 +158,8 @@ export default function TrashManagementBase({
       {
         field: "title",
         headerName: "Title",
-        flex: 1,
-        minWidth: 200,
+        flex: TABLE_FIRST_COL_FLEX,
+        minWidth: TABLE_FIRST_COL_MIN_WIDTH,
         renderCell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
             <Typography

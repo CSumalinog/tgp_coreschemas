@@ -27,6 +27,8 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  TABLE_FIRST_COL_STAFF_FLEX,
+  TABLE_FIRST_COL_STAFF_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -387,7 +389,8 @@ export default function MyStaffers() {
     {
       field: "full_name",
       headerName: "Staffer",
-      flex: 1.3,
+      flex: TABLE_FIRST_COL_STAFF_FLEX,
+      minWidth: TABLE_FIRST_COL_STAFF_MIN_WIDTH,
       renderCell: (params) => {
         const url = getAvatarUrl(params.row.avatar_url);
         const avatarColor = getAvatarColor(params.row.id || params.value);

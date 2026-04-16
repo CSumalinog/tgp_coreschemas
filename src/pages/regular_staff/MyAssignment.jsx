@@ -400,7 +400,7 @@ function AssignmentCard({
               <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
             </ListItemIcon>
             <ListItemText
-              primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+              slotProps={{ primary: { fontFamily: dm, fontSize: "0.82rem" } }}
             >
               Archive
             </ListItemText>
@@ -423,11 +423,11 @@ function AssignmentCard({
               />
             </ListItemIcon>
             <ListItemText
-              primaryTypographyProps={{
+              slotProps={{ primary: {
                 fontFamily: dm,
                 fontSize: "0.82rem",
                 color: "#dc2626",
-              }}
+              } }}
             >
               Move to Trash
             </ListItemText>
@@ -446,11 +446,11 @@ function AssignmentCard({
               />
             </ListItemIcon>
             <ListItemText
-              primaryTypographyProps={{
+              slotProps={{ primary: {
                 fontFamily: dm,
                 fontSize: "0.82rem",
                 color: a.status === "Cancelled" ? "text.disabled" : undefined,
-              }}
+              } }}
             >
               Request Rectification
             </ListItemText>
@@ -469,11 +469,11 @@ function AssignmentCard({
               />
             </ListItemIcon>
             <ListItemText
-              primaryTypographyProps={{
+              slotProps={{ primary: {
                 fontFamily: dm,
                 fontSize: "0.82rem",
                 color: a.status === "Cancelled" ? "text.disabled" : GOLD,
-              }}
+              } }}
             >
               {a.status === "Cancelled" ? "Emergency Announced" : "Announce Emergency"}
             </ListItemText>
@@ -733,7 +733,7 @@ function AssignmentDetailDialog({
       onClose={onClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -745,7 +745,7 @@ function AssignmentDetailDialog({
           display: "flex",
           flexDirection: "column",
         },
-      }}
+      } }}
     >
       <Box
         sx={{
@@ -1152,6 +1152,80 @@ function AssignmentDetailDialog({
               </Typography>
             </Box>
           )}
+          {assignment.status === "Cancelled" &&
+            (() => {
+              const raw = String(assignment.cancellation_reason || "");
+              const isEmergency = raw.toLowerCase().startsWith("emergency announced");
+              if (!isEmergency) return null;
+              // Parse reason text: strip prefix and optional (Proof: ...) suffix
+              const withoutPrefix = raw.replace(/^emergency announced:\s*/i, "");
+              const proofMatch = withoutPrefix.match(/\s*\(Proof:\s*([^)]+)\)\s*$/);
+              const reasonText = proofMatch
+                ? withoutPrefix.slice(0, withoutPrefix.lastIndexOf(proofMatch[0])).trim()
+                : withoutPrefix.trim();
+              const proofPath = proofMatch ? proofMatch[1].trim() : null;
+              const supabaseBase = (import.meta.env.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
+              const proofUrl = proofPath && supabaseBase
+                ? `${supabaseBase}/storage/v1/object/public/coverage-files/${proofPath}`
+                : proofPath;
+              return (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.9,
+                    px: 1.5,
+                    py: 1.25,
+                    borderRadius: "10px",
+                    backgroundColor: "rgba(245,197,43,0.06)",
+                    border: `1px solid rgba(245,197,43,0.3)`,
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: "#b45309", flexShrink: 0 }} />
+                    <Typography
+                      sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 700, color: "#b45309" }}
+                    >
+                      Emergency Announced — Received
+                    </Typography>
+                  </Box>
+                  {reasonText && (
+                    <Typography
+                      sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary", lineHeight: 1.55, pl: 0.25 }}
+                    >
+                      {reasonText}
+                    </Typography>
+                  )}
+                  {proofUrl && (
+                    <Box
+                      component="a"
+                      href={proofUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.7,
+                        px: 1,
+                        py: 0.45,
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        border: `1px solid rgba(245,197,43,0.35)`,
+                        textDecoration: "none",
+                        transition: "all 0.15s",
+                        alignSelf: "flex-start",
+                        "&:hover": { borderColor: "#b45309", backgroundColor: "rgba(245,197,43,0.1)" },
+                      }}
+                    >
+                      <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "#b45309" }} />
+                      <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "#b45309" }}>
+                        View Proof
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              );
+            })()}
         </Box>
       </DialogContent>
       <Box
@@ -1251,7 +1325,7 @@ function ConfirmCompleteDialog({
       onClose={() => !completing && onClose()}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -1260,7 +1334,7 @@ function ConfirmCompleteDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       <Box
         sx={{
@@ -1493,6 +1567,7 @@ export default function MyAssignment() {
         .select(
           `
         id, status, section, assignment_date, assigned_at, timed_in_at,
+        cancellation_reason, is_reassigned,
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
           id, title, description, event_date, from_time, to_time,
@@ -2172,12 +2247,12 @@ export default function MyAssignment() {
         onClose={() => setRectificationTarget(null)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "14px",
             border: `1px solid ${border}`,
           },
-        }}
+        } }}
       >
         <Box
           sx={{

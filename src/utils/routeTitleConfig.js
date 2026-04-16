@@ -70,6 +70,14 @@ const ROUTE_TITLE_CONFIG = {
       
     },
     {
+      path: "/sec_head/coverage-management/time-record",
+      title: "Coverage Time Record",
+    },
+    {
+      path: "/sec_head/reassignment-history",
+      title: "Reassignment History",
+    },
+    {
       path: "/sec_head/my-staffers",
       title: "My Staffers",
       

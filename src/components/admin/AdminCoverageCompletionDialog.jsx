@@ -174,7 +174,7 @@ export default function AdminCoverageCompletionDialog({
       onClose={onClose}
       maxWidth={maximized ? "lg" : "sm"}
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -185,7 +185,7 @@ export default function AdminCoverageCompletionDialog({
             ? "0 20px 60px rgba(0,0,0,0.5)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       <Box
         sx={{

@@ -41,6 +41,7 @@ import {
   getAcademicYearLabel,
   getSemesterDisplayName,
 } from "../../utils/semesterLabel";
+import { TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -463,8 +464,8 @@ export default function SemesterManagement() {
     {
       field: "name",
       headerName: "Semester",
-      flex: 1.2,
-      minWidth: 160,
+      flex: TABLE_FIRST_COL_FLEX,
+      minWidth: TABLE_FIRST_COL_MIN_WIDTH,
       renderCell: (p) => {
         const rowRule = getRuleForRow(p.row);
 
@@ -776,7 +777,7 @@ export default function SemesterManagement() {
               <EditOutlinedIcon sx={{ fontSize: 18 }} />
             </ListItemIcon>
             <ListItemText
-              primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+              slotProps={{ primary: { fontFamily: dm, fontSize: "0.82rem" } }}
             >
               Edit
             </ListItemText>
@@ -793,7 +794,7 @@ export default function SemesterManagement() {
         }}
         fullWidth
         maxWidth="sm"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             backgroundColor: "background.paper",
@@ -802,7 +803,7 @@ export default function SemesterManagement() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -1147,7 +1148,7 @@ export default function SemesterManagement() {
         onClose={closeConfirmDialog}
         fullWidth
         maxWidth="xs"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             backgroundColor: "background.paper",
@@ -1156,7 +1157,7 @@ export default function SemesterManagement() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         <Box
           sx={{

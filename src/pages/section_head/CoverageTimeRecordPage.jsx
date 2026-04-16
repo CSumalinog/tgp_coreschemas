@@ -1,11 +1,11 @@
-// src/pages/section_head/CoverageTimeRecordPage.jsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿// src/pages/section_head/CoverageTimeRecordPage.jsx
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Avatar,
   Box,
   CircularProgress,
   FormControl,
-  IconButton,
   InputAdornment,
   MenuItem,
   OutlinedInput,
@@ -19,6 +19,8 @@ import SearchIcon from "@mui/icons-material/SearchOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForwardOutlined";
+import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
@@ -29,15 +31,16 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 
-// ── Tokens ────────────────────────────────────────────────────────────────────
+// â”€â”€ Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
 const dm = "'Inter', sans-serif";
-
 const AVATAR_COLORS = [
   { bg: "#E6F1FB", color: "#0C447C" },
   { bg: "#EAF3DE", color: "#27500A" },
@@ -49,9 +52,8 @@ const AVATAR_COLORS = [
   { bg: "#dbeafe", color: "#1e40af" },
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const getAvatarColor = (id) => {
-  if (!id) return AVATAR_COLORS[0];
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
@@ -70,17 +72,34 @@ const getInitials = (name) => {
 };
 
 const fmtTime = (ts) => {
-  if (!ts) return "—";
+  if (!ts) return "\u2014";
   return new Date(ts).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
   });
 };
 
+const formatLightboxTimestamp = (ts) => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const date = d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const time = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  return `${date}  ${time}`;
+};
+
 const computeDuration = (timedIn, completedAt) => {
-  if (!timedIn || !completedAt) return "—";
+  if (!timedIn || !completedAt) return "\u2014";
   const diffMs = new Date(completedAt) - new Date(timedIn);
-  if (diffMs <= 0) return "—";
+  if (diffMs <= 0) return "\u2014";
   const totalMins = Math.floor(diffMs / 60000);
   const hrs = Math.floor(totalMins / 60);
   const mins = totalMins % 60;
@@ -91,7 +110,7 @@ const computeDuration = (timedIn, completedAt) => {
 
 const buildEventDateDisplay = (req) => {
   const fmtDs = (d, opts) => {
-    if (!d) return "—";
+    if (!d) return "\u2014";
     return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
   };
   if (req.is_multiday && req.event_days?.length > 0) {
@@ -110,7 +129,7 @@ const buildEventDateDisplay = (req) => {
           day: "numeric",
           year: "numeric",
         })
-      : `${first} – ${last}`;
+      : `${first} â€“ ${last}`;
   }
   return req.event_date
     ? new Date(req.event_date).toLocaleDateString("en-US", {
@@ -118,7 +137,7 @@ const buildEventDateDisplay = (req) => {
         day: "numeric",
         year: "numeric",
       })
-    : "—";
+    : "â€”";
 };
 
 const resolveSelfieUrl = (rawSelfieUrl) => {
@@ -185,7 +204,7 @@ const sanitizeFileNamePart = (value) => {
   return cleaned || "export";
 };
 
-// ── Component ──────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function CoverageTimeRecordPage({ embedded = false }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -199,8 +218,28 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
   const [searchText, setSearchText] = useState("");
   const [brokenSelfieById, setBrokenSelfieById] = useState({});
   const [exportMenuAnchorEl, setExportMenuAnchorEl] = useState(null);
+  const [lightboxSelfie, setLightboxSelfie] = useState(null);
+  const [hoveredProof, setHoveredProof] = useState(null);
+  const hoverPreviewTimerRef = useRef(null);
 
-  // ── Load user ──────────────────────────────────────────────────────────────
+  const handleProofMouseEnter = (proof) => {
+    if (hoverPreviewTimerRef.current) window.clearTimeout(hoverPreviewTimerRef.current);
+    hoverPreviewTimerRef.current = window.setTimeout(() => setHoveredProof(proof), 150);
+  };
+
+  const handleProofMouseLeave = (proofId) => {
+    if (hoverPreviewTimerRef.current) {
+      window.clearTimeout(hoverPreviewTimerRef.current);
+      hoverPreviewTimerRef.current = null;
+    }
+    setHoveredProof((prev) => (prev?.id === proofId ? null : prev));
+  };
+  const navigate = useNavigate();
+  const location = useLocation();
+  const gridApiRef = useGridApiRef();
+  const highlightReqId = location.state?.highlightRequestId ?? null;
+
+  // â”€â”€ Load user â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     async function loadUser() {
       const {
@@ -217,7 +256,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     loadUser();
   }, []);
 
-  // ── Load semesters ─────────────────────────────────────────────────────────
+  // â”€â”€ Load semesters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     async function loadSemesters() {
       const { data } = await supabase
@@ -229,7 +268,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     loadSemesters();
   }, []);
 
-  // ── Load requests ──────────────────────────────────────────────────────────
+  // â”€â”€ Load requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const loadRequests = useCallback(async () => {
     if (!currentUser?.section) return;
     setLoading(true);
@@ -276,16 +315,16 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     loadRequests();
   }, [loadRequests]);
 
-  // ── Build attendance map ────────────────────────────────────────────────────
+  // â”€â”€ Build attendance map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const attendanceByRequest = useMemo(() => {
     if (!currentUser?.section) return {};
     const mySection = currentUser.section;
     const grouped = {};
 
     requests.forEach((req) => {
-      // Only assignments for this section
+      // Only assignments for this section that are not cancelled/no-show
       const sectionAssignments = (req.coverage_assignments || []).filter(
-        (a) => a.section === mySection,
+        (a) => a.section === mySection && a.status !== "Cancelled" && a.status !== "No Show",
       );
 
       // Dedup by staff (same logic as admin CTR)
@@ -319,7 +358,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     return grouped;
   }, [requests, currentUser]);
 
-  // ── Filter by semester + search ────────────────────────────────────────────
+  // â”€â”€ Filter by semester + search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredRequests = useMemo(() => {
     let list = requests;
 
@@ -354,7 +393,361 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     return list;
   }, [requests, selectedSem, semesters, searchText]);
 
-  // ── Export ─────────────────────────────────────────────────────────────────
+  // â”€â”€ DataGrid rows (flat, one per assignment) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const dataRows = useMemo(() => {
+    const rows = [];
+    filteredRequests.forEach((req) => {
+      const attendance = attendanceByRequest[req.id] || [];
+      attendance.forEach((a) => {
+        const status = a.completed_at
+          ? "Completed"
+          : a.timed_in_at
+            ? "Ongoing"
+            : "Pending";
+        rows.push({
+          id: a.id,
+          reqId: req.id,
+          title: req.title || "Coverage Request",
+          staffName: a.staffer?.full_name || "Unknown",
+          staffAvatarUrl: getAvatarUrl(a.staffer?.avatar_url),
+          avatarBg: getAvatarColor(a.assigned_to).bg,
+          avatarFg: getAvatarColor(a.assigned_to).color,
+          timeIn: fmtTime(a.timed_in_at),
+          timeOut: fmtTime(a.completed_at),
+          duration: computeDuration(a.timed_in_at, a.completed_at),
+          status,
+          hasProof: !!a.selfie_url,
+          proofUrl: resolveSelfieUrl(a.selfie_url),
+          isBroken: !!brokenSelfieById[a.id],
+          selfieId: a.id,
+          timedInAt: a.timed_in_at,
+        });
+      });
+    });
+    return rows;
+  }, [filteredRequests, attendanceByRequest, brokenSelfieById]);
+
+  // -- Scroll to highlighted row when navigated from View CTR
+  useEffect(() => {
+    if (!highlightReqId || loading || dataRows.length === 0) return;
+    const targetRow = dataRows.find((r) => r.reqId === highlightReqId);
+    if (!targetRow) return;
+    const rowIndex = dataRows.indexOf(targetRow);
+    gridApiRef.current?.scrollToIndexes({ rowIndex });
+  }, [highlightReqId, dataRows, loading, gridApiRef]);
+
+  // â”€â”€ DataGrid columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const columns = useMemo(
+    () => [
+      {
+        field: "title",
+        headerName: "Title",
+        flex: TABLE_FIRST_COL_FLEX,
+        minWidth: TABLE_FIRST_COL_MIN_WIDTH,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              width: "100%",
+              minWidth: 0,
+              pr: 0.5,
+              height: "100%",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                color: "text.primary",
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {p.value}
+            </Typography>
+            <Tooltip title="View assignment" placement="top">
+              <Box
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/sec_head/coverage-management/assignment", {
+                    state: { openRequestId: p.row.reqId },
+                  });
+                }}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 24,
+                  height: 24,
+                  borderRadius: "6px",
+                  border: `1px solid ${border}`,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  color: "text.disabled",
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: "#212121", color: "#212121" },
+                }}
+              >
+                <ArrowForwardIcon sx={{ fontSize: 13 }} />
+              </Box>
+            </Tooltip>
+          </Box>
+        ),
+      },
+      {
+        field: "staffName",
+        headerName: "Staff Assigned",
+        flex: 1.4,
+        minWidth: 150,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              minWidth: 0,
+              height: "100%",
+            }}
+          >
+            <Avatar
+              src={p.row.staffAvatarUrl || undefined}
+              sx={{
+                width: TABLE_USER_AVATAR_SIZE,
+                height: TABLE_USER_AVATAR_SIZE,
+                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
+                fontWeight: 600,
+                backgroundColor: p.row.avatarBg,
+                color: p.row.avatarFg,
+                flexShrink: 0,
+              }}
+            >
+              {!p.row.staffAvatarUrl && getInitials(p.value)}
+            </Avatar>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "text.primary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "timeIn",
+        headerName: "Time In",
+        flex: 0.9,
+        minWidth: 90,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: p.value === "\u2014" ? "text.disabled" : "text.primary",
+              }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "timeOut",
+        headerName: "Time Out",
+        flex: 0.9,
+        minWidth: 90,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: p.value === "\u2014" ? "text.disabled" : "text.primary",
+              }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        flex: 0.7,
+        minWidth: 80,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color:
+                  p.value === "\u2014"
+                    ? "text.disabled"
+                    : isDark
+                      ? "#f5c52b"
+                      : "#d97706",
+              }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        flex: 0.9,
+        minWidth: 100,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                px: 0.75,
+                py: 0.22,
+                borderRadius: "999px",
+                fontFamily: dm,
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                lineHeight: 1,
+                backgroundColor:
+                  p.value === "Completed"
+                    ? "#ecf8e6"
+                    : p.value === "Ongoing"
+                      ? "#e6f1fb"
+                      : isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(53,53,53,0.08)",
+                color:
+                  p.value === "Completed"
+                    ? "#27500a"
+                    : p.value === "Ongoing"
+                      ? "#0c447c"
+                      : "text.secondary",
+              }}
+            >
+              {p.value}
+            </Box>
+          </Box>
+        ),
+      },
+      {
+        field: "proof",
+        headerName: "Proof of Attendance",
+        flex: 1,
+        minWidth: 120,
+        sortable: false,
+        renderCell: (p) => {
+          if (!p.row.hasProof)
+            return (
+              <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled" }}>
+                  {"\u2014"}
+                </Typography>
+              </Box>
+            );
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Box
+                sx={{
+                  width: 80,
+                  height: 44,
+                  borderRadius: "6px",
+                  border: `1px solid ${border}`,
+                  overflow: "hidden",
+                  backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
+                  cursor: p.row.proofUrl && !p.row.isBroken ? "zoom-in" : "default",
+                  flexShrink: 0,
+                }}
+                onClick={(e) => {
+                  if (!p.row.proofUrl || p.row.isBroken) return;
+                  e.stopPropagation();
+                  setLightboxSelfie({ url: p.row.proofUrl, timedInAt: p.row.timedInAt });
+                }}
+              >
+                {p.row.proofUrl && !p.row.isBroken ? (
+                  <Box
+                    component="img"
+                    src={p.row.proofUrl}
+                    alt="Attendance proof"
+                    sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    onError={() =>
+                      setBrokenSelfieById((prev) => ({ ...prev, [p.row.selfieId]: true }))
+                    }
+                    onMouseEnter={() =>
+                      handleProofMouseEnter({ id: p.row.selfieId, url: p.row.proofUrl })
+                    }
+                    onMouseLeave={() => handleProofMouseLeave(p.row.selfieId)}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <BrokenImageOutlinedIcon sx={{ color: "text.disabled", fontSize: 16 }} />
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", color: "text.disabled", lineHeight: 1, mt: 0.25 }}>
+                      Unavailable
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          );
+        },
+      },
+    ],
+    [navigate, isDark, border],
+  );
+
+  // â”€â”€ Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const buildExportRows = () => {
     const rows = [];
     filteredRequests.forEach((req) => {
@@ -448,33 +841,8 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         fontFamily: dm,
       }}
     >
-      {!embedded && (
-        <Box sx={{ mb: 2, flexShrink: 0 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "1.05rem",
-              fontWeight: 700,
-              color: "text.primary",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Coverage Time Record
-          </Typography>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "text.secondary",
-              mt: 0.25,
-            }}
-          >
-            Attendance time records for your section&apos;s covered assignments.
-          </Typography>
-        </Box>
-      )}
 
-      {/* ── Filter row ── */}
+      {/* â”€â”€ Filter row â”€â”€ */}
       <Box
         sx={{
           mb: 2,
@@ -579,7 +947,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
           anchorEl={exportMenuAnchorEl}
           open={Boolean(exportMenuAnchorEl)}
           onClose={() => setExportMenuAnchorEl(null)}
-          PaperProps={{ sx: { borderRadius: "8px" } }}
+          slotProps={{ paper: { sx: { borderRadius: "8px" } } }}
         >
           <MenuItem
             onClick={() => runExport("csv")}
@@ -590,463 +958,135 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         </Menu>
       </Box>
 
-      {/* ── Content ── */}
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", pt: 8 }}>
-            <CircularProgress size={28} sx={{ color: "#F5C52B" }} />
-          </Box>
-        ) : filteredRequests.length === 0 ? (
-          <Typography
+      {/* â”€â”€ Content â”€â”€ */}
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          border: `1px solid ${border}`,
+          borderRadius: "10px",
+          overflow: "hidden",
+        }}
+      >
+        <DataGrid
+          apiRef={gridApiRef}
+          rows={dataRows}
+          columns={columns}
+          loading={loading}
+          enableSearch={false}
+          showToolbar={false}
+          rowHeight={56}
+          sx={{ height: "100%" }}
+        />
+      </Box>
+
+      {/* ── Photo lightbox (click) ── */}
+      {lightboxSelfie && (
+        <Box
+          onClick={() => setLightboxSelfie(null)}
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            onClick={(e) => e.stopPropagation()}
             sx={{
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "text.secondary",
-              textAlign: "center",
-              py: 8,
+              position: "relative",
+              maxWidth: "min(800px, 92vw)",
+              maxHeight: "90vh",
+              lineHeight: 0,
             }}
           >
-            No time record entries found.
-          </Typography>
-        ) : (
-          <Box
-            sx={{ display: "flex", flexDirection: "column", gap: 1.2, pb: 2 }}
-          >
-            {filteredRequests.map((req) => {
-              const attendance = attendanceByRequest[req.id] || [];
-
-              return (
-                <Box
-                  key={req.id}
+            <Box
+              component="img"
+              src={lightboxSelfie.url}
+              alt="Attendance proof"
+              sx={{
+                display: "block",
+                maxWidth: "100%",
+                maxHeight: "90vh",
+                objectFit: "contain",
+                borderRadius: "4px",
+              }}
+            />
+            {lightboxSelfie.timedInAt && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  px: 2,
+                  py: 1,
+                  backgroundColor: "rgba(0,0,0,0.62)",
+                  borderBottomLeftRadius: "4px",
+                  borderBottomRightRadius: "4px",
+                }}
+              >
+                <Typography
                   sx={{
-                    border: `1px solid ${border}`,
-                    borderRadius: "10px",
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.01)"
-                      : "#ffffff",
-                    overflow: "hidden",
+                    fontFamily: dm,
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "#F5C52B",
+                    letterSpacing: "0.01em",
                   }}
                 >
-                  {attendance.length === 0 ? (
-                    <Box sx={{ px: 1.5, py: 1.2 }}>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.76rem",
-                          color: "text.secondary",
-                        }}
-                      >
-                        No attendance records for this request.
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        border: `1px solid ${border}`,
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.015)"
-                          : "#fbfbfb",
-                        m: 1,
-                      }}
-                    >
-                      {/* Card header */}
-                      <Box
-                        sx={{
-                          px: 1.1,
-                          py: 0.95,
-                          borderBottom: `1px solid ${border}`,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: 1,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <Box sx={{ minWidth: 220 }}>
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.84rem",
-                              fontWeight: 700,
-                              color: "text.primary",
-                            }}
-                          >
-                            {req.title || "Coverage Request"}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.72rem",
-                              color: "text.secondary",
-                            }}
-                          >
-                            {req.entity?.name || "—"} ·{" "}
-                            {buildEventDateDisplay(req)}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.72rem",
-                              color: "text.secondary",
-                            }}
-                          >
-                            {req.venue || "—"}
-                          </Typography>
-                        </Box>
-
-                        <Box
-                          sx={{
-                            px: 0.9,
-                            py: 0.28,
-                            borderRadius: "999px",
-                            backgroundColor: "#e6f1fb",
-                            color: "#0c447c",
-                            fontFamily: dm,
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            lineHeight: 1,
-                          }}
-                        >
-                          {attendance.length}{" "}
-                          {attendance.length === 1 ? "staffer" : "staffers"}
-                        </Box>
-                      </Box>
-
-                      {/* Column headers */}
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns: {
-                            xs: "1fr",
-                            md: "1.05fr 1.75fr 0.85fr 1fr",
-                          },
-                          borderBottom: `1px solid ${border}`,
-                          backgroundColor: isDark
-                            ? "rgba(0,0,0,0.14)"
-                            : "rgba(53,53,53,0.02)",
-                        }}
-                      >
-                        {[
-                          "Staff Assigned",
-                          "Attendance",
-                          "Status",
-                          "Proof of Attendance",
-                        ].map((col, i) => (
-                          <Typography
-                            key={col}
-                            sx={{
-                              px: 1.1,
-                              py: 0.55,
-                              fontFamily: dm,
-                              fontSize: "0.6rem",
-                              fontWeight: 700,
-                              color: "text.disabled",
-                              letterSpacing: "0.07em",
-                              textTransform: "uppercase",
-                              borderLeft:
-                                i > 0
-                                  ? { md: `1px solid ${border}` }
-                                  : undefined,
-                            }}
-                          >
-                            {col}
-                          </Typography>
-                        ))}
-                      </Box>
-
-                      {/* Rows */}
-                      <Box sx={{ display: "flex", flexDirection: "column" }}>
-                        {attendance.map((a, index) => {
-                          const timeInStr = fmtTime(a.timed_in_at);
-                          const completedAtStr = fmtTime(a.completed_at);
-                          const duration = computeDuration(
-                            a.timed_in_at,
-                            a.completed_at,
-                          );
-                          const status = a.completed_at
-                            ? "Completed"
-                            : a.timed_in_at
-                              ? "Ongoing"
-                              : "Pending";
-                          const proofUrl = resolveSelfieUrl(a.selfie_url);
-                          const isBroken = !!brokenSelfieById[a.id];
-                          const hasProof = !!a.selfie_url;
-                          const avatarColor = getAvatarColor(a.assigned_to);
-                          const avatarUrl = getAvatarUrl(a.staffer?.avatar_url);
-
-                          return (
-                            <Box
-                              key={a.id}
-                              sx={{
-                                display: "grid",
-                                gridTemplateColumns: {
-                                  xs: "1fr",
-                                  md: "1.05fr 1.75fr 0.85fr 1fr",
-                                },
-                                borderTop:
-                                  index === 0 ? "none" : `1px solid ${border}`,
-                              }}
-                            >
-                              {/* Staff */}
-                              <Box sx={{ px: 1.1, py: 0.95, minWidth: 0 }}>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 0.75,
-                                  }}
-                                >
-                                  <Avatar
-                                    src={avatarUrl || undefined}
-                                    sx={{
-                                      width: TABLE_USER_AVATAR_SIZE,
-                                      height: TABLE_USER_AVATAR_SIZE,
-                                      fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-                                      fontWeight: 600,
-                                      backgroundColor: avatarColor.bg,
-                                      color: avatarColor.color,
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {!avatarUrl &&
-                                      getInitials(a.staffer?.full_name)}
-                                  </Avatar>
-                                  <Typography
-                                    sx={{
-                                      fontFamily: dm,
-                                      fontSize: "0.8rem",
-                                      fontWeight: 700,
-                                      color: "text.primary",
-                                      lineHeight: 1.15,
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                    }}
-                                  >
-                                    {a.staffer?.full_name || "Unknown"}
-                                  </Typography>
-                                </Box>
-                              </Box>
-
-                              {/* Attendance */}
-                              <Box
-                                sx={{
-                                  px: 1.1,
-                                  py: 0.95,
-                                  borderLeft: { md: `1px solid ${border}` },
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    display: "grid",
-                                    gridTemplateColumns: {
-                                      xs: "1fr",
-                                      sm: "1fr 1fr 1fr",
-                                    },
-                                    gap: 0.55,
-                                  }}
-                                >
-                                  {[
-                                    { label: "Time in", val: timeInStr },
-                                    { label: "Time out", val: completedAtStr },
-                                    {
-                                      label: "Duration",
-                                      val: duration,
-                                      highlight: true,
-                                    },
-                                  ].map(({ label, val, highlight }) => (
-                                    <Box
-                                      key={label}
-                                      sx={{
-                                        borderRadius: "8px",
-                                        px: 0.75,
-                                        py: 0.48,
-                                        backgroundColor: isDark
-                                          ? "rgba(0,0,0,0.2)"
-                                          : "rgba(53,53,53,0.06)",
-                                      }}
-                                    >
-                                      <Typography
-                                        sx={{
-                                          fontFamily: dm,
-                                          fontSize: "0.64rem",
-                                          color: "text.disabled",
-                                          fontWeight: 700,
-                                        }}
-                                      >
-                                        {label}
-                                      </Typography>
-                                      <Typography
-                                        sx={{
-                                          fontFamily: dm,
-                                          fontSize: "0.84rem",
-                                          fontWeight: 700,
-                                          color:
-                                            val === "—"
-                                              ? "text.disabled"
-                                              : highlight
-                                                ? isDark
-                                                  ? "#f5c52b"
-                                                  : "#d97706"
-                                                : "text.primary",
-                                        }}
-                                      >
-                                        {val}
-                                      </Typography>
-                                    </Box>
-                                  ))}
-                                </Box>
-                              </Box>
-
-                              {/* Status */}
-                              <Box
-                                sx={{
-                                  px: 1.1,
-                                  py: 0.95,
-                                  borderLeft: { md: `1px solid ${border}` },
-                                  display: "flex",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    px: 0.75,
-                                    py: 0.22,
-                                    borderRadius: "999px",
-                                    fontFamily: dm,
-                                    fontSize: "0.72rem",
-                                    fontWeight: 700,
-                                    lineHeight: 1,
-                                    backgroundColor:
-                                      status === "Completed"
-                                        ? "#ecf8e6"
-                                        : status === "Ongoing"
-                                          ? "#e6f1fb"
-                                          : isDark
-                                            ? "rgba(255,255,255,0.08)"
-                                            : "rgba(53,53,53,0.08)",
-                                    color:
-                                      status === "Completed"
-                                        ? "#27500a"
-                                        : status === "Ongoing"
-                                          ? "#0c447c"
-                                          : "text.secondary",
-                                  }}
-                                >
-                                  {status}
-                                </Box>
-                              </Box>
-
-                              {/* Proof */}
-                              <Box
-                                sx={{
-                                  px: 1.1,
-                                  py: 0.95,
-                                  borderLeft: { md: `1px solid ${border}` },
-                                }}
-                              >
-                                {hasProof ? (
-                                  <Box
-                                    sx={{
-                                      width: 104,
-                                      maxWidth: "100%",
-                                      height: 62,
-                                      borderRadius: "6px",
-                                      border: `1px solid ${border}`,
-                                      overflow: "hidden",
-                                      backgroundColor: isDark
-                                        ? "rgba(17,17,17,0.45)"
-                                        : "rgba(53,53,53,0.03)",
-                                      cursor:
-                                        proofUrl && !isBroken
-                                          ? "zoom-in"
-                                          : "default",
-                                    }}
-                                  >
-                                    {proofUrl && !isBroken ? (
-                                      <Box
-                                        component="img"
-                                        src={proofUrl}
-                                        alt="Selfie proof"
-                                        sx={{
-                                          width: "100%",
-                                          height: "100%",
-                                          objectFit: "cover",
-                                          display: "block",
-                                        }}
-                                        onError={() =>
-                                          setBrokenSelfieById((prev) => ({
-                                            ...prev,
-                                            [a.id]: true,
-                                          }))
-                                        }
-                                        onClick={() =>
-                                          window.open(
-                                            proofUrl,
-                                            "_blank",
-                                            "noopener,noreferrer",
-                                          )
-                                        }
-                                      />
-                                    ) : (
-                                      <Box
-                                        sx={{
-                                          width: "100%",
-                                          height: "100%",
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                        }}
-                                      >
-                                        <BrokenImageOutlinedIcon
-                                          sx={{
-                                            color: "text.disabled",
-                                            fontSize: 18,
-                                            mb: 0.2,
-                                          }}
-                                        />
-                                        <Typography
-                                          sx={{
-                                            fontFamily: dm,
-                                            fontSize: "0.64rem",
-                                            color: "text.disabled",
-                                            lineHeight: 1,
-                                          }}
-                                        >
-                                          Unavailable
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                  </Box>
-                                ) : (
-                                  <Typography
-                                    sx={{
-                                      fontFamily: dm,
-                                      fontSize: "0.72rem",
-                                      color: "text.disabled",
-                                    }}
-                                  >
-                                    No proof uploaded
-                                  </Typography>
-                                )}
-                              </Box>
-                            </Box>
-                          );
-                        })}
-                      </Box>
-                    </Box>
-                  )}
-                </Box>
-              );
-            })}
+                  {formatLightboxTimestamp(lightboxSelfie.timedInAt)}
+                </Typography>
+              </Box>
+            )}
           </Box>
-        )}
-      </Box>
+        </Box>
+      )}
+
+      {/* ── Photo hover preview ── */}
+      {hoveredProof?.url && (
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: (t) => t.zIndex.modal + 2,
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            pointerEvents: "none",
+          }}
+        >
+          <Box
+            sx={{
+              width: "min(68vw, 700px)",
+              maxHeight: "78vh",
+              borderRadius: "12px",
+              overflow: "hidden",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.45)"}`,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.42)",
+              backgroundColor: "rgba(0,0,0,0.28)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <Box
+              component="img"
+              src={hoveredProof.url}
+              alt="Proof of attendance"
+              sx={{
+                width: "100%",
+                maxHeight: "78vh",
+                objectFit: "contain",
+                display: "block",
+                backgroundColor: isDark ? "#0f0f0f" : "#111",
+              }}
+            />
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

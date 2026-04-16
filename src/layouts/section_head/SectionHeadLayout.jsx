@@ -18,6 +18,8 @@ import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/LogoutOutlined";
@@ -66,12 +68,22 @@ const MENU_SECTIONS = [
           {
             label: "Assignment",
             to: "coverage-management/assignment",
-            Icon: AssignmentOutlinedIcon,
+            
           },
           {
             label: "Tracker",
             to: "coverage-management/tracker",
-            Icon: TrackChangesOutlinedIcon,
+            
+          },
+          {
+            label: "Time Record",
+            to: "coverage-management/time-record",
+           
+          },
+          {
+            label: "Reassignment History",
+            to: "reassignment-history",
+            
           },
         ],
       },
@@ -259,6 +271,9 @@ function SidebarContent({ onClose, isMobile }) {
   const isChildActive = (children) =>
     children?.some((c) => location.pathname.includes(c.to));
 
+  // icon box (24px) + gap (1.25 * 8px = 10px) = 34px offset to align child text with parent label
+  const ICON_OFFSET = 34;
+
   return (
     <Box
       sx={{
@@ -368,14 +383,13 @@ function SidebarContent({ onClose, isMobile }) {
                       }
                     />
                     <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                      <Box sx={{ pl: 1.5, mt: 0.25 }}>
+                      <Box sx={{ mt: 0.25 }}>
                         {item.children.map((child) => (
-                          <NavItem
+                          <ChildNavItem
                             key={child.to}
                             label={child.label}
-                            Icon={child.Icon}
                             to={child.to}
-                            isChild
+                            iconOffset={ICON_OFFSET}
                           />
                         ))}
                       </Box>
@@ -397,6 +411,66 @@ function SidebarContent({ onClose, isMobile }) {
       </Box>
     </Box>
   );
+}
+
+// ── Child nav item (no icon, text aligned to parent label) ──────────────────
+function ChildNavItem({ label, to, iconOffset }) {
+  const location = useLocation();
+  const active = to ? location.pathname.includes(to) : false;
+
+  const inner = (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        px: 1.25,
+        py: 0.8,
+        borderRadius: "10px",
+        cursor: "pointer",
+        position: "relative",
+        mb: 0.2,
+        backgroundColor: active ? ACTIVE_BG : "transparent",
+        transition: "background 0.15s",
+        "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              left: 0,
+              top: "20%",
+              height: "60%",
+              width: "2.5px",
+              borderRadius: "0 2px 2px 0",
+              backgroundColor: GOLD,
+            }
+          : {},
+      }}
+    >
+      <Box sx={{ width: `${iconOffset}px`, height: 24, flexShrink: 0 }} />
+      <Typography
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.8rem",
+          fontWeight: active ? 600 : 400,
+          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+          flex: 1,
+          transition: "color 0.15s",
+          lineHeight: 1,
+          "&:hover": { color: active ? ACTIVE_COLOR : TEXT_PRIMARY },
+        }}
+      >
+        {label}
+      </Typography>
+    </Box>
+  );
+
+  if (to)
+    return (
+      <NavLink to={to} style={{ textDecoration: "none", display: "block" }}>
+        {inner}
+      </NavLink>
+    );
+  return inner;
 }
 
 function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
@@ -471,6 +545,9 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
           flex: 1,
           transition: "color 0.15s",
           lineHeight: 1,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         {label}

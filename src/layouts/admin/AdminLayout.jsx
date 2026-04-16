@@ -50,7 +50,7 @@ const WHITE = "#ffffff";
 const dm = "'Inter', sans-serif";
 
 // ── Dark sidebar tokens ───────────────────────────────────────────────────────
-const SIDEBAR_BG = "#121212";
+const SIDEBAR_BG = "#212121";
 const SIDEBAR_BORDER = "rgba(255,255,255,0.07)";
 const TEXT_PRIMARY = "#ffffff";
 const TEXT_SECONDARY = "rgba(255,255,255,0.85)";
@@ -488,12 +488,12 @@ function ChildNavItem({ label, to, iconOffset }) {
           : {},
       }}
     >
-      {/* Spacer to push text to align with parent label (icon 24px + gap 10px) */}
-      <Box sx={{ width: `${iconOffset}px`, flexShrink: 0 }} />
+      {/* Spacer — height:24 matches the parent icon box so all rows are the same height */}
+      <Box sx={{ width: `${iconOffset}px`, height: 24, flexShrink: 0 }} />
       <Typography
         sx={{
           fontFamily: dm,
-          fontSize: "0.76rem",
+          fontSize: "0.8rem",
           fontWeight: active ? 600 : 400,
           color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
           flex: 1,
@@ -589,6 +589,9 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
           flex: 1,
           transition: "color 0.15s",
           lineHeight: 1,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         {label}

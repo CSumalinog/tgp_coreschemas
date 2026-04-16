@@ -540,7 +540,7 @@ export function TimeInModal({
       disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -549,7 +549,7 @@ export function TimeInModal({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       {isEmergency && (
         <Box
@@ -889,7 +889,7 @@ export function OnGoingAlertDialog({
       disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -907,7 +907,7 @@ export function OnGoingAlertDialog({
             },
           },
         },
-      }}
+      } }}
     >
       <Box
         sx={{

@@ -34,3 +34,9 @@ export const LAYOUT_ICON_LG = 20;
 // Shared user-avatar sizing for table/list rows.
 export const TABLE_USER_AVATAR_SIZE = 36;
 export const TABLE_USER_AVATAR_FONT_SIZE = "0.7rem";
+
+// Shared first-column sizing and flex for DataGrid tables.
+export const TABLE_FIRST_COL_MIN_WIDTH = 180;
+export const TABLE_FIRST_COL_FLEX = 1.5;
+export const TABLE_FIRST_COL_STAFF_MIN_WIDTH = 200;
+export const TABLE_FIRST_COL_STAFF_FLEX = 1.5;

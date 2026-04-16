@@ -33,7 +33,7 @@ import {
   Radio,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate, Link } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
@@ -43,6 +43,8 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -53,7 +55,6 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ExpandLessIcon from "@mui/icons-material/ExpandLessOutlined";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
-import CoverageCompletionDialog from "../../components/section_head/CoverageCompletionDialog";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -71,6 +72,8 @@ import {
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
   MODAL_TAB_HEIGHT,
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -696,6 +699,7 @@ export default function CoverageManagementBase({
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
   const location = useLocation();
+  const navigate = useNavigate();
   const gridApiRef = useGridApiRef();
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight")?.toLowerCase() || "";
@@ -786,10 +790,6 @@ export default function CoverageManagementBase({
   const [staffersLoading, setStaffersLoading] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
-  const [completionDetailsOpen, setCompletionDetailsOpen] = useState(false);
-  const [selectedCompletionAssignment, setSelectedCompletionAssignment] =
-    useState(null);
-
   // ── Reassign dialog state ──────────────────────────────────────────────────
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [reassignRequest, setReassignRequest] = useState(null); // the request row
@@ -932,7 +932,7 @@ export default function CoverageManagementBase({
         entity:client_entities ( id, name ),
         coverage_assignments (
           id, status, assigned_to, section, service_key, timed_in_at, completed_at,
-          cancellation_reason, cancelled_at,
+          cancellation_reason, cancelled_at, is_reassigned,
           assignment_date, from_time, to_time, selfie_url,
           staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
         )
@@ -2244,8 +2244,8 @@ export default function CoverageManagementBase({
   const titleCol = {
     field: "title",
     headerName: "Event Title",
-    flex: 1.4,
-    minWidth: 180,
+    flex: TABLE_FIRST_COL_FLEX,
+    minWidth: TABLE_FIRST_COL_MIN_WIDTH,
     renderCell: (p) => (
       <Box
         sx={{
@@ -2548,11 +2548,12 @@ export default function CoverageManagementBase({
             <ViewActionButton
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedCompletionAssignment(p.row);
-                setCompletionDetailsOpen(true);
+                navigate("/sec_head/coverage-management/time-record", {
+                  state: { highlightRequestId: p.row.id },
+                });
               }}
             >
-              View Details
+              View CTR
             </ViewActionButton>
           )}
         {(() => {
@@ -3075,6 +3076,24 @@ export default function CoverageManagementBase({
       >
         <MenuItem
           onClick={() => {
+            if (menuRow) openAssignDialog(menuRow);
+            setMenuAnchor(null);
+            setMenuRow(null);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
+        >
+          <ListItemIcon>
+            <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+          </ListItemIcon>
+          <ListItemText
+            slotProps={{ primary: { fontFamily: dm, fontSize: "0.82rem" } }}
+          >
+            View Details
+          </ListItemText>
+        </MenuItem>
+        <Divider sx={{ my: 0.5 }} />
+        <MenuItem
+          onClick={() => {
             handleArchive(menuRow);
             setMenuAnchor(null);
             setMenuRow(null);
@@ -3085,7 +3104,7 @@ export default function CoverageManagementBase({
             <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{ fontFamily: dm, fontSize: "0.82rem" }}
+            slotProps={{ primary: { fontFamily: dm, fontSize: "0.82rem" } }}
           >
             Archive
           </ListItemText>
@@ -3105,11 +3124,11 @@ export default function CoverageManagementBase({
             />
           </ListItemIcon>
           <ListItemText
-            primaryTypographyProps={{
+            slotProps={{ primary: {
               fontFamily: dm,
               fontSize: "0.82rem",
               color: "#dc2626",
-            }}
+            } }}
           >
             Move to Trash
           </ListItemText>
@@ -3397,15 +3416,6 @@ export default function CoverageManagementBase({
         onSubmit={() => handleSubmitForApproval(postAssignReview?.requestId)}
       />
 
-      {/* ── Completion Details Dialog ── */}
-      <CoverageCompletionDialog
-        open={completionDetailsOpen}
-        assignment={selectedCompletionAssignment}
-        isDark={isDark}
-        border={border}
-        onClose={() => setCompletionDetailsOpen(false)}
-      />
-
       {/* ── Reassign Picker Dialog ── */}
       <ReassignPickerDialog
         open={reassignDialogOpen}
@@ -3454,7 +3464,7 @@ function SubmitConfirmDialog({
       onClose={() => !loading && onCancel()}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "14px",
           backgroundColor: "background.paper",
@@ -3463,7 +3473,7 @@ function SubmitConfirmDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       <Box
         sx={{
@@ -3900,7 +3910,7 @@ function AssignmentDialog({
       onClose={onClose}
       fullWidth
       maxWidth="md"
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "14px",
           height: { md: "90vh" },
@@ -3911,7 +3921,7 @@ function AssignmentDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       <Box
         sx={{
@@ -4333,132 +4343,231 @@ function AssignmentDialog({
               ]}
             />
           </Section>
-          <Section label="Emergency Announcements" border={border}>
+          <Section label="Reassignment History" border={border}>
             {(() => {
-              const emergencyAssignments = (req.coverage_assignments || []).filter(
-                (a) => isAnnouncedEmergencyAssignment(a),
-              );
-              if (emergencyAssignments.length === 0) {
+              const allAssignments = req.coverage_assignments || [];
+
+              // Anything that caused a reassignment (Cancelled or No Show)
+              const triggers = allAssignments
+                .filter((a) => a.status === "Cancelled" || a.status === "No Show")
+                .sort((a, b) => {
+                  const da = a.cancelled_at || a.assignment_date || "";
+                  const db = b.cancelled_at || b.assignment_date || "";
+                  return da < db ? -1 : da > db ? 1 : 0;
+                });
+
+              if (triggers.length === 0) {
                 return (
                   <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.8rem",
-                      color: "text.secondary",
-                    }}
+                    sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}
                   >
-                    No emergency announcements for this request.
+                    No reassignment events for this request.
                   </Typography>
                 );
               }
 
+              // Build a lookup of replacement assignments keyed by date|section|service_key
+              const replacementMap = {};
+              allAssignments.forEach((a) => {
+                if (a.is_reassigned) {
+                  const key = `${a.assignment_date}|${a.section}|${a.service_key || ""}`;
+                  if (!replacementMap[key]) replacementMap[key] = [];
+                  replacementMap[key].push(a);
+                }
+              });
+
               return (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.9 }}>
-                  {emergencyAssignments.map((a) => {
-                    const reasonText = extractEmergencyReasonText(
-                      a.cancellation_reason,
-                    );
-                    const proofPath = extractEmergencyProofPath(
-                      a.cancellation_reason,
-                    );
-                    const staffName =
-                      a.staffer?.full_name || a.profiles?.full_name || "Unknown staff";
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                  {triggers.map((a) => {
+                    const isEmergency = isAnnouncedEmergencyAssignment(a);
+                    const reasonText = isEmergency
+                      ? extractEmergencyReasonText(a.cancellation_reason)
+                      : null;
+                    const proofPath = isEmergency
+                      ? extractEmergencyProofPath(a.cancellation_reason)
+                      : null;
+                    const triggerName =
+                      a.staffer?.full_name || "Unknown staff";
+                    const cancelledAt = a.cancelled_at
+                      ? new Date(a.cancelled_at).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })
+                      : null;
+
+                    const repKey = `${a.assignment_date}|${a.section}|${a.service_key || ""}`;
+                    const replacements = replacementMap[repKey] || [];
+
+                    const badgeColor = isEmergency ? "#b45309" : "#dc2626";
+                    const badgeBg = isEmergency
+                      ? "rgba(245,197,43,0.1)"
+                      : "rgba(220,38,38,0.08)";
+                    const borderColor = isEmergency
+                      ? "rgba(245,197,43,0.3)"
+                      : "rgba(220,38,38,0.2)";
+                    const label = isEmergency ? "Emergency" : "No Show";
 
                     return (
                       <Box
                         key={a.id}
                         sx={{
-                          border: `1px solid ${border}`,
-                          borderRadius: "8px",
-                          px: 1.25,
-                          py: 1,
-                          backgroundColor: isDark
-                            ? "rgba(245,197,43,0.06)"
-                            : "rgba(245,197,43,0.05)",
+                          border: `1px solid ${borderColor}`,
+                          borderRadius: "10px",
+                          overflow: "hidden",
                         }}
                       >
+                        {/* Header row */}
                         <Box
                           sx={{
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            gap: 1,
-                            mb: 0.4,
                             flexWrap: "wrap",
+                            gap: 0.5,
+                            px: 1.5,
+                            py: 1,
+                            backgroundColor: badgeBg,
+                            borderBottom: `1px solid ${borderColor}`,
                           }}
                         >
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.76rem",
-                              fontWeight: 700,
-                              color: "text.primary",
-                            }}
-                          >
-                            {staffName}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.7rem",
-                              color: "text.secondary",
-                            }}
-                          >
-                            {a.assignment_date ? fmtDateShort(a.assignment_date) : "—"}
-                            {a.from_time && a.to_time
-                              ? ` · ${fmtTimeStr(a.from_time)} - ${fmtTimeStr(a.to_time)}`
-                              : ""}
-                          </Typography>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                            <Box
+                              sx={{
+                                px: 0.85,
+                                py: 0.2,
+                                borderRadius: "4px",
+                                backgroundColor: badgeColor,
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.62rem",
+                                  fontWeight: 700,
+                                  color: "#fff",
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {label}
+                              </Typography>
+                            </Box>
+                            <Typography
+                              sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 700, color: "text.primary" }}
+                            >
+                              {triggerName}
+                            </Typography>
+                          </Box>
+                          {cancelledAt && (
+                            <Typography
+                              sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.disabled" }}
+                            >
+                              {cancelledAt}
+                            </Typography>
+                          )}
                         </Box>
 
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.78rem",
-                            color: "text.secondary",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {reasonText}
-                        </Typography>
+                        {/* Body */}
+                        <Box sx={{ px: 1.5, py: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>
+                          {/* Date + time */}
+                          <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "text.secondary" }}>
+                            {a.assignment_date ? fmtDateShort(a.assignment_date) : "—"}
+                            {a.from_time && a.to_time
+                              ? ` · ${fmtTimeStr(a.from_time)} – ${fmtTimeStr(a.to_time)}`
+                              : ""}
+                          </Typography>
 
-                        {proofPath && (
-                          <Box
-                            onClick={() => openFile(proofPath)}
-                            sx={{
-                              mt: 0.8,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 0.7,
-                              px: 1,
-                              py: 0.45,
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              border: `1px solid ${border}`,
-                              transition: "all 0.15s",
-                              "&:hover": {
-                                borderColor: GOLD,
-                                backgroundColor: GOLD_08,
-                              },
-                            }}
-                          >
-                            <InsertDriveFileOutlinedIcon
-                              sx={{ fontSize: 13, color: "text.secondary" }}
-                            />
+                          {/* Reason */}
+                          {reasonText && (
                             <Typography
                               sx={{
                                 fontFamily: dm,
-                                fontSize: "0.74rem",
+                                fontSize: "0.78rem",
                                 color: "text.secondary",
+                                lineHeight: 1.55,
                               }}
                             >
-                              {getFileName(proofPath) || "Open proof"}
+                              {reasonText}
                             </Typography>
-                            <ChevronRightIcon
-                              sx={{ fontSize: 13, color: "text.disabled" }}
-                            />
+                          )}
+
+                          {/* Proof */}
+                          {proofPath && (
+                            <Box
+                              onClick={() => openFile(proofPath)}
+                              sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 0.7,
+                                px: 1,
+                                py: 0.45,
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                border: `1px solid ${border}`,
+                                alignSelf: "flex-start",
+                                transition: "all 0.15s",
+                                "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
+                              }}
+                            >
+                              <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
+                              <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "text.secondary" }}>
+                                {getFileName(proofPath) || "View Proof"}
+                              </Typography>
+                              <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                            </Box>
+                          )}
+
+                          {/* Replacement */}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.75,
+                              mt: 0.25,
+                              pt: 0.75,
+                              borderTop: `1px dashed ${border}`,
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.7rem",
+                                color: "text.disabled",
+                                flexShrink: 0,
+                              }}
+                            >
+                              Replaced by
+                            </Typography>
+                            {replacements.length > 0 ? (
+                              replacements.map((r) => (
+                                <Typography
+                                  key={r.id}
+                                  sx={{
+                                    fontFamily: dm,
+                                    fontSize: "0.78rem",
+                                    fontWeight: 600,
+                                    color: "text.primary",
+                                  }}
+                                >
+                                  {r.staffer?.full_name || "Unknown"}
+                                </Typography>
+                              ))
+                            ) : (
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.76rem",
+                                  color: "text.disabled",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Pending reassignment
+                              </Typography>
+                            )}
                           </Box>
-                        )}
+                        </Box>
                       </Box>
                     );
                   })}
@@ -4944,7 +5053,7 @@ function PostAssignReviewDialog({
       onClose={() => !loading && onClose()}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "14px",
           backgroundColor: "background.paper",
@@ -4953,7 +5062,7 @@ function PostAssignReviewDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       {/* Header */}
       <Box
@@ -5281,7 +5390,6 @@ function ReassignPickerDialog({
   const selectedStaffer = staffers.find((s) => s.id === selectedId);
   const selectedHasConflict = !!selectedStaffer?.hasConflict;
   const hasCrossDivisionOptions = staffers.some((s) => s.isCrossDivision);
-  const hasNearbyOptions = staffers.some((s) => s.isFromNearbyDay);
 
   const fmtDateLabel = (d) => {
     if (!d) return "—";
@@ -5298,7 +5406,7 @@ function ReassignPickerDialog({
       onClose={() => !reassigning && onClose()}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "14px",
           backgroundColor: "background.paper",
@@ -5307,7 +5415,7 @@ function ReassignPickerDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       {/* Header */}
       <Box
@@ -5362,6 +5470,20 @@ function ReassignPickerDialog({
         >
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
+        <Tooltip title="View Reassignment History" placement="top">
+          <IconButton
+            component={Link}
+            to="/sec_head/reassignment-history"
+            size="small"
+            sx={{
+              borderRadius: "8px",
+              color: "text.secondary",
+              "&:hover": { backgroundColor: HOVER_BG },
+            }}
+          >
+            <HistoryOutlinedIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Body */}

@@ -26,6 +26,7 @@ import {
   deleteDraftRequest,
 } from "../../services/coverageRequestService";
 import { supabase } from "../../lib/supabaseClient";
+import { TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import BrandedLoader from "../../components/common/BrandedLoader";
 
@@ -250,7 +251,8 @@ export default function Draft() {
     {
       field: "eventTitle",
       headerName: "Event Title",
-      flex: 1.5,
+      flex: TABLE_FIRST_COL_FLEX,
+      minWidth: TABLE_FIRST_COL_MIN_WIDTH,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Typography
@@ -389,7 +391,7 @@ export default function Draft() {
         onClose={handleClose}
         fullWidth
         maxWidth="sm"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             backgroundColor: "background.paper",
@@ -398,7 +400,7 @@ export default function Draft() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         {/* Header */}
         <Box
@@ -986,7 +988,7 @@ function ConfirmDialog({
       onClose={onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           backgroundColor: "background.paper",
@@ -995,7 +997,7 @@ function ConfirmDialog({
             ? "0 24px 64px rgba(0,0,0,0.6)"
             : "0 8px 40px rgba(53,53,53,0.12)",
         },
-      }}
+      } }}
     >
       <Box
         sx={{

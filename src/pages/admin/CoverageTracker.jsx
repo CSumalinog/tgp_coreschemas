@@ -5,6 +5,7 @@ import {
   Divider,
   CircularProgress,
   Avatar,
+  Chip,
   FormControl,
   Select,
   MenuItem,
@@ -27,6 +28,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForwardOutlined";
 import NumberBadge from "../../components/common/NumberBadge";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -40,6 +42,8 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -119,6 +123,11 @@ const hasAnyAssignmentPending = (request) => {
   );
   return active.some((a) => a?.status !== "Completed");
 };
+
+const hasAnyActiveAssignment = (request) =>
+  (request?.coverage_assignments || []).some(
+    (a) => !["Cancelled", "No Show"].includes(a?.status),
+  );
 
 const isCtrEligibleStatus = (status) => {
   const normalized = String(status || "")
@@ -569,7 +578,7 @@ export default function CoverageTracker() {
         ...requests.filter(
           (r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status),
         ),
-      ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status)),
+      ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status) && hasAnyActiveAssignment(r)),
     [onGoing, completed, requests],
   );
 
@@ -696,7 +705,9 @@ export default function CoverageTracker() {
 
     const grouped = {};
     ctrRequestSource.forEach((req) => {
-      const normalized = (req.coverage_assignments || []).map((item) => {
+      const normalized = (req.coverage_assignments || [])
+        .filter((item) => !["Cancelled", "No Show"].includes(item?.status))
+        .map((item) => {
         const sectionName = item.sections?.name || item.section || null;
         return {
           ...item,
@@ -759,6 +770,49 @@ export default function CoverageTracker() {
   }, [activeTab, ctrRequestSource]);
 
   const attendanceLoading = false;
+
+  const dataRowsCtr = useMemo(() => {
+    if (activeTab !== "ctr") return [];
+
+    const rowsCtr = [];
+    const seenRequestIds = new Set();
+    ctrRequestSource.forEach((req) => {
+      const attendance = attendanceByRequest[req.id] || [];
+      attendance.forEach((a) => {
+        const isFirstInGroup = !seenRequestIds.has(req.id);
+        seenRequestIds.add(req.id);
+        const status = a.completed_at
+          ? "Completed"
+          : a.timed_in_at
+            ? "Ongoing"
+            : "Pending";
+        const proofUrl = resolveSelfieUrl(a.selfie_url);
+        const avatarColor = getAvatarColor(a.staff_id);
+        rowsCtr.push({
+          id: a.id,
+          requestId: req.id,
+          requestTitle: req.title || req.request_title || "Coverage Request",
+          client: req.entity?.name || "—",
+          eventDate: buildEventDateDisplay(req),
+          staffName: a.staff?.full_name || "Unknown",
+          staffAvatarUrl: getAvatarUrl(a.staff?.avatar_url),
+          sectionName: a.sections?.name || a.section || "Unassigned Section",
+          timeInDisplay: fmtTime(a.timed_in_at),
+          timeOutDisplay: fmtTime(a.completed_at),
+          durationDisplay: computeDuration(a.timed_in_at, a.completed_at),
+          statusDisplay: status,
+          proofUrl,
+          hasProof: !!a.selfie_url,
+          isBroken: !!brokenSelfieById[a.id],
+          avatarBg: avatarColor.bg,
+          avatarFg: avatarColor.color,
+          isFirstInGroup,
+        });
+      });
+    });
+
+    return rowsCtr;
+  }, [activeTab, ctrRequestSource, attendanceByRequest, brokenSelfieById]);
 
   const buildCtrExportRows = (requestList) => {
     const rowsForExport = [];
@@ -948,8 +1002,8 @@ export default function CoverageTracker() {
     {
       field: "requestTitle",
       headerName: "Request Title",
-      flex: 1.5,
-      minWidth: 220,
+      flex: TABLE_FIRST_COL_FLEX,
+      minWidth: TABLE_FIRST_COL_MIN_WIDTH,
       renderCell: (p) => (
         <Box
           sx={{
@@ -1034,6 +1088,224 @@ export default function CoverageTracker() {
           </ViewActionButton>
         </Box>
       ),
+    },
+  ];
+
+  const ctrColumns = [
+    {
+      field: "requestTitle",
+      headerName: "Event",
+      flex: TABLE_FIRST_COL_FLEX,
+      minWidth: TABLE_FIRST_COL_MIN_WIDTH,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, height: "100%", width: "100%", minWidth: 0, pr: 0.5 }}>
+          {p.row.isFirstInGroup ? (
+            <>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 500,
+                  color: "text.primary",
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {p.value}
+              </Typography>
+              <Tooltip title="View request" placement="top">
+                <Box
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/admin/coverage-request-details/${p.row.requestId}`, {
+                      state: { backTo: "/admin/coverage-tracker" },
+                    });
+                  }}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 24,
+                    height: 24,
+                    borderRadius: "6px",
+                    border: `1px solid ${border}`,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    color: "text.disabled",
+                    transition: "all 0.15s",
+                    "&:hover": { borderColor: "#212121", color: "#212121" },
+                  }}
+                >
+                  <ArrowForwardIcon sx={{ fontSize: 13 }} />
+                </Box>
+              </Tooltip>
+            </>
+          ) : null}
+        </Box>
+      ),
+    },
+    {
+      field: "staffName",
+      headerName: "Staff Assigned",
+      flex: 1,
+      minWidth: 120,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+          <Avatar
+            sx={{
+              width: TABLE_USER_AVATAR_SIZE,
+              height: TABLE_USER_AVATAR_SIZE,
+              fontSize: TABLE_USER_AVATAR_FONT_SIZE,
+              fontWeight: 700,
+              backgroundColor: p.row.avatarBg,
+              color: p.row.avatarFg,
+              flexShrink: 0,
+            }}
+            src={p.row.staffAvatarUrl}
+          >
+            {getInitials(p.value)}
+          </Avatar>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>{p.value}</Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "sectionName",
+      headerName: "Section",
+      flex: 0.9,
+      minWidth: 100,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" }}>
+            {p.value}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "timeInDisplay",
+      headerName: "Time In",
+      flex: 0.85,
+      minWidth: 90,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>{p.value}</Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "timeOutDisplay",
+      headerName: "Time Out",
+      flex: 0.85,
+      minWidth: 90,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>{p.value}</Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "durationDisplay",
+      headerName: "Duration",
+      flex: 0.75,
+      minWidth: 80,
+      renderCell: (p) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              color: p.value === "—" ? "text.disabled" : isDark ? "#f5c52b" : "#d97706",
+            }}
+          >
+            {p.value}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "statusDisplay",
+      headerName: "Status",
+      flex: 0.75,
+      minWidth: 90,
+      renderCell: (p) => {
+        const statusColors = {
+          Completed: { bg: "#dcfce7", text: "#166534" },
+          Ongoing: { bg: "#fef3c7", text: "#92400e" },
+          Pending: { bg: "#e5e7eb", text: "#374151" },
+        };
+        const colors = statusColors[p.value] || statusColors.Pending;
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Chip
+              label={p.value}
+              size="small"
+              sx={{
+                backgroundColor: colors.bg,
+                color: colors.text,
+                fontFamily: dm,
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                height: 22,
+                borderRadius: "999px",
+                "& .MuiChip-label": { px: 1.2 },
+              }}
+            />
+          </Box>
+        );
+      },
+    },
+    {
+      field: "proofUrl",
+      headerName: "Proof",
+      flex: 1,
+      minWidth: 120,
+      sortable: false,
+      renderCell: (p) => {
+        if (!p.row.hasProof) {
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.disabled" }}>
+                No proof
+              </Typography>
+            </Box>
+          );
+        }
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Box
+            sx={{
+              width: 80,
+              height: 44,
+              borderRadius: "6px",
+              border: `1px solid ${border}`,
+              overflow: "hidden",
+              backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
+              flexShrink: 0,
+            }}
+          >
+            {p.value && !p.row.isBroken ? (
+              <Box
+                component="img"
+                src={p.value}
+                alt="Proof"
+                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                onError={() => setBrokenSelfieById((prev) => ({ ...prev, [p.row.id]: true }))}
+                onMouseEnter={() => handleProofMouseEnter({ id: p.row.id, url: p.value })}
+                onMouseLeave={() => handleProofMouseLeave(p.row.id)}
+              />
+            ) : (
+              <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BrokenImageOutlinedIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </Box>
+            )}
+          </Box>
+          </Box>
+        );
+      },
     },
   ];
 
@@ -1310,6 +1582,30 @@ export default function CoverageTracker() {
               enableSearch={false}
               showToolbar={false}
               filterModel={externalFilterModel}
+              checkboxSelection={false}
+            />
+          </Box>
+        ) : activeTab === "ctr" ? (
+          <Box
+            sx={{
+              minWidth: 760,
+              height: "100%",
+              bgcolor: isDark ? "background.paper" : "#f7f7f8",
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              overflow: "hidden",
+            }}
+          >
+            <DataGrid
+              apiRef={gridApiRef}
+              rows={dataRowsCtr}
+              columns={ctrColumns}
+              loading={attendanceLoading}
+              pageSize={10}
+              rowsPerPageOptions={[10, 20]}
+              disableRowSelectionOnClick
+              enableSearch={false}
+              showToolbar={false}
               checkboxSelection={false}
             />
           </Box>

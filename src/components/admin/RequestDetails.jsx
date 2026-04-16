@@ -398,7 +398,7 @@ function ServiceRow({
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             border: "1px solid",
@@ -412,7 +412,7 @@ function ServiceRow({
             minWidth: 210,
             mt: 0.75,
           },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -1591,7 +1591,7 @@ export default function RequestDetails({
           onClose={handleClose}
           fullWidth
           maxWidth="md"
-          PaperProps={{
+          slotProps={{ paper: {
             sx: {
               borderRadius: "10px",
               fontFamily: "'Helvetica Neue', sans-serif",
@@ -1602,7 +1602,7 @@ export default function RequestDetails({
                 ? "0 8px 32px rgba(0,0,0,0.5)"
                 : "0 4px 24px rgba(0,0,0,0.08)",
             },
-          }}
+          } }}
         >
           {detailsContent}
         </Dialog>
@@ -1614,9 +1614,9 @@ export default function RequestDetails({
         onClose={() => setWarningOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -1793,9 +1793,9 @@ export default function RequestDetails({
         onClose={() => setApproveWarningOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -1937,9 +1937,9 @@ export default function RequestDetails({
         onClose={() => setApproveSoftWarnOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -2115,9 +2115,9 @@ export default function RequestDetails({
         onClose={() => !actionLoading && setForwardOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -2325,9 +2325,9 @@ export default function RequestDetails({
         onClose={() => !actionLoading && setDeclineOpen(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -2427,9 +2427,9 @@ export default function RequestDetails({
         onClose={() => !actionLoading && setApproveOpen(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
+        slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-        }}
+        } }}
       >
         <Box
           sx={{

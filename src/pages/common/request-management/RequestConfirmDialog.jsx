@@ -18,7 +18,7 @@ export default function RequestConfirmDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      PaperProps={{
+      slotProps={{ paper: {
         sx: {
           borderRadius: "10px",
           width: 400,
@@ -26,7 +26,7 @@ export default function RequestConfirmDialog({
           fontFamily: DM,
           bgcolor: "background.paper",
         },
-      }}
+      } }}
     >
       <Box>
         <Box

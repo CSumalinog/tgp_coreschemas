@@ -40,6 +40,8 @@ import {
   MODAL_ACTION_HEIGHT,
   MODAL_COMPACT_WIDTH,
   MODAL_TAB_HEIGHT,
+  TABLE_FIRST_COL_STAFF_FLEX,
+  TABLE_FIRST_COL_STAFF_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -48,6 +50,7 @@ import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForwardOutlined";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutwardOutlined";
 import MailOutlineIcon from "@mui/icons-material/MailOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -1417,7 +1420,9 @@ export default function DutyScheduleView() {
     {
       field: "full_name",
       headerName: "Staff",
+      headerAlign: "left",
       flex: 1.45,
+      minWidth: TABLE_FIRST_COL_STAFF_MIN_WIDTH,
       renderCell: (p) => {
         const url = getAvatarUrl(p.row.avatar_url);
         const avatarColor = getAvatarColor(p.row.id || p.value);
@@ -1464,28 +1469,28 @@ export default function DutyScheduleView() {
               }}
               sx={{
                 ml: "auto",
-                width: 22,
-                height: 22,
-                borderRadius: "4px",
-                border: "1px solid rgba(0,0,0,0.14)",
+                width: 24,
+                height: 24,
+                borderRadius: "6px",
+                border: "1px solid rgba(0,0,0,0.18)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "rgba(0,0,0,0.75)",
+                color: "text.disabled",
                 backgroundColor: "#ffffff",
                 cursor: p.row.staffer_id ? "pointer" : "not-allowed",
                 opacity: p.row.staffer_id ? 1 : 0.35,
                 transition: "all 0.15s",
                 "&:hover": p.row.staffer_id
                   ? {
-                      backgroundColor: "#f7f7f7",
-                      borderColor: "rgba(0,0,0,0.24)",
+                      borderColor: "#212121",
+                      color: "#212121",
                     }
                   : undefined,
               }}
               title="Open in Staffers Management"
             >
-              <ArrowOutwardIcon sx={{ fontSize: 12 }} />
+              <ArrowForwardIcon sx={{ fontSize: 13 }} />
             </Box>
           </Box>
         );
@@ -1494,6 +1499,7 @@ export default function DutyScheduleView() {
     {
       field: "duty_day",
       headerName: "Duty Day",
+      headerAlign: "left",
       flex: 0.95,
       renderCell: (p) => {
         const cfg = DAY_CFG[p.value] || DAY_CFG[0];
@@ -1541,7 +1547,7 @@ export default function DutyScheduleView() {
       flex: 1.05,
       minWidth: 235,
       align: "center",
-      headerAlign: "center",
+      headerAlign: "left",
       sortable: false,
       renderCell: (p) => {
         const count = p.value || 0;
@@ -1568,7 +1574,7 @@ export default function DutyScheduleView() {
       headerName: "Email",
       width: 92,
       align: "center",
-      headerAlign: "center",
+      headerAlign: "left",
       sortable: false,
       filterable: false,
       renderCell: (p) => {
@@ -1673,7 +1679,9 @@ export default function DutyScheduleView() {
     {
       field: "staffer_name",
       headerName: "Staff",
-      flex: 1.2,
+      headerAlign: "left",
+      flex: TABLE_FIRST_COL_STAFF_FLEX,
+      minWidth: TABLE_FIRST_COL_STAFF_MIN_WIDTH,
       renderCell: (p) => {
         const url = getAvatarUrl(p.row.staffer_avatar_url);
         const avatarColor = getAvatarColor(p.row.staffer_id || p.row.id);
@@ -1713,27 +1721,30 @@ export default function DutyScheduleView() {
               </Typography>
             </Box>
             <Box
-              onClick={() => navigate("/admin/staffers-management")}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("/admin/staffers-management");
+              }}
               sx={{
                 width: 24,
                 height: 24,
-                borderRadius: "4px",
+                borderRadius: "6px",
                 border: "1px solid rgba(0,0,0,0.18)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#1a1a1a",
+                color: "text.disabled",
                 backgroundColor: "#ffffff",
                 cursor: "pointer",
                 transition: "all 0.15s",
                 "&:hover": {
-                  backgroundColor: "#f5f5f5",
-                  borderColor: "rgba(0,0,0,0.35)",
+                  borderColor: "#212121",
+                  color: "#212121",
                 },
               }}
               title="Open staffers management"
             >
-              <ArrowOutwardIcon sx={{ fontSize: 13 }} />
+              <ArrowForwardIcon sx={{ fontSize: 13 }} />
             </Box>
           </Box>
         );
@@ -1742,6 +1753,7 @@ export default function DutyScheduleView() {
     {
       field: "duty_day_label",
       headerName: "Duty Day",
+      headerAlign: "left",
       flex: 1,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
@@ -1750,7 +1762,7 @@ export default function DutyScheduleView() {
       headerName: "Changes of Schedule Used",
       width: 176,
       align: "center",
-      headerAlign: "center",
+      headerAlign: "left",
       sortable: false,
       renderCell: (p) => {
         const count = p.value || 0;
@@ -1777,7 +1789,7 @@ export default function DutyScheduleView() {
       headerName: "Email",
       width: 92,
       align: "center",
-      headerAlign: "center",
+      headerAlign: "left",
       sortable: false,
       filterable: false,
       renderCell: (p) => (
@@ -2754,7 +2766,7 @@ export default function DutyScheduleView() {
         onClose={closeRequestDetails}
         fullWidth
         maxWidth="sm"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             backgroundColor: "background.paper",
@@ -2763,7 +2775,7 @@ export default function DutyScheduleView() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -3221,7 +3233,7 @@ export default function DutyScheduleView() {
         onClose={closeRejectDialog}
         fullWidth
         maxWidth="xs"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             backgroundColor: "background.paper",
@@ -3230,7 +3242,7 @@ export default function DutyScheduleView() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -3372,7 +3384,7 @@ export default function DutyScheduleView() {
       <Dialog
         open={publishConfirmOpen}
         onClose={publishSaving ? undefined : () => setPublishConfirmOpen(false)}
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             width: 480,
@@ -3382,7 +3394,7 @@ export default function DutyScheduleView() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -3726,7 +3738,7 @@ export default function DutyScheduleView() {
       <Dialog
         open={snapshotViewerOpen}
         onClose={() => setSnapshotViewerOpen(false)}
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             width: 620,
@@ -3740,7 +3752,7 @@ export default function DutyScheduleView() {
             display: "flex",
             flexDirection: "column",
           },
-        }}
+        } }}
       >
         <Box
           sx={{
@@ -4595,7 +4607,7 @@ export default function DutyScheduleView() {
         onClose={closeSlotDialog}
         fullWidth
         maxWidth="xs"
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
             backgroundColor: "background.paper",
@@ -4604,7 +4616,7 @@ export default function DutyScheduleView() {
               ? "0 24px 64px rgba(0,0,0,0.6)"
               : "0 8px 40px rgba(53,53,53,0.12)",
           },
-        }}
+        } }}
       >
         <Box
           sx={{

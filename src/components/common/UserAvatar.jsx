@@ -151,7 +151,7 @@ export default function UserAvatar({ profileRoute = "profile" }) {
         // opens upward, aligned to the left of the avatar
         anchorOrigin={{ horizontal: "left", vertical: "top" }}
         transformOrigin={{ horizontal: "left", vertical: "bottom" }}
-        PaperProps={{
+        slotProps={{ paper: {
           sx: {
             fontFamily: dm,
             width: 240, // matches sidebar width
@@ -163,7 +163,7 @@ export default function UserAvatar({ profileRoute = "profile" }) {
             overflow: "hidden",
             "& .MuiList-root": { py: 0 },
           },
-        }}
+        } }}
       >
         {/* ── User header ── */}
         <Box

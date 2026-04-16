@@ -11,7 +11,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { supabase } from "../../lib/supabaseClient";
-import { MODAL_TAB_HEIGHT } from "../../utils/layoutTokens";
+import { MODAL_TAB_HEIGHT, TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -192,8 +192,8 @@ export default function BlockingDetailsLog() {
       {
         field: "title",
         headerName: "Title",
-        flex: 1.15,
-        minWidth: 190,
+        flex: TABLE_FIRST_COL_FLEX,
+        minWidth: TABLE_FIRST_COL_MIN_WIDTH,
       },
       {
         field: "range_label",
