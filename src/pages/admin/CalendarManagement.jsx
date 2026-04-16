@@ -21,6 +21,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/AddOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeftOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
+import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate, useLocation } from "react-router-dom";
 import CalendarEventDialog from "../../components/admin/CalendarAvailabilitySetter";
 import { supabase } from "../../lib/supabaseClient";
@@ -2298,7 +2299,7 @@ export default function CalendarManagement() {
               },
             }}
           >
-            <ChevronRightIcon sx={{ fontSize: 16, transform: "rotate(180deg)" }} />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
 
@@ -2552,7 +2553,7 @@ export default function CalendarManagement() {
               },
             }}
           >
-            <ChevronRightIcon sx={{ fontSize: 16, transform: "rotate(180deg)" }} />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
 

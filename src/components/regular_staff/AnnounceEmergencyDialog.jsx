@@ -125,7 +125,7 @@ function AnnounceEmergencyDialog({
       fullWidth
       slotProps={{ paper: {
         sx: {
-          borderRadius: "14px",
+          borderRadius: "10px",
           backgroundColor: "background.paper",
           border: `1px solid ${border}`,
           boxShadow: isDark
@@ -146,15 +146,6 @@ function AnnounceEmergencyDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 2.5,
-              height: 26,
-              borderRadius: "2px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Typography
               sx={{
@@ -317,57 +308,50 @@ function AnnounceEmergencyDialog({
           gap: 1,
         }}
       >
-        <Box
-          onClick={!loading ? handleClose : undefined}
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleClose}
+          disabled={loading}
           sx={{
             borderRadius: "10px",
-            cursor: loading ? "default" : "pointer",
             fontFamily: dm,
-            fontSize: "0.8rem",
+            fontSize: "0.82rem",
             fontWeight: 600,
+            textTransform: "none",
             color: "text.secondary",
-            border: `1px solid ${border}`,
-            backgroundColor: "transparent",
-            px: 1.75,
-            py: 0.65,
-            opacity: loading ? 0.5 : 1,
-            "&:hover": {
-              backgroundColor: loading ? undefined : HOVER_BG,
-            },
+            borderColor: "divider",
           }}
         >
           Cancel
-        </Box>
-        <Box
-          onClick={!loading ? handleAnnounce : undefined}
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleAnnounce}
+          disabled={loading}
           sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.6,
-            cursor: loading ? "default" : "pointer",
             borderRadius: "10px",
             fontFamily: dm,
-            fontSize: "0.8rem",
+            fontSize: "0.82rem",
             fontWeight: 700,
-            backgroundColor: loading ? "action.disabledBackground" : "#111",
-            color: loading ? "text.disabled" : "#fff",
-            px: 1.75,
-            py: 0.65,
-            transition: "background-color 0.15s",
-            "&:hover": {
-              backgroundColor: loading ? undefined : "#333",
-            },
+            textTransform: "none",
+            backgroundColor: "#111",
+            color: "#fff",
+            boxShadow: "none",
+            "&:hover": { backgroundColor: "#333", boxShadow: "none" },
+            "&.Mui-disabled": { backgroundColor: "action.disabledBackground" },
           }}
         >
           {loading ? (
             <>
-              <CircularProgress size={12} sx={{ color: "inherit" }} />
+              <CircularProgress size={12} sx={{ color: "inherit", mr: 0.75 }} />
               Submitting...
             </>
           ) : (
             "Submit request"
           )}
-        </Box>
+        </Button>
       </Box>
     </Dialog>
   );

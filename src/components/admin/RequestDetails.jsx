@@ -1007,9 +1007,9 @@ export default function RequestDetails({
             <IconButton
               onClick={handleClose}
               size="small"
-              sx={{ color: "text.secondary" }}
+              sx={{ color: "text.secondary", borderRadius: "10px", "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" } }}
             >
-              <CloseIcon fontSize="small" />
+              <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           )}
         </Box>
@@ -2139,9 +2139,9 @@ export default function RequestDetails({
             onClick={() => setForwardOpen(false)}
             size="small"
             disabled={actionLoading}
-            sx={{ color: "text.secondary" }}
+            sx={{ color: "text.secondary", borderRadius: "10px", "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" } }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
@@ -2349,9 +2349,9 @@ export default function RequestDetails({
             onClick={() => setDeclineOpen(false)}
             size="small"
             disabled={actionLoading}
-            sx={{ color: "text.secondary" }}
+            sx={{ color: "text.secondary", borderRadius: "10px", "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" } }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
@@ -2451,9 +2451,9 @@ export default function RequestDetails({
             onClick={() => setApproveOpen(false)}
             size="small"
             disabled={actionLoading}
-            sx={{ color: "text.secondary" }}
+            sx={{ color: "text.secondary", borderRadius: "10px", "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" } }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>

@@ -111,7 +111,7 @@ export default function CancelConfirmDialog({
             },
           }}
         >
-          <CloseIcon sx={{ fontSize: 17 }} />
+          <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
 

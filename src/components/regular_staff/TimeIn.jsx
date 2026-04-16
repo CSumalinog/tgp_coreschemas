@@ -572,15 +572,6 @@ export function TimeInModal({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 2.5,
-              height: 26,
-              borderRadius: "10px",
-              backgroundColor: isEmergency ? "#c62828" : GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Typography
               sx={{

@@ -3486,15 +3486,6 @@ function SubmitConfirmDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 2.5,
-              height: 26,
-              borderRadius: "2px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Typography
               sx={{
@@ -3522,7 +3513,7 @@ function SubmitConfirmDialog({
           onClick={onCancel}
           disabled={loading}
           sx={{
-            borderRadius: "8px",
+            borderRadius: "10px",
             color: "text.secondary",
             "&:hover": { backgroundColor: HOVER_BG },
           }}
@@ -4019,7 +4010,7 @@ function AssignmentDialog({
             size="small"
             disabled={assignLoading}
             sx={{
-              borderRadius: "8px",
+              borderRadius: "10px",
               color: "text.secondary",
               "&:hover": { backgroundColor: HOVER_BG },
             }}
@@ -5429,15 +5420,6 @@ function ReassignPickerDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 2.5,
-              height: 26,
-              borderRadius: "2px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Typography
               sx={{
@@ -5463,7 +5445,7 @@ function ReassignPickerDialog({
           onClick={onClose}
           disabled={reassigning}
           sx={{
-            borderRadius: "8px",
+            borderRadius: "10px",
             color: "text.secondary",
             "&:hover": { backgroundColor: HOVER_BG },
           }}

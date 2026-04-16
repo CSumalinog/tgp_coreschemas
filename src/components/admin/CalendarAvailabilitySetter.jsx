@@ -204,25 +204,21 @@ export default function CalendarEventDialog({
         open={open}
         onClose={handleClose}
         fullWidth
-        hideBackdrop
         slotProps={{
-          backdrop: {
-            sx: { backgroundColor: "transparent" },
+          paper: {
+            sx: {
+              width: MODAL_COMPACT_WIDTH,
+              borderRadius: CONTROL_RADIUS,
+              backgroundColor: paperBg,
+              backgroundImage: "none",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 20px 60px rgba(0,0,0,0.5)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+              overflow: "hidden",
+            },
           },
         }}
-        slotProps={{ paper: {
-          sx: {
-            width: MODAL_COMPACT_WIDTH,
-            borderRadius: CONTROL_RADIUS,
-            backgroundColor: paperBg,
-            backgroundImage: "none",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 20px 60px rgba(0,0,0,0.5)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
-            overflow: "hidden",
-          },
-        } }}
       >
         {/* ── Header ── */}
         <Box

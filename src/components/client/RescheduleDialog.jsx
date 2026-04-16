@@ -376,7 +376,7 @@ export default function RescheduleDialog({
             },
           }}
         >
-          <CloseIcon sx={{ fontSize: 17 }} />
+          <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
 

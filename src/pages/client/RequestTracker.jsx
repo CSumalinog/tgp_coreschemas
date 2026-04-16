@@ -2356,7 +2356,7 @@ function RequestDetailDialog({
                 },
               }}
             >
-              <CloseIcon sx={{ fontSize: 17 }} />
+              <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
         </Box>

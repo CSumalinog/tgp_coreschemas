@@ -99,6 +99,7 @@ The Section Head interface features modular pages:
 - **Coverage Assignment**: Views for All, For Assignment, For Approval, and Assigned statuses
 - **Coverage Tracker**: Views for All, On Going, and Completed coverage records
 - **Time Records**: Comprehensive time tracking with search, filter, and CSV export
+- **Reassignment History**: Dedicated page tracking announced emergencies and no-shows with replacement details
 - **Real-time Updates**: Live subscription to coverage_requests and coverage_assignments tables
 
 ### 3.4 Regular Staff (role: "staff")
@@ -887,10 +888,10 @@ A reusable circular badge component for displaying counts:
 
 All four role-based layouts received consistent updates:
 
-- **AdminLayout**: New branding, navigation restructuring
+- **AdminLayout**: New branding; Coverage Tracker is a collapsible group with "Requests" and "Time Record" child routes; Scheduling group contains Semester Management and Duty Schedule
 - **ClientLayout**: Updated navigation with client-specific items
 - **RegularStaffLayout**: Staff-focused navigation and branding
-- **SectionHeadLayout**: Section head specific navigation
+- **SectionHeadLayout**: Coverage Management is a collapsible group with four child routes: Assignment, Tracker, Time Record, and Reassignment History
 
 ### 9.25 Enhanced Semester Management with Scheduling Control (v2.4)
 
@@ -1054,43 +1055,7 @@ The section head navigation now uses a modular component structure:
 - **CoverageAssignmentPage** ([`CoverageAssignmentPage.jsx`](src/pages/section_head/CoverageAssignmentPage.jsx:1)): Manages staff assignments with views for "All", "For Assignment", "For Approval", and "Assigned" statuses
 - **CoverageTrackerPage** ([`CoverageTrackerPage.jsx`](src/pages/section_head/CoverageTrackerPage.jsx:1)): Tracks ongoing and completed coverage with "All", "On Going", and "Completed" views
 - **CoverageTimeRecordPage** ([`CoverageTimeRecordPage.jsx`](src/pages/section_head/CoverageTimeRecordPage.jsx:1)): Comprehensive time record management with filtering, search, and CSV export capabilities
-
-#### CoverageManagementBase Component
-
-A new shared base component ([`CoverageManagementBase.jsx`](src/pages/section_head/CoverageManagementBase.jsx:1)) provides:
-
-- **Configurable Views**: Page-specific view definitions with customizable tabs and filtering
-- **DataGrid Integration**: Full-featured data tables with sorting, filtering, and pagination
-- **Real-time Updates**: Live subscription to coverage_requests and coverage_assignments tables
-- **Assignment Workflow**: Complete assignment creation, editing, and submission workflow
-- **Coverage Completion**: Staff can mark assignments as complete with dialog confirmation
-- **View Details**: Drawer-based detail view for examining individual requests
-- **Export Functionality**: CSV export with customizable filename
-- **Archive/Trash Management**: Integration with role-based archive and trash systems
-- **Unified Styling**: Consistent use of layout tokens (TABLE_USER_AVATAR_SIZE, TABLE_USER_AVATAR_FONT_SIZE)
-
-#### Layout Token Integration
-
-All section head pages now import and utilize shared layout tokens from [`layoutTokens.js`](src/utils/layoutTokens.js:1):
-
-- FILTER_SEARCH_MIN_WIDTH, FILTER_ROW_GAP, FILTER_INPUT_HEIGHT
-- TABLE_USER_AVATAR_SIZE, TABLE_USER_AVATAR_FONT_SIZE
-
-#### Deprecation
-
-The legacy **SecheadAssignmentManagement.jsx** component has been removed and replaced by the new modular architecture.
-
-### 9.29 Section Head Interface Restructuring (v2.5)
-
-The Section Head module received a complete architectural overhaul with new page structure and shared base component:
-
-#### New Page Architecture
-
-The section head navigation now uses a modular component structure:
-
-- **CoverageAssignmentPage** ([`CoverageAssignmentPage.jsx`](src/pages/section_head/CoverageAssignmentPage.jsx:1)): Manages staff assignments with views for "All", "For Assignment", "For Approval", and "Assigned" statuses
-- **CoverageTrackerPage** ([`CoverageTrackerPage.jsx`](src/pages/section_head/CoverageTrackerPage.jsx:1)): Tracks ongoing and completed coverage with "All", "On Going", and "Completed" views
-- **CoverageTimeRecordPage** ([`CoverageTimeRecordPage.jsx`](src/pages/section_head/CoverageTimeRecordPage.jsx:1)): Comprehensive time record management with filtering, search, and CSV export capabilities
+- **ReassignmentHistoryPage** ([`ReassignmentHistoryPage.jsx`](src/pages/section_head/ReassignmentHistoryPage.jsx:1)): Dedicated view for tracking announced emergencies and no-show incidents with replacement details (see §9.34)
 
 #### CoverageManagementBase Component
 
@@ -1251,6 +1216,70 @@ The PDF confirmation generator received minor refinements:
 - Better handling of null/undefined values
 - Improved date formatting consistency
 - Enhanced error handling for missing data
+
+### 9.34 Reassignment History Page — Section Head (v2.7)
+
+A new standalone page ([`ReassignmentHistoryPage.jsx`](src/pages/section_head/ReassignmentHistoryPage.jsx:1)) gives section heads a dedicated view of all emergency and no-show assignment incidents within their section:
+
+#### Navigation
+
+`SectionHeadLayout` now exposes "Reassignment History" as a fourth child item under the collapsible **Coverage Management** group (alongside Assignment, Tracker, and Time Record), routing to `reassignment-history`.
+
+#### Type Segmentation
+
+Two toggle tabs filter the incident type:
+
+- **Announced Emergency**: Assignments cancelled where the staffer proactively announced an emergency (detected by `"emergency"` keyword in `cancellation_reason`)
+- **No Show**: Cancelled or No Show assignments where no emergency was announced
+
+#### Data Displayed (DataGrid)
+
+| Column | Description |
+|---|---|
+| Title | Request title with quick-navigate arrow to the assignment page |
+| Date Occurred | `assignment_date` of the original cancelled assignment |
+| Reason | Extracted emergency reason text (strips proof path suffix) |
+| Proof | Clickable file icon linking to the emergency proof stored in Supabase Storage (`emergency-proof` bucket) |
+| Reassigned To | Full name(s) of replacement staffer(s) matched by `is_reassigned=true` on same day/service key |
+| Date of Reassignment | `created_at` of the replacement assignment record |
+
+#### Filtering
+
+- **Semester filter**: Scopes data to a selected academic semester (defaults to active semester) by filtering `assignment_date` within semester date range
+- **Result count**: Live count badge showing number of matching events
+
+#### Data Logic
+
+- Fetches `coverage_assignments` with status `Cancelled` or `No Show` for the section head's section
+- Separately fetches replacement assignments (`is_reassigned=true`) and joins them per day/service key
+- Proof path is extracted from a structured `cancellation_reason` string using regex pattern `(Proof: <path>)`
+
+### 9.35 Admin Coverage Tracker — Requests & Time Record Split (v2.7)
+
+The Admin `CoverageTracker` module is now surfaced through two distinct sub-routes under a collapsible **Coverage Tracker** group in `AdminLayout`:
+
+- **Requests** → `coverage-tracker/requests`: The main coverage tracking DataGrid (All, On Going, Completed filter tabs) with per-request assignment details and completion dialogs
+- **Time Record** → `coverage-tracker/time-record`: Dedicated time record view for admin-level inspection of staffer time-in/time-out data across all sections
+
+Previously the Coverage Tracker was accessed as a single flat route. The collapsible group pattern (matching the Scheduling group) keeps the sidebar organized as admin features grow.
+
+### 9.36 Admin Coverage Completion Dialog ([`AdminCoverageCompletionDialog.jsx`](src/components/admin/AdminCoverageCompletionDialog.jsx:1))
+
+A new reusable dialog component for administrators to inspect the completion details of a coverage request:
+
+#### Features
+
+- **Section-Grouped Assignment Cards**: Assignments are fetched fresh from `coverage_assignments` and grouped by section (News, Photojournalism, Videojournalism)
+- **Staffer Identity**: Avatar display with deterministic color palette (8 distinct color pairs), initials fallback, and full name
+- **Timing Summary**: Displays time-in (`timed_in_at`), completion time (`completed_at`), and computed duration (e.g., `2h 30m`)
+- **Selfie Proof with Collapsible Viewer**: Clicking the chevron expands an inline selfie image fetched from Supabase Storage (`login-proof` bucket); broken image fallback handled gracefully
+- **Status Badges**: Visual status pills per assignment
+- **Maximized Layout Support**: Accepts a `maximized` prop to adapt the dialog layout for fullscreen contexts
+- **Loading & Empty States**: Spinner during data fetch, empty state message when no assignments exist
+
+#### Usage
+
+Used by the admin `CoverageTracker` to view completion records for finished requests, and referenced in `CoverageRequestDetailsPage` for in-page detail inspection.
 
 ---
 
