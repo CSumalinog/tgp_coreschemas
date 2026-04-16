@@ -433,6 +433,7 @@ function AssignmentCard({
             </ListItemText>
           </MenuItem>
           <MenuItem
+            disabled={a.status === "Cancelled"}
             onClick={() => {
               onRectification?.(a);
               setMenuAnchor(null);
@@ -440,18 +441,22 @@ function AssignmentCard({
             sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
           >
             <ListItemIcon>
-              <FactCheckOutlinedIcon sx={{ fontSize: 18, color: "#111" }} />
+              <FactCheckOutlinedIcon
+                sx={{ fontSize: 18, color: a.status === "Cancelled" ? "text.disabled" : "#111" }}
+              />
             </ListItemIcon>
             <ListItemText
               primaryTypographyProps={{
                 fontFamily: dm,
                 fontSize: "0.82rem",
+                color: a.status === "Cancelled" ? "text.disabled" : undefined,
               }}
             >
               Request Rectification
             </ListItemText>
           </MenuItem>
           <MenuItem
+            disabled={a.status === "Cancelled"}
             onClick={() => {
               onAnnounceEmergency(a);
               setMenuAnchor(null);
@@ -459,16 +464,18 @@ function AssignmentCard({
             sx={{ fontFamily: dm, fontSize: "0.82rem", gap: 1 }}
           >
             <ListItemIcon>
-              <WarningAmberOutlinedIcon sx={{ fontSize: 18, color: GOLD }} />
+              <WarningAmberOutlinedIcon
+                sx={{ fontSize: 18, color: a.status === "Cancelled" ? "text.disabled" : GOLD }}
+              />
             </ListItemIcon>
             <ListItemText
               primaryTypographyProps={{
                 fontFamily: dm,
                 fontSize: "0.82rem",
-                color: GOLD,
+                color: a.status === "Cancelled" ? "text.disabled" : GOLD,
               }}
             >
-              Announce Emergency
+              {a.status === "Cancelled" ? "Emergency Announced" : "Announce Emergency"}
             </ListItemText>
           </MenuItem>
         </Menu>

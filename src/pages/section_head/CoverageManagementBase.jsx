@@ -241,10 +241,10 @@ const computeDuration = (timedIn, completedAt) => {
   return `${hrs}h ${mins}m`;
 };
 const isAssignmentCompleted = (assignment) =>
-  assignment?.status === "Completed" || !!assignment?.completed_at;
+  assignment?.status === "Completed";
 const isAssignmentOnGoing = (assignment) =>
-  (assignment?.status === "On Going" || !!assignment?.timed_in_at) &&
-  !isAssignmentCompleted(assignment);
+  !["Cancelled", "No Show", "Completed"].includes(assignment?.status) &&
+  (assignment?.status === "On Going" || !!assignment?.timed_in_at);
 const fmtTime = (ts) => {
   if (!ts) return null;
   return new Date(ts).toLocaleTimeString("en-US", {
@@ -1063,14 +1063,16 @@ export default function CoverageManagementBase({
       const sectionAssignmentsOf = (req) =>
         (req.coverage_assignments || []).filter((a) => a.section === mySection);
       const isSectionCompleted = (req) => {
-        const sectionAssignments = sectionAssignmentsOf(req);
-        return (
-          sectionAssignments.length > 0 &&
-          sectionAssignments.every(isAssignmentCompleted)
+        // Exclude replaced/terminal rows — only active assignments count.
+        const active = sectionAssignmentsOf(req).filter(
+          (a) => !["Cancelled", "No Show"].includes(a.status),
         );
+        return active.length > 0 && active.every(isAssignmentCompleted);
       };
       const isSectionOnGoing = (req) =>
-        sectionAssignmentsOf(req).some(isAssignmentOnGoing);
+        sectionAssignmentsOf(req)
+          .filter((a) => !["Cancelled", "No Show"].includes(a.status))
+          .some(isAssignmentOnGoing);
 
       const sectionCompletedRows = allProgressRows.filter(isSectionCompleted);
       const completedIds = new Set(sectionCompletedRows.map((r) => r.id));
@@ -5412,23 +5414,6 @@ function ReassignPickerDialog({
               }}
             >
               Same-division replacements were unavailable. Outside-division staffers are shown as an emergency fallback, and admins will be notified if you confirm one.
-            </Alert>
-          )}
-          {!hasCrossDivisionOptions && hasNearbyOptions && (
-            <Alert
-              severity="info"
-              sx={{
-                mb: 1.25,
-                borderRadius: "8px",
-                fontFamily: dm,
-                alignItems: "center",
-                "& .MuiAlert-message": {
-                  fontSize: "0.8rem",
-                  lineHeight: 1.35,
-                },
-              }}
-            >
-              Exact-day coverage was limited, so nearby duty-day staffers are shown and sorted by lightest workload first.
             </Alert>
           )}
           <Typography

@@ -107,14 +107,17 @@ const hasAnyTimeIn = (request) =>
   (request?.coverage_assignments || []).some((a) => !!a?.timed_in_at);
 
 const hasAnyCompleted = (request) =>
-  (request?.coverage_assignments || []).some((a) => !!a?.completed_at);
+  (request?.coverage_assignments || []).some((a) => a?.status === "Completed");
 
 const hasAnyAssignments = (request) =>
   (request?.coverage_assignments || []).length > 0;
 
 const hasAnyAssignmentPending = (request) => {
-  const assignments = request?.coverage_assignments || [];
-  return assignments.some((a) => !a?.completed_at);
+  // Exclude replaced/terminal assignments — only active ones count.
+  const active = (request?.coverage_assignments || []).filter(
+    (a) => !["Cancelled", "No Show"].includes(a?.status),
+  );
+  return active.some((a) => a?.status !== "Completed");
 };
 
 const isCtrEligibleStatus = (status) => {

@@ -23,12 +23,21 @@ export function useClientRequests() {
 
       if (assignments.length === 0) return request;
 
-      const total = assignments.length;
-      const completed = assignments.filter(
-        (a) => a?.status === "Completed" || !!a?.completed_at,
+      // Exclude replaced/terminal assignments so they don't poison the
+      // lifecycle computation (e.g. a Cancelled emergency assignment with
+      // completed_at set should NOT count as coverage done).
+      const active = assignments.filter(
+        (a) => !["Cancelled", "No Show"].includes(a?.status),
+      );
+
+      if (active.length === 0) return request;
+
+      const total = active.length;
+      const completed = active.filter(
+        (a) => a?.status === "Completed",
       ).length;
-      const onGoing = assignments.filter(
-        (a) => a?.status === "On Going" || !!a?.timed_in_at,
+      const onGoing = active.filter(
+        (a) => a?.status === "On Going",
       ).length;
 
       if (completed === total) {
