@@ -94,6 +94,7 @@ const STATUS_CONFIG = {
   "On Going": { bg: "#dbeafe", color: "#1d4ed8" },
   Completed: { bg: "#f0fdf4", color: "#15803d" },
   Declined: { bg: "#fee2e2", color: "#dc2626" },
+  Rectified: { bg: "rgba(139,92,246,0.08)", color: "#6d28d9" },
 };
 
 const SCORE_CONFIG = {
@@ -706,6 +707,7 @@ export default function RequestDetails({
         "Approved",
         "On Going",
         "Completed",
+        "Rectified",
       ].includes(request.status)
     ) {
       setAssignedStaffers([]);
@@ -872,10 +874,11 @@ export default function RequestDetails({
     "Approved",
     "On Going",
     "Completed",
+    "Rectified",
   ].includes(request?.status);
   // FIX #4: decline available at any pre-completion stage
   const canDecline = DECLINABLE_STATUSES.includes(request?.status);
-  const canOpenCoverageDetails = ["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(
+  const canOpenCoverageDetails = ["Assigned", "For Approval", "Approved", "On Going", "Completed", "Rectified"].includes(
     request?.status,
   );
 
@@ -1612,7 +1615,7 @@ export default function RequestDetails({
       <Dialog
         open={warningOpen}
         onClose={() => setWarningOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
@@ -1791,7 +1794,7 @@ export default function RequestDetails({
       <Dialog
         open={approveWarningOpen}
         onClose={() => setApproveWarningOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
@@ -1935,7 +1938,7 @@ export default function RequestDetails({
       <Dialog
         open={approveSoftWarnOpen}
         onClose={() => setApproveSoftWarnOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
@@ -2113,7 +2116,7 @@ export default function RequestDetails({
       <Dialog
         open={forwardOpen}
         onClose={() => !actionLoading && setForwardOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         slotProps={{ paper: {
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },

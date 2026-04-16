@@ -1765,7 +1765,7 @@ export default function CoverageRequestDialog({
         open={confirmOpen}
         onClose={() => !loading && setConfirmOpen(false)}
         fullWidth
-        maxWidth="xs"
+        maxWidth="sm"
         slotProps={{
           paper: {
             sx: {

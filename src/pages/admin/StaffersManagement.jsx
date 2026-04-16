@@ -2385,7 +2385,7 @@ function BrandDialog({
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth="xs"
+      maxWidth="sm"
       slotProps={{ paper: {
         sx: {
           borderRadius: "10px",

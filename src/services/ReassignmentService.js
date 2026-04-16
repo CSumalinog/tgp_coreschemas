@@ -44,22 +44,25 @@ export async function reassignAfterNoShow({
   const isAnnouncedEmergency = triggerType === "announced-emergency";
 
   // 1. Mark the previous assignment as replaced by no-show/emergency context
-  const previousUpdate = {
-    status: isAnnouncedEmergency ? "Cancelled" : "No Show",
-    cancellation_reason:
-      existingReason ||
-      reason ||
-      (isAnnouncedEmergency ? "Emergency announced" : "No Show"),
-  };
-  if (!isAnnouncedEmergency) {
-    previousUpdate.completed_at = now;
-  }
+  // For announced emergencies the assignment is already Cancelled — skip redundant write
+  if (!isAnnouncedEmergency || originalAssignment?.status !== "Cancelled") {
+    const previousUpdate = {
+      status: isAnnouncedEmergency ? "Cancelled" : "No Show",
+      cancellation_reason:
+        existingReason ||
+        reason ||
+        (isAnnouncedEmergency ? "Emergency announced" : "No Show"),
+    };
+    if (!isAnnouncedEmergency) {
+      previousUpdate.completed_at = now;
+    }
 
-  const { error: previousAssignErr } = await supabase
-    .from("coverage_assignments")
-    .update(previousUpdate)
-    .eq("id", assignmentId);
-  if (previousAssignErr) return { error: previousAssignErr };
+    const { error: previousAssignErr } = await supabase
+      .from("coverage_assignments")
+      .update(previousUpdate)
+      .eq("id", assignmentId);
+    if (previousAssignErr) return { error: previousAssignErr };
+  }
 
   // 2. Create replacement assignment with the same assignment slot metadata
   const { data: newAssignment, error: assignError } = await supabase
@@ -78,7 +81,6 @@ export async function reassignAfterNoShow({
         assigned_at: now,
         is_reassigned: true,
         cancellation_reason: null,
-        created_at: now,
       },
     ])
     .select()

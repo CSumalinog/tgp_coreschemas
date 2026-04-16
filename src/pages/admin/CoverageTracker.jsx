@@ -111,7 +111,9 @@ const hasAnyTimeIn = (request) =>
   (request?.coverage_assignments || []).some((a) => !!a?.timed_in_at);
 
 const hasAnyCompleted = (request) =>
-  (request?.coverage_assignments || []).some((a) => a?.status === "Completed");
+  (request?.coverage_assignments || []).some((a) =>
+    a?.status === "Completed" || a?.status === "Rectified"
+  );
 
 const hasAnyAssignments = (request) =>
   (request?.coverage_assignments || []).length > 0;
@@ -119,14 +121,14 @@ const hasAnyAssignments = (request) =>
 const hasAnyAssignmentPending = (request) => {
   // Exclude replaced/terminal assignments — only active ones count.
   const active = (request?.coverage_assignments || []).filter(
-    (a) => !["Cancelled", "No Show"].includes(a?.status),
+    (a) => !["Cancelled", "No Show", "Rectified"].includes(a?.status),
   );
-  return active.some((a) => a?.status !== "Completed");
+  return active.some((a) => !["Completed"].includes(a?.status));
 };
 
 const hasAnyActiveAssignment = (request) =>
   (request?.coverage_assignments || []).some(
-    (a) => !["Cancelled", "No Show"].includes(a?.status),
+    (a) => !["Cancelled", "No Show", "Rectified"].includes(a?.status),
   );
 
 const isCtrEligibleStatus = (status) => {
@@ -137,7 +139,8 @@ const isCtrEligibleStatus = (status) => {
     normalized === "assigned" ||
     normalized === "approved" ||
     normalized === "on going" ||
-    normalized === "completed"
+    normalized === "completed" ||
+    normalized === "rectified"
   );
 };
 

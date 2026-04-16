@@ -105,7 +105,9 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
           type: "emergency_announcement",
           title: "Staff Emergency Announcement",
           message: `${currentUser.full_name} announced an emergency for "${request?.title}" on ${eventDate}. Reason: ${normalizedReason}. Reassignment required.${proofPath ? " Proof attached." : ""}`,
-          target_payload: proofPath ? { proof_path: proofPath } : null,
+          target_path: "/admin/request-management",
+          target_payload: { openRequestId: request?.id, ...(proofPath ? { proof_path: proofPath } : {}) },
+          created_by: currentUser.id,
           created_at: now,
         });
       });
@@ -120,7 +122,8 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
           title: "Emergency — Reassignment Required",
           message: `${currentUser.full_name} announced an emergency for "${request?.title}" on ${eventDate}. Please reassign coverage. Reason: ${normalizedReason}${proofPath ? " (proof attached)" : ""}`,
           target_path: "/sec_head/coverage-management/assignment",
-          target_payload: proofPath ? { proof_path: proofPath } : null,
+          target_payload: { openRequestId: request?.id, ...(proofPath ? { proof_path: proofPath } : {}) },
+          created_by: currentUser.id,
           created_at: now,
         });
       });

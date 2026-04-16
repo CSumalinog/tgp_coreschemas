@@ -31,6 +31,8 @@ import {
   Snackbar,
   Divider,
   Radio,
+  TextField,
+  LinearProgress,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { useSearchParams, useLocation, useNavigate, Link } from "react-router-dom";
@@ -49,6 +51,9 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
+import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
@@ -149,7 +154,9 @@ const STATUS_CFG = {
   Approved: { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
   Declined: { dot: "#ef4444", color: "#dc2626", bg: "#fef2f2" },
   "No-show": { dot: "#f59e0b", color: "#b45309", bg: "#fffbeb" },
+  "No Show": { dot: "#ef4444", color: "#b91c1c", bg: "rgba(239,68,68,0.08)" },
   Completed: { dot: "#22c55e", color: "#15803d", bg: "#f0fdf4" },
+  Rectified: { dot: "#8b5cf6", color: "#6d28d9", bg: "rgba(139,92,246,0.08)" },
 };
 
 // View options — shows requests at different stages of the assignment workflow
@@ -244,9 +251,9 @@ const computeDuration = (timedIn, completedAt) => {
   return `${hrs}h ${mins}m`;
 };
 const isAssignmentCompleted = (assignment) =>
-  assignment?.status === "Completed";
+  assignment?.status === "Completed" || assignment?.status === "Rectified";
 const isAssignmentOnGoing = (assignment) =>
-  !["Cancelled", "No Show", "Completed"].includes(assignment?.status) &&
+  !["Cancelled", "No Show", "Completed", "Rectified"].includes(assignment?.status) &&
   (assignment?.status === "On Going" || !!assignment?.timed_in_at);
 const fmtTime = (ts) => {
   if (!ts) return null;
@@ -280,14 +287,20 @@ const isAnnouncedEmergencyAssignment = (assignment) => {
   const reason = String(assignment.cancellation_reason || "").toLowerCase();
   return reason.includes("emergency");
 };
-const isUnannouncedNoShowCandidate = (assignment, currentSection, endOfToday) => {
+// Fires 10 minutes after the assignment's from_time on the event day.
+// This aligns with the TimeIn modal window — if a staffer hasn't clocked in
+// within 10 minutes of their scheduled start, they are considered a no-show.
+const isUnannouncedNoShowCandidate = (assignment, currentSection, now) => {
   if (!assignment) return false;
   if (assignment.section !== currentSection) return false;
   if (assignment.timed_in_at) return false;
   if (!assignment.assignment_date) return false;
-  if (["Cancelled", "No Show", "Completed"].includes(assignment.status))
+  if (["Cancelled", "No Show", "Completed", "Rectified"].includes(assignment.status))
     return false;
-  return new Date(assignment.assignment_date + "T00:00:00") <= endOfToday;
+  const fromTime = assignment.from_time || "00:00:00";
+  const eventStart = new Date(`${assignment.assignment_date}T${fromTime}`);
+  const threshold = new Date(eventStart.getTime() + 10 * 60 * 1000);
+  return now >= threshold;
 };
 
 // ── Small shared UI pieces ────────────────────────────────────────────────────
@@ -800,6 +813,91 @@ export default function CoverageManagementBase({
   const [reassigning, setReassigning] = useState(false);
   const [reassignError, setReassignError] = useState("");
   const openedFromNotificationRef = useRef(null);
+  // Tracks assignment IDs already processed for no-show auto-mark this session
+  // to prevent re-processing after each loadAll() re-render cycle.
+  const markedNoShowIds = useRef(new Set());
+
+  // ── Rectification review state ─────────────────────────────────────────────
+  const [rectifRequests, setRectifRequests] = useState([]);
+  const [rectifDialogOpen, setRectifDialogOpen] = useState(false);
+  const [rectifTarget, setRectifTarget] = useState(null); // single rectif_request being reviewed
+  const [rectifReviewNote, setRectifReviewNote] = useState("");
+  const [rectifReviewing, setRectifReviewing] = useState(false);
+  const [rectifReviewError, setRectifReviewError] = useState("");
+
+  const loadRectifRequests = useCallback(async () => {
+    if (!currentUser?.section) return;
+    const { data } = await supabase
+      .from("rectification_requests")
+      .select(
+        `id, assignment_id, request_id, staff_id, reason, proof_path, status, created_at,
+         staff:profiles!staff_id(id, full_name, avatar_url),
+         request:coverage_requests!request_id(id, title)`
+      )
+      .eq("section", currentUser.section)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    setRectifRequests(data || []);
+  }, [currentUser?.section]);
+
+  useEffect(() => {
+    loadRectifRequests();
+  }, [loadRectifRequests]);
+
+  const handleRectifDecision = useCallback(async (decision) => {
+    if (!rectifTarget || !currentUser?.id) return;
+    setRectifReviewing(true);
+    setRectifReviewError("");
+    try {
+      const now = new Date().toISOString();
+      // Update rectification_requests
+      const { error: rErr } = await supabase
+        .from("rectification_requests")
+        .update({
+          status: decision,
+          reviewed_by: currentUser.id,
+          reviewed_at: now,
+          reviewer_note: rectifReviewNote.trim() || null,
+        })
+        .eq("id", rectifTarget.id);
+      if (rErr) throw rErr;
+
+      // If approved, mark the assignment as Rectified
+      if (decision === "approved") {
+        const { error: aErr } = await supabase
+          .from("coverage_assignments")
+          .update({ status: "Rectified" })
+          .eq("id", rectifTarget.assignment_id);
+        if (aErr) throw aErr;
+      }
+
+      // Notify staff member
+      const msg =
+        decision === "approved"
+          ? `Your rectification request for "${rectifTarget.request?.title ?? "an assignment"}" was approved. The No Show mark has been removed.`
+          : `Your rectification request for "${rectifTarget.request?.title ?? "an assignment"}" was rejected.${rectifReviewNote.trim() ? " Note: " + rectifReviewNote.trim() : ""}`;
+      await notifySpecificStaff({
+        staffIds: [rectifTarget.staff_id],
+        type: "rectification_reviewed",
+        title: decision === "approved" ? "Rectification Approved" : "Rectification Rejected",
+        message: msg,
+        requestId: rectifTarget.request_id,
+        createdBy: currentUser.id,
+        targetPath: "/my-assignment",
+        targetPayload: { assignmentId: rectifTarget.assignment_id },
+      });
+
+      // Remove from local list
+      setRectifRequests((prev) => prev.filter((r) => r.id !== rectifTarget.id));
+      setRectifTarget(null);
+      setRectifReviewNote("");
+      setToast({ open: true, text: decision === "approved" ? "Rectification approved." : "Rectification rejected.", severity: "success" });
+    } catch (err) {
+      setRectifReviewError(err?.message ?? "Failed. Please try again.");
+    } finally {
+      setRectifReviewing(false);
+    }
+  }, [rectifTarget, currentUser, rectifReviewNote]);
   const pendingAssignmentsKey = useMemo(
     () =>
       currentUser?.id
@@ -1158,6 +1256,70 @@ export default function CoverageManagementBase({
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [currentUser, loadAll]);
+
+  // ── Auto-refresh every 60 s while on assigned/on-going tab ───────────────
+  // Ensures no-show threshold crossings are detected without manual refresh.
+  useEffect(() => {
+    if (!["assigned", "on-going"].includes(viewFilter)) return;
+    const interval = setInterval(() => {
+      if (currentUser) loadAll();
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [viewFilter, currentUser, loadAll]);
+
+  // ── Auto-mark no-shows after 10-min grace period ─────────────────────────
+  // Only runs on pages that include the "assigned" view (not Tracker/Time Record).
+  // Uses markedNoShowIds ref to prevent re-processing the same assignment
+  // across re-renders triggered by loadAll().
+  useEffect(() => {
+    if (!allowedViews.includes("assigned")) return;
+    if (!currentUser?.section) return;
+    const allReqs = [...assignedReqs, ...onGoingReqs];
+    if (!allReqs.length) return;
+
+    const now = new Date();
+    const toMark = [];
+
+    allReqs.forEach((req) => {
+      (req.coverage_assignments || []).forEach((a) => {
+        if (markedNoShowIds.current.has(a.id)) return;
+        if (isUnannouncedNoShowCandidate(a, currentUser.section, now)) {
+          toMark.push({ assignment: a, req });
+        }
+      });
+    });
+
+    if (!toMark.length) return;
+
+    // Register IDs immediately to block concurrent effect runs
+    toMark.forEach(({ assignment }) => markedNoShowIds.current.add(assignment.id));
+
+    (async () => {
+      for (const { assignment, req } of toMark) {
+        const { error } = await supabase
+          .from("coverage_assignments")
+          .update({
+            status: "No Show",
+            cancellation_reason: "No Show",
+            completed_at: now.toISOString(),
+          })
+          .eq("id", assignment.id)
+          .eq("status", "Assigned"); // guard: only update if still Assigned
+        if (!error) {
+          await notifySpecificStaff({
+            staffIds: [assignment.assigned_to],
+            type: "assignment",
+            title: "Marked as No Show",
+            message: `You were marked as a No Show for "${req.title}" because check-in was not completed within 10 minutes of the scheduled start time.`,
+            requestId: req.id,
+            createdBy: currentUser.id,
+          });
+        }
+      }
+      // Refresh so "Reassign" button appears for the newly-marked assignments
+      await loadAll();
+    })();
+  }, [assignedReqs, onGoingReqs, currentUser, allowedViews, loadAll]);
 
   useRealtimeNotify(
     "coverage_assignments",
@@ -2013,7 +2175,7 @@ export default function CoverageManagementBase({
   );
 
   const handleReassign = useCallback(async () => {
-    if (!reassignAssignment || !reassignSelectedId || !currentUser) return;
+    if (!reassignAssignment || !reassignSelectedId || !currentUser || reassigning) return;
     setReassigning(true);
     setReassignError("");
     try {
@@ -2111,6 +2273,7 @@ export default function CoverageManagementBase({
     reassignRequest,
     reassignSelectedId,
     reassignStaffers,
+    reassigning,
     currentUser,
     loadAll,
   ]);
@@ -2123,15 +2286,14 @@ export default function CoverageManagementBase({
       const sectionAssignments = (req.coverage_assignments || []).filter(
         (a) => a.section === currentUser?.section,
       );
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
+      const now = new Date();
       const emergencyAssignment = (req.coverage_assignments || []).find(
         (a) =>
           a.section === currentUser?.section &&
           isAnnouncedEmergencyAssignment(a),
       );
       const noShowCandidate = (req.coverage_assignments || []).find((a) =>
-        isUnannouncedNoShowCandidate(a, currentUser?.section, endOfToday),
+        isUnannouncedNoShowCandidate(a, currentUser?.section, now),
       );
       const reassignmentCandidate = emergencyAssignment || noShowCandidate;
       const reassignmentType = emergencyAssignment
@@ -2954,6 +3116,53 @@ export default function CoverageManagementBase({
             <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
+
+        {/* Rectification requests badge button */}
+        {rectifRequests.length > 0 && (
+          <Tooltip title={`${rectifRequests.length} pending rectification${rectifRequests.length > 1 ? "s" : ""}`} arrow>
+            <Box
+              onClick={() => setRectifDialogOpen(true)}
+              sx={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                px: 1.5,
+                height: FILTER_BUTTON_HEIGHT,
+                borderRadius: CONTROL_RADIUS,
+                border: "1px solid rgba(139,92,246,0.3)",
+                backgroundColor: isDark ? "rgba(139,92,246,0.12)" : "rgba(139,92,246,0.06)",
+                color: "#6d28d9",
+                cursor: "pointer",
+                flexShrink: 0,
+                transition: "all 0.15s",
+                "&:hover": { backgroundColor: isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.1)" },
+              }}
+            >
+              <GavelOutlinedIcon sx={{ fontSize: 14 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 600, lineHeight: 1 }}>
+                Rectifications
+              </Typography>
+              <Box
+                sx={{
+                  minWidth: 18,
+                  height: 18,
+                  borderRadius: "9px",
+                  backgroundColor: "#6d28d9",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.65rem",
+                  fontWeight: 700,
+                  px: 0.5,
+                }}
+              >
+                {rectifRequests.length}
+              </Box>
+            </Box>
+          </Tooltip>
+        )}
       </Box>
 
       {error && (
@@ -3440,6 +3649,38 @@ export default function CoverageManagementBase({
         }}
         onConfirm={handleReassign}
       />
+
+      {/* ── Rectification Review Dialog ── */}
+      <RectificationListDialog
+        open={rectifDialogOpen}
+        requests={rectifRequests}
+        onClose={() => setRectifDialogOpen(false)}
+        onSelect={(r) => {
+          setRectifTarget(r);
+          setRectifReviewNote("");
+          setRectifReviewError("");
+        }}
+        isDark={isDark}
+        border={border}
+      />
+      <RectificationReviewDialog
+        open={!!rectifTarget}
+        request={rectifTarget}
+        note={rectifReviewNote}
+        onNoteChange={setRectifReviewNote}
+        reviewing={rectifReviewing}
+        error={rectifReviewError}
+        isDark={isDark}
+        border={border}
+        onClose={() => {
+          if (rectifReviewing) return;
+          setRectifTarget(null);
+          setRectifReviewNote("");
+          setRectifReviewError("");
+        }}
+        onApprove={() => handleRectifDecision("approved")}
+        onReject={() => handleRectifDecision("rejected")}
+      />
     </Box>
   );
 }
@@ -3462,7 +3703,7 @@ function SubmitConfirmDialog({
     <Dialog
       open={open}
       onClose={() => !loading && onCancel()}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {
@@ -5395,11 +5636,11 @@ function ReassignPickerDialog({
     <Dialog
       open={open}
       onClose={() => !reassigning && onClose()}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {
-          borderRadius: "14px",
+          borderRadius: "10px",
           backgroundColor: "background.paper",
           border: `1px solid ${border}`,
           boxShadow: isDark
@@ -5440,32 +5681,34 @@ function ReassignPickerDialog({
             </Typography>
           </Box>
         </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          disabled={reassigning}
-          sx={{
-            borderRadius: "10px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: HOVER_BG },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-        <Tooltip title="View Reassignment History" placement="top">
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Tooltip title="View Reassignment History" placement="top">
+            <IconButton
+              component={Link}
+              to="/sec_head/reassignment-history"
+              size="small"
+              sx={{
+                borderRadius: "10px",
+                color: "text.secondary",
+                "&:hover": { backgroundColor: HOVER_BG },
+              }}
+            >
+              <HistoryOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
           <IconButton
-            component={Link}
-            to="/sec_head/reassignment-history"
             size="small"
+            onClick={onClose}
+            disabled={reassigning}
             sx={{
-              borderRadius: "8px",
+              borderRadius: "10px",
               color: "text.secondary",
               "&:hover": { backgroundColor: HOVER_BG },
             }}
           >
-            <HistoryOutlinedIcon sx={{ fontSize: 16 }} />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
-        </Tooltip>
+        </Box>
       </Box>
 
       {/* Body */}
@@ -5831,6 +6074,285 @@ function ReassignPickerDialog({
           {isAnnouncedEmergency
             ? "Confirm Emergency Replacement"
             : "Confirm Replacement"}
+        </Box>
+      </Box>
+    </Dialog>
+  );
+}
+
+// ── Rectification List Dialog ─────────────────────────────────────────────────
+function RectificationListDialog({ open, requests, onClose, onSelect, isDark, border }) {
+  if (!open) return null;
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: "10px", border: `1px solid ${border}` } } }}
+    >
+      <Box
+        sx={{
+          px: 3, py: 2,
+          borderBottom: `1px solid ${border}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <GavelOutlinedIcon sx={{ fontSize: 16, color: "#6d28d9" }} />
+          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+            Pending Rectifications
+          </Typography>
+        </Box>
+        <IconButton size="small" onClick={onClose}>
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ px: 2, py: 1.5, maxHeight: 420, overflowY: "auto" }}>
+        {requests.length === 0 ? (
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", py: 2, textAlign: "center" }}>
+            No pending rectifications.
+          </Typography>
+        ) : (
+          requests.map((r) => (
+            <Box
+              key={r.id}
+              onClick={() => { onSelect(r); onClose(); }}
+              sx={{
+                p: 1.75,
+                mb: 0.75,
+                borderRadius: "8px",
+                border: `1px solid ${border}`,
+                cursor: "pointer",
+                "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)" },
+              }}
+            >
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600 }}>
+                {r.request?.title ?? "—"}
+              </Typography>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
+                {r.staff?.full_name ?? "—"} · {new Date(r.created_at).toLocaleDateString()}
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.5,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}
+              >
+                {r.reason}
+              </Typography>
+            </Box>
+          ))
+        )}
+      </Box>
+
+      <Box sx={{ px: 3, py: 1.5, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end" }}>
+        <Box
+          onClick={onClose}
+          sx={{
+            px: 1.75, py: 0.65, borderRadius: "4px", cursor: "pointer",
+            border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
+            color: "text.secondary", userSelect: "none",
+            "&:hover": { backgroundColor: HOVER_BG },
+          }}
+        >
+          Close
+        </Box>
+      </Box>
+    </Dialog>
+  );
+}
+
+// ── Rectification Review Dialog ───────────────────────────────────────────────
+function RectificationReviewDialog({
+  open, request, note, onNoteChange, reviewing, error, isDark, border,
+  onClose, onApprove, onReject,
+}) {
+  if (!request) return null;
+
+  const proofUrl = request.proof_path
+    ? (() => {
+        const { data } = supabase.storage.from("coverage-files").getPublicUrl(request.proof_path);
+        return data?.publicUrl ?? null;
+      })()
+    : null;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: "10px", border: `1px solid ${border}` } } }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          px: 3, py: 2,
+          borderBottom: `1px solid ${border}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <GavelOutlinedIcon sx={{ fontSize: 16, color: "#6d28d9" }} />
+          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+            Review Rectification
+          </Typography>
+        </Box>
+        <IconButton size="small" disabled={reviewing} onClick={onClose}>
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Box>
+
+      {/* Body */}
+      <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
+        {/* Staff + assignment */}
+        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.25 }}>
+          Staff member
+        </Typography>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}>
+          {request.staff?.full_name ?? "—"}
+        </Typography>
+
+        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.25 }}>
+          Assignment
+        </Typography>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}>
+          {request.request?.title ?? "—"}
+        </Typography>
+
+        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+          Staff reason
+        </Typography>
+        <Box
+          sx={{
+            p: 1.5, borderRadius: "8px",
+            border: `1px solid ${border}`,
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            mb: 1.75,
+          }}
+        >
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+            {request.reason}
+          </Typography>
+        </Box>
+
+        {proofUrl && (
+          <>
+            <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+              Proof
+            </Typography>
+            <Box
+              component="a"
+              href={proofUrl}
+              target="_blank"
+              rel="noreferrer"
+              sx={{
+                display: "flex", alignItems: "center", gap: 0.75,
+                fontFamily: dm, fontSize: "0.8rem", color: "#6d28d9", mb: 1.75,
+                textDecoration: "none",
+                "&:hover": { textDecoration: "underline" },
+              }}
+            >
+              <InsertDriveFileOutlinedIcon sx={{ fontSize: 15 }} />
+              View attached proof
+            </Box>
+          </>
+        )}
+
+        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+          Reviewer note (optional)
+        </Typography>
+        <TextField
+          multiline
+          minRows={2}
+          maxRows={4}
+          fullWidth
+          placeholder="Add a note for the staff member…"
+          value={note}
+          onChange={(e) => onNoteChange(e.target.value)}
+          disabled={reviewing}
+          size="small"
+          inputProps={{ maxLength: 400 }}
+          sx={{
+            mb: error ? 0 : 0,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "8px",
+              fontFamily: dm,
+              fontSize: "0.82rem",
+            },
+          }}
+        />
+
+        {error && (
+          <Alert severity="error" sx={{ mt: 1.5, fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px" }}>
+            {error}
+          </Alert>
+        )}
+      </Box>
+
+      {reviewing && (
+        <LinearProgress
+          sx={{
+            mx: 3, mb: 1, borderRadius: "4px", height: 3,
+            "& .MuiLinearProgress-bar": { backgroundColor: GOLD },
+            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+          }}
+        />
+      )}
+
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 3, py: 1.75,
+          borderTop: `1px solid ${border}`,
+          display: "flex", justifyContent: "flex-end", gap: 1,
+        }}
+      >
+        <Box
+          onClick={reviewing ? undefined : onClose}
+          sx={{
+            px: 1.75, py: 0.65, borderRadius: "4px",
+            cursor: reviewing ? "default" : "pointer",
+            border: `1px solid ${border}`,
+            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
+            color: "text.secondary", userSelect: "none",
+            "&:hover": reviewing ? {} : { backgroundColor: HOVER_BG },
+          }}
+        >
+          Cancel
+        </Box>
+        <Box
+          onClick={reviewing ? undefined : onReject}
+          sx={{
+            px: 1.75, py: 0.65, borderRadius: "4px",
+            cursor: reviewing ? "default" : "pointer",
+            border: "1px solid rgba(220,38,38,0.3)",
+            backgroundColor: reviewing ? "rgba(220,38,38,0.05)" : "rgba(220,38,38,0.06)",
+            color: reviewing ? "text.disabled" : "#dc2626",
+            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
+            userSelect: "none", display: "flex", alignItems: "center", gap: 0.5,
+            "&:hover": reviewing ? {} : { backgroundColor: "rgba(220,38,38,0.12)" },
+          }}
+        >
+          <ThumbDownOutlinedIcon sx={{ fontSize: 14 }} />
+          Reject
+        </Box>
+        <Box
+          onClick={reviewing ? undefined : onApprove}
+          sx={{
+            px: 1.75, py: 0.65, borderRadius: "4px",
+            cursor: reviewing ? "default" : "pointer",
+            backgroundColor: reviewing ? "rgba(109,40,217,0.08)" : "#6d28d9",
+            color: reviewing ? "text.disabled" : "#fff",
+            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
+            userSelect: "none", display: "flex", alignItems: "center", gap: 0.5,
+            "&:hover": reviewing ? {} : { backgroundColor: "#5b21b6" },
+          }}
+        >
+          <ThumbUpOutlinedIcon sx={{ fontSize: 14 }} />
+          Approve
         </Box>
       </Box>
     </Dialog>

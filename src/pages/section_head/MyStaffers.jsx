@@ -348,7 +348,7 @@ export default function MyStaffers() {
       pendingMap = {};
     (assignments || []).forEach((a) => {
       totalMap[a.assigned_to] = (totalMap[a.assigned_to] || 0) + 1;
-      if (a.status === "Completed")
+      if (a.status === "Completed" || a.status === "Rectified")
         completedMap[a.assigned_to] = (completedMap[a.assigned_to] || 0) + 1;
       if (a.status === "Pending")
         pendingMap[a.assigned_to] = (pendingMap[a.assigned_to] || 0) + 1;

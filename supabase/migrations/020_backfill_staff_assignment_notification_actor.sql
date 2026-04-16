@@ -6,7 +6,7 @@ with assignment_actor as (
   select
     ca.request_id,
     ca.assigned_to,
-    min(ca.assigned_by) as assigned_by
+    (array_agg(ca.assigned_by order by ca.assigned_by::text))[1] as assigned_by
   from public.coverage_assignments ca
   where ca.assigned_by is not null
   group by ca.request_id, ca.assigned_to

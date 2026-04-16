@@ -165,7 +165,7 @@ export default function ReassignmentHistoryPage() {
         .from("coverage_assignments")
         .select(
           `
-          id, assignment_date, created_at, section, service_key, is_reassigned,
+          id, assignment_date, section, service_key, is_reassigned,
           staffer:profiles!assigned_to ( id, full_name, avatar_url )
         `,
         )
@@ -235,8 +235,8 @@ export default function ReassignmentHistoryPage() {
                   .join(", ")
               : "",
           dateOfReassignment:
-            row.replacements?.length > 0 && row.replacements[0]?.created_at
-              ? fmtDate(row.replacements[0].created_at.slice(0, 10))
+            row.replacements?.length > 0
+              ? fmtDate(row.replacements[0].assignment_date)
               : "\u2014",
         };
       }),

@@ -170,7 +170,7 @@ export default function QRScanCompleteDialog({
     <Dialog
       open={open}
       onClose={handleClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {

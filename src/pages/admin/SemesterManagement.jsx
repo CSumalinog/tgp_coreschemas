@@ -1147,7 +1147,7 @@ export default function SemesterManagement() {
         open={Boolean(confirmAction)}
         onClose={closeConfirmDialog}
         fullWidth
-        maxWidth="xs"
+        maxWidth="sm"
         slotProps={{ paper: {
           sx: {
             borderRadius: "10px",

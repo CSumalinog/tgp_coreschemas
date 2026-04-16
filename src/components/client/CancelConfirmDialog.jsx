@@ -39,7 +39,7 @@ export default function CancelConfirmDialog({
       open={open}
       onClose={handleClose}
       fullWidth
-      maxWidth="xs"
+      maxWidth="sm"
       slotProps={{ paper: {
         sx: {
           borderRadius: "10px",

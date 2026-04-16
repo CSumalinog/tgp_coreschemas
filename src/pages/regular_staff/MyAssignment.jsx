@@ -27,6 +27,8 @@ import {
   Select,
   OutlinedInput,
   InputAdornment,
+  TextField,
+  LinearProgress,
 } from "@mui/material";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
@@ -54,8 +56,11 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useAnnounceEmergency } from "../../hooks/useAnnounceEmergency.jsx";
+import { notifySecHeads } from "../../services/NotificationService";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { useLocation } from "react-router-dom";
 import BrandedLoader from "../../components/common/BrandedLoader";
@@ -127,6 +132,12 @@ const STATUS_CFG = {
     color: "#b91c1c",
     bg: "rgba(239,68,68,0.08)",
     accent: "#ef4444",
+  },
+  Rectified: {
+    dot: "#8b5cf6",
+    color: "#6d28d9",
+    bg: "rgba(139,92,246,0.08)",
+    accent: "#8b5cf6",
   },
 };
 
@@ -305,6 +316,7 @@ function AssignmentCard({
   onArchive,
   onTrash,
   onRectification,
+  hasPendingRectif,
   onAnnounceEmergency,
 }) {
   const cfg = STATUS_CFG[a.status] || { accent: "#9ca3af" };
@@ -433,7 +445,7 @@ function AssignmentCard({
             </ListItemText>
           </MenuItem>
           <MenuItem
-            disabled={a.status === "Cancelled"}
+            disabled={a.status === "Cancelled" || a.status === "Rectified" || hasPendingRectif}
             onClick={() => {
               onRectification?.(a);
               setMenuAnchor(null);
@@ -442,17 +454,17 @@ function AssignmentCard({
           >
             <ListItemIcon>
               <FactCheckOutlinedIcon
-                sx={{ fontSize: 18, color: a.status === "Cancelled" ? "text.disabled" : "#111" }}
+                sx={{ fontSize: 18, color: (a.status === "Cancelled" || a.status === "Rectified" || hasPendingRectif) ? "text.disabled" : "#111" }}
               />
             </ListItemIcon>
             <ListItemText
               slotProps={{ primary: {
                 fontFamily: dm,
                 fontSize: "0.82rem",
-                color: a.status === "Cancelled" ? "text.disabled" : undefined,
+                color: (a.status === "Cancelled" || a.status === "Rectified" || hasPendingRectif) ? "text.disabled" : undefined,
               } }}
             >
-              Request Rectification
+              {hasPendingRectif ? "Rectification Pending" : "Request Rectification"}
             </ListItemText>
           </MenuItem>
           <MenuItem
@@ -491,7 +503,7 @@ function AssignmentCard({
           lineHeight: 1.35,
         }}
       >
-        {req?.title || "â€”"}
+        {req?.title || "–"}
       </Typography>
 
       {/* Meta info */}
@@ -530,7 +542,7 @@ function AssignmentCard({
               }}
             >
               {formatTime(req.from_time)}
-              {req.to_time ? ` â€” ${formatTime(req.to_time)}` : ""}
+              {req.to_time ? ` – ${formatTime(req.to_time)}` : ""}
             </Typography>
           </Box>
         )}
@@ -791,7 +803,7 @@ function AssignmentDetailDialog({
               pl: 0.5,
             }}
           >
-            {req?.title || "â€”"}
+            {req?.title || "–"}
           </Typography>
           {assignment.assigned_by_profile?.full_name && (
             <Typography
@@ -855,7 +867,7 @@ function AssignmentDetailDialog({
             label="Time"
           >
             {formatTime(req.from_time)}
-            {req.to_time ? ` â€” ${formatTime(req.to_time)}` : ""}
+            {req.to_time ? ` – ${formatTime(req.to_time)}` : ""}
           </InfoChip>
         )}
         {req?.venue && (
@@ -1323,7 +1335,7 @@ function ConfirmCompleteDialog({
     <Dialog
       open={open}
       onClose={() => !completing && onClose()}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {
@@ -1522,6 +1534,13 @@ export default function MyAssignment() {
   const [timeInError, setTimeInError] = useState("");
   const [onGoingAlert, setOnGoingAlert] = useState(null);
   const [rectificationTarget, setRectificationTarget] = useState(null);
+  const [rectifReason, setRectifReason] = useState("");
+  const [rectifFile, setRectifFile] = useState(null);
+  const [rectifSubmitting, setRectifSubmitting] = useState(false);
+  const [rectifError, setRectifError] = useState("");
+  const [rectifSuccess, setRectifSuccess] = useState(false);
+  // Track assignment IDs that have a pending rectification request
+  const [pendingRectifIds, setPendingRectifIds] = useState(new Set());
 
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
@@ -1625,8 +1644,83 @@ export default function MyAssignment() {
     { title: "Assignment" },
   );
 
+  // ── Load pending rectification IDs for this user ────────────────────────────
+  const loadPendingRectifIds = useCallback(async () => {
+    if (!currentUser?.id) return;
+    const { data } = await supabase
+      .from("rectification_requests")
+      .select("assignment_id")
+      .eq("staff_id", currentUser.id)
+      .eq("status", "pending");
+    if (data) {
+      setPendingRectifIds(new Set(data.map((r) => r.assignment_id)));
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    loadPendingRectifIds();
+  }, [loadPendingRectifIds]);
+
+  // ── Submit rectification request ─────────────────────────────────────────────
+  const handleSubmitRectification = useCallback(async () => {
+    if (!rectificationTarget || !currentUser?.id) return;
+    if (!rectifReason.trim()) {
+      setRectifError("Please provide a reason.");
+      return;
+    }
+    setRectifSubmitting(true);
+    setRectifError("");
+    try {
+      const assignment = rectificationTarget;
+      let proof_path = null;
+
+      if (rectifFile) {
+        const ext = rectifFile.name.split(".").pop();
+        const filePath = `rectification_proofs/${currentUser.id}/${Date.now()}_${assignment.id}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("coverage-files")
+          .upload(filePath, rectifFile, { upsert: false });
+        if (uploadError) throw uploadError;
+        proof_path = filePath;
+      }
+
+      const { error: insertError } = await supabase
+        .from("rectification_requests")
+        .insert({
+          assignment_id: assignment.id,
+          request_id: assignment.request_id,
+          staff_id: currentUser.id,
+          section: assignment.section ?? assignment.request?.section ?? null,
+          reason: rectifReason.trim(),
+          proof_path,
+        });
+      if (insertError) throw insertError;
+
+      // Notify section head(s)
+      const section = assignment.section ?? assignment.request?.section;
+      if (section) {
+        await notifySecHeads({
+          sections: [section],
+          type: "rectification_submitted",
+          title: "Rectification Request",
+          message: `${currentUser.full_name ?? "A staff member"} submitted a rectification request for "${assignment.request?.title ?? "an assignment"}".`,
+          requestId: assignment.request_id,
+          createdBy: currentUser.id,
+          targetPath: "/section-head/coverage-management",
+          targetPayload: { assignmentId: assignment.id },
+        });
+      }
+
+      setRectifSuccess(true);
+      setPendingRectifIds((prev) => new Set([...prev, assignment.id]));
+    } catch (err) {
+      setRectifError(err?.message ?? "Failed to submit. Please try again.");
+    } finally {
+      setRectifSubmitting(false);
+    }
+  }, [rectificationTarget, currentUser, rectifReason, rectifFile]);
+
   const handleArchive = async (requestId) => {
-    if (!requestId || !currentUser?.id) return;
     const ts = new Date().toISOString();
     await supabase.from("request_user_state").upsert(
       {
@@ -1679,7 +1773,7 @@ export default function MyAssignment() {
           timeInNotifiedRef.current.add(match.id);
           const fire = () => {
             try {
-              new Notification("TGP â€” Time to Check In", {
+              new Notification("TGP – Time to Check In", {
                 body: `"${match.request?.title || "Your event"}" starts in 10 minutes. Open the app to time in now.`,
                 icon: "/favicon.ico",
                 tag: `timein-${match.id}`,
@@ -1771,7 +1865,7 @@ export default function MyAssignment() {
   const completedFiltered = useMemo(
     () =>
       dedupeAssignments(
-        applyFilters(assignments.filter((a) => a.status === "Completed")),
+        applyFilters(assignments.filter((a) => a.status === "Completed" || a.status === "Rectified")),
       ),
     [assignments, applyFilters],
   );
@@ -1921,7 +2015,7 @@ export default function MyAssignment() {
       </Box>
     );
 
-  const statusOptions = ["All", "On Going", "Completed"];
+  const statusOptions = ["All", "On Going", "Completed", "Rectified", "No Show"];
 
   return (
     <Box
@@ -2232,28 +2326,43 @@ export default function MyAssignment() {
               }}
               onArchive={handleArchive}
               onTrash={handleTrash}
-              onRectification={(assignment) => setRectificationTarget(assignment)}
+              onRectification={(assignment) => {
+                setRectifReason("");
+                setRectifFile(null);
+                setRectifError("");
+                setRectifSuccess(false);
+                setRectificationTarget(assignment);
+              }}
+              hasPendingRectif={pendingRectifIds.has(a.id)}
               onAnnounceEmergency={openAnnounce}
             />
           ))
         )}
       </Box>
 
-      {/* Emergency Announce Dialog â€” rendered outside the list */}
+      {/* Emergency Announce Dialog – rendered outside the list */}
       <AnnounceEmergencyDialogWrapper />
 
       <Dialog
         open={!!rectificationTarget}
-        onClose={() => setRectificationTarget(null)}
-        maxWidth="xs"
+        onClose={() => {
+          if (rectifSubmitting) return;
+          setRectificationTarget(null);
+          setRectifReason("");
+          setRectifFile(null);
+          setRectifError("");
+          setRectifSuccess(false);
+        }}
+        maxWidth="sm"
         fullWidth
         slotProps={{ paper: {
           sx: {
-            borderRadius: "14px",
+            borderRadius: "10px",
             border: `1px solid ${border}`,
           },
         } }}
       >
+        {/* Header */}
         <Box
           sx={{
             px: 3,
@@ -2264,24 +2373,151 @@ export default function MyAssignment() {
             justifyContent: "space-between",
           }}
         >
-          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
-            Request Rectification
-          </Typography>
-          <IconButton size="small" onClick={() => setRectificationTarget(null)}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <GavelOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+              Request Rectification
+            </Typography>
+          </Box>
+          <IconButton
+            size="small"
+            disabled={rectifSubmitting}
+            onClick={() => {
+              setRectificationTarget(null);
+              setRectifReason("");
+              setRectifFile(null);
+              setRectifError("");
+              setRectifSuccess(false);
+            }}
+          >
             <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
 
-        <Box sx={{ px: 3, py: 2.5 }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}>
-            Rectification entry is now accessible from the 3-dot menu. Full
-            rectification form implementation will be added in the next step.
-          </Typography>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.primary", mt: 1.25, fontWeight: 600 }}>
-            {rectificationTarget?.request?.title || "Selected assignment"}
-          </Typography>
+        {/* Body */}
+        <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
+          {rectifSuccess ? (
+            <Box sx={{ textAlign: "center", py: 2 }}>
+              <CheckCircleOutlineIcon sx={{ fontSize: 40, color: "#22c55e", mb: 1 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+                Submitted successfully
+              </Typography>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.5 }}>
+                Your rectification request has been sent to your section head for review.
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              {/* Assignment info */}
+              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+                Assignment
+              </Typography>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 2 }}>
+                {rectificationTarget?.request?.title ?? "—"}
+              </Typography>
+
+              {/* Reason */}
+              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+                Reason <span style={{ color: "#ef4444" }}>*</span>
+              </Typography>
+              <TextField
+                multiline
+                minRows={6}
+                maxRows={12}
+                fullWidth
+                placeholder="Explain why you believe the No Show mark is incorrect…"
+                value={rectifReason}
+                onChange={(e) => setRectifReason(e.target.value)}
+                disabled={rectifSubmitting}
+                size="small"
+                inputProps={{ maxLength: 800 }}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontFamily: dm,
+                    fontSize: "0.82rem",
+                  },
+                }}
+              />
+
+              {/* Proof upload */}
+              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+                Proof (optional — photo, screenshot, or document)
+              </Typography>
+              <Box
+                component="label"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  px: 2,
+                  py: 1.25,
+                  border: `1px dashed ${border}`,
+                  borderRadius: "8px",
+                  cursor: rectifSubmitting ? "default" : "pointer",
+                  mb: rectifFile ? 0.75 : 0,
+                  "&:hover": rectifSubmitting ? {} : { backgroundColor: HOVER_BG },
+                }}
+              >
+                <CloudUploadOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", flexGrow: 1 }}>
+                  {rectifFile ? rectifFile.name : "Click to upload a file"}
+                </Typography>
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*,.pdf,.doc,.docx"
+                  disabled={rectifSubmitting}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setRectifFile(f);
+                    e.target.value = "";
+                  }}
+                />
+              </Box>
+              {rectifFile && (
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0 }}>
+                  <Box
+                    component="span"
+                    onClick={() => setRectifFile(null)}
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.72rem",
+                      color: "#ef4444",
+                      cursor: "pointer",
+                      mt: 0.25,
+                    }}
+                  >
+                    Remove
+                  </Box>
+                </Box>
+              )}
+
+              {rectifError && (
+                <Alert severity="error" sx={{ mt: 1.5, fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px" }}>
+                  {rectifError}
+                </Alert>
+              )}
+            </>
+          )}
         </Box>
 
+        {/* Progress bar */}
+        {rectifSubmitting && (
+          <LinearProgress
+            sx={{
+              mx: 3,
+              mb: 1,
+              borderRadius: "4px",
+              height: 3,
+              "& .MuiLinearProgress-bar": { backgroundColor: GOLD },
+              backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+            }}
+          />
+        )}
+
+        {/* Footer */}
         <Box
           sx={{
             px: 3,
@@ -2289,25 +2525,86 @@ export default function MyAssignment() {
             borderTop: `1px solid ${border}`,
             display: "flex",
             justifyContent: "flex-end",
+            gap: 1,
           }}
         >
-          <Box
-            onClick={() => setRectificationTarget(null)}
-            sx={{
-              px: 1.75,
-              py: 0.65,
-              borderRadius: "10px",
-              cursor: "pointer",
-              border: `1px solid ${border}`,
-              fontFamily: dm,
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              color: "text.secondary",
-              "&:hover": { backgroundColor: HOVER_BG },
-            }}
-          >
-            Close
-          </Box>
+          {rectifSuccess ? (
+            <Box
+              onClick={() => {
+                setRectificationTarget(null);
+                setRectifReason("");
+                setRectifFile(null);
+                setRectifError("");
+                setRectifSuccess(false);
+              }}
+              sx={{
+                px: 2,
+                py: 0.65,
+                borderRadius: "4px",
+                cursor: "pointer",
+                backgroundColor: isDark ? "#fff" : CHARCOAL,
+                color: isDark ? CHARCOAL : "#fff",
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                userSelect: "none",
+              }}
+            >
+              Done
+            </Box>
+          ) : (
+            <>
+              <Box
+                onClick={() => {
+                  if (rectifSubmitting) return;
+                  setRectificationTarget(null);
+                  setRectifReason("");
+                  setRectifFile(null);
+                  setRectifError("");
+                  setRectifSuccess(false);
+                }}
+                sx={{
+                  px: 1.75,
+                  py: 0.65,
+                  borderRadius: "4px",
+                  cursor: rectifSubmitting ? "default" : "pointer",
+                  border: `1px solid ${border}`,
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  color: "text.secondary",
+                  userSelect: "none",
+                  "&:hover": rectifSubmitting ? {} : { backgroundColor: HOVER_BG },
+                }}
+              >
+                Cancel
+              </Box>
+              <Box
+                onClick={rectifSubmitting ? undefined : handleSubmitRectification}
+                sx={{
+                  px: 2,
+                  py: 0.65,
+                  borderRadius: "4px",
+                  cursor: rectifSubmitting || !rectifReason.trim() ? "default" : "pointer",
+                  backgroundColor:
+                    rectifSubmitting || !rectifReason.trim()
+                      ? isDark ? "rgba(255,255,255,0.12)" : "rgba(53,53,53,0.12)"
+                      : isDark ? "#fff" : CHARCOAL,
+                  color:
+                    rectifSubmitting || !rectifReason.trim()
+                      ? "text.disabled"
+                      : isDark ? CHARCOAL : "#fff",
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  userSelect: "none",
+                  transition: "background-color 0.15s",
+                }}
+              >
+                Submit Request
+              </Box>
+            </>
+          )}
         </Box>
       </Dialog>
 
@@ -2342,7 +2639,7 @@ export default function MyAssignment() {
       <Dialog
         open={!!timeInConfirmTarget}
         onClose={() => setTimeInConfirmTarget(null)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         slotProps={{
           paper: {

@@ -986,7 +986,7 @@ function ConfirmDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {

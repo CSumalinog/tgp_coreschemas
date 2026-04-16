@@ -538,7 +538,7 @@ export function TimeInModal({
       open={open}
       onClose={() => {}}
       disableEscapeKeyDown
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {
@@ -878,7 +878,7 @@ export function OnGoingAlertDialog({
       open={open}
       onClose={() => {}}
       disableEscapeKeyDown
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{ paper: {
         sx: {

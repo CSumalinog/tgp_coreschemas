@@ -3232,7 +3232,7 @@ export default function DutyScheduleView() {
         open={rejectDialogOpen}
         onClose={closeRejectDialog}
         fullWidth
-        maxWidth="xs"
+        maxWidth="sm"
         slotProps={{ paper: {
           sx: {
             borderRadius: "10px",
@@ -4606,7 +4606,7 @@ export default function DutyScheduleView() {
         open={slotDialogOpen}
         onClose={closeSlotDialog}
         fullWidth
-        maxWidth="xs"
+        maxWidth="sm"
         slotProps={{ paper: {
           sx: {
             borderRadius: "10px",

@@ -113,12 +113,6 @@ function stripTargetColumns(rows) {
 async function insertNotifications(rows) {
   if (!rows || rows.length === 0) return { data: [] };
 
-  console.log("[Notification] Attempting to insert", rows.length, "rows:", {
-    users: rows.map((r) => r.user_id),
-    types: rows.map((r) => r.type),
-    requestIds: rows.map((r) => r.request_id),
-  });
-
   const payload = supportsNotificationTargets ? rows : stripTargetColumns(rows);
   const { data, error } = await supabase.from("notifications").insert(payload);
 
@@ -127,32 +121,20 @@ async function insertNotifications(rows) {
     supportsNotificationTargets &&
     /target_path|target_payload/i.test(error.message || "")
   ) {
-    console.warn("[Notification] Target columns not supported, retrying without them");
     supportsNotificationTargets = false;
     const retry = await supabase
       .from("notifications")
       .insert(stripTargetColumns(rows));
     if (retry.error) {
-      console.error(
-        "[Notification] Insert failed after target fallback:",
-        retry.error.message,
-        { rows },
-      );
       throw retry.error;
     }
-    console.log("[Notification] Fallback insert succeeded");
     return retry;
   }
 
   if (error) {
-    console.error("[Notification] Insert failed:", error.message, {
-      rows,
-      errorCode: error.code,
-    });
     throw error;
   }
 
-  console.log("[Notification] Successfully inserted", rows.length, "notifications");
   return { data };
 }
 
@@ -166,17 +148,12 @@ export async function notifyAdmins({
   targetPath,
   targetPayload,
 }) {
-  console.log("[notifyAdmins] called with type:", type);
   const { data: admins, error } = await supabase
     .from("profiles")
     .select("id")
     .eq("role", "admin")
     .eq("is_active", true);
-  if (error) {
-    console.error("[notifyAdmins] profile query failed:", error.message);
-    return;
-  }
-  console.log("[notifyAdmins] found", admins?.length || 0, "admins");
+  if (error) return;
   if (!admins?.length) return;
   try {
     await insertNotifications(
@@ -195,7 +172,7 @@ export async function notifyAdmins({
       ),
     );
   } catch (error) {
-    console.error("[notifyAdmins] failed:", error);
+    // notification failure is non-fatal
   }
 }
 
@@ -257,7 +234,6 @@ export async function notifySecHeads({
   }
   const { data: secHeads, error } = await query;
   if (error) {
-    console.error("notifySecHeads profile query failed:", error.message);
     return { ok: false, error };
   }
   if (!secHeads?.length) return { ok: false, reason: "no_sec_heads" };
@@ -279,7 +255,6 @@ export async function notifySecHeads({
     );
     return { ok: true };
   } catch (error) {
-    console.error("notifySecHeads failed:", error);
     return { ok: false, error };
   }
 }
