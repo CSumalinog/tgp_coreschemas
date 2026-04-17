@@ -189,7 +189,7 @@ export default function ArchiveManagementBase({
             <Typography
               sx={{
                 fontFamily: DM,
-                fontSize: "0.78rem",
+                fontSize: "0.8rem",
                 color: "text.secondary",
               }}
             >
@@ -207,7 +207,7 @@ export default function ArchiveManagementBase({
             <Typography
               sx={{
                 fontFamily: DM,
-                fontSize: "0.78rem",
+                fontSize: "0.8rem",
                 color: "text.secondary",
               }}
             >
@@ -232,7 +232,7 @@ export default function ArchiveManagementBase({
             <Typography
               sx={{
                 fontFamily: DM,
-                fontSize: "0.78rem",
+                fontSize: "0.8rem",
                 color: "text.secondary",
               }}
             >
@@ -310,7 +310,7 @@ export default function ArchiveManagementBase({
             mb: 2,
             borderRadius: "10px",
             fontFamily: DM,
-            fontSize: "0.78rem",
+            fontSize: "0.8rem",
             py: 0.75,
           }}
         >

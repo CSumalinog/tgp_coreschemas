@@ -32,65 +32,101 @@ async function getAssignedRequestIds(userId) {
 }
 
 const adminArchiveAdapter = {
-  fetchArchived: async () => {
-    const { data, error } = await supabase
-      .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, archived_at, requester_id")
+  init: async () => {
+    const user = await getCurrentUser();
+    return { userId: user?.id ?? null };
+  },
+  fetchArchived: async ({ userId }) => {
+    if (!userId) return [];
+    const { data: stateRows, error: stateError } = await supabase
+      .from("request_user_state")
+      .select("request_id, archived_at")
+      .eq("user_id", userId)
       .not("archived_at", "is", null)
       .is("trashed_at", null)
-      .order("archived_at", { ascending: false });
-    if (error) throw error;
-    return data || [];
-  },
-  fetchArchivable: async () => {
+      .is("purged_at", null);
+    if (stateError) throw stateError;
+    const archivedMap = new Map((stateRows || []).map((r) => [r.request_id, r.archived_at]));
+    const archivedIds = [...archivedMap.keys()];
+    if (!archivedIds.length) return [];
     const { data, error } = await supabase
       .from("coverage_requests")
       .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .in("id", archivedIds);
+    if (error) throw error;
+    return (data || [])
+      .map((r) => ({ ...r, archived_at: archivedMap.get(r.id) }))
+      .sort((a, b) => new Date(b.archived_at) - new Date(a.archived_at));
+  },
+  fetchArchivable: async ({ userId }) => {
+    const { data: stateRows } = userId
+      ? await supabase.from("request_user_state").select("request_id").eq("user_id", userId)
+      : { data: [] };
+    const hiddenIds = (stateRows || []).map((r) => r.request_id);
+    let query = supabase
+      .from("coverage_requests")
+      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
       .in("status", COMPLETED_STATUSES)
-      .is("archived_at", null)
-      .is("trashed_at", null)
       .order("submitted_at", { ascending: false });
+    if (hiddenIds.length) query = query.not("id", "in", `(${hiddenIds.join(",")})`);
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   },
-  archive: async (ids) => {
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .in("id", ids);
+  archive: async (ids, { userId }) => {
+    const ts = new Date().toISOString();
+    const rows = ids.map((id) => ({ user_id: userId, request_id: id, archived_at: ts, trashed_at: null, purged_at: null }));
+    const { error } = await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
     if (error) throw error;
   },
-  unarchive: async (ids) => {
+  unarchive: async (ids, { userId }) => {
     const { error } = await supabase
-      .from("coverage_requests")
-      .update({ archived_at: null })
-      .in("id", ids);
+      .from("request_user_state")
+      .delete()
+      .eq("user_id", userId)
+      .in("request_id", ids);
     if (error) throw error;
   },
-  moveToTrash: async (ids) => {
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .in("id", ids);
+  moveToTrash: async (ids, { userId }) => {
+    const ts = new Date().toISOString();
+    const rows = ids.map((id) => ({ user_id: userId, request_id: id, archived_at: null, trashed_at: ts, purged_at: null }));
+    const { error } = await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
     if (error) throw error;
   },
 };
 
 const adminTrashAdapter = {
-  fetchTrashed: async () => {
+  init: async () => {
+    const user = await getCurrentUser();
+    return { userId: user?.id ?? null };
+  },
+  fetchTrashed: async ({ userId }) => {
+    if (!userId) return [];
+    const { data: stateRows, error: stateError } = await supabase
+      .from("request_user_state")
+      .select("request_id, trashed_at")
+      .eq("user_id", userId)
+      .not("trashed_at", "is", null)
+      .is("purged_at", null);
+    if (stateError) throw stateError;
+    const trashedMap = new Map((stateRows || []).map((r) => [r.request_id, r.trashed_at]));
+    const trashedIds = [...trashedMap.keys()];
+    if (!trashedIds.length) return [];
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, trashed_at, requester_id")
-      .not("trashed_at", "is", null)
-      .order("trashed_at", { ascending: false });
+      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .in("id", trashedIds);
     if (error) throw error;
-    return data || [];
+    return (data || [])
+      .map((r) => ({ ...r, trashed_at: trashedMap.get(r.id) }))
+      .sort((a, b) => new Date(b.trashed_at) - new Date(a.trashed_at));
   },
-  restore: async (ids) => {
+  restore: async (ids, { userId }) => {
     const { error } = await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: null, archived_at: null })
-      .in("id", ids);
+      .from("request_user_state")
+      .delete()
+      .eq("user_id", userId)
+      .in("request_id", ids);
     if (error) throw error;
   },
   deleteForever: async (ids) => {

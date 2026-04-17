@@ -323,10 +323,11 @@ function DataGridStyles({ isDark }) {
       styles={{
         // ── DataGrid cell & body font size ──────────────────────────────────────
         ".MuiDataGrid-root": {
-          fontSize: "0.78rem !important",
+          fontSize: "0.8rem !important",
         },
         ".MuiDataGrid-cell": {
-          fontSize: "0.78rem !important",
+          fontSize: "0.8rem !important",
+          fontWeight: "500 !important",
           fontFamily: `${dm} !important`,
         },
         ".MuiDataGrid-cell .MuiButton-root": {
@@ -436,8 +437,11 @@ function DataGridStyles({ isDark }) {
           fontSize: "1.5rem !important",
         },
         ".MuiDataGrid-columnHeaderTitle": {
-          fontSize: "0.65rem !important",
+          fontSize: "0.8rem !important",
           fontFamily: `${dm} !important`,
+          fontWeight: "550 !important",
+          textTransform: "uppercase !important",
+          letterSpacing: "0.07em !important",
         },
 
         "body .MuiMenuItem-root": {

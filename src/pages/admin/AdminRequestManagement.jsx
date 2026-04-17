@@ -142,8 +142,8 @@ function MetaCell({ children }) {
       <Typography
         sx={{
           fontFamily: dm,
-          fontSize: "0.78rem",
-          fontWeight: 400,
+          fontSize: "0.8rem",
+          fontWeight: 500,
           color: "text.secondary",
         }}
       >
@@ -260,6 +260,7 @@ export default function AdminRequestManagement() {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [menuRow, setMenuRow] = useState(null);
   const [viewedIds, setViewedIds] = useState(new Set());
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
   const [toast, setToast] = useState({
@@ -274,6 +275,7 @@ export default function AdminRequestManagement() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
       const { data } = await supabase
         .from("request_views")
         .select("request_id")
@@ -299,63 +301,49 @@ export default function AdminRequestManagement() {
   };
 
   const handleArchive = async (row) => {
-    if (!row?.id) return;
+    if (!row?.id || !currentUserId) return;
     const { error } = await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .eq("id", row.id);
+      .from("request_user_state")
+      .upsert(
+        [{ user_id: currentUserId, request_id: row.id, archived_at: new Date().toISOString(), trashed_at: null, purged_at: null }],
+        { onConflict: "user_id,request_id" },
+      );
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: "Request moved to archive.",
-        severity: "success",
-      });
+      setToast({ open: true, text: "Request moved to archive.", severity: "success" });
     }
   };
   const handleTrash = async (row) => {
-    if (!row?.id) return;
+    if (!row?.id || !currentUserId) return;
     const { error } = await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .eq("id", row.id);
+      .from("request_user_state")
+      .upsert(
+        [{ user_id: currentUserId, request_id: row.id, archived_at: null, trashed_at: new Date().toISOString(), purged_at: null }],
+        { onConflict: "user_id,request_id" },
+      );
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: "Request moved to trash.",
-        severity: "success",
-      });
+      setToast({ open: true, text: "Request moved to trash.", severity: "success" });
     }
   };
   const handleBulkArchive = async (ids) => {
-    if (!ids?.length) return;
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ archived_at: new Date().toISOString() })
-      .in("id", ids);
+    if (!ids?.length || !currentUserId) return;
+    const ts = new Date().toISOString();
+    const rows = ids.map((id) => ({ user_id: currentUserId, request_id: id, archived_at: ts, trashed_at: null, purged_at: null }));
+    const { error } = await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: `${ids.length} request(s) moved to archive.`,
-        severity: "success",
-      });
+      setToast({ open: true, text: `${ids.length} request(s) moved to archive.`, severity: "success" });
     }
   };
   const handleBulkTrash = async (ids) => {
-    if (!ids?.length) return;
-    const { error } = await supabase
-      .from("coverage_requests")
-      .update({ trashed_at: new Date().toISOString() })
-      .in("id", ids);
+    if (!ids?.length || !currentUserId) return;
+    const ts = new Date().toISOString();
+    const rows = ids.map((id) => ({ user_id: currentUserId, request_id: id, archived_at: null, trashed_at: ts, purged_at: null }));
+    const { error } = await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: `${ids.length} request(s) moved to trash.`,
-        severity: "success",
-      });
+      setToast({ open: true, text: `${ids.length} request(s) moved to trash.`, severity: "success" });
     }
   };
 
@@ -571,8 +559,8 @@ export default function AdminRequestManagement() {
           <Typography
             sx={{
               fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: isUnread ? 600 : 400,
+              fontSize: "0.8rem",
+              fontWeight: isUnread ? 600 : 500,
               color: isDark ? "#f5f5f5" : "#1a1a1a",
               overflow: "hidden",
               textOverflow: "ellipsis",

@@ -229,7 +229,7 @@ export default function BlockingDetailsLog() {
             title={params.value || ""}
             sx={{
               fontFamily: dm,
-              fontSize: "0.76rem",
+              fontSize: "0.8rem",
               color: params.value ? "text.secondary" : "text.disabled",
               whiteSpace: "nowrap",
               overflow: "hidden",

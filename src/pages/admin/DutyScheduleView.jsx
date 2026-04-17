@@ -1452,7 +1452,7 @@ export default function DutyScheduleView() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.82rem",
+                fontSize: "0.8rem",
                 fontWeight: 500,
                 color: "text.primary",
               }}
@@ -1557,7 +1557,7 @@ export default function DutyScheduleView() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 600,
                 color: isQuotaExhausted ? "#b91c1c" : "text.primary",
                 letterSpacing: "0.01em",
@@ -1712,7 +1712,7 @@ export default function DutyScheduleView() {
                 sx={{
                   fontFamily: dm,
                   fontSize: "0.8rem",
-                  fontWeight: 400,
+                  fontWeight: 500,
                   color: "text.primary",
                   lineHeight: 1.15,
                 }}
@@ -1772,7 +1772,7 @@ export default function DutyScheduleView() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 600,
                 color: isQuotaExhausted ? "#b91c1c" : "text.primary",
                 letterSpacing: "0.01em",

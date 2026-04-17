@@ -282,20 +282,6 @@ async function _buildPDF(request, teamBySection, mode = "save") {
   }
 
   // =========================================================================
-  // DESCRIPTION
-  // =========================================================================
-  if (request.description) {
-    sectionTitle("Event Description");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...DARK);
-    const descLines = doc.splitTextToSize(request.description, COL_W - 6);
-    doc.text(descLines, MARGIN + 3, y);
-    y += descLines.length * 5.5 + 4;
-    rule();
-  }
-
-  // =========================================================================
   // ADMIN NOTES
   // =========================================================================
   if (request.admin_notes) {

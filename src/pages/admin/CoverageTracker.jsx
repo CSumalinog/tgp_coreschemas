@@ -178,8 +178,8 @@ function MetaCell({ children }) {
       <Typography
         sx={{
           fontFamily: dm,
-          fontSize: "0.78rem",
-          fontWeight: 400,
+          fontSize: "0.8rem",
+          fontWeight: 500,
           color: "text.secondary",
         }}
       >
@@ -1176,7 +1176,7 @@ export default function CoverageTracker() {
       field: "staffName",
       headerName: "Staff Assigned",
       flex: 1,
-      minWidth: 120,
+      minWidth: 170,
       renderCell: (p) => (
         <Box
           sx={{
@@ -1200,7 +1200,7 @@ export default function CoverageTracker() {
           >
             {getInitials(p.value)}
           </Avatar>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}>
             {p.value}
           </Typography>
         </Box>
@@ -1216,7 +1216,7 @@ export default function CoverageTracker() {
           <Typography
             sx={{
               fontFamily: dm,
-              fontSize: "0.75rem",
+              fontSize: "0.8rem",
               color: "text.secondary",
             }}
           >
@@ -1232,7 +1232,7 @@ export default function CoverageTracker() {
       minWidth: 90,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
             {p.value}
           </Typography>
         </Box>
@@ -1245,7 +1245,7 @@ export default function CoverageTracker() {
       minWidth: 90,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
             {p.value}
           </Typography>
         </Box>
@@ -1261,7 +1261,7 @@ export default function CoverageTracker() {
           <Typography
             sx={{
               fontFamily: dm,
-              fontSize: "0.8rem",
+              fontSize: "0.78rem",
               color:
                 p.value === "—"
                   ? "text.disabled"
@@ -1414,7 +1414,7 @@ export default function CoverageTracker() {
           py: 1,
           borderRadius: CONTROL_RADIUS,
           border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
+          backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
         }}
       >
         <FormControl

@@ -7,10 +7,23 @@ import {
 } from "./NotificationService";
 
 /**
- * Fetch all coverage requests for Admin (all statuses except Draft)
+ * Fetch all coverage requests for Admin (all statuses except Draft).
+ * Excludes requests the admin has personally archived or trashed (per-user state).
  */
 export async function fetchAllRequests() {
-  const { data, error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Get this admin's personal hidden request IDs
+  let hiddenIds = [];
+  if (user?.id) {
+    const { data: stateRows } = await supabase
+      .from("request_user_state")
+      .select("request_id")
+      .eq("user_id", user.id);
+    hiddenIds = (stateRows || []).map((r) => r.request_id);
+  }
+
+  let query = supabase
     .from("coverage_requests")
     .select(
       `
@@ -55,9 +68,13 @@ export async function fetchAllRequests() {
     `,
     )
     .not("status", "eq", "Draft")
-    .is("archived_at", null)
-    .is("trashed_at", null)
     .order("submitted_at", { ascending: false });
+
+  if (hiddenIds.length) {
+    query = query.not("id", "in", `(${hiddenIds.join(",")})`);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("fetchAllRequests error:", error.message);

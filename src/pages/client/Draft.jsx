@@ -261,7 +261,7 @@ export default function Draft() {
           <Typography
             sx={{
               fontFamily: dm,
-              fontSize: "0.82rem",
+              fontSize: "0.8rem",
               fontWeight: 500,
               color: "text.primary",
               overflow: "hidden",
@@ -281,7 +281,7 @@ export default function Draft() {
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Typography
-            sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}
+            sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}
           >
             {p.value}
           </Typography>

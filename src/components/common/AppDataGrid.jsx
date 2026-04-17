@@ -16,7 +16,7 @@ function buildGridBaseSx(isDark) {
   return {
     border: "none",
     fontFamily: GRID_FONT,
-    fontSize: "0.78rem",
+    fontSize: "0.8rem",
     backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
     color: "text.primary",
     "& .MuiDataGrid-columnHeaders": {
@@ -28,8 +28,8 @@ function buildGridBaseSx(isDark) {
     },
     "& .MuiDataGrid-columnHeaderTitle": {
       fontFamily: GRID_FONT,
-      fontSize: "0.68rem",
-      fontWeight: 700,
+      fontSize: "0.8rem",
+      fontWeight: 550,
       color: "text.secondary",
       letterSpacing: "0.07em",
       textTransform: "uppercase",

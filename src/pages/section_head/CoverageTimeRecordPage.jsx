@@ -517,7 +517,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         field: "staffName",
         headerName: "Staff Assigned",
         flex: 1.4,
-        minWidth: 150,
+        minWidth: 180,
         renderCell: (p) => (
           <Box
             sx={{

@@ -321,8 +321,8 @@ function MetaCell({ children }) {
       <Typography
         sx={{
           fontFamily: dm,
-          fontSize: "0.78rem",
-          fontWeight: 400,
+          fontSize: "0.8rem",
+          fontWeight: 500,
           color: "text.secondary",
         }}
       >

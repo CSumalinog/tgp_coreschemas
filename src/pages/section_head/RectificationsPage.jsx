@@ -373,10 +373,7 @@ export default function RectificationsPage() {
     <Box sx={{ px: { xs: 2, sm: 3 }, py: 3, maxWidth: 760, mx: "auto" }}>
       {/* Page header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <GavelOutlinedIcon sx={{ fontSize: 20, color: "#6d28d9" }} />
-        <Typography sx={{ fontFamily: dm, fontSize: "1rem", fontWeight: 700 }}>
-          Pending Rectifications
-        </Typography>
+        
         {requests.length > 0 && (
           <Box
             sx={{

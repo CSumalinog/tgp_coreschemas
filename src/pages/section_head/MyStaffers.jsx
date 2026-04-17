@@ -422,7 +422,7 @@ export default function MyStaffers() {
                 sx={{
                   fontFamily: dm,
                   fontSize: "0.8rem",
-                  fontWeight: 400,
+                  fontWeight: 500,
                   color: "text.primary",
                   lineHeight: 1.2,
                 }}

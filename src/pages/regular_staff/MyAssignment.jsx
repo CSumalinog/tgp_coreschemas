@@ -454,7 +454,7 @@ function AssignmentCard({
           </MenuItem>
           <MenuItem
             disabled={
-              a.status !== "No Show" ||
+              (a.status !== "No Show" && state !== "passed") ||
               a.status === "Rectified" ||
               hasPendingRectif
             }
@@ -469,7 +469,8 @@ function AssignmentCard({
                 sx={{
                   fontSize: 18,
                   color:
-                    a.status !== "No Show" || hasPendingRectif
+                    (a.status !== "No Show" && state !== "passed") ||
+                    hasPendingRectif
                       ? "text.disabled"
                       : "#111",
                 }}
@@ -481,7 +482,8 @@ function AssignmentCard({
                   fontFamily: dm,
                   fontSize: "0.82rem",
                   color:
-                    a.status !== "No Show" || hasPendingRectif
+                    (a.status !== "No Show" && state !== "passed") ||
+                    hasPendingRectif
                       ? "text.disabled"
                       : undefined,
                 },
@@ -685,7 +687,7 @@ function AssignmentCard({
             }}
           >
             <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} />
-            Time in window has passed. For rectification use the menu to acess
+            Time in window has passed. For rectification use the menu to access
             the form.
           </Box>
         )}
@@ -2493,27 +2495,94 @@ export default function MyAssignment() {
             </Box>
           ) : (
             <>
-              {/* Assignment info */}
-              <Typography
+              {/* Assignment info — time-record style */}
+              <Box
                 sx={{
-                  fontFamily: dm,
-                  fontSize: "0.75rem",
-                  color: "text.secondary",
-                  mb: 0.5,
+                  px: 1.75,
+                  py: 1.5,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(53,53,53,0.02)",
+                  mb: 2.5,
                 }}
               >
-                Assignment
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  mb: 2,
-                }}
-              >
-                {rectificationTarget?.request?.title ?? "—"}
-              </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.84rem",
+                    fontWeight: 600,
+                    color: "text.primary",
+                    mb: 1.25,
+                  }}
+                >
+                  {rectificationTarget?.request?.title ?? "—"}
+                </Typography>
+                {/* Table rows */}
+                {[
+                  {
+                    icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 11 }} />,
+                    value: rectificationTarget?.request?.event_date
+                      ? new Date(
+                          rectificationTarget.request.event_date,
+                        ).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : null,
+                  },
+                  {
+                    icon: <AccessTimeOutlinedIcon sx={{ fontSize: 11 }} />,
+                    value:
+                      rectificationTarget?.request?.from_time
+                        ? `${formatTime(rectificationTarget.request.from_time)}${rectificationTarget.request.to_time ? ` — ${formatTime(rectificationTarget.request.to_time)}` : ""}`
+                        : null,
+                  },
+                  {
+                    icon: <LocationOnOutlinedIcon sx={{ fontSize: 11 }} />,
+                    value: rectificationTarget?.request?.venue || null,
+                  },
+                  {
+                    icon: <PersonOutlineOutlinedIcon sx={{ fontSize: 11 }} />,
+                    value: rectificationTarget?.request?.entity?.name || null,
+                  },
+                ]
+                  .filter((row) => row.value)
+                  .map((row, i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                        mt: 0.55,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          color: GOLD,
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        {row.icon}
+                      </Box>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.78rem",
+                          color: "text.secondary",
+                        }}
+                      >
+                        {row.value}
+                      </Typography>
+                    </Box>
+                  ))}
+              </Box>
 
               {/* Reason */}
               <Typography

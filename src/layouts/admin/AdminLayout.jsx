@@ -79,7 +79,7 @@ const MENU_SECTIONS = [
         Icon: TrackChangesOutlinedIcon,
         children: [
           {
-            label: "Requests",
+            label: "Assigned",
             to: "coverage-tracker/requests",
           },
           {
