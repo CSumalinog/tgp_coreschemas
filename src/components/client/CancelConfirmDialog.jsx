@@ -40,16 +40,18 @@ export default function CancelConfirmDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -201,5 +203,3 @@ export default function CancelConfirmDialog({
     </Dialog>
   );
 }
-
-

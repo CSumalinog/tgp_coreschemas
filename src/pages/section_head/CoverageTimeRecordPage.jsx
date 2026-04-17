@@ -1,5 +1,11 @@
 ﻿// src/pages/section_head/CoverageTimeRecordPage.jsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Avatar,
@@ -223,8 +229,12 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
   const hoverPreviewTimerRef = useRef(null);
 
   const handleProofMouseEnter = (proof) => {
-    if (hoverPreviewTimerRef.current) window.clearTimeout(hoverPreviewTimerRef.current);
-    hoverPreviewTimerRef.current = window.setTimeout(() => setHoveredProof(proof), 150);
+    if (hoverPreviewTimerRef.current)
+      window.clearTimeout(hoverPreviewTimerRef.current);
+    hoverPreviewTimerRef.current = window.setTimeout(
+      () => setHoveredProof(proof),
+      150,
+    );
   };
 
   const handleProofMouseLeave = (proofId) => {
@@ -324,7 +334,10 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     requests.forEach((req) => {
       // Only assignments for this section that are not cancelled/no-show
       const sectionAssignments = (req.coverage_assignments || []).filter(
-        (a) => a.section === mySection && a.status !== "Cancelled" && a.status !== "No Show",
+        (a) =>
+          a.section === mySection &&
+          a.status !== "Cancelled" &&
+          a.status !== "No Show",
       );
 
       // Dedup by staff (same logic as admin CTR)
@@ -682,8 +695,16 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         renderCell: (p) => {
           if (!p.row.hasProof)
             return (
-              <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled" }}>
+              <Box
+                sx={{ display: "flex", alignItems: "center", height: "100%" }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.72rem",
+                    color: "text.disabled",
+                  }}
+                >
                   {"\u2014"}
                 </Typography>
               </Box>
@@ -697,14 +718,20 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                   borderRadius: "6px",
                   border: `1px solid ${border}`,
                   overflow: "hidden",
-                  backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
-                  cursor: p.row.proofUrl && !p.row.isBroken ? "zoom-in" : "default",
+                  backgroundColor: isDark
+                    ? "rgba(17,17,17,0.45)"
+                    : "rgba(53,53,53,0.03)",
+                  cursor:
+                    p.row.proofUrl && !p.row.isBroken ? "zoom-in" : "default",
                   flexShrink: 0,
                 }}
                 onClick={(e) => {
                   if (!p.row.proofUrl || p.row.isBroken) return;
                   e.stopPropagation();
-                  setLightboxSelfie({ url: p.row.proofUrl, timedInAt: p.row.timedInAt });
+                  setLightboxSelfie({
+                    url: p.row.proofUrl,
+                    timedInAt: p.row.timedInAt,
+                  });
                 }}
               >
                 {p.row.proofUrl && !p.row.isBroken ? (
@@ -712,12 +739,23 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                     component="img"
                     src={p.row.proofUrl}
                     alt="Attendance proof"
-                    sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
                     onError={() =>
-                      setBrokenSelfieById((prev) => ({ ...prev, [p.row.selfieId]: true }))
+                      setBrokenSelfieById((prev) => ({
+                        ...prev,
+                        [p.row.selfieId]: true,
+                      }))
                     }
                     onMouseEnter={() =>
-                      handleProofMouseEnter({ id: p.row.selfieId, url: p.row.proofUrl })
+                      handleProofMouseEnter({
+                        id: p.row.selfieId,
+                        url: p.row.proofUrl,
+                      })
                     }
                     onMouseLeave={() => handleProofMouseLeave(p.row.selfieId)}
                   />
@@ -732,8 +770,18 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                       justifyContent: "center",
                     }}
                   >
-                    <BrokenImageOutlinedIcon sx={{ color: "text.disabled", fontSize: 16 }} />
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", color: "text.disabled", lineHeight: 1, mt: 0.25 }}>
+                    <BrokenImageOutlinedIcon
+                      sx={{ color: "text.disabled", fontSize: 16 }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.6rem",
+                        color: "text.disabled",
+                        lineHeight: 1,
+                        mt: 0.25,
+                      }}
+                    >
                       Unavailable
                     </Typography>
                   </Box>
@@ -841,7 +889,6 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         fontFamily: dm,
       }}
     >
-
       {/* â”€â”€ Filter row â”€â”€ */}
       <Box
         sx={{

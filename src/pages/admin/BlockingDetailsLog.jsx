@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Box,
-  IconButton,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import { Alert, Box, IconButton, Typography, useTheme } from "@mui/material";
 import ArrowBackIosNewOutlinedIcon from "@mui/icons-material/ArrowBackIosNewOutlined";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { supabase } from "../../lib/supabaseClient";
-import { MODAL_TAB_HEIGHT, TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
+import {
+  MODAL_TAB_HEIGHT,
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
+} from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
 const GOLD_08 = "rgba(245,197,43,0.08)";
@@ -95,7 +93,10 @@ export default function BlockingDetailsLog() {
         if (blockerError) throw blockerError;
 
         blockerMap = Object.fromEntries(
-          (blockerRows || []).map((item) => [item.id, item.full_name || "Unknown"]),
+          (blockerRows || []).map((item) => [
+            item.id,
+            item.full_name || "Unknown",
+          ]),
         );
       }
 
@@ -281,7 +282,6 @@ export default function BlockingDetailsLog() {
           </IconButton>
 
           <Box>
-            
             <Box
               sx={{
                 display: "flex",
@@ -389,7 +389,9 @@ export default function BlockingDetailsLog() {
             paginationModel={paginationModel}
             onPaginationModelChange={setPaginationModel}
             getRowClassName={(params) =>
-              String(params.id) === String(targetEventId) ? "row--highlighted" : ""
+              String(params.id) === String(targetEventId)
+                ? "row--highlighted"
+                : ""
             }
             rowHeight={56}
             autoHeight={false}

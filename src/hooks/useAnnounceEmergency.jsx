@@ -90,12 +90,16 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
         .in("section", notifySections)
         .eq("is_active", true);
 
-      const eventDate = request?.event_date 
-        ? new Date(request.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      const eventDate = request?.event_date
+        ? new Date(request.event_date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
         : "TBD";
-      
+
       const notifications = [];
-      
+
       (admins || []).forEach((admin) => {
         notifications.push({
           user_id: admin.id,
@@ -106,7 +110,10 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
           title: "Staff Emergency Announcement",
           message: `${currentUser.full_name} announced an emergency for "${request?.title}" on ${eventDate}. Reason: ${normalizedReason}. Reassignment required.${proofPath ? " Proof attached." : ""}`,
           target_path: "/admin/request-management",
-          target_payload: { openRequestId: request?.id, ...(proofPath ? { proof_path: proofPath } : {}) },
+          target_payload: {
+            openRequestId: request?.id,
+            ...(proofPath ? { proof_path: proofPath } : {}),
+          },
           created_by: currentUser.id,
           created_at: now,
         });
@@ -122,7 +129,10 @@ export function useAnnounceEmergency({ supabase, currentUser }) {
           title: "Emergency — Reassignment Required",
           message: `${currentUser.full_name} announced an emergency for "${request?.title}" on ${eventDate}. Please reassign coverage. Reason: ${normalizedReason}${proofPath ? " (proof attached)" : ""}`,
           target_path: "/sec_head/coverage-management/assignment",
-          target_payload: { openRequestId: request?.id, ...(proofPath ? { proof_path: proofPath } : {}) },
+          target_payload: {
+            openRequestId: request?.id,
+            ...(proofPath ? { proof_path: proofPath } : {}),
+          },
           created_by: currentUser.id,
           created_at: now,
         });

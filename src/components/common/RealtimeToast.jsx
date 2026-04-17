@@ -68,7 +68,7 @@ function ToastItem({ toast, onDone }) {
         boxShadow: isDark
           ? "0 8px 32px rgba(0,0,0,0.55)"
           : "0 4px 20px rgba(53,53,53,0.12)",
-        minWidth: 220, maxWidth: 300,
+        width: 300,
         cursor: "default",
         userSelect: "none",
       }}

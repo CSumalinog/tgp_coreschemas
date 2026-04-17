@@ -235,7 +235,7 @@ export async function checkConflictForDate(eventDate, excludeId) {
       .from("coverage_requests")
       .select("id, title, from_time, to_time, status")
       .eq("event_date", eventDate)
-      .in("status", ["Approved", "Ongoing", "Forwarded"])
+      .in("status", ["Approved", "On Going", "Forwarded", "Assigned"])
       .is("archived_at", null)
       .is("trashed_at", null)
       .neq("id", excludeId);

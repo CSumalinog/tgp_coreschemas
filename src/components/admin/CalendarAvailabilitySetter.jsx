@@ -136,7 +136,11 @@ export default function CalendarEventDialog({
   const applyTimeToDate = (baseDate, hhmm) => {
     if (!baseDate || !hhmm) return baseDate;
     const [h, m] = hhmm.split(":").map(Number);
-    return dayjs(baseDate).hour(h || 0).minute(m || 0).second(0).millisecond(0);
+    return dayjs(baseDate)
+      .hour(h || 0)
+      .minute(m || 0)
+      .second(0)
+      .millisecond(0);
   };
 
   const confirmDelete = () => {
@@ -170,14 +174,14 @@ export default function CalendarEventDialog({
     },
   };
 
-    const singleLineInputSx = {
-      ...inputSx,
-      "& .MuiOutlinedInput-root": {
-        ...inputSx["& .MuiOutlinedInput-root"],
-        minHeight: MODAL_INPUT_HEIGHT,
-        alignItems: "center",
-      },
-    };
+  const singleLineInputSx = {
+    ...inputSx,
+    "& .MuiOutlinedInput-root": {
+      ...inputSx["& .MuiOutlinedInput-root"],
+      minHeight: MODAL_INPUT_HEIGHT,
+      alignItems: "center",
+    },
+  };
 
   // ── Block type options ────────────────────────────────────────────────────
   const typeOptions = [
@@ -342,7 +346,14 @@ export default function CalendarEventDialog({
           }}
         >
           {existingEvent && mode === MODE.VIEW && (
-            <Box sx={{ mb: 1.5, display: "flex", flexDirection: "column", gap: 0.3 }}>
+            <Box
+              sx={{
+                mb: 1.5,
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.3,
+              }}
+            >
               <Typography
                 sx={{
                   fontFamily: dm,
@@ -359,7 +370,10 @@ export default function CalendarEventDialog({
                   color: "text.disabled",
                 }}
               >
-                Created: {existingEvent.created_at ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A") : "Unknown"}
+                Created:{" "}
+                {existingEvent.created_at
+                  ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A")
+                  : "Unknown"}
               </Typography>
             </Box>
           )}
@@ -525,7 +539,14 @@ export default function CalendarEventDialog({
                     fullWidth
                     disabled={!isEditable}
                     value={start ? start.format("HH:mm") : ""}
-                    onChange={(e) => setStart(applyTimeToDate(start || dayjs(defaultDate || new Date()), e.target.value))}
+                    onChange={(e) =>
+                      setStart(
+                        applyTimeToDate(
+                          start || dayjs(defaultDate || new Date()),
+                          e.target.value,
+                        ),
+                      )
+                    }
                     InputLabelProps={{ shrink: true }}
                     sx={singleLineInputSx}
                   />
@@ -536,7 +557,14 @@ export default function CalendarEventDialog({
                     fullWidth
                     disabled={!isEditable}
                     value={end ? end.format("HH:mm") : ""}
-                    onChange={(e) => setEnd(applyTimeToDate(end || start || dayjs(defaultDate || new Date()), e.target.value))}
+                    onChange={(e) =>
+                      setEnd(
+                        applyTimeToDate(
+                          end || start || dayjs(defaultDate || new Date()),
+                          e.target.value,
+                        ),
+                      )
+                    }
                     InputLabelProps={{ shrink: true }}
                     sx={singleLineInputSx}
                   />
@@ -659,19 +687,21 @@ export default function CalendarEventDialog({
             sx: { backgroundColor: "transparent" },
           },
         }}
-        slotProps={{ paper: {
-          sx: {
-            width: 380,
-            borderRadius: "10px",
-            backgroundColor: paperBg,
-            backgroundImage: "none",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 20px 60px rgba(0,0,0,0.5)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
-            overflow: "hidden",
+        slotProps={{
+          paper: {
+            sx: {
+              width: 380,
+              borderRadius: "10px",
+              backgroundColor: paperBg,
+              backgroundImage: "none",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 20px 60px rgba(0,0,0,0.5)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+              overflow: "hidden",
+            },
           },
-        } }}
+        }}
       >
         {/* Header */}
         <Box
@@ -812,5 +842,3 @@ export default function CalendarEventDialog({
     </>
   );
 }
-
-

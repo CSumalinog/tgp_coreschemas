@@ -1293,11 +1293,13 @@ export default function AdminRequestManagement() {
             />
           </ListItemIcon>
           <ListItemText
-            slotProps={{ primary: {
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            } }}
+            slotProps={{
+              primary: {
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                color: "#dc2626",
+              },
+            }}
           >
             Move to Trash
           </ListItemText>

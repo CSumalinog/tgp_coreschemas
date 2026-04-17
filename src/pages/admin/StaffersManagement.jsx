@@ -883,8 +883,6 @@ export default function StaffersManagement() {
         fontFamily: dm,
       }}
     >
-     
-
       {error && (
         <Alert
           severity="error"
@@ -1158,10 +1156,12 @@ export default function StaffersManagement() {
             <EditOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} />
           </ListItemIcon>
           <ListItemText
-            slotProps={{ primary: {
-              fontFamily: dm,
-              fontSize: "0.78rem",
-            } }}
+            slotProps={{
+              primary: {
+                fontFamily: dm,
+                fontSize: "0.78rem",
+              },
+            }}
           >
             Edit
           </ListItemText>
@@ -1182,10 +1182,12 @@ export default function StaffersManagement() {
             )}
           </ListItemIcon>
           <ListItemText
-            slotProps={{ primary: {
-              fontFamily: dm,
-              fontSize: "0.78rem",
-            } }}
+            slotProps={{
+              primary: {
+                fontFamily: dm,
+                fontSize: "0.78rem",
+              },
+            }}
           >
             {menuRow?.is_active ? "Deactivate" : "Reactivate"}
           </ListItemText>
@@ -1210,11 +1212,13 @@ export default function StaffersManagement() {
             />
           </ListItemIcon>
           <ListItemText
-            slotProps={{ primary: {
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color: "#dc2626",
-            } }}
+            slotProps={{
+              primary: {
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "#dc2626",
+              },
+            }}
           >
             Delete
           </ListItemText>
@@ -2386,19 +2390,21 @@ function BrandDialog({
       onClose={onClose}
       fullWidth
       maxWidth="sm"
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "90vh",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: "90vh",
+          },
         },
-      } }}
+      }}
     >
       {/* ── Header ── */}
       <Box
@@ -2413,15 +2419,6 @@ function BrandDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 3,
-              height: 22,
-              borderRadius: "10px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Typography
             sx={{
               fontFamily: dm,

@@ -540,16 +540,18 @@ export function TimeInModal({
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${isEmergency ? "rgba(198,40,40,0.3)" : border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${isEmergency ? "rgba(198,40,40,0.3)" : border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       {isEmergency && (
         <Box
@@ -880,25 +882,27 @@ export function OnGoingAlertDialog({
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: "2px solid #ef4444",
-          boxShadow: "0 8px 48px rgba(239,68,68,0.35)",
-          animation: "alertPulse 1.5s ease-in-out infinite",
-          "@keyframes alertPulse": {
-            "0%, 100%": {
-              boxShadow: "0 8px 48px rgba(239,68,68,0.35)",
-              borderColor: "#ef4444",
-            },
-            "50%": {
-              boxShadow: "0 8px 64px rgba(239,68,68,0.65)",
-              borderColor: "#dc2626",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: "2px solid #ef4444",
+            boxShadow: "0 8px 48px rgba(239,68,68,0.35)",
+            animation: "alertPulse 1.5s ease-in-out infinite",
+            "@keyframes alertPulse": {
+              "0%, 100%": {
+                boxShadow: "0 8px 48px rgba(239,68,68,0.35)",
+                borderColor: "#ef4444",
+              },
+              "50%": {
+                boxShadow: "0 8px 64px rgba(239,68,68,0.65)",
+                borderColor: "#dc2626",
+              },
             },
           },
         },
-      } }}
+      }}
     >
       <Box
         sx={{

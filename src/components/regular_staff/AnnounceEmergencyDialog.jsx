@@ -123,16 +123,18 @@ function AnnounceEmergencyDialog({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -174,7 +176,15 @@ function AnnounceEmergencyDialog({
         </IconButton>
       </Box>
 
-      <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 2.5,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
         <Typography
           sx={{
             fontFamily: dm,
@@ -184,12 +194,22 @@ function AnnounceEmergencyDialog({
             mb: 1.4,
           }}
         >
-          Let your section head know in advance if you cannot make it to your assignment.
-          Add a short reason and required supporting proof.
+          Let your section head know in advance if you cannot make it to your
+          assignment. Add a short reason and required supporting proof.
         </Typography>
 
         <Box>
-          <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.62rem", mb: 0.7, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.09em" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.62rem",
+              mb: 0.7,
+              color: "text.disabled",
+              textTransform: "uppercase",
+              letterSpacing: "0.09em",
+            }}
+          >
             Reason *
           </Typography>
           <TextField
@@ -215,7 +235,17 @@ function AnnounceEmergencyDialog({
         </Box>
 
         <Box>
-          <Typography sx={{ fontFamily: dm, fontWeight: 700, fontSize: "0.62rem", mb: 0.7, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.09em" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.62rem",
+              mb: 0.7,
+              color: "text.disabled",
+              textTransform: "uppercase",
+              letterSpacing: "0.09em",
+            }}
+          >
             Proof *
           </Typography>
 
@@ -239,10 +269,26 @@ function AnnounceEmergencyDialog({
             }}
           >
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", fontWeight: 600, color: "text.primary", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.84rem",
+                  fontWeight: 600,
+                  color: "text.primary",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
                 {proofFile ? proofFile.name : "No file selected"}
               </Typography>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.76rem",
+                  color: "text.secondary",
+                }}
+              >
                 Image or PDF up to 10 MB
               </Typography>
             </Box>
@@ -283,14 +329,23 @@ function AnnounceEmergencyDialog({
           </Box>
 
           {fileError && (
-            <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "error.main", mt: 0.6 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.76rem",
+                color: "error.main",
+                mt: 0.6,
+              }}
+            >
               {fileError}
             </Typography>
           )}
         </Box>
 
         {error && (
-          <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "error.main" }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.75rem", color: "error.main" }}
+          >
             {error}
           </Typography>
         )}

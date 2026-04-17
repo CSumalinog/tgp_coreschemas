@@ -21,7 +21,6 @@ import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/LogoutOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
 import TopbarRouteTitle from "../../components/common/TopbarRouteTitle";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
@@ -598,11 +597,6 @@ function RegularStaffLayout() {
           )}
           <TopbarRouteTitle role="staff" isMobile={isMobile} />
           <Box sx={{ flex: 1 }} />
-          <GlobalSearch
-            role="staff"
-            userId={currentUser?.id}
-            alwaysExpanded={!isMobile}
-          />
           <NotificationBell userId={currentUser?.id} />
           <Box sx={{ position: "relative" }}>
             <Avatar

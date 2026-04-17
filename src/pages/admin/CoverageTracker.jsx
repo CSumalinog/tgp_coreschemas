@@ -111,8 +111,8 @@ const hasAnyTimeIn = (request) =>
   (request?.coverage_assignments || []).some((a) => !!a?.timed_in_at);
 
 const hasAnyCompleted = (request) =>
-  (request?.coverage_assignments || []).some((a) =>
-    a?.status === "Completed" || a?.status === "Rectified"
+  (request?.coverage_assignments || []).some(
+    (a) => a?.status === "Completed" || a?.status === "Rectified",
   );
 
 const hasAnyAssignments = (request) =>
@@ -527,7 +527,10 @@ export default function CoverageTracker() {
       return dedupeById([
         ...(onGoing || []),
         ...requests.filter((r) => hasAnyTimeIn(r)),
-      ]).filter((r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r));
+      ]).filter(
+        (r) =>
+          hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
+      );
     }
     if (stageFilter === "Completed") {
       return dedupeById([
@@ -550,7 +553,8 @@ export default function CoverageTracker() {
       ...(onGoing || []),
       ...requests.filter((r) => hasAnyTimeIn(r)),
     ]).filter(
-      (r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
+      (r) =>
+        hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
     );
 
     const completedList = dedupeById([
@@ -581,7 +585,12 @@ export default function CoverageTracker() {
         ...requests.filter(
           (r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status),
         ),
-      ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status) && hasAnyActiveAssignment(r)),
+      ]).filter(
+        (r) =>
+          hasAnyAssignments(r) &&
+          isCtrEligibleStatus(r.status) &&
+          hasAnyActiveAssignment(r),
+      ),
     [onGoing, completed, requests],
   );
 
@@ -711,17 +720,17 @@ export default function CoverageTracker() {
       const normalized = (req.coverage_assignments || [])
         .filter((item) => !["Cancelled", "No Show"].includes(item?.status))
         .map((item) => {
-        const sectionName = item.sections?.name || item.section || null;
-        return {
-          ...item,
-          request_id: item.request_id || req.id,
-          section_id: item.section_id || null,
-          staff_id: item.staff_id || item.assigned_to || null,
-          sections:
-            item.sections || (sectionName ? { name: sectionName } : null),
-          staff: item.staff || item.staffer || null,
-        };
-      });
+          const sectionName = item.sections?.name || item.section || null;
+          return {
+            ...item,
+            request_id: item.request_id || req.id,
+            section_id: item.section_id || null,
+            staff_id: item.staff_id || item.assigned_to || null,
+            sections:
+              item.sections || (sectionName ? { name: sectionName } : null),
+            staff: item.staff || item.staffer || null,
+          };
+        });
 
       const byStaff = new Map();
       normalized.forEach((item) => {
@@ -1101,7 +1110,17 @@ export default function CoverageTracker() {
       flex: TABLE_FIRST_COL_FLEX,
       minWidth: TABLE_FIRST_COL_MIN_WIDTH,
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, height: "100%", width: "100%", minWidth: 0, pr: 0.5 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            height: "100%",
+            width: "100%",
+            minWidth: 0,
+            pr: 0.5,
+          }}
+        >
           {p.row.isFirstInGroup ? (
             <>
               <Typography
@@ -1123,9 +1142,12 @@ export default function CoverageTracker() {
                 <Box
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/admin/coverage-request-details/${p.row.requestId}`, {
-                      state: { backTo: "/admin/coverage-tracker" },
-                    });
+                    navigate(
+                      `/admin/coverage-request-details/${p.row.requestId}`,
+                      {
+                        state: { backTo: "/admin/coverage-tracker" },
+                      },
+                    );
                   }}
                   sx={{
                     display: "inline-flex",
@@ -1156,7 +1178,14 @@ export default function CoverageTracker() {
       flex: 1,
       minWidth: 120,
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            height: "100%",
+            gap: 0.75,
+          }}
+        >
           <Avatar
             sx={{
               width: TABLE_USER_AVATAR_SIZE,
@@ -1171,7 +1200,9 @@ export default function CoverageTracker() {
           >
             {getInitials(p.value)}
           </Avatar>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>{p.value}</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+            {p.value}
+          </Typography>
         </Box>
       ),
     },
@@ -1182,7 +1213,13 @@ export default function CoverageTracker() {
       minWidth: 100,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.75rem",
+              color: "text.secondary",
+            }}
+          >
             {p.value}
           </Typography>
         </Box>
@@ -1195,7 +1232,9 @@ export default function CoverageTracker() {
       minWidth: 90,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>{p.value}</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+            {p.value}
+          </Typography>
         </Box>
       ),
     },
@@ -1206,7 +1245,9 @@ export default function CoverageTracker() {
       minWidth: 90,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>{p.value}</Typography>
+          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem" }}>
+            {p.value}
+          </Typography>
         </Box>
       ),
     },
@@ -1221,7 +1262,12 @@ export default function CoverageTracker() {
             sx={{
               fontFamily: dm,
               fontSize: "0.8rem",
-              color: p.value === "—" ? "text.disabled" : isDark ? "#f5c52b" : "#d97706",
+              color:
+                p.value === "—"
+                  ? "text.disabled"
+                  : isDark
+                    ? "#f5c52b"
+                    : "#d97706",
             }}
           >
             {p.value}
@@ -1271,7 +1317,13 @@ export default function CoverageTracker() {
         if (!p.row.hasProof) {
           return (
             <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.disabled" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.disabled",
+                }}
+              >
                 No proof
               </Typography>
             </Box>
@@ -1279,33 +1331,57 @@ export default function CoverageTracker() {
         }
         return (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Box
-            sx={{
-              width: 80,
-              height: 44,
-              borderRadius: "6px",
-              border: `1px solid ${border}`,
-              overflow: "hidden",
-              backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
-              flexShrink: 0,
-            }}
-          >
-            {p.value && !p.row.isBroken ? (
-              <Box
-                component="img"
-                src={p.value}
-                alt="Proof"
-                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                onError={() => setBrokenSelfieById((prev) => ({ ...prev, [p.row.id]: true }))}
-                onMouseEnter={() => handleProofMouseEnter({ id: p.row.id, url: p.value })}
-                onMouseLeave={() => handleProofMouseLeave(p.row.id)}
-              />
-            ) : (
-              <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BrokenImageOutlinedIcon sx={{ fontSize: 16, color: "text.disabled" }} />
-              </Box>
-            )}
-          </Box>
+            <Box
+              sx={{
+                width: 80,
+                height: 44,
+                borderRadius: "6px",
+                border: `1px solid ${border}`,
+                overflow: "hidden",
+                backgroundColor: isDark
+                  ? "rgba(17,17,17,0.45)"
+                  : "rgba(53,53,53,0.03)",
+                flexShrink: 0,
+              }}
+            >
+              {p.value && !p.row.isBroken ? (
+                <Box
+                  component="img"
+                  src={p.value}
+                  alt="Proof"
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                  onError={() =>
+                    setBrokenSelfieById((prev) => ({
+                      ...prev,
+                      [p.row.id]: true,
+                    }))
+                  }
+                  onMouseEnter={() =>
+                    handleProofMouseEnter({ id: p.row.id, url: p.value })
+                  }
+                  onMouseLeave={() => handleProofMouseLeave(p.row.id)}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <BrokenImageOutlinedIcon
+                    sx={{ fontSize: 16, color: "text.disabled" }}
+                  />
+                </Box>
+              )}
+            </Box>
           </Box>
         );
       },

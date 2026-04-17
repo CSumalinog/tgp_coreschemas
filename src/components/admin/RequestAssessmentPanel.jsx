@@ -11,10 +11,7 @@ const SCORE_CONFIG = {
   "Very High": { color: "#1d4ed8" },
 };
 
-export default function RequestAssessmentPanel({
-  checks,
-  isDark,
-}) {
+export default function RequestAssessmentPanel({ checks, isDark }) {
   return (
     <Box
       sx={{

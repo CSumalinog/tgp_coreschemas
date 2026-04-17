@@ -475,6 +475,7 @@ const AppDataGrid = forwardRef(function AppDataGrid(
     <MuiDataGrid
       ref={ref}
       columns={columns}
+      className={useSelection ? "AppDataGrid--hasCheckbox" : undefined}
       showToolbar={showToolbar}
       filterModel={resolvedFilterModel}
       onFilterModelChange={handleFilterModelChange}

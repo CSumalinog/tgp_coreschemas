@@ -20,12 +20,12 @@ import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/LogoutOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
 import TopbarRouteTitle from "../../components/common/TopbarRouteTitle";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
@@ -68,26 +68,23 @@ const MENU_SECTIONS = [
           {
             label: "Assignment",
             to: "coverage-management/assignment",
-            
           },
           {
             label: "Tracker",
             to: "coverage-management/tracker",
-            
           },
           {
             label: "Time Record",
             to: "coverage-management/time-record",
-           
           },
           {
             label: "Reassignment History",
             to: "reassignment-history",
-            
           },
         ],
       },
       { label: "My Staffers", to: "my-staffers", Icon: GroupOutlinedIcon },
+      { label: "Rectifications", to: "rectifications", Icon: GavelOutlinedIcon },
     ],
   },
 ];
@@ -263,7 +260,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
   );
 }
 
-function SidebarContent({ onClose, isMobile }) {
+function SidebarContent({ onClose, isMobile, rectifCount }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({ "Coverage Management": true });
   const toggleGroup = (label) =>
@@ -403,6 +400,27 @@ function SidebarContent({ onClose, isMobile }) {
                   label={item.label}
                   Icon={item.Icon}
                   to={item.to}
+                  trailing={
+                    item.to === "rectifications" && rectifCount > 0 ? (
+                      <Box
+                        sx={{
+                          minWidth: 18,
+                          height: 18,
+                          borderRadius: "9px",
+                          backgroundColor: "#6d28d9",
+                          color: "#fff",
+                          fontSize: "0.62rem",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          px: 0.5,
+                        }}
+                      >
+                        {rectifCount}
+                      </Box>
+                    ) : undefined
+                  }
                 />
               );
             })}
@@ -575,6 +593,7 @@ function SectionHeadLayout() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [rectifCount, setRectifCount] = useState(0);
   useEffect(() => {
     async function loadUser() {
       const {
@@ -584,7 +603,7 @@ function SectionHeadLayout() {
       setCurrentUser(user);
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, role, avatar_url")
+        .select("full_name, role, section, avatar_url")
         .eq("id", user.id)
         .single();
       if (data) {
@@ -594,6 +613,15 @@ function SectionHeadLayout() {
     }
     loadUser();
   }, []);
+  useEffect(() => {
+    if (!userProfile?.section) return;
+    supabase
+      .from("rectification_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("section", userProfile.section)
+      .eq("status", "pending")
+      .then(({ count }) => setRectifCount(count || 0));
+  }, [userProfile?.section]);
   const sidebarNode = (
     <SidebarContent
       currentUser={currentUser}
@@ -601,6 +629,7 @@ function SectionHeadLayout() {
       avatarUrl={avatarUrl}
       onClose={() => setMobileOpen(false)}
       isMobile={isMobile}
+      rectifCount={rectifCount}
     />
   );
   return (
@@ -685,11 +714,6 @@ function SectionHeadLayout() {
           )}
           <TopbarRouteTitle role="sec_head" isMobile={isMobile} />
           <Box sx={{ flex: 1 }} />
-          <GlobalSearch
-            role="sec_head"
-            userId={currentUser?.id}
-            alwaysExpanded={!isMobile}
-          />
           <NotificationBell userId={currentUser?.id} />
           <Box sx={{ position: "relative" }}>
             <Avatar

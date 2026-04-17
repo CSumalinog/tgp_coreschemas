@@ -193,7 +193,10 @@ export default function RescheduleDialog({
         issues.push({ severity: "warning", message: lateResult.message });
       }
 
-      const conflictResult = await checkConflictForDate(primaryDate, request?.id);
+      const conflictResult = await checkConflictForDate(
+        primaryDate,
+        request?.id,
+      );
       if (conflictResult.hasConflict) {
         const msgs = conflictResult.conflicts.map(
           (c) =>
@@ -301,17 +304,19 @@ export default function RescheduleDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
-          maxHeight: "90vh",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+            maxHeight: "90vh",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -526,390 +531,397 @@ export default function RescheduleDialog({
         ) : (
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Box>
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: "10px",
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.02)"
-                  : "rgba(53,53,53,0.02)",
-                border: `1px solid ${border}`,
-                mb: 2.5,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily,
-                  fontSize: "0.7rem",
-                  color: "text.secondary",
-                  mb: 0.25,
-                }}
-              >
-                Current event date
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily,
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: "text.primary",
-                }}
-              >
-                {buildEventDateDisplay(request)}
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 2,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily,
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "text.primary",
-                }}
-              >
-                New Schedule
-              </Typography>
               <Box
-                onClick={() => {
-                  setMultiDay((p) => !p);
-                  setDays([{ date: "", from_time: "", to_time: "" }]);
-                  setSingleDate("");
-                  setFromTime("");
-                  setToTime("");
-                }}
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  px: 1.25,
-                  py: 0.45,
+                  p: 1.5,
                   borderRadius: "10px",
-                  cursor: "pointer",
-                  border: `1px solid ${multiDay ? GOLD : border}`,
-                  backgroundColor: multiDay ? GOLD_08 : "transparent",
-                  transition: "all 0.15s",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(53,53,53,0.02)",
+                  border: `1px solid ${border}`,
+                  mb: 2.5,
                 }}
               >
                 <Typography
                   sx={{
                     fontFamily,
-                    fontSize: "0.73rem",
-                    fontWeight: 500,
-                    color: multiDay
-                      ? isDark
-                        ? GOLD
-                        : "#7a5c00"
-                      : "text.secondary",
+                    fontSize: "0.7rem",
+                    color: "text.secondary",
+                    mb: 0.25,
                   }}
                 >
-                  Multi-day
+                  Current event date
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily,
+                    fontSize: "0.85rem",
+                    fontWeight: 600,
+                    color: "text.primary",
+                  }}
+                >
+                  {buildEventDateDisplay(request)}
                 </Typography>
               </Box>
-            </Box>
 
-            {!multiDay && (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                <DatePicker
-                  label="New Event Date"
-                  value={parseDateValue(singleDate)}
-                  onChange={(val) => setSingleDate(toDateValue(val))}
-                  format="MMM d, yyyy"
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      sx: pickerInputSx,
-                    },
-                    popper: { sx: pickerPopperSx },
-                  }}
-                />
-                <Box
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  mb: 2,
+                }}
+              >
+                <Typography
                   sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 1.5,
+                    fontFamily,
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "text.primary",
                   }}
                 >
-                  <TimePicker
-                    label="Start Time"
-                    value={parseTimeValue(fromTime)}
-                    onChange={(val) => setFromTime(toTimeValue(val))}
-                    ampm
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        sx: pickerInputSx,
-                      },
-                      popper: { sx: pickerPopperSx },
-                    }}
-                  />
-                  <TimePicker
-                    label="End Time"
-                    value={parseTimeValue(toTime)}
-                    onChange={(val) => setToTime(toTimeValue(val))}
-                    ampm
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        sx: pickerInputSx,
-                      },
-                      popper: { sx: pickerPopperSx },
-                    }}
-                  />
-                </Box>
-              </Box>
-            )}
-
-            {multiDay && (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {days.map((day, idx) => (
-                  <Box
-                    key={idx}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: "10px",
-                      border: `1px solid ${border}`,
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.01)"
-                        : "rgba(53,53,53,0.01)",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        mb: 1.25,
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontFamily,
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          color: "text.secondary",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        Day {idx + 1}
-                      </Typography>
-                      {days.length > 1 && (
-                        <IconButton
-                          onClick={() => removeDay(idx)}
-                          size="small"
-                          sx={{
-                            color: "text.disabled",
-                            borderRadius: "10px",
-                            p: 0.4,
-                            "&:hover": {
-                              color: "#ef4444",
-                              backgroundColor: "rgba(239,68,68,0.06)",
-                            },
-                          }}
-                        >
-                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      )}
-                    </Box>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <DatePicker
-                        label="Date"
-                        value={parseDateValue(day.date)}
-                        onChange={(val) =>
-                          updateDay(idx, "date", toDateValue(val))
-                        }
-                        format="MMM d, yyyy"
-                        slotProps={{
-                          textField: {
-                            fullWidth: true,
-                            size: "small",
-                            sx: pickerInputSx,
-                          },
-                          popper: { sx: pickerPopperSx },
-                        }}
-                      />
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: 1,
-                        }}
-                      >
-                        <TimePicker
-                          label="Start"
-                          value={parseTimeValue(day.from_time)}
-                          onChange={(val) =>
-                            updateDay(idx, "from_time", toTimeValue(val))
-                          }
-                          ampm
-                          slotProps={{
-                            textField: {
-                              fullWidth: true,
-                              size: "small",
-                              sx: pickerInputSx,
-                            },
-                            popper: { sx: pickerPopperSx },
-                          }}
-                        />
-                        <TimePicker
-                          label="End"
-                          value={parseTimeValue(day.to_time)}
-                          onChange={(val) =>
-                            updateDay(idx, "to_time", toTimeValue(val))
-                          }
-                          ampm
-                          slotProps={{
-                            textField: {
-                              fullWidth: true,
-                              size: "small",
-                              sx: pickerInputSx,
-                            },
-                            popper: { sx: pickerPopperSx },
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  </Box>
-                ))}
+                  New Schedule
+                </Typography>
                 <Box
-                  onClick={addDay}
+                  onClick={() => {
+                    setMultiDay((p) => !p);
+                    setDays([{ date: "", from_time: "", to_time: "" }]);
+                    setSingleDate("");
+                    setFromTime("");
+                    setToTime("");
+                  }}
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
                     gap: 0.75,
-                    py: 1,
+                    px: 1.25,
+                    py: 0.45,
                     borderRadius: "10px",
-                    border: `1px dashed ${border}`,
                     cursor: "pointer",
+                    border: `1px solid ${multiDay ? GOLD : border}`,
+                    backgroundColor: multiDay ? GOLD_08 : "transparent",
                     transition: "all 0.15s",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontFamily,
+                      fontSize: "0.73rem",
+                      fontWeight: 500,
+                      color: multiDay
+                        ? isDark
+                          ? GOLD
+                          : "#7a5c00"
+                        : "text.secondary",
+                    }}
+                  >
+                    Multi-day
+                  </Typography>
+                </Box>
+              </Box>
+
+              {!multiDay && (
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                >
+                  <DatePicker
+                    label="New Event Date"
+                    value={parseDateValue(singleDate)}
+                    onChange={(val) => setSingleDate(toDateValue(val))}
+                    format="MMM d, yyyy"
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        sx: pickerInputSx,
+                      },
+                      popper: { sx: pickerPopperSx },
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1.5,
+                    }}
+                  >
+                    <TimePicker
+                      label="Start Time"
+                      value={parseTimeValue(fromTime)}
+                      onChange={(val) => setFromTime(toTimeValue(val))}
+                      ampm
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          sx: pickerInputSx,
+                        },
+                        popper: { sx: pickerPopperSx },
+                      }}
+                    />
+                    <TimePicker
+                      label="End Time"
+                      value={parseTimeValue(toTime)}
+                      onChange={(val) => setToTime(toTimeValue(val))}
+                      ampm
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          sx: pickerInputSx,
+                        },
+                        popper: { sx: pickerPopperSx },
+                      }}
+                    />
+                  </Box>
+                </Box>
+              )}
+
+              {multiDay && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  {days.map((day, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: "10px",
+                        border: `1px solid ${border}`,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.01)"
+                          : "rgba(53,53,53,0.01)",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          mb: 1.25,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily,
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            color: "text.secondary",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                          }}
+                        >
+                          Day {idx + 1}
+                        </Typography>
+                        {days.length > 1 && (
+                          <IconButton
+                            onClick={() => removeDay(idx)}
+                            size="small"
+                            sx={{
+                              color: "text.disabled",
+                              borderRadius: "10px",
+                              p: 0.4,
+                              "&:hover": {
+                                color: "#ef4444",
+                                backgroundColor: "rgba(239,68,68,0.06)",
+                              },
+                            }}
+                          >
+                            <DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        )}
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        <DatePicker
+                          label="Date"
+                          value={parseDateValue(day.date)}
+                          onChange={(val) =>
+                            updateDay(idx, "date", toDateValue(val))
+                          }
+                          format="MMM d, yyyy"
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: "small",
+                              sx: pickerInputSx,
+                            },
+                            popper: { sx: pickerPopperSx },
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: 1,
+                          }}
+                        >
+                          <TimePicker
+                            label="Start"
+                            value={parseTimeValue(day.from_time)}
+                            onChange={(val) =>
+                              updateDay(idx, "from_time", toTimeValue(val))
+                            }
+                            ampm
+                            slotProps={{
+                              textField: {
+                                fullWidth: true,
+                                size: "small",
+                                sx: pickerInputSx,
+                              },
+                              popper: { sx: pickerPopperSx },
+                            }}
+                          />
+                          <TimePicker
+                            label="End"
+                            value={parseTimeValue(day.to_time)}
+                            onChange={(val) =>
+                              updateDay(idx, "to_time", toTimeValue(val))
+                            }
+                            ampm
+                            slotProps={{
+                              textField: {
+                                fullWidth: true,
+                                size: "small",
+                                sx: pickerInputSx,
+                              },
+                              popper: { sx: pickerPopperSx },
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    </Box>
+                  ))}
+                  <Box
+                    onClick={addDay}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 0.75,
+                      py: 1,
+                      borderRadius: "10px",
+                      border: `1px dashed ${border}`,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                      "&:hover": {
+                        borderColor: "rgba(53,53,53,0.35)",
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : HOVER_BG,
+                      },
+                    }}
+                  >
+                    <AddOutlinedIcon
+                      sx={{ fontSize: 15, color: "text.secondary" }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily,
+                        fontSize: "0.78rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Add another day
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  label="Reason for rescheduling (optional)"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  sx={inputSx}
+                />
+              </Box>
+
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 1.25,
+                  borderRadius: "10px",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.02)"
+                    : "rgba(53,53,53,0.02)",
+                  border: `1px solid ${border}`,
+                  borderLeft: "2.5px solid #353535",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily,
+                    fontSize: "0.75rem",
+                    color: "text.secondary",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  Rescheduling will reset this request to{" "}
+                  <strong>Under Review</strong>
+                  so section heads can reassign staff for the new date.
+                  Previously assigned staff will be notified.
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: "flex", gap: 1.25, mt: 2.5 }}>
+                <Button
+                  fullWidth
+                  onClick={handleClose}
+                  disabled={loading || validating}
+                  sx={{
+                    fontFamily,
+                    fontSize: "0.82rem",
+                    fontWeight: 500,
+                    borderRadius: "10px",
+                    py: 1,
+                    textTransform: "none",
+                    border: `1px solid ${border}`,
+                    color: "text.secondary",
+                    backgroundColor: "transparent",
                     "&:hover": {
-                      borderColor: "rgba(53,53,53,0.35)",
                       backgroundColor: isDark
                         ? "rgba(255,255,255,0.04)"
                         : HOVER_BG,
                     },
                   }}
                 >
-                  <AddOutlinedIcon
-                    sx={{ fontSize: 15, color: "text.secondary" }}
-                  />
-                  <Typography
-                    sx={{
-                      fontFamily,
-                      fontSize: "0.78rem",
-                      color: "text.secondary",
-                    }}
-                  >
-                    Add another day
-                  </Typography>
-                </Box>
+                  Cancel
+                </Button>
+                <Button
+                  fullWidth
+                  onClick={handleValidate}
+                  disabled={!canSubmit || loading || validating}
+                  sx={{
+                    fontFamily,
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    borderRadius: "10px",
+                    py: 1,
+                    textTransform: "none",
+                    backgroundColor: "#212121",
+                    color: "#fff",
+                    "&:hover": { backgroundColor: "#333" },
+                    "&:disabled": {
+                      backgroundColor: "rgba(33,33,33,0.35)",
+                      color: "rgba(255,255,255,0.7)",
+                    },
+                  }}
+                >
+                  {validating ? (
+                    <CircularProgress size={16} sx={{ color: "#fff" }} />
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
               </Box>
-            )}
-
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                label="Reason for rescheduling (optional)"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                sx={inputSx}
-              />
             </Box>
-
-            <Box
-              sx={{
-                mt: 2,
-                p: 1.25,
-                borderRadius: "10px",
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.02)"
-                  : "rgba(53,53,53,0.02)",
-                border: `1px solid ${border}`,
-                borderLeft: "2.5px solid #353535",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily,
-                  fontSize: "0.75rem",
-                  color: "text.secondary",
-                  lineHeight: 1.55,
-                }}
-              >
-                Rescheduling will reset this request to <strong>Under Review</strong>
-                so section heads can reassign staff for the new date. Previously
-                assigned staff will be notified.
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 1.25, mt: 2.5 }}>
-              <Button
-                fullWidth
-                onClick={handleClose}
-                disabled={loading || validating}
-                sx={{
-                  fontFamily,
-                  fontSize: "0.82rem",
-                  fontWeight: 500,
-                  borderRadius: "10px",
-                  py: 1,
-                  textTransform: "none",
-                  border: `1px solid ${border}`,
-                  color: "text.secondary",
-                  backgroundColor: "transparent",
-                  "&:hover": {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.04)"
-                      : HOVER_BG,
-                  },
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                fullWidth
-                onClick={handleValidate}
-                disabled={!canSubmit || loading || validating}
-                sx={{
-                  fontFamily,
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  borderRadius: "10px",
-                  py: 1,
-                  textTransform: "none",
-                  backgroundColor: "#212121",
-                  color: "#fff",
-                  "&:hover": { backgroundColor: "#333" },
-                  "&:disabled": {
-                    backgroundColor: "rgba(33,33,33,0.35)",
-                    color: "rgba(255,255,255,0.7)",
-                  },
-                }}
-              >
-                {validating ? (
-                  <CircularProgress size={16} sx={{ color: "#fff" }} />
-                ) : (
-                  "Continue"
-                )}
-              </Button>
-            </Box>
-          </Box>
           </LocalizationProvider>
         )}
       </DialogContent>
     </Dialog>
   );
 }
-
-

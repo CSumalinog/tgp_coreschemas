@@ -35,7 +35,12 @@ import {
   LinearProgress,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
-import { useSearchParams, useLocation, useNavigate, Link } from "react-router-dom";
+import {
+  useSearchParams,
+  useLocation,
+  useNavigate,
+  Link,
+} from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
@@ -253,7 +258,9 @@ const computeDuration = (timedIn, completedAt) => {
 const isAssignmentCompleted = (assignment) =>
   assignment?.status === "Completed" || assignment?.status === "Rectified";
 const isAssignmentOnGoing = (assignment) =>
-  !["Cancelled", "No Show", "Completed", "Rectified"].includes(assignment?.status) &&
+  !["Cancelled", "No Show", "Completed", "Rectified"].includes(
+    assignment?.status,
+  ) &&
   (assignment?.status === "On Going" || !!assignment?.timed_in_at);
 const fmtTime = (ts) => {
   if (!ts) return null;
@@ -295,7 +302,11 @@ const isUnannouncedNoShowCandidate = (assignment, currentSection, now) => {
   if (assignment.section !== currentSection) return false;
   if (assignment.timed_in_at) return false;
   if (!assignment.assignment_date) return false;
-  if (["Cancelled", "No Show", "Completed", "Rectified"].includes(assignment.status))
+  if (
+    ["Cancelled", "No Show", "Completed", "Rectified"].includes(
+      assignment.status,
+    )
+  )
     return false;
   const fromTime = assignment.from_time || "00:00:00";
   const eventStart = new Date(`${assignment.assignment_date}T${fromTime}`);
@@ -832,7 +843,7 @@ export default function CoverageManagementBase({
       .select(
         `id, assignment_id, request_id, staff_id, reason, proof_path, status, created_at,
          staff:profiles!staff_id(id, full_name, avatar_url),
-         request:coverage_requests!request_id(id, title)`
+         request:coverage_requests!request_id(id, title)`,
       )
       .eq("section", currentUser.section)
       .eq("status", "pending")
@@ -844,60 +855,75 @@ export default function CoverageManagementBase({
     loadRectifRequests();
   }, [loadRectifRequests]);
 
-  const handleRectifDecision = useCallback(async (decision) => {
-    if (!rectifTarget || !currentUser?.id) return;
-    setRectifReviewing(true);
-    setRectifReviewError("");
-    try {
-      const now = new Date().toISOString();
-      // Update rectification_requests
-      const { error: rErr } = await supabase
-        .from("rectification_requests")
-        .update({
-          status: decision,
-          reviewed_by: currentUser.id,
-          reviewed_at: now,
-          reviewer_note: rectifReviewNote.trim() || null,
-        })
-        .eq("id", rectifTarget.id);
-      if (rErr) throw rErr;
+  const handleRectifDecision = useCallback(
+    async (decision) => {
+      if (!rectifTarget || !currentUser?.id) return;
+      setRectifReviewing(true);
+      setRectifReviewError("");
+      try {
+        const now = new Date().toISOString();
+        // Update rectification_requests
+        const { error: rErr } = await supabase
+          .from("rectification_requests")
+          .update({
+            status: decision,
+            reviewed_by: currentUser.id,
+            reviewed_at: now,
+            reviewer_note: rectifReviewNote.trim() || null,
+          })
+          .eq("id", rectifTarget.id);
+        if (rErr) throw rErr;
 
-      // If approved, mark the assignment as Rectified
-      if (decision === "approved") {
-        const { error: aErr } = await supabase
-          .from("coverage_assignments")
-          .update({ status: "Rectified" })
-          .eq("id", rectifTarget.assignment_id);
-        if (aErr) throw aErr;
+        // If approved, mark the assignment as Rectified
+        if (decision === "approved") {
+          const { error: aErr } = await supabase
+            .from("coverage_assignments")
+            .update({ status: "Rectified" })
+            .eq("id", rectifTarget.assignment_id);
+          if (aErr) throw aErr;
+        }
+
+        // Notify staff member
+        const msg =
+          decision === "approved"
+            ? `Your rectification request for "${rectifTarget.request?.title ?? "an assignment"}" was approved. The No Show mark has been removed.`
+            : `Your rectification request for "${rectifTarget.request?.title ?? "an assignment"}" was rejected.${rectifReviewNote.trim() ? " Note: " + rectifReviewNote.trim() : ""}`;
+        await notifySpecificStaff({
+          staffIds: [rectifTarget.staff_id],
+          type: "rectification_reviewed",
+          title:
+            decision === "approved"
+              ? "Rectification Approved"
+              : "Rectification Rejected",
+          message: msg,
+          requestId: rectifTarget.request_id,
+          createdBy: currentUser.id,
+          targetPath: "/my-assignment",
+          targetPayload: { assignmentId: rectifTarget.assignment_id },
+        });
+
+        // Remove from local list
+        setRectifRequests((prev) =>
+          prev.filter((r) => r.id !== rectifTarget.id),
+        );
+        setRectifTarget(null);
+        setRectifReviewNote("");
+        setToast({
+          open: true,
+          text:
+            decision === "approved"
+              ? "Rectification approved."
+              : "Rectification rejected.",
+          severity: "success",
+        });
+      } catch (err) {
+        setRectifReviewError(err?.message ?? "Failed. Please try again.");
+      } finally {
+        setRectifReviewing(false);
       }
-
-      // Notify staff member
-      const msg =
-        decision === "approved"
-          ? `Your rectification request for "${rectifTarget.request?.title ?? "an assignment"}" was approved. The No Show mark has been removed.`
-          : `Your rectification request for "${rectifTarget.request?.title ?? "an assignment"}" was rejected.${rectifReviewNote.trim() ? " Note: " + rectifReviewNote.trim() : ""}`;
-      await notifySpecificStaff({
-        staffIds: [rectifTarget.staff_id],
-        type: "rectification_reviewed",
-        title: decision === "approved" ? "Rectification Approved" : "Rectification Rejected",
-        message: msg,
-        requestId: rectifTarget.request_id,
-        createdBy: currentUser.id,
-        targetPath: "/my-assignment",
-        targetPayload: { assignmentId: rectifTarget.assignment_id },
-      });
-
-      // Remove from local list
-      setRectifRequests((prev) => prev.filter((r) => r.id !== rectifTarget.id));
-      setRectifTarget(null);
-      setRectifReviewNote("");
-      setToast({ open: true, text: decision === "approved" ? "Rectification approved." : "Rectification rejected.", severity: "success" });
-    } catch (err) {
-      setRectifReviewError(err?.message ?? "Failed. Please try again.");
-    } finally {
-      setRectifReviewing(false);
-    }
-  }, [rectifTarget, currentUser, rectifReviewNote]);
+    },
+    [rectifTarget, currentUser, rectifReviewNote],
+  );
   const pendingAssignmentsKey = useMemo(
     () =>
       currentUser?.id
@@ -914,9 +940,7 @@ export default function CoverageManagementBase({
     try {
       const raw = window.localStorage.getItem(pendingAssignmentsKey);
       const parsed = raw ? JSON.parse(raw) : {};
-      setPendingAssignments(
-        parsed && typeof parsed === "object" ? parsed : {},
-      );
+      setPendingAssignments(parsed && typeof parsed === "object" ? parsed : {});
     } catch {
       setPendingAssignments({});
     }
@@ -1125,27 +1149,28 @@ export default function CoverageManagementBase({
       const onGoingData = onGoing.data || [];
       const completedData = completed.data || [];
       const sectionForApprovalMap = new Map();
-      [...(forApproval.data || []), ...forwardedData].forEach(
-        (req) => {
-          const myHasSubmitted = (req.submitted_sections || []).includes(
-            mySection,
-          );
-          // Only show in "For Approval" if the request hasn't been acted on by
-          // admin yet. Once status is Assigned/Approved/On Going/Completed the
-          // request must leave this bucket regardless of submitted_sections.
-          const adminNotActed = ![
-            "Assigned",
-            "Approved",
-            "On Going",
-            "Coverage Complete",
-            "Completed",
-            "No-show",
-          ].includes(req.status);
-          if (adminNotActed && (req.status === "For Approval" || myHasSubmitted)) {
-            sectionForApprovalMap.set(req.id, req);
-          }
-        },
-      );
+      [...(forApproval.data || []), ...forwardedData].forEach((req) => {
+        const myHasSubmitted = (req.submitted_sections || []).includes(
+          mySection,
+        );
+        // Only show in "For Approval" if the request hasn't been acted on by
+        // admin yet. Once status is Assigned/Approved/On Going/Completed the
+        // request must leave this bucket regardless of submitted_sections.
+        const adminNotActed = ![
+          "Assigned",
+          "Approved",
+          "On Going",
+          "Coverage Complete",
+          "Completed",
+          "No-show",
+        ].includes(req.status);
+        if (
+          adminNotActed &&
+          (req.status === "For Approval" || myHasSubmitted)
+        ) {
+          sectionForApprovalMap.set(req.id, req);
+        }
+      });
       const sectionForApprovalRows = Array.from(sectionForApprovalMap.values());
       const sectionForApprovalIds = new Set(
         sectionForApprovalRows.map((r) => r.id),
@@ -1216,9 +1241,7 @@ export default function CoverageManagementBase({
             ...forwardedAssignedRows,
             ...pendingAssignedRows,
             ...emergencyCancelledRows,
-          ].map(
-            (req) => [req.id, req],
-          ),
+          ].map((req) => [req.id, req]),
         ).values(),
       );
       const mergedOnGoing = new Map();
@@ -1232,8 +1255,8 @@ export default function CoverageManagementBase({
       });
 
       setForAssignmentReqs(forAssignRows);
-        setForApprovalReqs(sectionForApprovalRows);
-  setAssignedReqs(mergedAssigned);
+      setForApprovalReqs(sectionForApprovalRows);
+      setAssignedReqs(mergedAssigned);
       setOnGoingReqs(Array.from(mergedOnGoing.values()));
       setCompletedReqs(Array.from(mergedCompleted.values()));
     } catch (err) {
@@ -1292,7 +1315,9 @@ export default function CoverageManagementBase({
     if (!toMark.length) return;
 
     // Register IDs immediately to block concurrent effect runs
-    toMark.forEach(({ assignment }) => markedNoShowIds.current.add(assignment.id));
+    toMark.forEach(({ assignment }) =>
+      markedNoShowIds.current.add(assignment.id),
+    );
 
     (async () => {
       for (const { assignment, req } of toMark) {
@@ -1333,17 +1358,12 @@ export default function CoverageManagementBase({
     },
   );
   // Re-fetch when admin changes coverage_request status (e.g. Approved).
-  useRealtimeNotify(
-    "coverage_requests",
-    loadAll,
-    null,
-    {
-      title: "Request",
-      toast: false,
-      sound: false,
-      tabFlash: false,
-    },
-  );
+  useRealtimeNotify("coverage_requests", loadAll, null, {
+    title: "Request",
+    toast: false,
+    sound: false,
+    tabFlash: false,
+  });
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   const handleBulkArchive = async (ids) => {
@@ -1614,7 +1634,9 @@ export default function CoverageManagementBase({
               const expandedIds = new Set(
                 (nearbySchedules || []).map((d) => d.staffer_id),
               );
-              eligibleProfiles = allProfiles.filter((p) => expandedIds.has(p.id));
+              eligibleProfiles = allProfiles.filter((p) =>
+                expandedIds.has(p.id),
+              );
             }
           }
         }
@@ -1787,7 +1809,6 @@ export default function CoverageManagementBase({
     setAssignLoading(true);
     setAssignError("");
     try {
-
       const totalDays = isMultiDay ? req.event_days.length : 1;
       const previouslyCoveredDates = new Set(
         Object.entries(dayAssigned)
@@ -1938,7 +1959,12 @@ export default function CoverageManagementBase({
           req.event_days.forEach((dayObj) => {
             const ids = pendingDraft.daySelected?.[dayObj.date] || [];
             if (ids.length > 0) {
-              pushRowsForDay(ids, dayObj.date, dayObj.from_time, dayObj.to_time);
+              pushRowsForDay(
+                ids,
+                dayObj.date,
+                dayObj.from_time,
+                dayObj.to_time,
+              );
             }
           });
         } else {
@@ -2028,13 +2054,16 @@ export default function CoverageManagementBase({
       try {
         const weekend = isWeekendDate(dateStr);
         const dutyDay = jsDateToDutyDay(dateStr);
-        const isEmergencyReassignment = isAnnouncedEmergencyAssignment(assignment);
+        const isEmergencyReassignment =
+          isAnnouncedEmergencyAssignment(assignment);
         const primaryPositions =
           SECTION_PRIMARY_POSITIONS[currentUser?.section] || [];
 
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, full_name, section, division, role, position, avatar_url")
+          .select(
+            "id, full_name, section, division, role, position, avatar_url",
+          )
           .eq("role", "staff")
           .eq("is_active", true);
 
@@ -2120,8 +2149,11 @@ export default function CoverageManagementBase({
               assignmentCount: assignmentCounts[profile.id] || 0,
               hasConflict: conflictIds.has(profile.id),
               isCrossDivision,
-              isFromNearbyDay:
-                !!(useNearbyBadge && nearbyDutyIds && !exactDutyIds?.has(profile.id)),
+              isFromNearbyDay: !!(
+                useNearbyBadge &&
+                nearbyDutyIds &&
+                !exactDutyIds?.has(profile.id)
+              ),
             }))
             .sort((a, b) => {
               if (a.hasConflict !== b.hasConflict) {
@@ -2136,9 +2168,12 @@ export default function CoverageManagementBase({
 
         let withMeta = await decorateCandidates(sameDivisionProfiles);
         if (getSelectableCount(withMeta) < 2) {
-          const nearbySameDivision = await decorateCandidates(sameDivisionProfiles, {
-            useNearbyBadge: true,
-          });
+          const nearbySameDivision = await decorateCandidates(
+            sameDivisionProfiles,
+            {
+              useNearbyBadge: true,
+            },
+          );
           if (
             getSelectableCount(nearbySameDivision) > 0 ||
             withMeta.length === 0
@@ -2175,11 +2210,18 @@ export default function CoverageManagementBase({
   );
 
   const handleReassign = useCallback(async () => {
-    if (!reassignAssignment || !reassignSelectedId || !currentUser || reassigning) return;
+    if (
+      !reassignAssignment ||
+      !reassignSelectedId ||
+      !currentUser ||
+      reassigning
+    )
+      return;
     setReassigning(true);
     setReassignError("");
     try {
-      const isAnnouncedEmergency = isAnnouncedEmergencyAssignment(reassignAssignment);
+      const isAnnouncedEmergency =
+        isAnnouncedEmergencyAssignment(reassignAssignment);
       const selectedStaffer = reassignStaffers.find(
         (staffer) => staffer.id === reassignSelectedId,
       );
@@ -2356,8 +2398,9 @@ export default function CoverageManagementBase({
             ? 1
             : 0;
 
-      const hasPendingAssignments = Object.values(pendingDraft?.daySelected || {})
-        .some((ids) => Array.isArray(ids) && ids.length > 0);
+      const hasPendingAssignments = Object.values(
+        pendingDraft?.daySelected || {},
+      ).some((ids) => Array.isArray(ids) && ids.length > 0);
 
       return {
         id: req.id,
@@ -2386,7 +2429,8 @@ export default function CoverageManagementBase({
         myHasSubmitted: (req.submitted_sections || []).includes(
           currentUser?.section,
         ),
-        myHasAssignments: sectionAssignments.length > 0 || hasPendingAssignments,
+        myHasAssignments:
+          sectionAssignments.length > 0 || hasPendingAssignments,
         myDone: assignedDayCount >= totalDays,
         myPartial: assignedDayCount > 0 && assignedDayCount < totalDays,
         assignedDayCount,
@@ -2451,7 +2495,9 @@ export default function CoverageManagementBase({
                 borderRadius: "999px",
                 flexShrink: 0,
                 backgroundColor:
-                  p.row?.reassignmentType === "emergency" ? "#dc2626" : "#d97706",
+                  p.row?.reassignmentType === "emergency"
+                    ? "#dc2626"
+                    : "#d97706",
                 boxShadow:
                   p.row?.reassignmentType === "emergency"
                     ? "0 0 0 2px rgba(220,38,38,0.18)"
@@ -3119,7 +3165,10 @@ export default function CoverageManagementBase({
 
         {/* Rectification requests badge button */}
         {rectifRequests.length > 0 && (
-          <Tooltip title={`${rectifRequests.length} pending rectification${rectifRequests.length > 1 ? "s" : ""}`} arrow>
+          <Tooltip
+            title={`${rectifRequests.length} pending rectification${rectifRequests.length > 1 ? "s" : ""}`}
+            arrow
+          >
             <Box
               onClick={() => setRectifDialogOpen(true)}
               sx={{
@@ -3131,16 +3180,29 @@ export default function CoverageManagementBase({
                 height: FILTER_BUTTON_HEIGHT,
                 borderRadius: CONTROL_RADIUS,
                 border: "1px solid rgba(139,92,246,0.3)",
-                backgroundColor: isDark ? "rgba(139,92,246,0.12)" : "rgba(139,92,246,0.06)",
+                backgroundColor: isDark
+                  ? "rgba(139,92,246,0.12)"
+                  : "rgba(139,92,246,0.06)",
                 color: "#6d28d9",
                 cursor: "pointer",
                 flexShrink: 0,
                 transition: "all 0.15s",
-                "&:hover": { backgroundColor: isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.1)" },
+                "&:hover": {
+                  backgroundColor: isDark
+                    ? "rgba(139,92,246,0.2)"
+                    : "rgba(139,92,246,0.1)",
+                },
               }}
             >
               <GavelOutlinedIcon sx={{ fontSize: 14 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 600, lineHeight: 1 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  lineHeight: 1,
+                }}
+              >
                 Rectifications
               </Typography>
               <Box
@@ -3333,11 +3395,13 @@ export default function CoverageManagementBase({
             />
           </ListItemIcon>
           <ListItemText
-            slotProps={{ primary: {
-              fontFamily: dm,
-              fontSize: "0.82rem",
-              color: "#dc2626",
-            } }}
+            slotProps={{
+              primary: {
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                color: "#dc2626",
+              },
+            }}
           >
             Move to Trash
           </ListItemText>
@@ -3705,16 +3769,18 @@ function SubmitConfirmDialog({
       onClose={() => !loading && onCancel()}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "14px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "14px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -4142,18 +4208,20 @@ function AssignmentDialog({
       onClose={onClose}
       fullWidth
       maxWidth="md"
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "14px",
-          height: { md: "90vh" },
-          maxHeight: "95vh",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "14px",
+            height: { md: "90vh" },
+            maxHeight: "95vh",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -4166,15 +4234,6 @@ function AssignmentDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 2.5,
-              height: 26,
-              borderRadius: "2px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
               <Typography
@@ -4581,7 +4640,9 @@ function AssignmentDialog({
 
               // Anything that caused a reassignment (Cancelled or No Show)
               const triggers = allAssignments
-                .filter((a) => a.status === "Cancelled" || a.status === "No Show")
+                .filter(
+                  (a) => a.status === "Cancelled" || a.status === "No Show",
+                )
                 .sort((a, b) => {
                   const da = a.cancelled_at || a.assignment_date || "";
                   const db = b.cancelled_at || b.assignment_date || "";
@@ -4591,7 +4652,11 @@ function AssignmentDialog({
               if (triggers.length === 0) {
                 return (
                   <Typography
-                    sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary" }}
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.8rem",
+                      color: "text.secondary",
+                    }}
                   >
                     No reassignment events for this request.
                   </Typography>
@@ -4609,7 +4674,9 @@ function AssignmentDialog({
               });
 
               return (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}
+                >
                   {triggers.map((a) => {
                     const isEmergency = isAnnouncedEmergencyAssignment(a);
                     const reasonText = isEmergency
@@ -4618,8 +4685,7 @@ function AssignmentDialog({
                     const proofPath = isEmergency
                       ? extractEmergencyProofPath(a.cancellation_reason)
                       : null;
-                    const triggerName =
-                      a.staffer?.full_name || "Unknown staff";
+                    const triggerName = a.staffer?.full_name || "Unknown staff";
                     const cancelledAt = a.cancelled_at
                       ? new Date(a.cancelled_at).toLocaleString("en-US", {
                           month: "short",
@@ -4664,7 +4730,13 @@ function AssignmentDialog({
                             borderBottom: `1px solid ${borderColor}`,
                           }}
                         >
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.75,
+                            }}
+                          >
                             <Box
                               sx={{
                                 px: 0.85,
@@ -4687,14 +4759,23 @@ function AssignmentDialog({
                               </Typography>
                             </Box>
                             <Typography
-                              sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 700, color: "text.primary" }}
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.8rem",
+                                fontWeight: 700,
+                                color: "text.primary",
+                              }}
                             >
                               {triggerName}
                             </Typography>
                           </Box>
                           {cancelledAt && (
                             <Typography
-                              sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.disabled" }}
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.7rem",
+                                color: "text.disabled",
+                              }}
                             >
                               {cancelledAt}
                             </Typography>
@@ -4702,10 +4783,26 @@ function AssignmentDialog({
                         </Box>
 
                         {/* Body */}
-                        <Box sx={{ px: 1.5, py: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>
+                        <Box
+                          sx={{
+                            px: 1.5,
+                            py: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.75,
+                          }}
+                        >
                           {/* Date + time */}
-                          <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "text.secondary" }}>
-                            {a.assignment_date ? fmtDateShort(a.assignment_date) : "—"}
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.74rem",
+                              color: "text.secondary",
+                            }}
+                          >
+                            {a.assignment_date
+                              ? fmtDateShort(a.assignment_date)
+                              : "—"}
                             {a.from_time && a.to_time
                               ? ` · ${fmtTimeStr(a.from_time)} – ${fmtTimeStr(a.to_time)}`
                               : ""}
@@ -4740,14 +4837,27 @@ function AssignmentDialog({
                                 border: `1px solid ${border}`,
                                 alignSelf: "flex-start",
                                 transition: "all 0.15s",
-                                "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
+                                "&:hover": {
+                                  borderColor: GOLD,
+                                  backgroundColor: GOLD_08,
+                                },
                               }}
                             >
-                              <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "text.secondary" }} />
-                              <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "text.secondary" }}>
+                              <InsertDriveFileOutlinedIcon
+                                sx={{ fontSize: 13, color: "text.secondary" }}
+                              />
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.74rem",
+                                  color: "text.secondary",
+                                }}
+                              >
                                 {getFileName(proofPath) || "View Proof"}
                               </Typography>
-                              <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                              <ChevronRightIcon
+                                sx={{ fontSize: 13, color: "text.disabled" }}
+                              />
                             </Box>
                           )}
 
@@ -5285,16 +5395,18 @@ function PostAssignReviewDialog({
       onClose={() => !loading && onClose()}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "14px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "14px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       {/* Header */}
       <Box
@@ -5638,16 +5750,18 @@ function ReassignPickerDialog({
       onClose={() => !reassigning && onClose()}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       {/* Header */}
       <Box
@@ -5673,7 +5787,11 @@ function ReassignPickerDialog({
               Reassign Staffer
             </Typography>
             <Typography
-              sx={{ fontFamily: dm, fontSize: "0.7rem", color: "text.secondary" }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.7rem",
+                color: "text.secondary",
+              }}
             >
               {isAnnouncedEmergency
                 ? `Emergency announced by ${originalName}. Select a replacement.`
@@ -5712,7 +5830,15 @@ function ReassignPickerDialog({
       </Box>
 
       {/* Body */}
-      <Box sx={{ px: 3, py: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 2.5,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
         {/* Context card */}
         <Box
           sx={{
@@ -5737,7 +5863,12 @@ function ReassignPickerDialog({
           </Typography>
           {dateStr && (
             <Typography
-              sx={{ fontFamily: dm, fontSize: "0.73rem", color: "text.secondary", mt: 0.3 }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.73rem",
+                color: "text.secondary",
+                mt: 0.3,
+              }}
             >
               {fmtDateLabel(dateStr)} · Replacing {originalName}
             </Typography>
@@ -5760,7 +5891,9 @@ function ReassignPickerDialog({
                 },
               }}
             >
-              Same-division replacements were unavailable. Outside-division staffers are shown as an emergency fallback, and admins will be notified if you confirm one.
+              Same-division replacements were unavailable. Outside-division
+              staffers are shown as an emergency fallback, and admins will be
+              notified if you confirm one.
             </Alert>
           )}
           <Typography
@@ -5783,7 +5916,12 @@ function ReassignPickerDialog({
             </Box>
           ) : staffers.length === 0 ? (
             <Typography
-              sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", py: 1 }}
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "text.secondary",
+                py: 1,
+              }}
             >
               {isAnnouncedEmergency
                 ? "No eligible staffers found after same-division and emergency fallback checks."
@@ -5882,7 +6020,8 @@ function ReassignPickerDialog({
                             mt: 0.15,
                           }}
                         >
-                          {s.section || "Other section"} · {s.division || "Other division"}
+                          {s.section || "Other section"} ·{" "}
+                          {s.division || "Other division"}
                           {currentDivision ? ` vs ${currentDivision}` : ""}
                         </Typography>
                       )}
@@ -5968,7 +6107,11 @@ function ReassignPickerDialog({
                       checked={isSelected}
                       disabled={s.hasConflict || reassigning}
                       size="small"
-                      sx={{ p: 0, color: border, "&.Mui-checked": { color: GOLD } }}
+                      sx={{
+                        p: 0,
+                        color: border,
+                        "&.Mui-checked": { color: GOLD },
+                      }}
                       onClick={(e) => e.stopPropagation()}
                       onChange={() => onSelect(s.id)}
                     />
@@ -5998,7 +6141,9 @@ function ReassignPickerDialog({
           <Typography
             sx={{ fontFamily: dm, fontSize: "0.75rem", color: "#b91c1c" }}
           >
-            This replacement is outside {currentDivision || "your current"} division. Confirm only for emergency coverage when no same-division option is available.
+            This replacement is outside {currentDivision || "your current"}{" "}
+            division. Confirm only for emergency coverage when no same-division
+            option is available.
           </Typography>
         )}
       </Box>
@@ -6070,7 +6215,9 @@ function ReassignPickerDialog({
             },
           }}
         >
-          {reassigning && <CircularProgress size={12} sx={{ color: "inherit" }} />}
+          {reassigning && (
+            <CircularProgress size={12} sx={{ color: "inherit" }} />
+          )}
           {isAnnouncedEmergency
             ? "Confirm Emergency Replacement"
             : "Confirm Replacement"}
@@ -6081,7 +6228,14 @@ function ReassignPickerDialog({
 }
 
 // ── Rectification List Dialog ─────────────────────────────────────────────────
-function RectificationListDialog({ open, requests, onClose, onSelect, isDark, border }) {
+function RectificationListDialog({
+  open,
+  requests,
+  onClose,
+  onSelect,
+  isDark,
+  border,
+}) {
   if (!open) return null;
   return (
     <Dialog
@@ -6089,18 +6243,25 @@ function RectificationListDialog({ open, requests, onClose, onSelect, isDark, bo
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: { sx: { borderRadius: "10px", border: `1px solid ${border}` } } }}
+      slotProps={{
+        paper: { sx: { borderRadius: "10px", border: `1px solid ${border}` } },
+      }}
     >
       <Box
         sx={{
-          px: 3, py: 2,
+          px: 3,
+          py: 2,
           borderBottom: `1px solid ${border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <GavelOutlinedIcon sx={{ fontSize: 16, color: "#6d28d9" }} />
-          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+          >
             Pending Rectifications
           </Typography>
         </Box>
@@ -6111,33 +6272,64 @@ function RectificationListDialog({ open, requests, onClose, onSelect, isDark, bo
 
       <Box sx={{ px: 2, py: 1.5, maxHeight: 420, overflowY: "auto" }}>
         {requests.length === 0 ? (
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", py: 2, textAlign: "center" }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.8rem",
+              color: "text.secondary",
+              py: 2,
+              textAlign: "center",
+            }}
+          >
             No pending rectifications.
           </Typography>
         ) : (
           requests.map((r) => (
             <Box
               key={r.id}
-              onClick={() => { onSelect(r); onClose(); }}
+              onClick={() => {
+                onSelect(r);
+                onClose();
+              }}
               sx={{
                 p: 1.75,
                 mb: 0.75,
                 borderRadius: "8px",
                 border: `1px solid ${border}`,
                 cursor: "pointer",
-                "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)" },
+                "&:hover": {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.04)"
+                    : "rgba(0,0,0,0.02)",
+                },
               }}
             >
-              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600 }}>
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600 }}
+              >
                 {r.request?.title ?? "—"}
-              </Typography>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mt: 0.25 }}>
-                {r.staff?.full_name ?? "—"} · {new Date(r.created_at).toLocaleDateString()}
               </Typography>
               <Typography
                 sx={{
-                  fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.5,
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mt: 0.25,
+                }}
+              >
+                {r.staff?.full_name ?? "—"} ·{" "}
+                {new Date(r.created_at).toLocaleDateString()}
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  color: "text.secondary",
+                  mt: 0.5,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
                 }}
               >
                 {r.reason}
@@ -6147,13 +6339,28 @@ function RectificationListDialog({ open, requests, onClose, onSelect, isDark, bo
         )}
       </Box>
 
-      <Box sx={{ px: 3, py: 1.5, borderTop: `1px solid ${border}`, display: "flex", justifyContent: "flex-end" }}>
+      <Box
+        sx={{
+          px: 3,
+          py: 1.5,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
         <Box
           onClick={onClose}
           sx={{
-            px: 1.75, py: 0.65, borderRadius: "4px", cursor: "pointer",
-            border: `1px solid ${border}`, fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-            color: "text.secondary", userSelect: "none",
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "4px",
+            cursor: "pointer",
+            border: `1px solid ${border}`,
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            color: "text.secondary",
+            userSelect: "none",
             "&:hover": { backgroundColor: HOVER_BG },
           }}
         >
@@ -6166,14 +6373,25 @@ function RectificationListDialog({ open, requests, onClose, onSelect, isDark, bo
 
 // ── Rectification Review Dialog ───────────────────────────────────────────────
 function RectificationReviewDialog({
-  open, request, note, onNoteChange, reviewing, error, isDark, border,
-  onClose, onApprove, onReject,
+  open,
+  request,
+  note,
+  onNoteChange,
+  reviewing,
+  error,
+  isDark,
+  border,
+  onClose,
+  onApprove,
+  onReject,
 }) {
   if (!request) return null;
 
   const proofUrl = request.proof_path
     ? (() => {
-        const { data } = supabase.storage.from("coverage-files").getPublicUrl(request.proof_path);
+        const { data } = supabase.storage
+          .from("coverage-files")
+          .getPublicUrl(request.proof_path);
         return data?.publicUrl ?? null;
       })()
     : null;
@@ -6184,19 +6402,26 @@ function RectificationReviewDialog({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: { sx: { borderRadius: "10px", border: `1px solid ${border}` } } }}
+      slotProps={{
+        paper: { sx: { borderRadius: "10px", border: `1px solid ${border}` } },
+      }}
     >
       {/* Header */}
       <Box
         sx={{
-          px: 3, py: 2,
+          px: 3,
+          py: 2,
           borderBottom: `1px solid ${border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <GavelOutlinedIcon sx={{ fontSize: 16, color: "#6d28d9" }} />
-          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+          >
             Review Rectification
           </Typography>
         </Box>
@@ -6208,28 +6433,56 @@ function RectificationReviewDialog({
       {/* Body */}
       <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
         {/* Staff + assignment */}
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.25 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.25,
+          }}
+        >
           Staff member
         </Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}
+        >
           {request.staff?.full_name ?? "—"}
         </Typography>
 
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.25 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.25,
+          }}
+        >
           Assignment
         </Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}
+        >
           {request.request?.title ?? "—"}
         </Typography>
 
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.5,
+          }}
+        >
           Staff reason
         </Typography>
         <Box
           sx={{
-            p: 1.5, borderRadius: "8px",
+            p: 1.5,
+            borderRadius: "8px",
             border: `1px solid ${border}`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.03)"
+              : "rgba(0,0,0,0.02)",
             mb: 1.75,
           }}
         >
@@ -6240,7 +6493,14 @@ function RectificationReviewDialog({
 
         {proofUrl && (
           <>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.75rem",
+                color: "text.secondary",
+                mb: 0.5,
+              }}
+            >
               Proof
             </Typography>
             <Box
@@ -6249,8 +6509,13 @@ function RectificationReviewDialog({
               target="_blank"
               rel="noreferrer"
               sx={{
-                display: "flex", alignItems: "center", gap: 0.75,
-                fontFamily: dm, fontSize: "0.8rem", color: "#6d28d9", mb: 1.75,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "#6d28d9",
+                mb: 1.75,
                 textDecoration: "none",
                 "&:hover": { textDecoration: "underline" },
               }}
@@ -6261,7 +6526,14 @@ function RectificationReviewDialog({
           </>
         )}
 
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.5,
+          }}
+        >
           Reviewer note (optional)
         </Typography>
         <TextField
@@ -6286,7 +6558,15 @@ function RectificationReviewDialog({
         />
 
         {error && (
-          <Alert severity="error" sx={{ mt: 1.5, fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px" }}>
+          <Alert
+            severity="error"
+            sx={{
+              mt: 1.5,
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "8px",
+            }}
+          >
             {error}
           </Alert>
         )}
@@ -6295,9 +6575,14 @@ function RectificationReviewDialog({
       {reviewing && (
         <LinearProgress
           sx={{
-            mx: 3, mb: 1, borderRadius: "4px", height: 3,
+            mx: 3,
+            mb: 1,
+            borderRadius: "4px",
+            height: 3,
             "& .MuiLinearProgress-bar": { backgroundColor: GOLD },
-            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(0,0,0,0.06)",
           }}
         />
       )}
@@ -6305,19 +6590,27 @@ function RectificationReviewDialog({
       {/* Footer */}
       <Box
         sx={{
-          px: 3, py: 1.75,
+          px: 3,
+          py: 1.75,
           borderTop: `1px solid ${border}`,
-          display: "flex", justifyContent: "flex-end", gap: 1,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 1,
         }}
       >
         <Box
           onClick={reviewing ? undefined : onClose}
           sx={{
-            px: 1.75, py: 0.65, borderRadius: "4px",
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "4px",
             cursor: reviewing ? "default" : "pointer",
             border: `1px solid ${border}`,
-            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-            color: "text.secondary", userSelect: "none",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            color: "text.secondary",
+            userSelect: "none",
             "&:hover": reviewing ? {} : { backgroundColor: HOVER_BG },
           }}
         >
@@ -6326,14 +6619,25 @@ function RectificationReviewDialog({
         <Box
           onClick={reviewing ? undefined : onReject}
           sx={{
-            px: 1.75, py: 0.65, borderRadius: "4px",
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "4px",
             cursor: reviewing ? "default" : "pointer",
             border: "1px solid rgba(220,38,38,0.3)",
-            backgroundColor: reviewing ? "rgba(220,38,38,0.05)" : "rgba(220,38,38,0.06)",
+            backgroundColor: reviewing
+              ? "rgba(220,38,38,0.05)"
+              : "rgba(220,38,38,0.06)",
             color: reviewing ? "text.disabled" : "#dc2626",
-            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-            userSelect: "none", display: "flex", alignItems: "center", gap: 0.5,
-            "&:hover": reviewing ? {} : { backgroundColor: "rgba(220,38,38,0.12)" },
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            userSelect: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            "&:hover": reviewing
+              ? {}
+              : { backgroundColor: "rgba(220,38,38,0.12)" },
           }}
         >
           <ThumbDownOutlinedIcon sx={{ fontSize: 14 }} />
@@ -6342,12 +6646,19 @@ function RectificationReviewDialog({
         <Box
           onClick={reviewing ? undefined : onApprove}
           sx={{
-            px: 1.75, py: 0.65, borderRadius: "4px",
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "4px",
             cursor: reviewing ? "default" : "pointer",
             backgroundColor: reviewing ? "rgba(109,40,217,0.08)" : "#6d28d9",
             color: reviewing ? "text.disabled" : "#fff",
-            fontFamily: dm, fontSize: "0.8rem", fontWeight: 600,
-            userSelect: "none", display: "flex", alignItems: "center", gap: 0.5,
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            userSelect: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
             "&:hover": reviewing ? {} : { backgroundColor: "#5b21b6" },
           }}
         >

@@ -18,7 +18,7 @@ import {
   IconButton,
   Collapse,
   Paper,
-   Radio,
+  Radio,
   RadioGroup,
   FormControlLabel,
 } from "@mui/material";
@@ -751,7 +751,9 @@ export default function CoverageRequestDialog({
     async function load() {
       try {
         const rows = (await fetchClientTypes()) || [];
-        setClientTypes(rows.map((row) => ({ ...row, id: normalizeId(row.id) })));
+        setClientTypes(
+          rows.map((row) => ({ ...row, id: normalizeId(row.id) })),
+        );
       } catch {
         setClientTypes([]);
       }
@@ -807,12 +809,18 @@ export default function CoverageRequestDialog({
       );
       setVenue(existingRequest.venue || "");
       setClientType(
-        normalizeId(existingRequest.client_type?.id || existingRequest.client_type_id),
+        normalizeId(
+          existingRequest.client_type?.id || existingRequest.client_type_id,
+        ),
       );
-      setEntity(normalizeId(existingRequest.entity?.id || existingRequest.entity_id));
+      setEntity(
+        normalizeId(existingRequest.entity?.id || existingRequest.entity_id),
+      );
       setOtherEntity("");
       setContactPerson(existingRequest.contact_person || "");
-      const parsedContact = parseContactInfo(existingRequest.contact_info || "");
+      const parsedContact = parseContactInfo(
+        existingRequest.contact_info || "",
+      );
       setContactInfoType(parsedContact.type || DEFAULT_CONTACT_INFO_TYPE);
       setContactInfo(parsedContact.value || "");
       setFile(null);
@@ -1071,15 +1079,6 @@ export default function CoverageRequestDialog({
             gap: 1.5,
           }}
         >
-          <Box
-            sx={{
-              width: 3,
-              height: 26,
-              borderRadius: "10px",
-              backgroundColor: "#f5c52b",
-              flexShrink: 0,
-            }}
-          />
           <Typography
             sx={{ fontWeight: 700, fontSize: "0.95rem", color: "text.primary" }}
           >
@@ -1596,7 +1595,9 @@ export default function CoverageRequestDialog({
                           maxHeight: "260px !important",
                           overflowY: "auto",
                           "&::-webkit-scrollbar": { width: 6 },
-                          "&::-webkit-scrollbar-track": { background: "transparent" },
+                          "&::-webkit-scrollbar-track": {
+                            background: "transparent",
+                          },
                           "&::-webkit-scrollbar-thumb": {
                             background: isDark ? "#444" : "#ddd",
                             borderRadius: "10px",
@@ -1789,15 +1790,6 @@ export default function CoverageRequestDialog({
             gap: 1.5,
           }}
         >
-          <Box
-            sx={{
-              width: 3,
-              height: 22,
-              borderRadius: "10px",
-              backgroundColor: "#f5c52b",
-              flexShrink: 0,
-            }}
-          />
           <Typography
             sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary" }}
           >
@@ -1950,4 +1942,3 @@ function FormSection({ label, children }) {
     </Box>
   );
 }
-

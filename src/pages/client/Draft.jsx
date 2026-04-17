@@ -26,7 +26,10 @@ import {
   deleteDraftRequest,
 } from "../../services/coverageRequestService";
 import { supabase } from "../../lib/supabaseClient";
-import { TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
+import {
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
+} from "../../utils/layoutTokens";
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import BrandedLoader from "../../components/common/BrandedLoader";
 
@@ -391,16 +394,18 @@ export default function Draft() {
         onClose={handleClose}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         {/* Header */}
         <Box
@@ -421,15 +426,6 @@ export default function Draft() {
               minWidth: 0,
             }}
           >
-            <Box
-              sx={{
-                width: 2.5,
-                height: 28,
-                borderRadius: "10px",
-                backgroundColor: "#f59e0b",
-                flexShrink: 0,
-              }}
-            />
             <Box sx={{ minWidth: 0 }}>
               <Box
                 sx={{
@@ -988,16 +984,18 @@ function ConfirmDialog({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{

@@ -209,7 +209,6 @@ const dedupeAssignments = (list = []) => {
   return out;
 };
 
-
 // â”€â”€ Status pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatusPill({ status, isDark }) {
   const cfg = STATUS_CFG[status] || {
@@ -355,7 +354,14 @@ function AssignmentCard({
           gap: 1,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            flexWrap: "wrap",
+          }}
+        >
           <Box
             sx={{
               width: 2.5,
@@ -435,17 +441,23 @@ function AssignmentCard({
               />
             </ListItemIcon>
             <ListItemText
-              slotProps={{ primary: {
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                color: "#dc2626",
-              } }}
+              slotProps={{
+                primary: {
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "#dc2626",
+                },
+              }}
             >
               Move to Trash
             </ListItemText>
           </MenuItem>
           <MenuItem
-            disabled={a.status === "Cancelled" || a.status === "Rectified" || hasPendingRectif}
+            disabled={
+              a.status !== "No Show" ||
+              a.status === "Rectified" ||
+              hasPendingRectif
+            }
             onClick={() => {
               onRectification?.(a);
               setMenuAnchor(null);
@@ -454,17 +466,30 @@ function AssignmentCard({
           >
             <ListItemIcon>
               <FactCheckOutlinedIcon
-                sx={{ fontSize: 18, color: (a.status === "Cancelled" || a.status === "Rectified" || hasPendingRectif) ? "text.disabled" : "#111" }}
+                sx={{
+                  fontSize: 18,
+                  color:
+                    a.status !== "No Show" || hasPendingRectif
+                      ? "text.disabled"
+                      : "#111",
+                }}
               />
             </ListItemIcon>
             <ListItemText
-              slotProps={{ primary: {
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                color: (a.status === "Cancelled" || a.status === "Rectified" || hasPendingRectif) ? "text.disabled" : undefined,
-              } }}
+              slotProps={{
+                primary: {
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color:
+                    a.status !== "No Show" || hasPendingRectif
+                      ? "text.disabled"
+                      : undefined,
+                },
+              }}
             >
-              {hasPendingRectif ? "Rectification Pending" : "Request Rectification"}
+              {hasPendingRectif
+                ? "Rectification Pending"
+                : "Request Rectification"}
             </ListItemText>
           </MenuItem>
           <MenuItem
@@ -477,17 +502,24 @@ function AssignmentCard({
           >
             <ListItemIcon>
               <WarningAmberOutlinedIcon
-                sx={{ fontSize: 18, color: a.status === "Cancelled" ? "text.disabled" : GOLD }}
+                sx={{
+                  fontSize: 18,
+                  color: a.status === "Cancelled" ? "text.disabled" : GOLD,
+                }}
               />
             </ListItemIcon>
             <ListItemText
-              slotProps={{ primary: {
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                color: a.status === "Cancelled" ? "text.disabled" : GOLD,
-              } }}
+              slotProps={{
+                primary: {
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: a.status === "Cancelled" ? "text.disabled" : GOLD,
+                },
+              }}
             >
-              {a.status === "Cancelled" ? "Emergency Announced" : "Announce Emergency"}
+              {a.status === "Cancelled"
+                ? "Emergency Announced"
+                : "Announce Emergency"}
             </ListItemText>
           </MenuItem>
         </Menu>
@@ -653,7 +685,8 @@ function AssignmentCard({
             }}
           >
             <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} />
-            Time in window has passed. For rectification use the menu to acess the form.
+            Time in window has passed. For rectification use the menu to acess
+            the form.
           </Box>
         )}
         {a.status === "On Going" && (
@@ -745,19 +778,21 @@ function AssignmentDetailDialog({
       onClose={onClose}
       fullWidth
       maxWidth="sm"
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
-          maxHeight: "90vh",
-          display: "flex",
-          flexDirection: "column",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+            maxHeight: "90vh",
+            display: "flex",
+            flexDirection: "column",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -781,15 +816,6 @@ function AssignmentDetailDialog({
               flexWrap: "wrap",
             }}
           >
-            <Box
-              sx={{
-                width: 2.5,
-                height: 22,
-                borderRadius: "10px",
-                backgroundColor: GOLD,
-                flexShrink: 0,
-              }}
-            />
             <StatusPill status={assignment.status} isDark={isDark} />
             {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
           </Box>
@@ -1167,19 +1193,31 @@ function AssignmentDetailDialog({
           {assignment.status === "Cancelled" &&
             (() => {
               const raw = String(assignment.cancellation_reason || "");
-              const isEmergency = raw.toLowerCase().startsWith("emergency announced");
+              const isEmergency = raw
+                .toLowerCase()
+                .startsWith("emergency announced");
               if (!isEmergency) return null;
               // Parse reason text: strip prefix and optional (Proof: ...) suffix
-              const withoutPrefix = raw.replace(/^emergency announced:\s*/i, "");
-              const proofMatch = withoutPrefix.match(/\s*\(Proof:\s*([^)]+)\)\s*$/);
+              const withoutPrefix = raw.replace(
+                /^emergency announced:\s*/i,
+                "",
+              );
+              const proofMatch = withoutPrefix.match(
+                /\s*\(Proof:\s*([^)]+)\)\s*$/,
+              );
               const reasonText = proofMatch
-                ? withoutPrefix.slice(0, withoutPrefix.lastIndexOf(proofMatch[0])).trim()
+                ? withoutPrefix
+                    .slice(0, withoutPrefix.lastIndexOf(proofMatch[0]))
+                    .trim()
                 : withoutPrefix.trim();
               const proofPath = proofMatch ? proofMatch[1].trim() : null;
-              const supabaseBase = (import.meta.env.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
-              const proofUrl = proofPath && supabaseBase
-                ? `${supabaseBase}/storage/v1/object/public/coverage-files/${proofPath}`
-                : proofPath;
+              const supabaseBase = (
+                import.meta.env.VITE_SUPABASE_URL || ""
+              ).replace(/\/+$/, "");
+              const proofUrl =
+                proofPath && supabaseBase
+                  ? `${supabaseBase}/storage/v1/object/public/coverage-files/${proofPath}`
+                  : proofPath;
               return (
                 <Box
                   sx={{
@@ -1193,17 +1231,32 @@ function AssignmentDetailDialog({
                     border: `1px solid rgba(245,197,43,0.3)`,
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: "#b45309", flexShrink: 0 }} />
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                  >
+                    <WarningAmberOutlinedIcon
+                      sx={{ fontSize: 14, color: "#b45309", flexShrink: 0 }}
+                    />
                     <Typography
-                      sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 700, color: "#b45309" }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        color: "#b45309",
+                      }}
                     >
                       Emergency Announced — Received
                     </Typography>
                   </Box>
                   {reasonText && (
                     <Typography
-                      sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary", lineHeight: 1.55, pl: 0.25 }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.76rem",
+                        color: "text.secondary",
+                        lineHeight: 1.55,
+                        pl: 0.25,
+                      }}
                     >
                       {reasonText}
                     </Typography>
@@ -1226,11 +1279,22 @@ function AssignmentDetailDialog({
                         textDecoration: "none",
                         transition: "all 0.15s",
                         alignSelf: "flex-start",
-                        "&:hover": { borderColor: "#b45309", backgroundColor: "rgba(245,197,43,0.1)" },
+                        "&:hover": {
+                          borderColor: "#b45309",
+                          backgroundColor: "rgba(245,197,43,0.1)",
+                        },
                       }}
                     >
-                      <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "#b45309" }} />
-                      <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "#b45309" }}>
+                      <InsertDriveFileOutlinedIcon
+                        sx={{ fontSize: 13, color: "#b45309" }}
+                      />
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.74rem",
+                          color: "#b45309",
+                        }}
+                      >
                         View Proof
                       </Typography>
                     </Box>
@@ -1337,16 +1401,18 @@ function ConfirmCompleteDialog({
       onClose={() => !completing && onClose()}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 24px 64px rgba(0,0,0,0.6)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 24px 64px rgba(0,0,0,0.6)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -1359,15 +1425,6 @@ function ConfirmCompleteDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 2.5,
-              height: 26,
-              borderRadius: "10px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Typography
               sx={{
@@ -1526,7 +1583,9 @@ export default function MyAssignment() {
   const [completeError, setCompleteError] = useState("");
 
   // Emergency announcement integration - must be after all other useState calls
-  const { openAnnounce, AnnounceEmergencyDialogWrapper } = useAnnounceEmergency({ supabase, currentUser });
+  const { openAnnounce, AnnounceEmergencyDialogWrapper } = useAnnounceEmergency(
+    { supabase, currentUser },
+  );
 
   const [timeInTarget, setTimeInTarget] = useState(null);
   const [timeInConfirmTarget, setTimeInConfirmTarget] = useState(null);
@@ -1585,7 +1644,7 @@ export default function MyAssignment() {
         .from("coverage_assignments")
         .select(
           `
-        id, status, section, assignment_date, assigned_at, timed_in_at,
+        id, request_id, status, section, assignment_date, assigned_at, timed_in_at,
         cancellation_reason, is_reassigned,
         assigned_by_profile:assigned_by ( full_name ),
         request:request_id (
@@ -1865,7 +1924,11 @@ export default function MyAssignment() {
   const completedFiltered = useMemo(
     () =>
       dedupeAssignments(
-        applyFilters(assignments.filter((a) => a.status === "Completed" || a.status === "Rectified")),
+        applyFilters(
+          assignments.filter(
+            (a) => a.status === "Completed" || a.status === "Rectified",
+          ),
+        ),
       ),
     [assignments, applyFilters],
   );
@@ -2015,7 +2078,13 @@ export default function MyAssignment() {
       </Box>
     );
 
-  const statusOptions = ["All", "On Going", "Completed", "Rectified", "No Show"];
+  const statusOptions = [
+    "All",
+    "On Going",
+    "Completed",
+    "Rectified",
+    "No Show",
+  ];
 
   return (
     <Box
@@ -2355,12 +2424,14 @@ export default function MyAssignment() {
         }}
         maxWidth="sm"
         fullWidth
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            border: `1px solid ${border}`,
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+            },
           },
-        } }}
+        }}
       >
         {/* Header */}
         <Box
@@ -2375,7 +2446,9 @@ export default function MyAssignment() {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <GavelOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-            <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+            >
               Request Rectification
             </Typography>
           </Box>
@@ -2398,26 +2471,59 @@ export default function MyAssignment() {
         <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
           {rectifSuccess ? (
             <Box sx={{ textAlign: "center", py: 2 }}>
-              <CheckCircleOutlineIcon sx={{ fontSize: 40, color: "#22c55e", mb: 1 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+              <CheckCircleOutlineIcon
+                sx={{ fontSize: 40, color: "#22c55e", mb: 1 }}
+              />
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+              >
                 Submitted successfully
               </Typography>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary", mt: 0.5 }}>
-                Your rectification request has been sent to your section head for review.
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  color: "text.secondary",
+                  mt: 0.5,
+                }}
+              >
+                Your rectification request has been sent to your section head
+                for review.
               </Typography>
             </Box>
           ) : (
             <>
               {/* Assignment info */}
-              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mb: 0.5,
+                }}
+              >
                 Assignment
               </Typography>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 2 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  mb: 2,
+                }}
+              >
                 {rectificationTarget?.request?.title ?? "—"}
               </Typography>
 
               {/* Reason */}
-              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mb: 0.5,
+                }}
+              >
                 Reason <span style={{ color: "#ef4444" }}>*</span>
               </Typography>
               <TextField
@@ -2442,7 +2548,14 @@ export default function MyAssignment() {
               />
 
               {/* Proof upload */}
-              <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.75rem",
+                  color: "text.secondary",
+                  mb: 0.5,
+                }}
+              >
                 Proof (optional — photo, screenshot, or document)
               </Typography>
               <Box
@@ -2457,11 +2570,22 @@ export default function MyAssignment() {
                   borderRadius: "8px",
                   cursor: rectifSubmitting ? "default" : "pointer",
                   mb: rectifFile ? 0.75 : 0,
-                  "&:hover": rectifSubmitting ? {} : { backgroundColor: HOVER_BG },
+                  "&:hover": rectifSubmitting
+                    ? {}
+                    : { backgroundColor: HOVER_BG },
                 }}
               >
-                <CloudUploadOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.secondary", flexGrow: 1 }}>
+                <CloudUploadOutlinedIcon
+                  sx={{ fontSize: 18, color: "text.secondary" }}
+                />
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.8rem",
+                    color: "text.secondary",
+                    flexGrow: 1,
+                  }}
+                >
                   {rectifFile ? rectifFile.name : "Click to upload a file"}
                 </Typography>
                 <input
@@ -2477,7 +2601,9 @@ export default function MyAssignment() {
                 />
               </Box>
               {rectifFile && (
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0 }}>
+                <Box
+                  sx={{ display: "flex", justifyContent: "flex-end", mb: 0 }}
+                >
                   <Box
                     component="span"
                     onClick={() => setRectifFile(null)}
@@ -2495,7 +2621,15 @@ export default function MyAssignment() {
               )}
 
               {rectifError && (
-                <Alert severity="error" sx={{ mt: 1.5, fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px" }}>
+                <Alert
+                  severity="error"
+                  sx={{
+                    mt: 1.5,
+                    fontFamily: dm,
+                    fontSize: "0.78rem",
+                    borderRadius: "8px",
+                  }}
+                >
                   {rectifError}
                 </Alert>
               )}
@@ -2512,7 +2646,9 @@ export default function MyAssignment() {
               borderRadius: "4px",
               height: 3,
               "& .MuiLinearProgress-bar": { backgroundColor: GOLD },
-              backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(0,0,0,0.06)",
             }}
           />
         )}
@@ -2574,26 +2710,39 @@ export default function MyAssignment() {
                   fontWeight: 600,
                   color: "text.secondary",
                   userSelect: "none",
-                  "&:hover": rectifSubmitting ? {} : { backgroundColor: HOVER_BG },
+                  "&:hover": rectifSubmitting
+                    ? {}
+                    : { backgroundColor: HOVER_BG },
                 }}
               >
                 Cancel
               </Box>
               <Box
-                onClick={rectifSubmitting ? undefined : handleSubmitRectification}
+                onClick={
+                  rectifSubmitting ? undefined : handleSubmitRectification
+                }
                 sx={{
                   px: 2,
                   py: 0.65,
                   borderRadius: "4px",
-                  cursor: rectifSubmitting || !rectifReason.trim() ? "default" : "pointer",
+                  cursor:
+                    rectifSubmitting || !rectifReason.trim()
+                      ? "default"
+                      : "pointer",
                   backgroundColor:
                     rectifSubmitting || !rectifReason.trim()
-                      ? isDark ? "rgba(255,255,255,0.12)" : "rgba(53,53,53,0.12)"
-                      : isDark ? "#fff" : CHARCOAL,
+                      ? isDark
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(53,53,53,0.12)"
+                      : isDark
+                        ? "#fff"
+                        : CHARCOAL,
                   color:
                     rectifSubmitting || !rectifReason.trim()
                       ? "text.disabled"
-                      : isDark ? CHARCOAL : "#fff",
+                      : isDark
+                        ? CHARCOAL
+                        : "#fff",
                   fontFamily: dm,
                   fontSize: "0.8rem",
                   fontWeight: 600,
@@ -2660,21 +2809,26 @@ export default function MyAssignment() {
             gap: 1.5,
           }}
         >
-          <Box
+          <Typography
             sx={{
-              width: 3,
-              height: 22,
-              borderRadius: "2px",
-              backgroundColor: GOLD,
-              flexShrink: 0,
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              color: "text.primary",
+              fontFamily: dm,
             }}
-          />
-          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "text.primary", fontFamily: dm }}>
+          >
             Confirm Time In
           </Typography>
         </Box>
         <DialogContent sx={{ pt: 2, pb: 1 }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.85rem", color: "text.primary", lineHeight: 1.6 }}>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.85rem",
+              color: "text.primary",
+              lineHeight: 1.6,
+            }}
+          >
             You're about to time in for{" "}
             <Box component="span" sx={{ fontWeight: 600 }}>
               {timeInConfirmTarget?.request?.title || "this assignment"}

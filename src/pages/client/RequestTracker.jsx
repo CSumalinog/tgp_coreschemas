@@ -80,7 +80,10 @@ import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
-import { generateConfirmationPDF, previewConfirmationPDF } from "../../utils/generateConfirmationPDF";
+import {
+  generateConfirmationPDF,
+  previewConfirmationPDF,
+} from "../../utils/generateConfirmationPDF";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   cancelRequest,
@@ -1417,11 +1420,13 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
             </ListItemIcon>
             <ListItemText
               primary="Reschedule"
-              slotProps={{ primary: {
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 500,
-              } }}
+              slotProps={{
+                primary: {
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 500,
+                },
+              }}
             />
           </MenuItem>
         )}
@@ -1444,12 +1449,14 @@ function RowActionMenu({ row, isDark, onView, onReschedule, onCancel }) {
             </ListItemIcon>
             <ListItemText
               primary="Cancel Request"
-              slotProps={{ primary: {
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 500,
-                color: "#ef4444",
-              } }}
+              slotProps={{
+                primary: {
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  fontWeight: 500,
+                  color: "#ef4444",
+                },
+              }}
             />
           </MenuItem>
         )}
@@ -2135,17 +2142,19 @@ function RequestDetailDialog({
         onClose={onClose}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            maxHeight: "90vh",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              maxHeight: "90vh",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         {/* Header */}
         <Box
@@ -2166,15 +2175,6 @@ function RequestDetailDialog({
               minWidth: 0,
             }}
           >
-            <Box
-              sx={{
-                width: 2.5,
-                height: 28,
-                borderRadius: "10px",
-                backgroundColor: statusCfg.dot,
-                flexShrink: 0,
-              }}
-            />
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 sx={{
@@ -2270,11 +2270,13 @@ function RequestDetailDialog({
                       </ListItemIcon>
                       <ListItemText
                         primary="Reschedule"
-                        slotProps={{ primary: {
-                          fontFamily: dm,
-                          fontSize: "0.8rem",
-                          fontWeight: 500,
-                        } }}
+                        slotProps={{
+                          primary: {
+                            fontFamily: dm,
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                          },
+                        }}
                       />
                     </MenuItem>
                   )}
@@ -2299,12 +2301,14 @@ function RequestDetailDialog({
                       </ListItemIcon>
                       <ListItemText
                         primary="Cancel Request"
-                        slotProps={{ primary: {
-                          fontFamily: dm,
-                          fontSize: "0.8rem",
-                          fontWeight: 500,
-                          color: "#ef4444",
-                        } }}
+                        slotProps={{
+                          primary: {
+                            fontFamily: dm,
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                            color: "#ef4444",
+                          },
+                        }}
                       />
                     </MenuItem>
                   )}
@@ -2316,12 +2320,16 @@ function RequestDetailDialog({
                 <Tooltip title="View Confirmation" placement="top">
                   <IconButton
                     size="small"
-                    onClick={() => previewConfirmationPDF(request, teamBySection)}
+                    onClick={() =>
+                      previewConfirmationPDF(request, teamBySection)
+                    }
                     sx={{
                       color: "text.secondary",
                       borderRadius: "10px",
                       "&:hover": {
-                        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : HOVER_BG,
                       },
                     }}
                   >
@@ -2331,12 +2339,16 @@ function RequestDetailDialog({
                 <Tooltip title="Download Confirmation" placement="top">
                   <IconButton
                     size="small"
-                    onClick={() => generateConfirmationPDF(request, teamBySection)}
+                    onClick={() =>
+                      generateConfirmationPDF(request, teamBySection)
+                    }
                     sx={{
                       color: "text.secondary",
                       borderRadius: "10px",
                       "&:hover": {
-                        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : HOVER_BG,
                       },
                     }}
                   >
@@ -2415,7 +2427,13 @@ function RequestDetailDialog({
                           minWidth: 0,
                         }}
                       >
-                        <Box sx={{ mb: 0.5, display: "flex", alignItems: "center" }}>
+                        <Box
+                          sx={{
+                            mb: 0.5,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
                           <Icon sx={{ fontSize: 14, color: iconColor }} />
                         </Box>
                         <Typography

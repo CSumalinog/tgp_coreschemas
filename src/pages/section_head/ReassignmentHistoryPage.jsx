@@ -1,9 +1,5 @@
 ﻿// src/pages/section_head/ReassignmentHistoryPage.jsx
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -59,7 +55,9 @@ const extractEmergencyReasonText = (reasonText) => {
 
 const isAnnouncedEmergency = (a) => {
   if (a.status !== "Cancelled") return false;
-  return String(a.cancellation_reason || "").toLowerCase().includes("emergency");
+  return String(a.cancellation_reason || "")
+    .toLowerCase()
+    .includes("emergency");
 };
 
 const fmtDate = (d) => {
@@ -89,7 +87,9 @@ export default function ReassignmentHistoryPage() {
   // Load current user
   useEffect(() => {
     async function loadUser() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
@@ -186,7 +186,8 @@ export default function ReassignmentHistoryPage() {
 
       const enriched = triggers.map((t) => ({
         ...t,
-        replacements: repMap[`${t.assignment_date}|${t.service_key || ""}`] || [],
+        replacements:
+          repMap[`${t.assignment_date}|${t.service_key || ""}`] || [],
       }));
 
       if (!cancelled) {
@@ -196,7 +197,9 @@ export default function ReassignmentHistoryPage() {
     };
 
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser, selectedSemester, semesters]);
 
   const filtered = useMemo(() => {
@@ -224,9 +227,7 @@ export default function ReassignmentHistoryPage() {
           reqId: row.request?.id,
           title: row.request?.title || "\u2014",
           dateOccurred: fmtDate(row.assignment_date),
-          reason:
-            reasonText ||
-            (emergency ? "Emergency announced" : "No Show"),
+          reason: reasonText || (emergency ? "Emergency announced" : "No Show"),
           proofPath,
           reassignedTo:
             row.replacements?.length > 0
@@ -315,7 +316,14 @@ export default function ReassignmentHistoryPage() {
         flex: 1,
         minWidth: 130,
         renderCell: (p) => (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%", width: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
             <Typography
               sx={{
                 fontFamily: dm,
@@ -334,7 +342,14 @@ export default function ReassignmentHistoryPage() {
         flex: 1.6,
         minWidth: 150,
         renderCell: (p) => (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%", width: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
             <Typography
               sx={{
                 fontFamily: dm,
@@ -358,9 +373,15 @@ export default function ReassignmentHistoryPage() {
         renderCell: (p) => {
           if (!p.value)
             return (
-              <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Box
+                sx={{ display: "flex", alignItems: "center", height: "100%" }}
+              >
                 <Typography
-                  sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled" }}
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.72rem",
+                    color: "text.disabled",
+                  }}
                 >
                   {"\u2014"}
                 </Typography>
@@ -368,13 +389,21 @@ export default function ReassignmentHistoryPage() {
             );
           return (
             <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-              <Tooltip title={getFileName(p.value) || "View Proof"} placement="top">
+              <Tooltip
+                title={getFileName(p.value) || "View Proof"}
+                placement="top"
+              >
                 <Box
                   onClick={(e) => {
                     e.stopPropagation();
                     openFile(p.value);
                   }}
-                  sx={{ display: "inline-flex", cursor: "pointer", color: "text.secondary", "&:hover": { color: "text.primary" } }}
+                  sx={{
+                    display: "inline-flex",
+                    cursor: "pointer",
+                    color: "text.secondary",
+                    "&:hover": { color: "text.primary" },
+                  }}
                 >
                   <InsertDriveFileOutlinedIcon sx={{ fontSize: 18 }} />
                 </Box>
@@ -428,7 +457,8 @@ export default function ReassignmentHistoryPage() {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.8rem",
-                color: p.value === "\u2014" ? "text.disabled" : "text.secondary",
+                color:
+                  p.value === "\u2014" ? "text.disabled" : "text.secondary",
               }}
             >
               {p.value}

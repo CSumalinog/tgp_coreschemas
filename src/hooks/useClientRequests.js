@@ -33,12 +33,8 @@ export function useClientRequests() {
       if (active.length === 0) return request;
 
       const total = active.length;
-      const completed = active.filter(
-        (a) => a?.status === "Completed",
-      ).length;
-      const onGoing = active.filter(
-        (a) => a?.status === "On Going",
-      ).length;
+      const completed = active.filter((a) => a?.status === "Completed").length;
+      const onGoing = active.filter((a) => a?.status === "On Going").length;
 
       if (completed === total) {
         return { ...request, status: "Completed" };
@@ -77,7 +73,7 @@ export function useClientRequests() {
   const declined = requests.filter((r) => r.status === "Declined");
 
   return {
-    requests,   // all requests (for History page)
+    requests, // all requests (for History page)
     drafts,
     pending,
     approved,

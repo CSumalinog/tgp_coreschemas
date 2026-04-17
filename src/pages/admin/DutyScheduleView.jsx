@@ -2766,16 +2766,18 @@ export default function DutyScheduleView() {
         onClose={closeRequestDetails}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -2967,7 +2969,10 @@ export default function DutyScheduleView() {
               <Box
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                  },
                   gap: 1,
                 }}
               >
@@ -2993,7 +2998,9 @@ export default function DutyScheduleView() {
                   >
                     {DAY_LABELS[requestDetailsTarget?.current_duty_day]} (Today)
                   </Typography>
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.55 }}>
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 0.55 }}
+                  >
                     <Typography
                       sx={{
                         fontFamily: dm,
@@ -3002,7 +3009,10 @@ export default function DutyScheduleView() {
                       }}
                     >
                       Scribes:{" "}
-                      <Box component="span" sx={{ color: "#1e40af", fontWeight: 700 }}>
+                      <Box
+                        component="span"
+                        sx={{ color: "#1e40af", fontWeight: 700 }}
+                      >
                         {divisionComposition.current.scribes}
                       </Box>
                     </Typography>
@@ -3014,7 +3024,10 @@ export default function DutyScheduleView() {
                       }}
                     >
                       Creatives:{" "}
-                      <Box component="span" sx={{ color: "#c2410c", fontWeight: 700 }}>
+                      <Box
+                        component="span"
+                        sx={{ color: "#c2410c", fontWeight: 700 }}
+                      >
                         {divisionComposition.current.creatives}
                       </Box>
                     </Typography>
@@ -3041,9 +3054,12 @@ export default function DutyScheduleView() {
                       mb: 0.75,
                     }}
                   >
-                    {DAY_LABELS[requestDetailsTarget?.requested_duty_day]} (After)
+                    {DAY_LABELS[requestDetailsTarget?.requested_duty_day]}{" "}
+                    (After)
                   </Typography>
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.55 }}>
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 0.55 }}
+                  >
                     <Typography
                       sx={{
                         fontFamily: dm,
@@ -3052,7 +3068,10 @@ export default function DutyScheduleView() {
                       }}
                     >
                       Scribes:{" "}
-                      <Box component="span" sx={{ color: "#1e40af", fontWeight: 700 }}>
+                      <Box
+                        component="span"
+                        sx={{ color: "#1e40af", fontWeight: 700 }}
+                      >
                         {divisionComposition.requested.scribes}
                       </Box>
                     </Typography>
@@ -3064,7 +3083,10 @@ export default function DutyScheduleView() {
                       }}
                     >
                       Creatives:{" "}
-                      <Box component="span" sx={{ color: "#c2410c", fontWeight: 700 }}>
+                      <Box
+                        component="span"
+                        sx={{ color: "#c2410c", fontWeight: 700 }}
+                      >
                         {divisionComposition.requested.creatives}
                       </Box>
                     </Typography>
@@ -3233,16 +3255,18 @@ export default function DutyScheduleView() {
         onClose={closeRejectDialog}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -3384,17 +3408,19 @@ export default function DutyScheduleView() {
       <Dialog
         open={publishConfirmOpen}
         onClose={publishSaving ? undefined : () => setPublishConfirmOpen(false)}
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            width: 480,
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              width: 480,
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -3738,21 +3764,23 @@ export default function DutyScheduleView() {
       <Dialog
         open={snapshotViewerOpen}
         onClose={() => setSnapshotViewerOpen(false)}
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            width: 620,
-            maxWidth: "96vw",
-            maxHeight: "82vh",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
-            display: "flex",
-            flexDirection: "column",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              width: 620,
+              maxWidth: "96vw",
+              maxHeight: "82vh",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+              display: "flex",
+              flexDirection: "column",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -4140,9 +4168,7 @@ export default function DutyScheduleView() {
                       fontWeight: active ? 700 : 600,
                       transition: "all 0.15s",
                       "&:hover": {
-                        borderColor: active
-                          ? "#0f1115"
-                          : "rgba(53,53,53,0.3)",
+                        borderColor: active ? "#0f1115" : "rgba(53,53,53,0.3)",
                         color: active ? "#ffffff" : "text.primary",
                         backgroundColor: active ? "#0f1115" : "#ededee",
                       },
@@ -4291,9 +4317,7 @@ export default function DutyScheduleView() {
 
                   {selectedPublication?.snapshot?.length > 0 && (
                     <Box
-                      onClick={() =>
-                        openSnapshotViewer(selectedPublication.id)
-                      }
+                      onClick={() => openSnapshotViewer(selectedPublication.id)}
                       sx={{
                         display: "inline-flex",
                         alignItems: "center",
@@ -4607,16 +4631,18 @@ export default function DutyScheduleView() {
         onClose={closeSlotDialog}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -4629,15 +4655,6 @@ export default function DutyScheduleView() {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 3,
-                height: 22,
-                borderRadius: "10px",
-                backgroundColor: GOLD,
-                flexShrink: 0,
-              }}
-            />
             <Typography
               sx={{
                 fontFamily: dm,

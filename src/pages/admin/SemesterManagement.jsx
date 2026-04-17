@@ -41,7 +41,10 @@ import {
   getAcademicYearLabel,
   getSemesterDisplayName,
 } from "../../utils/semesterLabel";
-import { TABLE_FIRST_COL_FLEX, TABLE_FIRST_COL_MIN_WIDTH } from "../../utils/layoutTokens";
+import {
+  TABLE_FIRST_COL_FLEX,
+  TABLE_FIRST_COL_MIN_WIDTH,
+} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -288,7 +291,12 @@ export default function SemesterManagement() {
   };
 
   const handleSave = async () => {
-    if (!form.semester || !form.academic_year_start || !form.start_date || !form.end_date) {
+    if (
+      !form.semester ||
+      !form.academic_year_start ||
+      !form.start_date ||
+      !form.end_date
+    ) {
       setSaveError("Please fill in all fields.");
       return;
     }
@@ -297,7 +305,9 @@ export default function SemesterManagement() {
       return;
     }
     if (parsedAcademicYearStart < minAcademicYearStart) {
-      setSaveError(`Academic year cannot be earlier than ${minAcademicYearStart}.`);
+      setSaveError(
+        `Academic year cannot be earlier than ${minAcademicYearStart}.`,
+      );
       return;
     }
     if (form.start_date >= form.end_date) {
@@ -794,16 +804,18 @@ export default function SemesterManagement() {
         }}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -816,15 +828,6 @@ export default function SemesterManagement() {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 2.5,
-                height: 26,
-                borderRadius: "10px",
-                backgroundColor: GOLD,
-                flexShrink: 0,
-              }}
-            />
             <Typography
               sx={{
                 fontFamily: dm,
@@ -867,14 +870,23 @@ export default function SemesterManagement() {
               {saveError}
             </Alert>
           )}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexWrap: "wrap",
+            }}
+          >
             <Typography sx={{ fontSize: "0.875rem", fontWeight: 500 }}>
               Semester:
             </Typography>
             <RadioGroup
               row
               value={form.semester ?? "1st"}
-              onChange={(e) => setForm((f) => ({ ...f, semester: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, semester: e.target.value }))
+              }
               sx={{
                 gap: 2,
                 "& .MuiFormControlLabel-label": {
@@ -897,12 +909,21 @@ export default function SemesterManagement() {
               />
             </RadioGroup>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.25,
+                  flexWrap: "wrap",
+                }}
+              >
                 <TextField
                   label="A.Y. Start"
                   value={form.academic_year_start}
                   onChange={(e) => {
-                    const nextValue = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    const nextValue = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 4);
                     setForm((f) => ({ ...f, academic_year_start: nextValue }));
                   }}
                   error={hasPastAcademicYear}
@@ -960,7 +981,9 @@ export default function SemesterManagement() {
                 onChange={(nextDate) => {
                   setForm((f) => ({
                     ...f,
-                    start_date: nextDate ? formatDate(nextDate, "yyyy-MM-dd") : "",
+                    start_date: nextDate
+                      ? formatDate(nextDate, "yyyy-MM-dd")
+                      : "",
                   }));
                 }}
                 slotProps={datePickerSlotProps(border)}
@@ -973,7 +996,9 @@ export default function SemesterManagement() {
                 onChange={(nextDate) => {
                   setForm((f) => ({
                     ...f,
-                    end_date: nextDate ? formatDate(nextDate, "yyyy-MM-dd") : "",
+                    end_date: nextDate
+                      ? formatDate(nextDate, "yyyy-MM-dd")
+                      : "",
                   }));
                 }}
                 slotProps={datePickerSlotProps(border)}
@@ -1148,16 +1173,18 @@ export default function SemesterManagement() {
         onClose={closeConfirmDialog}
         fullWidth
         maxWidth="sm"
-        slotProps={{ paper: {
-          sx: {
-            borderRadius: "10px",
-            backgroundColor: "background.paper",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 24px 64px rgba(0,0,0,0.6)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "10px",
+              backgroundColor: "background.paper",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 24px 64px rgba(0,0,0,0.6)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+            },
           },
-        } }}
+        }}
       >
         <Box
           sx={{
@@ -1399,7 +1426,3 @@ function datePickerSlotProps(border) {
     },
   };
 }
-
-
-
-

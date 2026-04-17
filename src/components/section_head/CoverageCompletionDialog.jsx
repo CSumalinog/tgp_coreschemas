@@ -78,9 +78,8 @@ export default function CoverageCompletionDialog({
       .replace(/^login-proof\//i, "")
       .replace(/^\/+/, "");
 
-    return supabase.storage
-      .from("login-proof")
-      .getPublicUrl(normalizedPath)?.data?.publicUrl;
+    return supabase.storage.from("login-proof").getPublicUrl(normalizedPath)
+      ?.data?.publicUrl;
   }, []);
 
   if (!assignment) return null;
@@ -91,16 +90,18 @@ export default function CoverageCompletionDialog({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 20px 60px rgba(0,0,0,0.5)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 20px 60px rgba(0,0,0,0.5)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -322,7 +323,12 @@ export default function CoverageCompletionDialog({
 
                   {/* Right: Time in / Time out / Duration */}
                   <Box
-                    sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      flexShrink: 0,
+                    }}
                   >
                     {[
                       { label: "Time in", value: timeInStr },
@@ -524,4 +530,3 @@ export default function CoverageCompletionDialog({
     </Dialog>
   );
 }
-

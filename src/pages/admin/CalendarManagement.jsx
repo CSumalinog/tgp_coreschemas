@@ -181,58 +181,10 @@ function BlockedDatesPanel({
             gap: 1,
           }}
         >
-        {/* Expand button */}
-        <Tooltip title="Show blocked dates" placement="left" arrow>
-          <Box
-            onClick={onToggle}
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: "10px",
-              border: `1px solid ${border}`,
-              backgroundColor: "background.paper",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.15s",
-              "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
-            }}
-          >
-            <ChevronLeftIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-          </Box>
-        </Tooltip>
-
-        {/* Add button */}
-        <Tooltip title="Quick actions" placement="left" arrow>
-          <Box
-            onClick={openQuickAdd}
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: "10px",
-              backgroundColor: "#212121",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "background-color 0.15s",
-              "&:hover": { backgroundColor: "#333" },
-            }}
-          >
-            <AddIcon sx={{ fontSize: 15 }} />
-          </Box>
-        </Tooltip>
-
-        {/* Badge — upcoming count */}
-        {upcoming.length > 0 && (
-          <Tooltip
-            title={`${upcoming.length} upcoming blocked date${upcoming.length > 1 ? "s" : ""}`}
-            placement="left"
-            arrow
-          >
+          {/* Expand button */}
+          <Tooltip title="Show blocked dates" placement="left" arrow>
             <Box
+              onClick={onToggle}
               sx={{
                 width: 36,
                 height: 36,
@@ -242,22 +194,70 @@ function BlockedDatesPanel({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s",
+                "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
               }}
             >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.6rem",
-                  fontWeight: 700,
-                  color: "text.secondary",
-                  lineHeight: 1,
-                }}
-              >
-                {upcoming.length}
-              </Typography>
+              <ChevronLeftIcon sx={{ fontSize: 16, color: "text.secondary" }} />
             </Box>
           </Tooltip>
-        )}
+
+          {/* Add button */}
+          <Tooltip title="Quick actions" placement="left" arrow>
+            <Box
+              onClick={openQuickAdd}
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                backgroundColor: "#212121",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "background-color 0.15s",
+                "&:hover": { backgroundColor: "#333" },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 15 }} />
+            </Box>
+          </Tooltip>
+
+          {/* Badge — upcoming count */}
+          {upcoming.length > 0 && (
+            <Tooltip
+              title={`${upcoming.length} upcoming blocked date${upcoming.length > 1 ? "s" : ""}`}
+              placement="left"
+              arrow
+            >
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: "background.paper",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.6rem",
+                    fontWeight: 700,
+                    color: "text.secondary",
+                    lineHeight: 1,
+                  }}
+                >
+                  {upcoming.length}
+                </Typography>
+              </Box>
+            </Tooltip>
+          )}
         </Box>
 
         <Menu
@@ -668,67 +668,101 @@ function BlockedDatesPanel({
                   width: "100%",
                 }}
               >
-                <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", fontWeight: 700, color: "text.primary" }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    color: "text.primary",
+                  }}
+                >
                   Blocked Dates
                 </Typography>
                 <ChevronRightIcon
                   sx={{
                     fontSize: 14,
                     color: "text.secondary",
-                    transform: blockedDatesOpen ? "rotate(90deg)" : "rotate(0deg)",
+                    transform: blockedDatesOpen
+                      ? "rotate(90deg)"
+                      : "rotate(0deg)",
                     transition: "transform 0.15s",
                   }}
                 />
               </Box>
             </Box>
 
-              <Box
+            <Box
+              sx={{
+                px: 0.25,
+                mt: -0.25,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+              }}
+            >
+              <Typography
                 sx={{
-                  px: 0.25,
-                  mt: -0.25,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 1,
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  color: "text.secondary",
                 }}
               >
-                <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", color: "text.secondary" }}>
-                  Upcoming: {upcoming.length}
-                </Typography>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", color: "text.secondary" }}>
-                  Past: {past.length}
-                </Typography>
-                <Typography
-                  onClick={onViewAll}
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
-                    color: "text.secondary",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    "&:hover": {
-                      color: CHARCOAL,
-                      textDecoration: "underline",
-                      textUnderlineOffset: "2px",
-                    },
-                  }}
-                >
-                  See all
-                </Typography>
-              </Box>
+                Upcoming: {upcoming.length}
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  color: "text.secondary",
+                }}
+              >
+                Past: {past.length}
+              </Typography>
+              <Typography
+                onClick={onViewAll}
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  color: "text.secondary",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": {
+                    color: CHARCOAL,
+                    textDecoration: "underline",
+                    textUnderlineOffset: "2px",
+                  },
+                }}
+              >
+                See all
+              </Typography>
+            </Box>
 
-            {blockedDatesOpen && (
-              loading ? (
+            {blockedDatesOpen &&
+              (loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
                   <BrandedLoader size={30} inline />
                 </Box>
               ) : events.length === 0 ? (
                 <Box sx={{ textAlign: "center", py: 2.5 }}>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.disabled" }}>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.76rem",
+                      color: "text.disabled",
+                    }}
+                  >
                     No blocked dates yet
                   </Typography>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.disabled", mt: 0.25 }}>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.68rem",
+                      color: "text.disabled",
+                      mt: 0.25,
+                    }}
+                  >
                     Click + to add one
                   </Typography>
                 </Box>
@@ -757,7 +791,12 @@ function BlockedDatesPanel({
                   )}
                   {past.length > 0 && (
                     <>
-                      <Divider sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.75 }} />
+                      <Divider
+                        sx={{
+                          borderColor: isDark ? BORDER_DARK : BORDER,
+                          my: 0.75,
+                        }}
+                      />
                       <Typography
                         sx={{
                           fontFamily: dm,
@@ -778,10 +817,11 @@ function BlockedDatesPanel({
                     </>
                   )}
                 </>
-              )
-            )}
+              ))}
 
-            <Divider sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }} />
+            <Divider
+              sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }}
+            />
 
             <Box
               onClick={() => setCoverageSlotsOpen((v) => !v)}
@@ -795,14 +835,23 @@ function BlockedDatesPanel({
                 userSelect: "none",
               }}
             >
-              <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", fontWeight: 700, color: "text.primary" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.74rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
+              >
                 Request Slots
               </Typography>
               <ChevronRightIcon
                 sx={{
                   fontSize: 14,
                   color: "text.secondary",
-                  transform: coverageSlotsOpen ? "rotate(90deg)" : "rotate(0deg)",
+                  transform: coverageSlotsOpen
+                    ? "rotate(90deg)"
+                    : "rotate(0deg)",
                   transition: "transform 0.15s",
                 }}
               />
@@ -818,10 +867,22 @@ function BlockedDatesPanel({
                 gap: 1,
               }}
             >
-              <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", color: "text.secondary" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  color: "text.secondary",
+                }}
+              >
                 Default: {defaultSlots}
               </Typography>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", color: "text.secondary" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.66rem",
+                  color: "text.secondary",
+                }}
+              >
                 Override: {overrideCount}
               </Typography>
               <Tooltip title="Add override" arrow>
@@ -840,7 +901,11 @@ function BlockedDatesPanel({
                     justifyContent: "center",
                     cursor: "pointer",
                     color: "text.secondary",
-                    "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08, color: CHARCOAL },
+                    "&:hover": {
+                      borderColor: GOLD,
+                      backgroundColor: GOLD_08,
+                      color: CHARCOAL,
+                    },
                   }}
                 >
                   <AddIcon sx={{ fontSize: 12 }} />
@@ -849,9 +914,23 @@ function BlockedDatesPanel({
             </Box>
 
             {coverageSlotsOpen && (
-              <Box sx={{ px: 0.25, py: 0.25, display: "flex", flexDirection: "column", gap: 0.45 }}>
+              <Box
+                sx={{
+                  px: 0.25,
+                  py: 0.25,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.45,
+                }}
+              >
                 {slotOverrides.length === 0 ? (
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.67rem", color: "text.disabled" }}>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.67rem",
+                      color: "text.disabled",
+                    }}
+                  >
                     No overridden dates yet.
                   </Typography>
                 ) : (
@@ -872,13 +951,28 @@ function BlockedDatesPanel({
                           : "rgba(53,53,53,0.015)",
                       }}
                     >
-                      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", color: "text.secondary" }}>
-                        {new Date(`${row.slot_date}T00:00:00`).toLocaleDateString("en-US", {
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.66rem",
+                          color: "text.secondary",
+                        }}
+                      >
+                        {new Date(
+                          `${row.slot_date}T00:00:00`,
+                        ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                         })}
                       </Typography>
-                      <Typography sx={{ fontFamily: dm, fontSize: "0.66rem", color: "text.primary", fontWeight: 600 }}>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.66rem",
+                          color: "text.primary",
+                          fontWeight: 600,
+                        }}
+                      >
                         {row.slot_capacity} slots
                       </Typography>
                     </Box>
@@ -887,7 +981,9 @@ function BlockedDatesPanel({
               </Box>
             )}
 
-            <Divider sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }} />
+            <Divider
+              sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }}
+            />
 
             <Box
               sx={{
@@ -1050,7 +1146,9 @@ export default function CalendarManagement() {
       if (blackoutErr) throw blackoutErr;
       setDutyBlackouts(data || []);
     } catch (err) {
-      setDutySettingsError(err.message || "Failed to load duty blackout dates.");
+      setDutySettingsError(
+        err.message || "Failed to load duty blackout dates.",
+      );
     } finally {
       setDutySettingsLoading(false);
     }
@@ -1104,7 +1202,9 @@ export default function CalendarManagement() {
       if (deleteErr) throw deleteErr;
       await loadDutyBlackouts();
     } catch (err) {
-      setDutySettingsError(err.message || "Failed to remove duty blackout date.");
+      setDutySettingsError(
+        err.message || "Failed to remove duty blackout date.",
+      );
     } finally {
       setDutySettingsSaving(false);
     }
@@ -1114,18 +1214,20 @@ export default function CalendarManagement() {
     setSlotLoading(true);
     setSlotError("");
     try {
-      const [{ data: settingsRow, error: settingsErr }, { data: overrides, error: overridesErr }] =
-        await Promise.all([
-          supabase
-            .from("calendar_slot_settings")
-            .select("id, default_slots")
-            .eq("id", 1)
-            .maybeSingle(),
-          supabase
-            .from("calendar_slot_overrides")
-            .select("slot_date, slot_capacity, updated_at")
-            .order("slot_date", { ascending: true }),
-        ]);
+      const [
+        { data: settingsRow, error: settingsErr },
+        { data: overrides, error: overridesErr },
+      ] = await Promise.all([
+        supabase
+          .from("calendar_slot_settings")
+          .select("id, default_slots")
+          .eq("id", 1)
+          .maybeSingle(),
+        supabase
+          .from("calendar_slot_overrides")
+          .select("slot_date, slot_capacity, updated_at")
+          .order("slot_date", { ascending: true }),
+      ]);
 
       if (settingsErr) throw settingsErr;
       if (overridesErr) throw overridesErr;
@@ -1153,7 +1255,9 @@ export default function CalendarManagement() {
         .order("start_date", { ascending: true });
       if (fetchErr) throw fetchErr;
 
-      const blockerIds = [...new Set((data || []).map((r) => r.blocked_by).filter(Boolean))];
+      const blockerIds = [
+        ...new Set((data || []).map((r) => r.blocked_by).filter(Boolean)),
+      ];
       let blockerNameById = {};
       if (blockerIds.length > 0) {
         const { data: blockerRows } = await supabase
@@ -1211,7 +1315,9 @@ export default function CalendarManagement() {
   const saveDefaultSlots = async () => {
     const parsed = Number(defaultSlotsInput);
     if (!Number.isFinite(parsed) || parsed < 0) {
-      setSlotError("Default slots must be a number greater than or equal to 0.");
+      setSlotError(
+        "Default slots must be a number greater than or equal to 0.",
+      );
       return;
     }
 
@@ -1245,7 +1351,9 @@ export default function CalendarManagement() {
     }
     const parsed = Number(overrideSlotsInput);
     if (!Number.isFinite(parsed) || parsed < 0) {
-      setSlotError("Override slots must be a number greater than or equal to 0.");
+      setSlotError(
+        "Override slots must be a number greater than or equal to 0.",
+      );
       return;
     }
 
@@ -1719,8 +1827,7 @@ export default function CalendarManagement() {
                 fontSize: "0.72rem",
                 fontWeight: 600,
                 color: viewMode === "month" ? CHARCOAL : "text.secondary",
-                backgroundColor:
-                  viewMode === "month" ? GOLD_08 : "transparent",
+                backgroundColor: viewMode === "month" ? GOLD_08 : "transparent",
                 border:
                   viewMode === "month"
                     ? `1px solid ${isDark ? "rgba(245,197,43,0.35)" : "rgba(245,197,43,0.45)"}`
@@ -1773,7 +1880,6 @@ export default function CalendarManagement() {
           >
             <ArrowForwardIosIcon sx={{ fontSize: 13 }} />
           </IconButton>
-
         </Box>
       </Box>
 
@@ -1951,7 +2057,13 @@ export default function CalendarManagement() {
                         )}
                       </Box>
 
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.35 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.35,
+                        }}
+                      >
                         {dayEvents.slice(0, 2).map((ev) => (
                           <Box
                             key={ev.id}
@@ -2303,14 +2415,32 @@ export default function CalendarManagement() {
           </IconButton>
         </Box>
 
-        <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1.25 }}>
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.25,
+          }}
+        >
           {slotError && (
-            <Alert severity="error" sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}>
+            <Alert
+              severity="error"
+              sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}
+            >
               {slotError}
             </Alert>
           )}
 
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <Typography
               sx={{
                 fontFamily: dm,
@@ -2360,7 +2490,14 @@ export default function CalendarManagement() {
 
           <Divider sx={{ borderColor: border, my: 0.25 }} />
 
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <Typography
               sx={{
                 fontFamily: dm,
@@ -2432,18 +2569,32 @@ export default function CalendarManagement() {
               borderRadius: "10px",
               maxHeight: 210,
               overflowY: "auto",
-              backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)",
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.01)"
+                : "rgba(53,53,53,0.01)",
             }}
           >
             {slotLoading ? (
               <Box sx={{ p: 1.25 }}>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.76rem",
+                    color: "text.secondary",
+                  }}
+                >
                   Loading overrides...
                 </Typography>
               </Box>
             ) : slotOverrides.length === 0 ? (
               <Box sx={{ p: 1.25 }}>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.76rem",
+                    color: "text.secondary",
+                  }}
+                >
                   No date overrides yet.
                 </Typography>
               </Box>
@@ -2461,15 +2612,33 @@ export default function CalendarManagement() {
                     gap: 1,
                   }}
                 >
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.primary" }}>
-                    {new Date(`${row.slot_date}T00:00:00`).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.76rem",
+                      color: "text.primary",
+                    }}
+                  >
+                    {new Date(`${row.slot_date}T00:00:00`).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      },
+                    )}
                   </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.74rem", color: "text.secondary", fontWeight: 600 }}>
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.74rem",
+                        color: "text.secondary",
+                        fontWeight: 600,
+                      }}
+                    >
                       {row.slot_capacity} slots
                     </Typography>
                     <IconButton
@@ -2483,7 +2652,9 @@ export default function CalendarManagement() {
                         color: "text.secondary",
                         "&:hover": {
                           color: "#dc2626",
-                          backgroundColor: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
+                          backgroundColor: isDark
+                            ? "rgba(220,38,38,0.12)"
+                            : "#fef2f2",
                         },
                       }}
                     >
@@ -2557,9 +2728,20 @@ export default function CalendarManagement() {
           </IconButton>
         </Box>
 
-        <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+          }}
+        >
           {dutySettingsError && (
-            <Alert severity="error" sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}>
+            <Alert
+              severity="error"
+              sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}
+            >
               {dutySettingsError}
             </Alert>
           )}
@@ -2587,7 +2769,11 @@ export default function CalendarManagement() {
               }}
             >
               {semesters.map((semester) => (
-                <MenuItem key={semester.id} value={semester.id} sx={{ fontFamily: dm, fontSize: "0.82rem" }}>
+                <MenuItem
+                  key={semester.id}
+                  value={semester.id}
+                  sx={{ fontFamily: dm, fontSize: "0.82rem" }}
+                >
                   {getSemesterDisplayName(semester)}
                 </MenuItem>
               ))}
@@ -2610,7 +2796,14 @@ export default function CalendarManagement() {
               Duty Blackout Dates:
             </Typography>
 
-            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.85 }}>
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.85,
+              }}
+            >
               <Box
                 sx={{
                   display: "flex",
@@ -2649,18 +2842,32 @@ export default function CalendarManagement() {
                   borderRadius: "10px",
                   maxHeight: 210,
                   overflowY: "auto",
-                  backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "rgba(53,53,53,0.01)",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.01)"
+                    : "rgba(53,53,53,0.01)",
                 }}
               >
                 {dutySettingsLoading ? (
                   <Box sx={{ p: 1.25 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.76rem",
+                        color: "text.secondary",
+                      }}
+                    >
                       Loading duty blackout dates...
                     </Typography>
                   </Box>
                 ) : dutyBlackouts.length === 0 ? (
                   <Box sx={{ p: 1.25 }}>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.secondary" }}>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.76rem",
+                        color: "text.secondary",
+                      }}
+                    >
                       No duty blackout dates yet.
                     </Typography>
                   </Box>
@@ -2679,15 +2886,29 @@ export default function CalendarManagement() {
                       }}
                     >
                       <Box>
-                        <Typography sx={{ fontFamily: dm, fontSize: "0.76rem", color: "text.primary" }}>
-                          {new Date(`${row.blackout_date}T00:00:00`).toLocaleDateString("en-US", {
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.76rem",
+                            color: "text.primary",
+                          }}
+                        >
+                          {new Date(
+                            `${row.blackout_date}T00:00:00`,
+                          ).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
                           })}
                         </Typography>
                         {row.reason ? (
-                          <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", color: "text.secondary" }}>
+                          <Typography
+                            sx={{
+                              fontFamily: dm,
+                              fontSize: "0.68rem",
+                              color: "text.secondary",
+                            }}
+                          >
                             {row.reason}
                           </Typography>
                         ) : null}
@@ -2703,7 +2924,9 @@ export default function CalendarManagement() {
                           color: "text.secondary",
                           "&:hover": {
                             color: "#dc2626",
-                            backgroundColor: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
+                            backgroundColor: isDark
+                              ? "rgba(220,38,38,0.12)"
+                              : "#fef2f2",
                           },
                         }}
                       >
@@ -2750,7 +2973,11 @@ export default function CalendarManagement() {
                 </Button>
                 <Button
                   onClick={addDutyBlackout}
-                  disabled={dutySettingsSaving || !selectedDutySemesterId || !dutyBlackoutInput}
+                  disabled={
+                    dutySettingsSaving ||
+                    !selectedDutySemesterId ||
+                    !dutyBlackoutInput
+                  }
                   variant="contained"
                   sx={{
                     textTransform: "none",
@@ -2781,4 +3008,3 @@ export default function CalendarManagement() {
     </Box>
   );
 }
-

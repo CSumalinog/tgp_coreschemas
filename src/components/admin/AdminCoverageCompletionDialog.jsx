@@ -114,10 +114,12 @@ export default function AdminCoverageCompletionDialog({
         }
 
         // Convert to array and sort sections alphabetically
-        const sectionsArray = Object.entries(grouped).map(([name, staffers]) => ({
-          name,
-          staffers,
-        }));
+        const sectionsArray = Object.entries(grouped).map(
+          ([name, staffers]) => ({
+            name,
+            staffers,
+          }),
+        );
         sectionsArray.sort((a, b) => a.name.localeCompare(b.name));
 
         setSections(sectionsArray);
@@ -161,9 +163,8 @@ export default function AdminCoverageCompletionDialog({
       .replace(/^login-proof\//i, "")
       .replace(/^\/+/, "");
 
-    return supabase.storage
-      .from("login-proof")
-      .getPublicUrl(normalizedPath)?.data?.publicUrl;
+    return supabase.storage.from("login-proof").getPublicUrl(normalizedPath)
+      ?.data?.publicUrl;
   }, []);
 
   if (!event) return null;
@@ -174,18 +175,20 @@ export default function AdminCoverageCompletionDialog({
       onClose={onClose}
       maxWidth={maximized ? "lg" : "sm"}
       fullWidth
-      slotProps={{ paper: {
-        sx: {
-          borderRadius: "10px",
-          backgroundColor: "background.paper",
-          width: maximized ? "min(1100px, 96vw)" : undefined,
-          height: maximized ? "min(92vh, 900px)" : undefined,
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? "0 20px 60px rgba(0,0,0,0.5)"
-            : "0 8px 40px rgba(53,53,53,0.12)",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px",
+            backgroundColor: "background.paper",
+            width: maximized ? "min(1100px, 96vw)" : undefined,
+            height: maximized ? "min(92vh, 900px)" : undefined,
+            border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? "0 20px 60px rgba(0,0,0,0.5)"
+              : "0 8px 40px rgba(53,53,53,0.12)",
+          },
         },
-      } }}
+      }}
     >
       <Box
         sx={{
@@ -338,8 +341,17 @@ export default function AdminCoverageCompletionDialog({
                 {sections.map((section) => (
                   <Box key={section.name}>
                     {/* Section divider */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                      <Box sx={{ flex: 1, height: "1px", backgroundColor: border }} />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{ flex: 1, height: "1px", backgroundColor: border }}
+                      />
                       <Typography
                         sx={{
                           fontFamily: dm,
@@ -354,10 +366,14 @@ export default function AdminCoverageCompletionDialog({
                       >
                         {section.name}
                       </Typography>
-                      <Box sx={{ flex: 1, height: "1px", backgroundColor: border }} />
+                      <Box
+                        sx={{ flex: 1, height: "1px", backgroundColor: border }}
+                      />
                     </Box>
                     {/* Staffer cards */}
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <Box
+                      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                    >
                       {section.staffers.map((assignment) => {
                         const timeInStr = fmtTime(assignment.timed_in_at);
                         const completedAtStr = fmtTime(assignment.completed_at);
@@ -366,9 +382,15 @@ export default function AdminCoverageCompletionDialog({
                           assignment.completed_at,
                         );
                         const avatarColor = getAvatarColor(assignment.staff_id);
-                        const avatarUrl = getAvatarUrl(assignment.staff?.avatar_url);
-                        const selfieUrl = resolveSelfieUrl(assignment.selfie_url);
-                        const proofExpanded = expandedProofIds.has(assignment.id);
+                        const avatarUrl = getAvatarUrl(
+                          assignment.staff?.avatar_url,
+                        );
+                        const selfieUrl = resolveSelfieUrl(
+                          assignment.selfie_url,
+                        );
+                        const proofExpanded = expandedProofIds.has(
+                          assignment.id,
+                        );
                         const isBroken = !!brokenSelfieById[assignment.id];
                         const hasProof = !!assignment.selfie_url;
 
@@ -469,7 +491,9 @@ export default function AdminCoverageCompletionDialog({
                                         fontFamily: dm,
                                         fontSize: "0.78rem",
                                         fontWeight: 600,
-                                        color: value ? "text.primary" : "text.disabled",
+                                        color: value
+                                          ? "text.primary"
+                                          : "text.disabled",
                                         fontStyle: value ? "normal" : "italic",
                                       }}
                                     >
@@ -510,7 +534,9 @@ export default function AdminCoverageCompletionDialog({
                                       fontSize: "0.78rem",
                                       fontWeight: 600,
                                       color: duration
-                                        ? isDark ? "#f5c52b" : "#d97706"
+                                        ? isDark
+                                          ? "#f5c52b"
+                                          : "#d97706"
                                         : "text.disabled",
                                       fontStyle: duration ? "normal" : "italic",
                                     }}
@@ -647,5 +673,3 @@ export default function AdminCoverageCompletionDialog({
     </Dialog>
   );
 }
-
-
