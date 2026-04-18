@@ -35,6 +35,7 @@ import CoverageTimeRecordPage from "../pages/section_head/CoverageTimeRecordPage
 import SecHeadMyStaffers from "../pages/section_head/MyStaffers";
 import ReassignmentHistoryPage from "../pages/section_head/ReassignmentHistoryPage";
 import RectificationsPage from "../pages/section_head/RectificationsPage";
+import RectificationsLog from "../pages/admin/RectificationsLog";
 
 // Regular Staff Pages
 import MyAssignment from "../pages/regular_staff/MyAssignment";
@@ -104,6 +105,7 @@ function AppRoutes() {
         <Route path="staffers-management" element={<StaffersManagement />} />
         <Route path="semester-management" element={<SemesterManagement />} />
         <Route path="duty-schedule-view" element={<DutyScheduleView />} />
+        <Route path="rectifications-log" element={<RectificationsLog />} />
         <Route
           path="schedule-requests-tracker"
           element={<Navigate to="/admin/duty-schedule-view" replace />}

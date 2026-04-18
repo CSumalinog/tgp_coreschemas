@@ -1459,42 +1459,56 @@ export default function DutyScheduleView() {
             >
               {p.value}
             </Typography>
-            <Box
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!p.row.staffer_id) return;
-                navigate(
-                  `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
-                );
-              }}
-              sx={{
-                ml: "auto",
-                width: 24,
-                height: 24,
-                borderRadius: "6px",
-                border: "1px solid rgba(0,0,0,0.18)",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "text.disabled",
-                backgroundColor: "#ffffff",
-                cursor: p.row.staffer_id ? "pointer" : "not-allowed",
-                opacity: p.row.staffer_id ? 1 : 0.35,
-                transition: "all 0.15s",
-                "&:hover": p.row.staffer_id
-                  ? {
-                      borderColor: "#212121",
-                      color: "#212121",
-                    }
-                  : undefined,
-              }}
-              title="Open in Staffers Management"
-            >
-              <ArrowForwardIcon sx={{ fontSize: 13 }} />
-            </Box>
           </Box>
         );
       },
+    },
+    {
+      field: "_nav",
+      headerName: "",
+      width: 48,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (p) => (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!p.row.staffer_id) return;
+              navigate(
+                `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
+              );
+            }}
+            sx={{
+              width: 24,
+              height: 24,
+              borderRadius: "6px",
+              border: "1px solid rgba(0,0,0,0.18)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "text.disabled",
+              backgroundColor: "#ffffff",
+              cursor: p.row.staffer_id ? "pointer" : "not-allowed",
+              opacity: p.row.staffer_id ? 1 : 0.35,
+              transition: "all 0.15s",
+              "&:hover": p.row.staffer_id
+                ? { borderColor: "#212121", color: "#212121" }
+                : undefined,
+            }}
+            title="Open in Staffers Management"
+          >
+            <ArrowForwardIcon sx={{ fontSize: 13 }} />
+          </Box>
+        </Box>
+      ),
     },
     {
       field: "duty_day",
@@ -1720,35 +1734,53 @@ export default function DutyScheduleView() {
                 {p.value}
               </Typography>
             </Box>
-            <Box
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/admin/staffers-management");
-              }}
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: "6px",
-                border: "1px solid rgba(0,0,0,0.18)",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "text.disabled",
-                backgroundColor: "#ffffff",
-                cursor: "pointer",
-                transition: "all 0.15s",
-                "&:hover": {
-                  borderColor: "#212121",
-                  color: "#212121",
-                },
-              }}
-              title="Open staffers management"
-            >
-              <ArrowForwardIcon sx={{ fontSize: 13 }} />
-            </Box>
           </Box>
         );
       },
+    },
+    {
+      field: "_nav",
+      headerName: "",
+      width: 48,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (p) => (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+              if (p.row.staffer_id)
+                navigate(
+                  `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
+                );
+            }}
+            sx={{
+              width: 24,
+              height: 24,
+              borderRadius: "6px",
+              border: "1px solid rgba(0,0,0,0.18)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "text.disabled",
+              backgroundColor: "#ffffff",
+              cursor: "pointer",
+              transition: "all 0.15s",
+              "&:hover": { borderColor: "#212121", color: "#212121" },
+            }}
+            title="Open staffers management"
+          >
+            <ArrowForwardIcon sx={{ fontSize: 13 }} />
+          </Box>
+        </Box>
+      ),
     },
     {
       field: "duty_day_label",

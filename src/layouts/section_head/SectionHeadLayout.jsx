@@ -20,7 +20,6 @@ import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
-import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LogoutIcon from "@mui/icons-material/LogoutOutlined";
@@ -81,10 +80,13 @@ const MENU_SECTIONS = [
             label: "Reassignment History",
             to: "reassignment-history",
           },
+          {
+            label: "Rectifications",
+            to: "rectifications",
+          },
         ],
       },
       { label: "My Staffers", to: "my-staffers", Icon: GroupOutlinedIcon },
-      { label: "Rectifications", to: "rectifications", Icon: GavelOutlinedIcon },
     ],
   },
 ];
@@ -387,6 +389,27 @@ function SidebarContent({ onClose, isMobile, rectifCount }) {
                             label={child.label}
                             to={child.to}
                             iconOffset={ICON_OFFSET}
+                            trailing={
+                              child.to === "rectifications" && rectifCount > 0 ? (
+                                <Box
+                                  sx={{
+                                    minWidth: 18,
+                                    height: 18,
+                                    borderRadius: "9px",
+                                    backgroundColor: "#F5C52B",
+                                    color: "#212121",
+                                    fontSize: "0.62rem",
+                                    fontWeight: 700,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    px: 0.5,
+                                  }}
+                                >
+                                  {rectifCount}
+                                </Box>
+                              ) : undefined
+                            }
                           />
                         ))}
                       </Box>
@@ -407,8 +430,8 @@ function SidebarContent({ onClose, isMobile, rectifCount }) {
                           minWidth: 18,
                           height: 18,
                           borderRadius: "9px",
-                          backgroundColor: "#6d28d9",
-                          color: "#fff",
+                          backgroundColor: "#F5C52B",
+                          color: "#212121",
                           fontSize: "0.62rem",
                           fontWeight: 700,
                           display: "flex",
@@ -432,7 +455,7 @@ function SidebarContent({ onClose, isMobile, rectifCount }) {
 }
 
 // ── Child nav item (no icon, text aligned to parent label) ──────────────────
-function ChildNavItem({ label, to, iconOffset }) {
+function ChildNavItem({ label, to, iconOffset, trailing }) {
   const location = useLocation();
   const active = to ? location.pathname.includes(to) : false;
 
@@ -479,6 +502,7 @@ function ChildNavItem({ label, to, iconOffset }) {
       >
         {label}
       </Typography>
+      {trailing && <Box sx={{ ml: 0.75, flexShrink: 0 }}>{trailing}</Box>}
     </Box>
   );
 

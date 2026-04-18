@@ -2536,10 +2536,9 @@ export default function MyAssignment() {
                   },
                   {
                     icon: <AccessTimeOutlinedIcon sx={{ fontSize: 11 }} />,
-                    value:
-                      rectificationTarget?.request?.from_time
-                        ? `${formatTime(rectificationTarget.request.from_time)}${rectificationTarget.request.to_time ? ` — ${formatTime(rectificationTarget.request.to_time)}` : ""}`
-                        : null,
+                    value: rectificationTarget?.request?.from_time
+                      ? `${formatTime(rectificationTarget.request.from_time)}${rectificationTarget.request.to_time ? ` — ${formatTime(rectificationTarget.request.to_time)}` : ""}`
+                      : null,
                   },
                   {
                     icon: <LocationOnOutlinedIcon sx={{ fontSize: 11 }} />,

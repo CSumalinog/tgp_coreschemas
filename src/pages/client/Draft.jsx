@@ -281,7 +281,11 @@ export default function Draft() {
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Typography
-            sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.secondary" }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.secondary",
+            }}
           >
             {p.value}
           </Typography>

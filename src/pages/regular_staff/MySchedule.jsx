@@ -21,6 +21,7 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ExpandLessIcon from "@mui/icons-material/ExpandLessOutlined";
 import { supabase } from "../../lib/supabaseClient";
+import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifyAdmins } from "../../services/NotificationService";
 import { useDutyChangeRequestQuota } from "../../hooks/useDutyChangeRequestQuota";
@@ -462,7 +463,8 @@ export default function MySchedule() {
 
         const violatedDay = affectedDays.find((dayIndex) => {
           const projection = getProjectedCountsForDay(dayIndex);
-          const isBootstrapAllowed = isNew && dayIndex === requestedDay && countForDay === 0;
+          const isBootstrapAllowed =
+            isNew && dayIndex === requestedDay && countForDay === 0;
           if (isBootstrapAllowed) return false;
           return (
             projection.total > 0 &&
@@ -874,13 +876,16 @@ export default function MySchedule() {
                   lineHeight: 1.55,
                 }}
               >
-                No duty operations on: {" "}
+                No duty operations on:{" "}
                 {blackoutDates
                   .map((row) =>
-                    new Date(`${row.blackout_date}T00:00:00`).toLocaleDateString(
-                      "en-US",
-                      { month: "short", day: "numeric", year: "numeric" },
-                    ),
+                    new Date(
+                      `${row.blackout_date}T00:00:00`,
+                    ).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    }),
                   )
                   .join(", ")}
               </Typography>
@@ -1176,10 +1181,15 @@ export default function MySchedule() {
               const isFull = count >= capacity;
               const isMyPick = existingSchedule?.duty_day === i;
               const sameDayPeers = isMyPick
-                ? assignedStaffers.filter((staffer) => staffer.id !== currentUser?.id)
+                ? assignedStaffers.filter(
+                    (staffer) => staffer.id !== currentUser?.id,
+                  )
                 : assignedStaffers;
               const previewStaffers = sameDayPeers.slice(0, 2);
-              const overflowCount = Math.max(sameDayPeers.length - previewStaffers.length, 0);
+              const overflowCount = Math.max(
+                sameDayPeers.length - previewStaffers.length,
+                0,
+              );
               const isSelected = selectedDay === i;
               const isPendingTarget = pendingRequest?.requested_duty_day === i;
               const isChangingDay =
@@ -1273,7 +1283,7 @@ export default function MySchedule() {
                   >
                     {isMyPick ? (
                       <Avatar
-                        src={currentUser?.avatar_url || undefined}
+                        src={getAvatarUrl(currentUser?.avatar_url)}
                         sx={{
                           width: 36,
                           height: 36,
@@ -1383,7 +1393,7 @@ export default function MySchedule() {
                           return (
                             <Avatar
                               key={staffer.id || idx}
-                              src={staffer.avatar_url || undefined}
+                              src={getAvatarUrl(staffer.avatar_url)}
                               sx={{
                                 width: 24,
                                 height: 24,
@@ -1396,7 +1406,8 @@ export default function MySchedule() {
                                 color: tone.color,
                               }}
                             >
-                              {!staffer.avatar_url && getInitials(staffer.full_name)}
+                              {!staffer.avatar_url &&
+                                getInitials(staffer.full_name)}
                             </Avatar>
                           );
                         })}
@@ -1491,116 +1502,119 @@ export default function MySchedule() {
                 stafferListDayIndex !== null &&
                 existingSchedule?.duty_day === stafferListDayIndex;
               const popoverStaffers = isPopoverMyDay
-                ? popoverAllStaffers.filter((staffer) => staffer.id !== currentUser?.id)
+                ? popoverAllStaffers.filter(
+                    (staffer) => staffer.id !== currentUser?.id,
+                  )
                 : popoverAllStaffers;
 
               return (
                 <>
-            <Box
-              sx={{
-                px: 1.4,
-                py: 1,
-                borderBottom: `1px solid ${border}`,
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.03)"
-                  : "rgba(53,53,53,0.02)",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.64rem",
-                  fontWeight: 800,
-                  color: "text.secondary",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {stafferListDayIndex !== null
-                  ? isPopoverMyDay
-                    ? `Co-Staffers · ${popoverStaffers.length}`
-                    : `${DAY_SHORT[stafferListDayIndex]} · ${popoverStaffers.length} assigned`
-                  : "Assigned Staffers"}
-              </Typography>
-            </Box>
-
-            <Box sx={{ maxHeight: 280, overflowY: "auto" }}>
-              {popoverStaffers.length === 0 ? (
-                <Box sx={{ px: 1.4, py: 1.25 }}>
-                  <Typography
+                  <Box
                     sx={{
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      color: "text.secondary",
+                      px: 1.4,
+                      py: 1,
+                      borderBottom: `1px solid ${border}`,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(53,53,53,0.02)",
                     }}
                   >
-                    {isPopoverMyDay
-                      ? "No other staff assigned the same day yet."
-                      : "No assigned staff for this day yet."}
-                  </Typography>
-                </Box>
-              ) : (
-                popoverStaffers.map((staffer, idx) => {
-                  const tone = getRandomAvatarColor(staffer.id);
-                  return (
-                    <Box
-                      key={staffer.id || idx}
+                    <Typography
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        px: 1.4,
-                        py: 1,
-                        borderBottom:
-                          idx < popoverStaffers.length - 1
-                            ? `1px solid ${border}`
-                            : "none",
+                        fontFamily: dm,
+                        fontSize: "0.64rem",
+                        fontWeight: 800,
+                        color: "text.secondary",
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
                       }}
                     >
-                      <Avatar
-                        src={staffer.avatar_url || undefined}
-                        sx={{
-                          width: 30,
-                          height: 30,
-                          fontFamily: dm,
-                          fontSize: "0.65rem",
-                          fontWeight: 700,
-                          backgroundColor: tone.bg,
-                          color: tone.color,
-                        }}
-                      >
-                        {!staffer.avatar_url && getInitials(staffer.full_name)}
-                      </Avatar>
+                      {stafferListDayIndex !== null
+                        ? isPopoverMyDay
+                          ? `Co-Staffers · ${popoverStaffers.length}`
+                          : `${DAY_SHORT[stafferListDayIndex]} · ${popoverStaffers.length} assigned`
+                        : "Assigned Staffers"}
+                    </Typography>
+                  </Box>
 
-                      <Box sx={{ minWidth: 0 }}>
+                  <Box sx={{ maxHeight: 280, overflowY: "auto" }}>
+                    {popoverStaffers.length === 0 ? (
+                      <Box sx={{ px: 1.4, py: 1.25 }}>
                         <Typography
                           sx={{
                             fontFamily: dm,
-                            fontSize: "0.82rem",
-                            color: "text.primary",
-                            fontWeight: 600,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {staffer.full_name || "Unnamed Staffer"}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.72rem",
+                            fontSize: "0.76rem",
                             color: "text.secondary",
                           }}
                         >
-                          {staffer.section || "Unassigned Section"}
+                          {isPopoverMyDay
+                            ? "No other staff assigned the same day yet."
+                            : "No assigned staff for this day yet."}
                         </Typography>
                       </Box>
-                    </Box>
-                  );
-                })
-              )}
-            </Box>
+                    ) : (
+                      popoverStaffers.map((staffer, idx) => {
+                        const tone = getRandomAvatarColor(staffer.id);
+                        return (
+                          <Box
+                            key={staffer.id || idx}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              px: 1.4,
+                              py: 1,
+                              borderBottom:
+                                idx < popoverStaffers.length - 1
+                                  ? `1px solid ${border}`
+                                  : "none",
+                            }}
+                          >
+                            <Avatar
+                              src={getAvatarUrl(staffer.avatar_url)}
+                              sx={{
+                                width: 30,
+                                height: 30,
+                                fontFamily: dm,
+                                fontSize: "0.65rem",
+                                fontWeight: 700,
+                                backgroundColor: tone.bg,
+                                color: tone.color,
+                              }}
+                            >
+                              {!staffer.avatar_url &&
+                                getInitials(staffer.full_name)}
+                            </Avatar>
+
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.82rem",
+                                  color: "text.primary",
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {staffer.full_name || "Unnamed Staffer"}
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.72rem",
+                                  color: "text.secondary",
+                                }}
+                              >
+                                {staffer.section || "Unassigned Section"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        );
+                      })
+                    )}
+                  </Box>
                 </>
               );
             })()}
@@ -1789,4 +1803,3 @@ export default function MySchedule() {
     </Box>
   );
 }
-

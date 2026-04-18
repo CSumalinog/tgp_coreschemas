@@ -86,6 +86,10 @@ const MENU_SECTIONS = [
             label: "Time Record",
             to: "coverage-tracker/time-record",
           },
+          {
+            label: "Rectifications Log",
+            to: "rectifications-log",
+          },
         ],
       },
       {
@@ -221,7 +225,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
               fontFamily: dm,
               fontSize: "0.8rem",
               color: CHARCOAL,
-              lineHeight: 1,
+              lineHeight: 1.3,
             }}
           >
             Profile &amp; Settings
@@ -498,7 +502,7 @@ function ChildNavItem({ label, to, iconOffset }) {
           color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
           flex: 1,
           transition: "color 0.15s",
-          lineHeight: 1,
+          lineHeight: 1.3,
           "&:hover": { color: active ? ACTIVE_COLOR : TEXT_PRIMARY },
         }}
       >

@@ -343,12 +343,19 @@ export default function Settings() {
       .is("trashed_at", null)
       .is("purged_at", null);
     if (stateError) return;
-    const archivedMap = new Map((stateRows || []).map((r) => [r.request_id, r.archived_at]));
+    const archivedMap = new Map(
+      (stateRows || []).map((r) => [r.request_id, r.archived_at]),
+    );
     const archivedIds = [...archivedMap.keys()];
-    if (!archivedIds.length) { setArchivedRequests([]); return; }
+    if (!archivedIds.length) {
+      setArchivedRequests([]);
+      return;
+    }
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
+      )
       .in("id", archivedIds);
     if (!error) {
       setArchivedRequests(
@@ -368,12 +375,19 @@ export default function Settings() {
       .not("trashed_at", "is", null)
       .is("purged_at", null);
     if (stateError) return;
-    const trashedMap = new Map((stateRows || []).map((r) => [r.request_id, r.trashed_at]));
+    const trashedMap = new Map(
+      (stateRows || []).map((r) => [r.request_id, r.trashed_at]),
+    );
     const trashedIds = [...trashedMap.keys()];
-    if (!trashedIds.length) { setTrashedRequests([]); return; }
+    if (!trashedIds.length) {
+      setTrashedRequests([]);
+      return;
+    }
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
+      )
       .in("id", trashedIds);
     if (!error) {
       setTrashedRequests(
@@ -386,15 +400,21 @@ export default function Settings() {
 
   const fetchArchivable = useCallback(async (userId) => {
     const { data: stateRows } = userId
-      ? await supabase.from("request_user_state").select("request_id").eq("user_id", userId)
+      ? await supabase
+          .from("request_user_state")
+          .select("request_id")
+          .eq("user_id", userId)
       : { data: [] };
     const hiddenIds = (stateRows || []).map((r) => r.request_id);
     let query = supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
+      )
       .in("status", ["Completed", "Declined", "Cancelled"])
       .order("submitted_at", { ascending: false });
-    if (hiddenIds.length) query = query.not("id", "in", `(${hiddenIds.join(",")})`);
+    if (hiddenIds.length)
+      query = query.not("id", "in", `(${hiddenIds.join(",")})`);
     const { data, error } = await query;
     if (!error) setArchivableRequests(data || []);
   }, []);
@@ -410,16 +430,19 @@ export default function Settings() {
     setNotifStats({ total: total || 0, read: read || 0 });
   }, []);
 
-  const loadAll = useCallback(async (userId) => {
-    setLoading(true);
-    await Promise.all([
-      fetchArchived(userId),
-      fetchTrashed(userId),
-      fetchArchivable(userId),
-      fetchNotifStats(),
-    ]);
-    setLoading(false);
-  }, [fetchArchived, fetchTrashed, fetchArchivable, fetchNotifStats]);
+  const loadAll = useCallback(
+    async (userId) => {
+      setLoading(true);
+      await Promise.all([
+        fetchArchived(userId),
+        fetchTrashed(userId),
+        fetchArchivable(userId),
+        fetchNotifStats(),
+      ]);
+      setLoading(false);
+    },
+    [fetchArchived, fetchTrashed, fetchArchivable, fetchNotifStats],
+  );
 
   useEffect(() => {
     if (adminUserId) loadAll(adminUserId);
@@ -432,12 +455,23 @@ export default function Settings() {
       setActionLoading(true);
       try {
         const ts = new Date().toISOString();
-        const rows = ids.map((id) => ({ user_id: adminUserId, request_id: id, archived_at: ts, trashed_at: null, purged_at: null }));
-        const { error } = await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
+        const rows = ids.map((id) => ({
+          user_id: adminUserId,
+          request_id: id,
+          archived_at: ts,
+          trashed_at: null,
+          purged_at: null,
+        }));
+        const { error } = await supabase
+          .from("request_user_state")
+          .upsert(rows, { onConflict: "user_id,request_id" });
         if (error) throw error;
         setMsg({ type: "success", text: `${ids.length} request(s) archived.` });
         setSelected([]);
-        await Promise.all([fetchArchived(adminUserId), fetchArchivable(adminUserId)]);
+        await Promise.all([
+          fetchArchived(adminUserId),
+          fetchArchivable(adminUserId),
+        ]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
@@ -460,7 +494,10 @@ export default function Settings() {
         if (error) throw error;
         setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
         setSelected([]);
-        await Promise.all([fetchArchived(adminUserId), fetchArchivable(adminUserId)]);
+        await Promise.all([
+          fetchArchived(adminUserId),
+          fetchArchivable(adminUserId),
+        ]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
@@ -476,12 +513,27 @@ export default function Settings() {
       setActionLoading(true);
       try {
         const ts = new Date().toISOString();
-        const rows = ids.map((id) => ({ user_id: adminUserId, request_id: id, archived_at: null, trashed_at: ts, purged_at: null }));
-        const { error } = await supabase.from("request_user_state").upsert(rows, { onConflict: "user_id,request_id" });
+        const rows = ids.map((id) => ({
+          user_id: adminUserId,
+          request_id: id,
+          archived_at: null,
+          trashed_at: ts,
+          purged_at: null,
+        }));
+        const { error } = await supabase
+          .from("request_user_state")
+          .upsert(rows, { onConflict: "user_id,request_id" });
         if (error) throw error;
-        setMsg({ type: "success", text: `${ids.length} request(s) moved to trash.` });
+        setMsg({
+          type: "success",
+          text: `${ids.length} request(s) moved to trash.`,
+        });
         setSelected([]);
-        await Promise.all([fetchArchived(adminUserId), fetchTrashed(adminUserId), fetchArchivable(adminUserId)]);
+        await Promise.all([
+          fetchArchived(adminUserId),
+          fetchTrashed(adminUserId),
+          fetchArchivable(adminUserId),
+        ]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
@@ -504,7 +556,11 @@ export default function Settings() {
         if (error) throw error;
         setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
         setSelected([]);
-        await Promise.all([fetchArchived(adminUserId), fetchTrashed(adminUserId), fetchArchivable(adminUserId)]);
+        await Promise.all([
+          fetchArchived(adminUserId),
+          fetchTrashed(adminUserId),
+          fetchArchivable(adminUserId),
+        ]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {

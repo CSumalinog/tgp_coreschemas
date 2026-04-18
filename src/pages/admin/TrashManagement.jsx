@@ -3,7 +3,9 @@ import { supabase } from "../../lib/supabaseClient";
 import TrashManagementBase from "../common/request-management/TrashManagementBase";
 
 async function getAdminUserId() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return user?.id ?? null;
 }
 
@@ -21,12 +23,16 @@ const adminTrashAdapter = {
       .not("trashed_at", "is", null)
       .is("purged_at", null);
     if (stateError) throw stateError;
-    const trashedMap = new Map((stateRows || []).map((r) => [r.request_id, r.trashed_at]));
+    const trashedMap = new Map(
+      (stateRows || []).map((r) => [r.request_id, r.trashed_at]),
+    );
     const trashedIds = [...trashedMap.keys()];
     if (!trashedIds.length) return [];
     const { data, error } = await supabase
       .from("coverage_requests")
-      .select("id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
+      )
       .in("id", trashedIds);
     if (error) throw error;
     return (data || [])

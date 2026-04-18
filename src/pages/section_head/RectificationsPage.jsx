@@ -1,5 +1,5 @@
 // src/pages/section_head/RectificationsPage.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -10,15 +10,36 @@ import {
   IconButton,
   Avatar,
   useTheme,
+  Tooltip,
+  FormControl,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
-import { notifySpecificStaff } from "../../services/NotificationService";
+import {
+  notifySpecificStaff,
+  notifyAdmins,
+} from "../../services/NotificationService";
+import { getAvatarUrl } from "../../components/common/UserAvatar";
+import {
+  TABLE_USER_AVATAR_SIZE,
+  TABLE_USER_AVATAR_FONT_SIZE,
+  CONTROL_RADIUS,
+  FILTER_INPUT_HEIGHT,
+  FILTER_ROW_GAP,
+  FILTER_SEARCH_FLEX,
+  FILTER_SEARCH_MIN_WIDTH,
+  FILTER_SEARCH_MAX_WIDTH,
+} from "../../utils/layoutTokens";
 
 const GOLD = "#F5C52B";
 const dm = "'Inter', sans-serif";
@@ -70,7 +91,9 @@ function ReviewDialog({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <GavelOutlinedIcon sx={{ fontSize: 16, color: "#6d28d9" }} />
-          <Typography sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+          >
             Review Rectification
           </Typography>
         </Box>
@@ -80,21 +103,46 @@ function ReviewDialog({
       </Box>
 
       <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.25 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.25,
+          }}
+        >
           Staff member
         </Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}
+        >
           {request.staff?.full_name ?? "—"}
         </Typography>
 
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.25 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.25,
+          }}
+        >
           Assignment
         </Typography>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}
+        >
           {request.request?.title ?? "—"}
         </Typography>
 
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.5,
+          }}
+        >
           Staff reason
         </Typography>
         <Box
@@ -102,7 +150,9 @@ function ReviewDialog({
             p: 1.5,
             borderRadius: "8px",
             border: `1px solid ${border}`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.03)"
+              : "rgba(0,0,0,0.02)",
             mb: 1.75,
           }}
         >
@@ -113,7 +163,14 @@ function ReviewDialog({
 
         {proofUrl && (
           <>
-            <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.75rem",
+                color: "text.secondary",
+                mb: 0.5,
+              }}
+            >
               Proof
             </Typography>
             <Box
@@ -139,7 +196,14 @@ function ReviewDialog({
           </>
         )}
 
-        <Typography sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.secondary", mb: 0.5 }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mb: 0.5,
+          }}
+        >
           Reviewer note (optional)
         </Typography>
         <TextField
@@ -163,7 +227,15 @@ function ReviewDialog({
         />
 
         {error && (
-          <Alert severity="error" sx={{ mt: 1.5, fontFamily: dm, fontSize: "0.78rem", borderRadius: "8px" }}>
+          <Alert
+            severity="error"
+            sx={{
+              mt: 1.5,
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: "8px",
+            }}
+          >
             {error}
           </Alert>
         )}
@@ -177,7 +249,9 @@ function ReviewDialog({
             borderRadius: "4px",
             height: 3,
             "& .MuiLinearProgress-bar": { backgroundColor: GOLD },
-            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(0,0,0,0.06)",
           }}
         />
       )}
@@ -205,7 +279,13 @@ function ReviewDialog({
             fontWeight: 600,
             color: "text.secondary",
             userSelect: "none",
-            "&:hover": reviewing ? {} : { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" },
+            "&:hover": reviewing
+              ? {}
+              : {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.04)",
+                },
           }}
         >
           Cancel
@@ -218,7 +298,9 @@ function ReviewDialog({
             borderRadius: "4px",
             cursor: reviewing ? "default" : "pointer",
             border: "1px solid rgba(220,38,38,0.3)",
-            backgroundColor: reviewing ? "rgba(220,38,38,0.05)" : "rgba(220,38,38,0.06)",
+            backgroundColor: reviewing
+              ? "rgba(220,38,38,0.05)"
+              : "rgba(220,38,38,0.06)",
             color: reviewing ? "text.disabled" : "#dc2626",
             fontFamily: dm,
             fontSize: "0.8rem",
@@ -227,7 +309,9 @@ function ReviewDialog({
             display: "flex",
             alignItems: "center",
             gap: 0.5,
-            "&:hover": reviewing ? {} : { backgroundColor: "rgba(220,38,38,0.12)" },
+            "&:hover": reviewing
+              ? {}
+              : { backgroundColor: "rgba(220,38,38,0.12)" },
           }}
         >
           <ThumbDownOutlinedIcon sx={{ fontSize: 14 }} />
@@ -240,7 +324,7 @@ function ReviewDialog({
             py: 0.65,
             borderRadius: "4px",
             cursor: reviewing ? "default" : "pointer",
-            backgroundColor: reviewing ? "rgba(109,40,217,0.08)" : "#6d28d9",
+            backgroundColor: reviewing ? "rgba(0,0,0,0.06)" : "#111",
             color: reviewing ? "text.disabled" : "#fff",
             fontFamily: dm,
             fontSize: "0.8rem",
@@ -249,7 +333,7 @@ function ReviewDialog({
             display: "flex",
             alignItems: "center",
             gap: 0.5,
-            "&:hover": reviewing ? {} : { backgroundColor: "#5b21b6" },
+            "&:hover": reviewing ? {} : { backgroundColor: "#333" },
           }}
         >
           <ThumbUpOutlinedIcon sx={{ fontSize: 14 }} />
@@ -260,6 +344,33 @@ function ReviewDialog({
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  { bg: "#E6F1FB", color: "#0C447C" },
+  { bg: "#EAF3DE", color: "#27500A" },
+  { bg: "#FAEEDA", color: "#633806" },
+  { bg: "#EEEDFE", color: "#3C3489" },
+  { bg: "#E1F5EE", color: "#085041" },
+  { bg: "#FAECE7", color: "#712B13" },
+  { bg: "#FBEAF0", color: "#72243E" },
+  { bg: "#dbeafe", color: "#1e40af" },
+];
+const getAvatarColor = (id) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++)
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+const getInitials = (name) => {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function RectificationsPage() {
   const theme = useTheme();
@@ -269,6 +380,7 @@ export default function RectificationsPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
 
   // Review dialog state
   const [reviewTarget, setReviewTarget] = useState(null);
@@ -299,7 +411,7 @@ export default function RectificationsPage() {
       .from("rectification_requests")
       .select(
         `id, assignment_id, request_id, staff_id, reason, proof_path, status, created_at,
-         staff:profiles!staff_id(id, full_name),
+         staff:profiles!staff_id(id, full_name, avatar_url),
          request:coverage_requests!request_id(id, title)`,
       )
       .eq("section", currentUser.section)
@@ -347,13 +459,27 @@ export default function RectificationsPage() {
         await notifySpecificStaff({
           staffIds: [reviewTarget.staff_id],
           type: "rectification_reviewed",
-          title: decision === "approved" ? "Rectification Approved" : "Rectification Rejected",
+          title:
+            decision === "approved"
+              ? "Rectification Approved"
+              : "Rectification Rejected",
           message: msg,
           requestId: reviewTarget.request_id,
           createdBy: currentUser.id,
           targetPath: "/my-assignment",
           targetPayload: { assignmentId: reviewTarget.assignment_id },
         });
+
+        if (decision === "approved") {
+          await notifyAdmins({
+            type: "rectification_reviewed",
+            title: "Rectification Approved",
+            message: `${currentUser.full_name ?? "A section head"} approved a rectification for "${reviewTarget.request?.title ?? "an assignment"}" (${reviewTarget.staff?.full_name ?? "staff"}).`,
+            requestId: reviewTarget.request_id,
+            createdBy: currentUser.id,
+            targetPath: "/admin/rectifications-log",
+          });
+        }
 
         setRequests((prev) => prev.filter((r) => r.id !== reviewTarget.id));
         setReviewTarget(null);
@@ -367,37 +493,311 @@ export default function RectificationsPage() {
     [reviewTarget, currentUser, reviewNote],
   );
 
+  // ── CSV export ───────────────────────────────────────────────────────────────
+  const runExport = useCallback(() => {
+    const headers = ["Staff", "Assignment", "Reason", "Submitted"];
+    const dataRows = requests.map((r) => [
+      r.staff?.full_name ?? "",
+      r.request?.title ?? "",
+      r.reason ?? "",
+      new Date(r.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    ]);
+    const escape = (v) => {
+      const s = String(v ?? "").replace(/"/g, '""');
+      return /[,"\n]/.test(s) ? `"${s}"` : s;
+    };
+    const csv = [headers, ...dataRows]
+      .map((row) => row.map(escape).join(","))
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rectifications-pending.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [requests]);
+
+  // ── Rows ────────────────────────────────────────────────────────────────────
+  const rows = useMemo(
+    () =>
+      requests
+        .filter((r) => {
+          if (!searchText.trim()) return true;
+          const tokens = searchText.toLowerCase().split(/\s+/).filter(Boolean);
+          const haystack = [
+            r.staff?.full_name ?? "",
+            r.request?.title ?? "",
+            r.reason ?? "",
+          ]
+            .join(" ")
+            .toLowerCase();
+          return tokens.every((t) => haystack.includes(t));
+        })
+        .map((r) => {
+          const ac = getAvatarColor(r.staff_id ?? r.id);
+          return {
+            id: r.id,
+            staffName: r.staff?.full_name ?? "—",
+            staffAvatarUrl: r.staff?.avatar_url ?? null,
+            avatarBg: ac.bg,
+            avatarFg: ac.color,
+            title: r.request?.title ?? "—",
+            reason: r.reason ?? "",
+            submitted: r.created_at,
+            hasProof: !!r.proof_path,
+            proofPath: r.proof_path,
+            _raw: r,
+          };
+        }),
+    [requests, searchText],
+  );
+
+  // ── Columns ─────────────────────────────────────────────────────────────────
+  const columns = useMemo(
+    () => [
+      {
+        field: "staffName",
+        headerName: "Staff",
+        flex: 1,
+        minWidth: 160,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              gap: 0.75,
+            }}
+          >
+            <Avatar
+              src={getAvatarUrl(p.row.staffAvatarUrl)}
+              sx={{
+                width: TABLE_USER_AVATAR_SIZE,
+                height: TABLE_USER_AVATAR_SIZE,
+                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
+                fontWeight: 700,
+                backgroundColor: p.row.avatarBg,
+                color: p.row.avatarFg,
+                flexShrink: 0,
+              }}
+            >
+              {!getAvatarUrl(p.row.staffAvatarUrl) && getInitials(p.value)}
+            </Avatar>
+            <Typography
+              sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "title",
+        headerName: "Assignment",
+        flex: 1,
+        minWidth: 160,
+        renderCell: (p) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 500,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "submitted",
+        headerName: "Submitted",
+        flex: 1,
+        minWidth: 160,
+        renderCell: (p) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "text.secondary",
+              }}
+            >
+              {new Date(p.value).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "hasProof",
+        headerName: "Proof",
+        width: 60,
+        sortable: false,
+        disableColumnMenu: true,
+        renderCell: (p) => {
+          if (!p.value) {
+            return (
+              <Box
+                sx={{ display: "flex", alignItems: "center", height: "100%" }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.8rem",
+                    color: "text.disabled",
+                  }}
+                >
+                  —
+                </Typography>
+              </Box>
+            );
+          }
+          const { data } = supabase.storage
+            .from("coverage-files")
+            .getPublicUrl(p.row.proofPath);
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Tooltip title="View Proof">
+                <Box
+                  component="a"
+                  href={data?.publicUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "text.secondary",
+                    "&:hover": { color: "text.primary" },
+                  }}
+                >
+                  <InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />
+                </Box>
+              </Tooltip>
+            </Box>
+          );
+        },
+      },
+    ],
+    [],
+  );
+
   if (!currentUser) return <BrandedLoader />;
 
   return (
-    <Box sx={{ px: { xs: 2, sm: 3 }, py: 3, maxWidth: 760, mx: "auto" }}>
-      {/* Page header */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        
-        {requests.length > 0 && (
-          <Box
+    <Box
+      sx={{
+        px: { xs: 1.5, sm: 2, md: 3 },
+        pt: { xs: 1.5, sm: 2, md: 3 },
+        pb: { xs: 1.5, sm: 2, md: 3 },
+        height: "100%",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        backgroundColor: isDark ? "background.default" : "#ffffff",
+        fontFamily: dm,
+      }}
+    >
+      {/* ── Toolbar ── */}
+      <Box
+        sx={{
+          mb: 2,
+          display: "flex",
+          alignItems: "center",
+          gap: FILTER_ROW_GAP,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          flexShrink: 0,
+          px: 1.25,
+          py: 1,
+          borderRadius: CONTROL_RADIUS,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
+        }}
+      >
+        <FormControl
+          size="small"
+          sx={{
+            flex: FILTER_SEARCH_FLEX,
+            minWidth: FILTER_SEARCH_MIN_WIDTH,
+            maxWidth: FILTER_SEARCH_MAX_WIDTH,
+          }}
+        >
+          <OutlinedInput
+            placeholder="Search staff, assignment, reason"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
             sx={{
-              minWidth: 20,
-              height: 20,
-              borderRadius: "10px",
-              backgroundColor: "#6d28d9",
-              color: "#fff",
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              px: 0.75,
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
             }}
-          >
-            {requests.length}
-          </Box>
-        )}
-      </Box>
+          />
+        </FormControl>
 
+        <Box sx={{ flex: 1 }} />
+
+        <Box
+          onClick={runExport}
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            height: FILTER_INPUT_HEIGHT,
+            borderRadius: CONTROL_RADIUS,
+            cursor: "pointer",
+            border: "1px solid rgba(0,0,0,0.12)",
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            fontWeight: 500,
+            color: "text.secondary",
+            backgroundColor: isDark ? "transparent" : "#f7f7f8",
+            flexShrink: 0,
+            transition: "all 0.15s",
+            "&:hover": {
+              borderColor: "rgba(53,53,53,0.3)",
+              color: "text.primary",
+              backgroundColor: "#ededee",
+            },
+          }}
+        >
+          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+          Export
+        </Box>
+      </Box>
       {/* Loading */}
       {loading && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
           <BrandedLoader />
         </Box>
       )}
@@ -422,94 +822,33 @@ export default function RectificationsPage() {
         </Box>
       )}
 
-      {/* Request cards */}
-      {!loading &&
-        requests.map((r) => (
-          <Box
-            key={r.id}
-            sx={{
-              p: 2.25,
-              mb: 1.25,
-              borderRadius: "10px",
-              border: `1px solid ${border}`,
-              backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#fff",
-              cursor: "pointer",
-              transition: "box-shadow 0.15s, background-color 0.15s",
-              "&:hover": {
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.04)"
-                  : "#fafafa",
-                boxShadow: isDark
-                  ? "0 2px 12px rgba(0,0,0,0.4)"
-                  : "0 2px 12px rgba(0,0,0,0.06)",
-              },
-            }}
-            onClick={() => {
-              setReviewTarget(r);
+      {/* DataGrid */}
+      {!loading && requests.length > 0 && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            border: `1px solid ${border}`,
+            borderRadius: "10px",
+            overflow: "hidden",
+          }}
+        >
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            rowHeight={56}
+            showToolbar={false}
+            onRowClick={(params) => {
+              setReviewTarget(params.row._raw);
               setReviewNote("");
               setReviewError("");
             }}
-          >
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-              <Avatar
-                sx={{
-                  width: 34,
-                  height: 34,
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  fontFamily: dm,
-                  backgroundColor: "#ede9fe",
-                  color: "#6d28d9",
-                  flexShrink: 0,
-                  mt: 0.25,
-                }}
-              >
-                {r.staff?.full_name
-                  ? r.staff.full_name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)
-                  : "?"}
-              </Avatar>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.25 }}>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.84rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {r.request?.title ?? "—"}
-                  </Typography>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.secondary", flexShrink: 0 }}>
-                    {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </Typography>
-                </Box>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.77rem", color: "text.secondary", mb: 0.75 }}>
-                  {r.staff?.full_name ?? "—"}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.79rem",
-                    color: "text.secondary",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
-                >
-                  {r.reason}
-                </Typography>
-                {r.proof_path && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.75 }}>
-                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 13, color: "#6d28d9" }} />
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.73rem", color: "#6d28d9" }}>
-                      Proof attached
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          </Box>
-        ))}
+            sx={{ height: "100%", cursor: "pointer" }}
+            hideFooter={rows.length <= 100}
+            pageSizeOptions={[100]}
+          />
+        </Box>
+      )}
 
       {/* Review dialog */}
       <ReviewDialog

@@ -279,6 +279,24 @@ export default function ReassignmentHistoryPage() {
             >
               {p.value}
             </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "_nav",
+        headerName: "",
+        width: 48,
+        sortable: false,
+        disableColumnMenu: true,
+        renderCell: (p) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
             {p.row.reqId && (
               <Tooltip title="View assignment" placement="top">
                 <Box
@@ -297,7 +315,6 @@ export default function ReassignmentHistoryPage() {
                     borderRadius: "6px",
                     border: `1px solid ${border}`,
                     cursor: "pointer",
-                    flexShrink: 0,
                     color: "text.disabled",
                     transition: "all 0.15s",
                     "&:hover": { borderColor: "#212121", color: "#212121" },

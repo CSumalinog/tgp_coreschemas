@@ -218,8 +218,6 @@ export async function fetchMyRequests() {
     `,
     )
     .eq("requester_id", user.id)
-    .is("archived_at", null)
-    .is("trashed_at", null)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to fetch requests: ${error.message}`);

@@ -17,6 +17,7 @@ import {
   Switch,
   FormControlLabel,
   Menu,
+  Popover,
   useTheme,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -186,6 +187,184 @@ function MetaCell({ children }) {
         {children}
       </Typography>
     </Box>
+  );
+}
+
+const STACK_AVATAR_SIZE = 26;
+const STACK_AVATAR_FONT_SIZE = "0.6rem";
+
+function AssignedByStack({ profiles = [], isDark }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const border = isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.1)";
+
+  if (!profiles.length) {
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 500,
+            color: "text.secondary",
+          }}
+        >
+          —
+        </Typography>
+      </Box>
+    );
+  }
+
+  const visible = profiles.slice(0, 3);
+  const extra = profiles.length - 3;
+
+  return (
+    <>
+      <Box
+        onMouseEnter={(e) => setAnchorEl(e.currentTarget)}
+        onMouseLeave={() => setAnchorEl(null)}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          height: "100%",
+          cursor: "default",
+        }}
+      >
+        {visible.map((p, i) => {
+          const url = getAvatarUrl(p.avatar_url);
+          const clr = getAvatarColor(p.id);
+          return (
+            <Avatar
+              key={p.id}
+              src={url}
+              sx={{
+                width: STACK_AVATAR_SIZE,
+                height: STACK_AVATAR_SIZE,
+                fontSize: STACK_AVATAR_FONT_SIZE,
+                fontWeight: 700,
+                backgroundColor: clr.bg,
+                color: clr.color,
+                ml: i === 0 ? 0 : "-6px",
+                border: `2px solid ${isDark ? "#1e1e1e" : "#fff"}`,
+                zIndex: visible.length - i,
+                flexShrink: 0,
+              }}
+            >
+              {!url && getInitials(p.full_name)}
+            </Avatar>
+          );
+        })}
+        {extra > 0 && (
+          <Box
+            sx={{
+              width: STACK_AVATAR_SIZE,
+              height: STACK_AVATAR_SIZE,
+              borderRadius: "50%",
+              backgroundColor: isDark
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(53,53,53,0.08)",
+              color: "text.secondary",
+              fontSize: "0.58rem",
+              fontWeight: 700,
+              fontFamily: dm,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              ml: "-6px",
+              border: `2px solid ${isDark ? "#1e1e1e" : "#fff"}`,
+              flexShrink: 0,
+            }}
+          >
+            +{extra}
+          </Box>
+        )}
+      </Box>
+
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        disableRestoreFocus
+        disableScrollLock
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        sx={{ pointerEvents: "none" }}
+        slotProps={{
+          paper: {
+            sx: {
+              pointerEvents: "none",
+              borderRadius: "8px",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 8px 24px rgba(0,0,0,0.5)"
+                : "0 4px 20px rgba(0,0,0,0.1)",
+              backgroundColor: isDark ? "#1e1e1e" : "#fff",
+              minWidth: 180,
+              py: 0.5,
+            },
+          },
+        }}
+      >
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            color: "text.secondary",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            px: 1.5,
+            pt: 0.85,
+            pb: 0.5,
+          }}
+        >
+          Assigned by
+        </Typography>
+        {profiles.map((p) => {
+          const url = getAvatarUrl(p.avatar_url);
+          const clr = getAvatarColor(p.id);
+          return (
+            <Box
+              key={p.id}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1.5,
+                py: 0.65,
+              }}
+            >
+              <Avatar
+                src={url}
+                sx={{
+                  width: TABLE_USER_AVATAR_SIZE,
+                  height: TABLE_USER_AVATAR_SIZE,
+                  fontSize: TABLE_USER_AVATAR_FONT_SIZE,
+                  fontWeight: 700,
+                  backgroundColor: clr.bg,
+                  color: clr.color,
+                  flexShrink: 0,
+                }}
+              >
+                {!url && getInitials(p.full_name)}
+              </Avatar>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  fontWeight: 500,
+                  color: isDark ? "rgba(255,255,255,0.85)" : "#1a1a1a",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {p.full_name}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Popover>
+    </>
   );
 }
 
@@ -691,6 +870,24 @@ export default function CoverageTracker() {
       const completedCount = assignments.filter((a) => !!a.completed_at).length;
       const proofCount = assignments.filter((a) => !!a.selfie_url).length;
 
+      // Unique sec heads who assigned staff (for "Assigned by" column)
+      const assignerMap = new Map();
+      assignments.forEach((a) => {
+        if (a.assigner?.id && !assignerMap.has(a.assigner.id)) {
+          assignerMap.set(a.assigner.id, a.assigner);
+        }
+      });
+      const assignedByProfiles = Array.from(assignerMap.values());
+
+      // Date assigned — use the request's forwarded_at (when sec head received + assigned)
+      const firstAssignedAt = req.forwarded_at
+        ? new Date(req.forwarded_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "—";
+
       return {
         id: req.id,
         requestTitle: req.title || "—",
@@ -702,6 +899,8 @@ export default function CoverageTracker() {
         completedCount,
         proofCount,
         totalAssignments: assignments.length,
+        assignedByProfiles,
+        firstAssignedAt,
         _raw: req,
       };
     });
@@ -808,6 +1007,7 @@ export default function CoverageTracker() {
           eventDate: buildEventDateDisplay(req),
           staffName: a.staff?.full_name || "Unknown",
           staffAvatarUrl: getAvatarUrl(a.staff?.avatar_url),
+          staffer_id: a.staff_id,
           sectionName: a.sections?.name || a.section || "Unassigned Section",
           timeInDisplay: fmtTime(a.timed_in_at),
           timeOutDisplay: fmtTime(a.completed_at),
@@ -1042,62 +1242,91 @@ export default function CoverageTracker() {
       ),
     },
     {
-      field: "eventType",
-      headerName: "Type",
-      flex: 0.68,
-      minWidth: 95,
+      field: "_nav_req",
+      headerName: "",
+      width: 48,
       sortable: false,
+      disableColumnMenu: true,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <EventTypePill isMultiDay={p.value} isDark={isDark} />
+          <Tooltip title="Open in Request Management" arrow placement="top">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("/admin/request-management", {
+                  state: { openRequestId: p.row.id },
+                });
+              }}
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: "4px",
+                color: "text.secondary",
+                "&:hover": {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(53,53,53,0.06)",
+                  color: "text.primary",
+                },
+              }}
+            >
+              <ArrowForwardIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
       ),
     },
     {
-      field: "client",
-      headerName: "Client",
-      flex: 1.35,
-      minWidth: 220,
-      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
-    },
-    {
-      field: "eventDate",
-      headerName: "Event Date",
+      field: "assignedBy",
+      headerName: "Assigned By",
       flex: 1.1,
-      minWidth: 150,
+      minWidth: 140,
+      sortable: false,
+      renderCell: (p) => (
+        <AssignedByStack profiles={p.row.assignedByProfiles} isDark={isDark} />
+      ),
+    },
+    {
+      field: "firstAssignedAt",
+      headerName: "Date Assigned",
+      flex: 1,
+      minWidth: 140,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
     {
-      field: "actions",
+      field: "_nav_ctr",
       headerName: "",
-      minWidth: 150,
-      flex: 0.75,
+      width: 48,
       sortable: false,
-      align: "right",
-      headerAlign: "right",
+      disableColumnMenu: true,
       renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            width: "100%",
-            height: "100%",
-            pr: 1,
-            boxSizing: "border-box",
-          }}
-        >
-          <ViewActionButton
-            onClick={() => {
-              navigate(`/admin/coverage-tracker/time-record`, {
-                state: {
-                  focusRequestId: p.row.id,
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Tooltip title="View Coverage Time Record" arrow placement="top">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("/admin/coverage-tracker/time-record", {
+                  state: { focusRequestId: p.row.id },
+                });
+              }}
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: "4px",
+                color: "text.secondary",
+                "&:hover": {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(53,53,53,0.06)",
+                  color: "text.primary",
                 },
-              });
-            }}
-          >
-            View CTR
-          </ViewActionButton>
+              }}
+            >
+              <ArrowForwardIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
       ),
     },
@@ -1138,39 +1367,55 @@ export default function CoverageTracker() {
               >
                 {p.value}
               </Typography>
-              <Tooltip title="View request" placement="top">
-                <Box
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(
-                      `/admin/coverage-request-details/${p.row.requestId}`,
-                      {
-                        state: { backTo: "/admin/coverage-tracker" },
-                      },
-                    );
-                  }}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 24,
-                    height: 24,
-                    borderRadius: "6px",
-                    border: `1px solid ${border}`,
-                    cursor: "pointer",
-                    flexShrink: 0,
-                    color: "text.disabled",
-                    transition: "all 0.15s",
-                    "&:hover": { borderColor: "#212121", color: "#212121" },
-                  }}
-                >
-                  <ArrowForwardIcon sx={{ fontSize: 13 }} />
-                </Box>
-              </Tooltip>
             </>
           ) : null}
         </Box>
       ),
+    },
+    {
+      field: "_nav",
+      headerName: "",
+      width: 48,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (p) =>
+        p.row.isFirstInGroup ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Tooltip title="View request" placement="top">
+              <Box
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(
+                    `/admin/coverage-request-details/${p.row.requestId}`,
+                    { state: { backTo: "/admin/coverage-tracker" } },
+                  );
+                }}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 24,
+                  height: 24,
+                  borderRadius: "6px",
+                  border: `1px solid ${border}`,
+                  cursor: "pointer",
+                  color: "text.disabled",
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: "#212121", color: "#212121" },
+                }}
+              >
+                <ArrowForwardIcon sx={{ fontSize: 13 }} />
+              </Box>
+            </Tooltip>
+          </Box>
+        ) : null,
     },
     {
       field: "staffName",
@@ -1200,28 +1445,54 @@ export default function CoverageTracker() {
           >
             {getInitials(p.value)}
           </Avatar>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}
+          >
             {p.value}
           </Typography>
         </Box>
       ),
     },
     {
-      field: "sectionName",
-      headerName: "Section",
-      flex: 0.9,
-      minWidth: 100,
+      field: "_nav_staff",
+      headerName: "",
+      width: 48,
+      sortable: false,
+      disableColumnMenu: true,
       renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.8rem",
-              color: "text.secondary",
-            }}
-          >
-            {p.value}
-          </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          <Tooltip title="View in Staffers Management" placement="top">
+            <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(
+                  `/admin/staffers-management?focus=${p.row.staffer_id}`,
+                );
+              }}
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: "6px",
+                border: `1px solid ${border}`,
+                cursor: "pointer",
+                color: "text.disabled",
+                transition: "all 0.15s",
+                "&:hover": { borderColor: "#212121", color: "#212121" },
+              }}
+            >
+              <ArrowForwardIcon sx={{ fontSize: 13 }} />
+            </Box>
+          </Tooltip>
         </Box>
       ),
     },

@@ -11,7 +11,9 @@ import {
  * Excludes requests the admin has personally archived or trashed (per-user state).
  */
 export async function fetchAllRequests() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Get this admin's personal hidden request IDs
   let hiddenIds = [];
@@ -61,6 +63,7 @@ export async function fetchAllRequests() {
         status,
         section,
         assigned_to,
+        assigned_by,
         timed_in_at,
         completed_at,
         selfie_url
@@ -91,6 +94,7 @@ export async function fetchAllRequests() {
     if (r.declined_by) profileIds.add(r.declined_by);
     (r.coverage_assignments || []).forEach((a) => {
       if (a.assigned_to) profileIds.add(a.assigned_to);
+      if (a.assigned_by) profileIds.add(a.assigned_by);
     });
   });
 
@@ -138,6 +142,13 @@ export async function fetchAllRequests() {
             full_name: profileMap[a.assigned_to].full_name,
             section: profileMap[a.assigned_to].section,
             avatar_url: profileMap[a.assigned_to].avatar_url,
+          }
+        : null,
+      assigner: profileMap[a.assigned_by]
+        ? {
+            id: a.assigned_by,
+            full_name: profileMap[a.assigned_by].full_name,
+            avatar_url: profileMap[a.assigned_by].avatar_url,
           }
         : null,
     })),
@@ -282,7 +293,10 @@ export async function approveRequest(requestId, adminNotes = "") {
 
   // Fallback for environments where "approved" may be restricted by DB checks.
   if (!clientNotif?.ok) {
-    console.warn("[approveRequest] notifyClient(approved) failed, retrying with for_approval", clientNotif?.error?.message || clientNotif?.reason);
+    console.warn(
+      "[approveRequest] notifyClient(approved) failed, retrying with for_approval",
+      clientNotif?.error?.message || clientNotif?.reason,
+    );
     clientNotif = await notifyClient({
       requesterId: req?.requester_id,
       type: "for_approval",
@@ -293,7 +307,10 @@ export async function approveRequest(requestId, adminNotes = "") {
     });
   }
 
-  if (Array.isArray(req?.forwarded_sections) && req.forwarded_sections.length > 0) {
+  if (
+    Array.isArray(req?.forwarded_sections) &&
+    req.forwarded_sections.length > 0
+  ) {
     await notifySecHeads({
       sections: req.forwarded_sections,
       type: "approved",
@@ -310,7 +327,9 @@ export async function approveRequest(requestId, adminNotes = "") {
     .eq("request_id", requestId);
 
   const assignerIds = [
-    ...new Set((assignmentRows || []).map((a) => a.assigned_by).filter(Boolean)),
+    ...new Set(
+      (assignmentRows || []).map((a) => a.assigned_by).filter(Boolean),
+    ),
   ];
 
   const assignerMap = {};
@@ -338,7 +357,9 @@ export async function approveRequest(requestId, adminNotes = "") {
       const assignerDesignation =
         assigner?.designation ||
         assigner?.position ||
-        (assigner?.section ? `${assigner.section} Section Head` : "Section Head");
+        (assigner?.section
+          ? `${assigner.section} Section Head`
+          : "Section Head");
 
       let staffNotif = await notifySpecificStaff({
         staffIds: [staffId],
@@ -354,7 +375,10 @@ export async function approveRequest(requestId, adminNotes = "") {
 
       // Fallback for environments where "assigned" may be restricted by DB checks.
       if (!staffNotif?.ok) {
-        console.warn("[approveRequest] notifySpecificStaff(assigned) failed, retrying with for_approval", staffNotif?.error?.message || staffNotif?.reason);
+        console.warn(
+          "[approveRequest] notifySpecificStaff(assigned) failed, retrying with for_approval",
+          staffNotif?.error?.message || staffNotif?.reason,
+        );
         staffNotif = await notifySpecificStaff({
           staffIds: [staffId],
           requestId,
