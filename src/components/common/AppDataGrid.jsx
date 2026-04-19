@@ -2,7 +2,6 @@ import React, { forwardRef, useEffect, useMemo, useState } from "react";
 import { Box, IconButton, Tooltip, Typography, useTheme } from "@mui/material";
 import {
   DataGrid as MuiDataGrid,
-  GridToolbarContainer,
   GridToolbarExport,
   GridToolbarQuickFilter,
   useGridApiRef,
@@ -159,7 +158,7 @@ function DefaultGridToolbar({
 }) {
   if (selectedCount > 0 && selectionActions?.length) {
     return (
-      <GridToolbarContainer
+      <Box
         sx={{
           display: "flex",
           alignItems: "center",
@@ -205,7 +204,7 @@ function DefaultGridToolbar({
             </Tooltip>
           ))}
         </Box>
-      </GridToolbarContainer>
+      </Box>
     );
   }
 
@@ -218,7 +217,7 @@ function DefaultGridToolbar({
   if (!hasSearch && !hasExport) return null;
 
   return (
-    <GridToolbarContainer
+    <Box
       sx={{
         display: "flex",
         alignItems: "center",
@@ -243,7 +242,7 @@ function DefaultGridToolbar({
       )}
 
       <GridToolbarExport csvOptions={csvOptions} printOptions={printOptions} />
-    </GridToolbarContainer>
+    </Box>
   );
 }
 

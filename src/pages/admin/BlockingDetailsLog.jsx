@@ -367,37 +367,25 @@ export default function BlockingDetailsLog() {
           minHeight: 440,
         }}
       >
-        {loading ? (
-          <Box
-            sx={{
-              height: 320,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <BrandedLoader size={44} inline />
-          </Box>
-        ) : (
-          <DataGrid
-            apiRef={apiRef}
-            rows={visibleRows}
-            columns={columns}
-            disableRowSelectionOnClick
-            showToolbar={false}
-            pageSizeOptions={[10, 25, 50]}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            getRowClassName={(params) =>
-              String(params.id) === String(targetEventId)
-                ? "row--highlighted"
-                : ""
-            }
-            rowHeight={56}
-            autoHeight={false}
-            sx={{ minHeight: 460 }}
-          />
-        )}
+        <DataGrid
+          apiRef={apiRef}
+          rows={visibleRows}
+          columns={columns}
+          loading={loading}
+          disableRowSelectionOnClick
+          showToolbar={false}
+          pageSizeOptions={[10, 25, 50]}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          getRowClassName={(params) =>
+            String(params.id) === String(targetEventId)
+              ? "row--highlighted"
+              : ""
+          }
+          rowHeight={56}
+          autoHeight={false}
+          sx={{ minHeight: 460 }}
+        />
       </Box>
 
       <Box sx={{ mt: 1.25 }}>

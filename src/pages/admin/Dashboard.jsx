@@ -216,7 +216,9 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     async function loadAdminName() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (cancelled || !user) return;
       const { data } = await supabase
         .from("profiles")
@@ -228,7 +230,9 @@ export default function Dashboard() {
       }
     }
     loadAdminName();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
   const [statusCounts, setStatusCounts] = useState({});
   const [perfStats, setPerfStats] = useState({
@@ -244,7 +248,11 @@ export default function Dashboard() {
   const [sectionWorkload, setSectionWorkload] = useState([]);
   const [recentRequests, setRecentRequests] = useState([]);
   const [scheduleStats, setScheduleStats] = useState({ total: 0, set: 0 });
-  const [todayCoverage, setTodayCoverage] = useState({ total: 0, onGoing: 0, approved: 0 });
+  const [todayCoverage, setTodayCoverage] = useState({
+    total: 0,
+    onGoing: 0,
+    approved: 0,
+  });
 
   useEffect(() => {
     async function loadSemesters() {
@@ -256,9 +264,11 @@ export default function Dashboard() {
       const active = (data || []).find((s) => s.is_active);
       setActiveSemester(active || null);
       setSelectedSemester(active || (data || [])[0] || null);
-      const upcoming = (data || [])
-        .filter((s) => !s.is_active && new Date(s.start_date) > new Date())
-        .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0] || null;
+      const upcoming =
+        (data || [])
+          .filter((s) => !s.is_active && new Date(s.start_date) > new Date())
+          .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0] ||
+        null;
       setUpcomingSemester(upcoming);
     }
     loadSemesters();
@@ -289,7 +299,9 @@ export default function Dashboard() {
 
       let aq = supabase
         .from("coverage_assignments")
-        .select("request_id, section, status, assigned_at, timed_in_at, completed_at");
+        .select(
+          "request_id, section, status, assigned_at, timed_in_at, completed_at",
+        );
       if (!isAllTime && selectedSemester)
         aq = aq
           .gte("assigned_at", selectedSemester.start_date)
@@ -411,7 +423,13 @@ export default function Dashboard() {
       const todayReqs = requestsWithComputedStatus.filter(
         (r) =>
           r.event_date === todayStr &&
-          ["Approved", "On Going", "Assigned", "For Approval", "Forwarded"].includes(r.status),
+          [
+            "Approved",
+            "On Going",
+            "Assigned",
+            "For Approval",
+            "Forwarded",
+          ].includes(r.status),
       );
       setTodayCoverage({
         total: todayReqs.length,
@@ -587,22 +605,46 @@ export default function Dashboard() {
         }}
       >
         {/* Daily pulse — today's coverage */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            flexWrap: "wrap",
+          }}
+        >
           <Typography
-            sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled", fontWeight: 600 }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.disabled",
+              fontWeight: 600,
+            }}
           >
             Today
           </Typography>
           {todayCoverage.total === 0 ? (
-            <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.disabled",
+              }}
+            >
               Nothing scheduled for today.
             </Typography>
           ) : (
             <>
               <Typography
-                sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
               >
-                {todayCoverage.total} event{todayCoverage.total !== 1 ? "s" : ""}
+                {todayCoverage.total} event
+                {todayCoverage.total !== 1 ? "s" : ""}
               </Typography>
               {[
                 {
@@ -657,7 +699,11 @@ export default function Dashboard() {
                       {s.value}
                     </Typography>
                     <Typography
-                      sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        color: "text.disabled",
+                      }}
                     >
                       {s.label}
                     </Typography>
@@ -679,7 +725,11 @@ export default function Dashboard() {
               cursor: "pointer",
               userSelect: "none",
               transition: "color 0.15s",
-              color: showReports ? (isDark ? GOLD : CHARCOAL) : "text.secondary",
+              color: showReports
+                ? isDark
+                  ? GOLD
+                  : CHARCOAL
+                : "text.secondary",
               "&:hover": { color: isDark ? GOLD : CHARCOAL },
             }}
           >
@@ -700,59 +750,71 @@ export default function Dashboard() {
           <Box sx={{ width: 1, height: 18, backgroundColor: border }} />
 
           {/* Semester filter dropdown */}
-        <Select
-          size="small"
-          value={
-            isAllTime
-              ? "all"
-              : selectedSemester?.id === upcomingSemester?.id
-              ? "upcoming"
-              : "current"
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "all") {
-              setIsAllTime(true);
-            } else if (v === "current") {
-              setIsAllTime(false);
-              setSelectedSemester(activeSemester);
-            } else {
-              setIsAllTime(false);
-              setSelectedSemester(upcomingSemester);
+          <Select
+            size="small"
+            value={
+              isAllTime
+                ? "all"
+                : selectedSemester?.id === upcomingSemester?.id
+                  ? "upcoming"
+                  : "current"
             }
-          }}
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.73rem",
-            borderRadius: "4px",
-            height: 30,
-            minWidth: 180,
-            "& .MuiSelect-select": { py: 0, fontFamily: dm, fontSize: "0.73rem" },
-            "& .MuiOutlinedInput-notchedOutline": { borderColor: border },
-            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: isDark ? GOLD : CHARCOAL },
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: isDark ? GOLD : CHARCOAL,
-              borderWidth: "1px",
-            },
-          }}
-        >
-          <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.73rem" }}>All</MenuItem>
-          <MenuItem
-            value="current"
-            disabled={!activeSemester}
-            sx={{ fontFamily: dm, fontSize: "0.73rem" }}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "all") {
+                setIsAllTime(true);
+              } else if (v === "current") {
+                setIsAllTime(false);
+                setSelectedSemester(activeSemester);
+              } else {
+                setIsAllTime(false);
+                setSelectedSemester(upcomingSemester);
+              }
+            }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.73rem",
+              borderRadius: "4px",
+              height: 30,
+              minWidth: 180,
+              "& .MuiSelect-select": {
+                py: 0,
+                fontFamily: dm,
+                fontSize: "0.73rem",
+              },
+              "& .MuiOutlinedInput-notchedOutline": { borderColor: border },
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: isDark ? GOLD : CHARCOAL,
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: isDark ? GOLD : CHARCOAL,
+                borderWidth: "1px",
+              },
+            }}
           >
-            {activeSemester ? getSemesterDisplayName(activeSemester) : "Current Semester"}
-          </MenuItem>
-          {upcomingSemester && (
-            <MenuItem value="upcoming" sx={{ fontFamily: dm, fontSize: "0.73rem" }}>
-              {getSemesterDisplayName(upcomingSemester)}
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.73rem" }}>
+              All
             </MenuItem>
-          )}
-        </Select>
+            <MenuItem
+              value="current"
+              disabled={!activeSemester}
+              sx={{ fontFamily: dm, fontSize: "0.73rem" }}
+            >
+              {activeSemester
+                ? getSemesterDisplayName(activeSemester)
+                : "Current Semester"}
+            </MenuItem>
+            {upcomingSemester && (
+              <MenuItem
+                value="upcoming"
+                sx={{ fontFamily: dm, fontSize: "0.73rem" }}
+              >
+                {getSemesterDisplayName(upcomingSemester)}
+              </MenuItem>
+            )}
+          </Select>
         </Box>
       </Box>
-
 
       {error && (
         <Alert
@@ -836,7 +898,9 @@ export default function Dashboard() {
                   }}
                 >
                   {/* Top row: icon + label */}
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: 1.25 }}
+                  >
                     <Box
                       sx={{
                         width: { xs: 36, md: 42 },
@@ -847,11 +911,20 @@ export default function Dashboard() {
                         alignItems: "center",
                         justifyContent: "center",
                         backgroundColor: k.isRed
-                          ? isDark ? RED_15 : RED_L
-                          : isDark ? GOLD_12 : "rgba(245,197,43,0.09)",
+                          ? isDark
+                            ? RED_15
+                            : RED_L
+                          : isDark
+                            ? GOLD_12
+                            : "rgba(245,197,43,0.09)",
                       }}
                     >
-                      <Icon sx={{ fontSize: { xs: 17, md: 20 }, color: k.isRed ? RED : GOLD }} />
+                      <Icon
+                        sx={{
+                          fontSize: { xs: 17, md: 20 },
+                          color: k.isRed ? RED : GOLD,
+                        }}
+                      />
                     </Box>
                     <Typography
                       sx={{
@@ -1027,270 +1100,292 @@ export default function Dashboard() {
                 </Box>
               ) : (
                 <>
-                <Box sx={{ flex: 1, overflowY: "auto" }}>
-                  {recentRequests.map((r, idx) => {
-                    const isFirstOfGroup =
-                      idx === 0 || r.urgency !== recentRequests[idx - 1].urgency;
-                  const urg = urgCfg[r.urgency];
-                  const st = stCfg[r.status] || {
-                    bg: isDark ? "#252525" : "#f5f5f5",
-                    color: "#888",
-                  };
-                  return (
-                    <React.Fragment key={r.id}>
-                      {isFirstOfGroup && (
-                        <Box
-                          sx={{
-                            px: 2.5,
-                            py: 0.55,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.75,
-                            backgroundColor: isDark ? "#181818" : "#f5f5f5",
-                            borderBottom: `1px solid ${border}`,
-                          }}
-                        >
-                          <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: urg.dot, flexShrink: 0 }} />
-                          <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: urg.color, textTransform: "uppercase", letterSpacing: "0.09em" }}>
-                            {urg.label}
-                          </Typography>
-                        </Box>
-                      )}
-                      <Box
-                        onClick={() => goToRequest(r.id, r.status)}
-                      sx={{
-                        px: 2.5,
-                        py: 1.4,
-                        borderBottom:
-                          idx < recentRequests.length - 1
-                            ? `1px solid ${border}`
-                            : "none",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 2,
-                        borderLeft: "3px solid",
-                        borderLeftColor: urg.border,
-                        backgroundColor:
-                          r.urgency === "overdue"
-                            ? isDark
-                              ? "rgba(198,40,40,0.05)"
-                              : "rgba(255,235,238,0.4)"
-                            : r.urgency === "critical"
-                              ? isDark
-                                ? "rgba(198,40,40,0.03)"
-                                : "rgba(255,235,238,0.2)"
-                              : r.urgency === "soon"
-                                ? isDark
-                                  ? "rgba(245,197,43,0.02)"
-                                  : "rgba(245,197,43,0.03)"
-                                : "transparent",
-                        cursor: "pointer",
-                        transition: "background 0.12s",
-                        "&:hover": {
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.02)"
-                            : SURF_L,
-                        },
-                      }}
-                    >
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.75,
-                            mb: 0.3,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: 5,
-                              height: 5,
-                              borderRadius: "50%",
-                              backgroundColor: urg.dot,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontWeight: 600,
-                              fontSize: "0.83rem",
-                              color: "text.primary",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {r.title}
-                          </Typography>
-                        </Box>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 1.25,
-                            pl: "13px",
-                          }}
-                        >
-                          {r.entity?.name && (
-                            <Typography
-                              sx={{
-                                fontFamily: dm,
-                                fontSize: "0.69rem",
-                                color: "text.disabled",
-                              }}
-                            >
-                              {r.entity.name}
-                            </Typography>
-                          )}
-                          {r.event_date && (
+                  <Box sx={{ flex: 1, overflowY: "auto" }}>
+                    {recentRequests.map((r, idx) => {
+                      const isFirstOfGroup =
+                        idx === 0 ||
+                        r.urgency !== recentRequests[idx - 1].urgency;
+                      const urg = urgCfg[r.urgency];
+                      const st = stCfg[r.status] || {
+                        bg: isDark ? "#252525" : "#f5f5f5",
+                        color: "#888",
+                      };
+                      return (
+                        <React.Fragment key={r.id}>
+                          {isFirstOfGroup && (
                             <Box
                               sx={{
+                                px: 2.5,
+                                py: 0.55,
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 0.3,
+                                gap: 0.75,
+                                backgroundColor: isDark ? "#181818" : "#f5f5f5",
+                                borderBottom: `1px solid ${border}`,
                               }}
                             >
-                              <CalendarTodayOutlinedIcon
-                                sx={{ fontSize: 10, color: urg.dot }}
+                              <Box
+                                sx={{
+                                  width: 5,
+                                  height: 5,
+                                  borderRadius: "50%",
+                                  backgroundColor: urg.dot,
+                                  flexShrink: 0,
+                                }}
                               />
                               <Typography
                                 sx={{
                                   fontFamily: dm,
-                                  fontSize: "0.69rem",
+                                  fontSize: "0.6rem",
+                                  fontWeight: 700,
                                   color: urg.color,
-                                  fontWeight:
-                                    r.urgency !== "upcoming" ? 600 : 400,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.09em",
                                 }}
                               >
-                                {new Date(r.event_date).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  },
-                                )}
-                                {r.urgency === "overdue" && " · Overdue"}
-                                {r.urgency === "critical" && " · ≤3 days"}
-                                {r.urgency === "soon" && " · This week"}
+                                {urg.label}
                               </Typography>
                             </Box>
                           )}
-                          {r.venue && !isMobile && (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.3,
-                              }}
-                            >
-                              <LocationOnOutlinedIcon
-                                sx={{ fontSize: 10, color: "text.disabled" }}
-                              />
-                              <Typography
-                                sx={{
-                                  fontFamily: dm,
-                                  fontSize: "0.69rem",
-                                  color: "text.disabled",
-                                }}
-                              >
-                                {r.venue}
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.75,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {r.urgency !== "upcoming" && (
                           <Box
+                            onClick={() => goToRequest(r.id, r.status)}
                             sx={{
+                              px: 2.5,
+                              py: 1.4,
+                              borderBottom:
+                                idx < recentRequests.length - 1
+                                  ? `1px solid ${border}`
+                                  : "none",
                               display: "flex",
                               alignItems: "center",
-                              gap: 0.3,
+                              justifyContent: "space-between",
+                              gap: 2,
+                              borderLeft: "3px solid",
+                              borderLeftColor: urg.border,
+                              backgroundColor:
+                                r.urgency === "overdue"
+                                  ? isDark
+                                    ? "rgba(198,40,40,0.05)"
+                                    : "rgba(255,235,238,0.4)"
+                                  : r.urgency === "critical"
+                                    ? isDark
+                                      ? "rgba(198,40,40,0.03)"
+                                      : "rgba(255,235,238,0.2)"
+                                    : r.urgency === "soon"
+                                      ? isDark
+                                        ? "rgba(245,197,43,0.02)"
+                                        : "rgba(245,197,43,0.03)"
+                                      : "transparent",
+                              cursor: "pointer",
+                              transition: "background 0.12s",
+                              "&:hover": {
+                                backgroundColor: isDark
+                                  ? "rgba(255,255,255,0.02)"
+                                  : SURF_L,
+                              },
                             }}
                           >
-                            <WarningAmberOutlinedIcon
-                              sx={{ fontSize: 11, color: urg.color }}
-                            />
-                            <Typography
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.75,
+                                  mb: 0.3,
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: 5,
+                                    height: 5,
+                                    borderRadius: "50%",
+                                    backgroundColor: urg.dot,
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <Typography
+                                  sx={{
+                                    fontFamily: dm,
+                                    fontWeight: 600,
+                                    fontSize: "0.83rem",
+                                    color: "text.primary",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {r.title}
+                                </Typography>
+                              </Box>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: 1.25,
+                                  pl: "13px",
+                                }}
+                              >
+                                {r.entity?.name && (
+                                  <Typography
+                                    sx={{
+                                      fontFamily: dm,
+                                      fontSize: "0.69rem",
+                                      color: "text.disabled",
+                                    }}
+                                  >
+                                    {r.entity.name}
+                                  </Typography>
+                                )}
+                                {r.event_date && (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.3,
+                                    }}
+                                  >
+                                    <CalendarTodayOutlinedIcon
+                                      sx={{ fontSize: 10, color: urg.dot }}
+                                    />
+                                    <Typography
+                                      sx={{
+                                        fontFamily: dm,
+                                        fontSize: "0.69rem",
+                                        color: urg.color,
+                                        fontWeight:
+                                          r.urgency !== "upcoming" ? 600 : 400,
+                                      }}
+                                    >
+                                      {new Date(
+                                        r.event_date,
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })}
+                                      {r.urgency === "overdue" && " · Overdue"}
+                                      {r.urgency === "critical" && " · ≤3 days"}
+                                      {r.urgency === "soon" && " · This week"}
+                                    </Typography>
+                                  </Box>
+                                )}
+                                {r.venue && !isMobile && (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.3,
+                                    }}
+                                  >
+                                    <LocationOnOutlinedIcon
+                                      sx={{
+                                        fontSize: 10,
+                                        color: "text.disabled",
+                                      }}
+                                    />
+                                    <Typography
+                                      sx={{
+                                        fontFamily: dm,
+                                        fontSize: "0.69rem",
+                                        color: "text.disabled",
+                                      }}
+                                    >
+                                      {r.venue}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            </Box>
+                            <Box
                               sx={{
-                                fontFamily: dm,
-                                fontSize: "0.63rem",
-                                color: urg.color,
-                                fontWeight: 600,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.75,
+                                flexShrink: 0,
                               }}
                             >
-                              {urg.label}
-                            </Typography>
+                              {r.urgency !== "upcoming" && (
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.3,
+                                  }}
+                                >
+                                  <WarningAmberOutlinedIcon
+                                    sx={{ fontSize: 11, color: urg.color }}
+                                  />
+                                  <Typography
+                                    sx={{
+                                      fontFamily: dm,
+                                      fontSize: "0.63rem",
+                                      color: urg.color,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {urg.label}
+                                  </Typography>
+                                </Box>
+                              )}
+                              <Box
+                                sx={{
+                                  px: 0.9,
+                                  py: 0.2,
+                                  borderRadius: "10px",
+                                  backgroundColor: st.bg,
+                                }}
+                              >
+                                <Typography
+                                  sx={{
+                                    fontFamily: dm,
+                                    fontSize: "0.63rem",
+                                    fontWeight: 600,
+                                    color: st.color,
+                                  }}
+                                >
+                                  {r.status}
+                                </Typography>
+                              </Box>
+                              <ChevronRightIcon
+                                sx={{ fontSize: 14, color: "text.disabled" }}
+                              />
+                            </Box>
                           </Box>
-                        )}
-                        <Box
-                          sx={{
-                            px: 0.9,
-                            py: 0.2,
-                            borderRadius: "10px",
-                            backgroundColor: st.bg,
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.63rem",
-                              fontWeight: 600,
-                              color: st.color,
-                            }}
-                          >
-                            {r.status}
-                          </Typography>
-                        </Box>
-                        <ChevronRightIcon
-                          sx={{ fontSize: 14, color: "text.disabled" }}
-                        />
-                      </Box>
-                    </Box>
-                    </React.Fragment>
-                  );
-                  })}
-                </Box>
+                        </React.Fragment>
+                      );
+                    })}
+                  </Box>
 
-                {/* View more footer */}
-                <Box
-                  onClick={() => navigate("/admin/request-management")}
-                  sx={{
-                    px: 2.5,
-                    py: 1,
-                    borderTop: `1px solid ${border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 0.4,
-                    cursor: "pointer",
-                    transition: "background 0.12s",
-                    "&:hover": { backgroundColor: surf },
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography
+                  {/* View more footer */}
+                  <Box
+                    onClick={() => navigate("/admin/request-management")}
                     sx={{
-                      fontFamily: dm,
-                      fontSize: "0.72rem",
-                      color: "text.disabled",
+                      px: 2.5,
+                      py: 1,
+                      borderTop: `1px solid ${border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 0.4,
+                      cursor: "pointer",
+                      transition: "background 0.12s",
+                      "&:hover": { backgroundColor: surf },
+                      flexShrink: 0,
                     }}
                   >
-                    View all requests
-                  </Typography>
-                  <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
-                </Box>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.72rem",
+                        color: "text.disabled",
+                      }}
+                    >
+                      View all requests
+                    </Typography>
+                    <ChevronRightIcon
+                      sx={{ fontSize: 13, color: "text.disabled" }}
+                    />
+                  </Box>
                 </>
               )}
             </Box>
@@ -1525,7 +1620,6 @@ export default function Dashboard() {
                   })}
                 </Box>
               </Box>
-
             </Box>
           </Box>
 
@@ -1700,182 +1794,183 @@ export default function Dashboard() {
               sx={{
                 bgcolor: "background.paper",
                 borderRadius: "10px",
-              border: `1px solid ${border}`,
-              boxShadow: cardShadow,
-              overflow: "hidden",
-            }}
-          >
-            <Box sx={{ ...cardHeaderSx, px: 2.5 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Box sx={cardAccent} />
-                <Typography sx={cardTitleSx}>Section Workload</Typography>
-              </Box>
-            </Box>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "repeat(3,1fr)" },
+                border: `1px solid ${border}`,
+                boxShadow: cardShadow,
+                overflow: "hidden",
               }}
             >
-              {sectionWorkload.map((s, idx) => {
-                const total = s.pending + s.completed;
-                const pct = total > 0 ? (s.completed / total) * 100 : 0;
-                const c = {
-                  News: { dot: GOLD, bar: GOLD },
-                  Photojournalism: { dot: "#888", bar: "#888" },
-                  Videojournalism: { dot: "#c49b00", bar: "#c49b00" },
-                }[s.section] || { dot: GOLD, bar: GOLD };
-                return (
-                  <Box
-                    key={s.section}
-                    sx={{
-                      px: 2.5,
-                      py: 2,
-                      borderRight: {
-                        xs: "none",
-                        sm:
-                          idx < sectionWorkload.length - 1
-                            ? `1px solid ${border}`
-                            : "none",
-                      },
-                      borderBottom: {
-                        xs:
-                          idx < sectionWorkload.length - 1
-                            ? `1px solid ${border}`
-                            : "none",
-                        sm: "none",
-                      },
-                    }}
-                  >
+              <Box sx={{ ...cardHeaderSx, px: 2.5 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={cardAccent} />
+                  <Typography sx={cardTitleSx}>Section Workload</Typography>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "repeat(3,1fr)" },
+                }}
+              >
+                {sectionWorkload.map((s, idx) => {
+                  const total = s.pending + s.completed;
+                  const pct = total > 0 ? (s.completed / total) * 100 : 0;
+                  const c = {
+                    News: { dot: GOLD, bar: GOLD },
+                    Photojournalism: { dot: "#888", bar: "#888" },
+                    Videojournalism: { dot: "#c49b00", bar: "#c49b00" },
+                  }[s.section] || { dot: GOLD, bar: GOLD };
+                  return (
                     <Box
+                      key={s.section}
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        mb: 1.25,
+                        px: 2.5,
+                        py: 2,
+                        borderRight: {
+                          xs: "none",
+                          sm:
+                            idx < sectionWorkload.length - 1
+                              ? `1px solid ${border}`
+                              : "none",
+                        },
+                        borderBottom: {
+                          xs:
+                            idx < sectionWorkload.length - 1
+                              ? `1px solid ${border}`
+                              : "none",
+                          sm: "none",
+                        },
                       }}
                     >
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 0.75,
+                          justifyContent: "space-between",
+                          mb: 1.25,
                         }}
                       >
                         <Box
-                          sx={{
-                            width: 5,
-                            height: 5,
-                            borderRadius: "50%",
-                            backgroundColor: c.dot,
-                          }}
-                        />
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            color: "text.primary",
-                          }}
-                        >
-                          {s.section}
-                        </Typography>
-                      </Box>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.67rem",
-                          color: "text.disabled",
-                        }}
-                      >
-                        {total > 0
-                          ? `${pct.toFixed(0)}% done`
-                          : "No assignments"}
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        height: 3,
-                        borderRadius: "10px",
-                        backgroundColor: isDark ? "#252525" : "#f0f0f0",
-                        mb: 1.25,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          height: "100%",
-                          borderRadius: "10px",
-                          backgroundColor: c.bar,
-                          width: `${pct}%`,
-                          transition: "width 0.5s ease",
-                        }}
-                      />
-                    </Box>
-                    <Box
-                      sx={{ display: "flex", justifyContent: "space-between" }}
-                    >
-                      {[
-                        {
-                          label: "Completed",
-                          value: s.completed,
-                          color: c.dot,
-                        },
-                        {
-                          label: "Pending",
-                          value: s.pending,
-                          color: isDark ? "#3a3a3a" : "#ccc",
-                        },
-                      ].map((item) => (
-                        <Box
-                          key={item.label}
                           sx={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 0.5,
+                            gap: 0.75,
                           }}
                         >
                           <Box
                             sx={{
-                              width: 4,
-                              height: 4,
+                              width: 5,
+                              height: 5,
                               borderRadius: "50%",
-                              backgroundColor: item.color,
+                              backgroundColor: c.dot,
                             }}
                           />
                           <Typography
                             sx={{
                               fontFamily: dm,
-                              fontSize: "0.67rem",
-                              color: "text.disabled",
-                            }}
-                          >
-                            {item.label}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.67rem",
+                              fontSize: "0.8rem",
                               fontWeight: 700,
-                              color: "text.secondary",
-                              ml: 0.25,
+                              color: "text.primary",
                             }}
                           >
-                            {item.value}
+                            {s.section}
                           </Typography>
                         </Box>
-                      ))}
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.67rem",
+                            color: "text.disabled",
+                          }}
+                        >
+                          {total > 0
+                            ? `${pct.toFixed(0)}% done`
+                            : "No assignments"}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          height: 3,
+                          borderRadius: "10px",
+                          backgroundColor: isDark ? "#252525" : "#f0f0f0",
+                          mb: 1.25,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: "100%",
+                            borderRadius: "10px",
+                            backgroundColor: c.bar,
+                            width: `${pct}%`,
+                            transition: "width 0.5s ease",
+                          }}
+                        />
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        {[
+                          {
+                            label: "Completed",
+                            value: s.completed,
+                            color: c.dot,
+                          },
+                          {
+                            label: "Pending",
+                            value: s.pending,
+                            color: isDark ? "#3a3a3a" : "#ccc",
+                          },
+                        ].map((item) => (
+                          <Box
+                            key={item.label}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: "50%",
+                                backgroundColor: item.color,
+                              }}
+                            />
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.67rem",
+                                color: "text.disabled",
+                              }}
+                            >
+                              {item.label}
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.67rem",
+                                fontWeight: 700,
+                                color: "text.secondary",
+                                ml: 0.25,
+                              }}
+                            >
+                              {item.value}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
                     </Box>
-                  </Box>
-                );
-              })}
-            </Box>
+                  );
+                })}
+              </Box>
             </Box>
           </Box>
-
         </Box>
       ) : null}
     </Box>
   );
 }
-

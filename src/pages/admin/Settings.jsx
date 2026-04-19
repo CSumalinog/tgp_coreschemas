@@ -1145,6 +1145,7 @@ export default function Settings() {
                         <DataGrid
                           rows={archivableRequests}
                           columns={archivableColumns}
+                          loading={loading}
                           density="compact"
                           pageSize={10}
                           rowsPerPageOptions={[10, 25, 50]}
@@ -1235,6 +1236,7 @@ export default function Settings() {
                           <DataGrid
                             rows={archivedRequests}
                             columns={archiveColumns}
+                            loading={loading}
                             density="compact"
                             pageSize={10}
                             rowsPerPageOptions={[10, 25, 50]}
@@ -1462,6 +1464,7 @@ export default function Settings() {
                         <DataGrid
                           rows={trashedRequests}
                           columns={trashColumns}
+                          loading={loading}
                           density="compact"
                           pageSize={10}
                           rowsPerPageOptions={[10, 25, 50]}
@@ -1764,5 +1767,3 @@ export default function Settings() {
     </Box>
   );
 }
-
-

@@ -71,6 +71,7 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  FILTER_STATUS_MIN_WIDTH,
   TABLE_FIRST_COL_FLEX,
   TABLE_FIRST_COL_MIN_WIDTH,
 } from "../../utils/layoutTokens";
@@ -664,20 +665,14 @@ export default function RequestTracker() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
-          px: 1.25,
-          py: 1,
-          borderRadius: CONTROL_RADIUS,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
         <FormControl
           size="small"
           sx={{
-            flex: FILTER_SEARCH_FLEX,
+            flexShrink: 0,
             minWidth: FILTER_SEARCH_MIN_WIDTH,
-            maxWidth: FILTER_SEARCH_MAX_WIDTH,
           }}
         >
           <OutlinedInput
@@ -704,7 +699,7 @@ export default function RequestTracker() {
         </FormControl>
 
         {/* View */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH }}>
           <Select
             value={tab}
             onChange={(e) => setTab(e.target.value)}
@@ -767,36 +762,30 @@ export default function RequestTracker() {
         <Box sx={{ flex: 1 }} />
 
         {/* Export */}
-        <Box
-          onClick={handleExportCsv}
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: FILTER_BUTTON_HEIGHT,
-            borderRadius: CONTROL_RADIUS,
-            cursor: "pointer",
-            border: "1px solid rgba(0,0,0,0.12)",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 500,
-            color: "text.secondary",
-            backgroundColor: isDark ? "transparent" : "#f7f7f8",
-            transition: "all 0.15s",
-            flexShrink: 0,
-            opacity: isPipeline ? 0.5 : 1,
-            pointerEvents: isPipeline ? "none" : "auto",
-            "&:hover": {
-              borderColor: "rgba(53,53,53,0.3)",
-              color: "text.primary",
-              backgroundColor: "#ededee",
-            },
-          }}
-        >
-          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-          Export
-        </Box>
+        <Tooltip title="Export" arrow>
+          <IconButton
+            size="small"
+            onClick={handleExportCsv}
+            sx={{
+              borderRadius: CONTROL_RADIUS,
+              width: FILTER_BUTTON_HEIGHT,
+              height: FILTER_BUTTON_HEIGHT,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              flexShrink: 0,
+              opacity: isPipeline ? 0.5 : 1,
+              pointerEvents: isPipeline ? "none" : "auto",
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {isPipeline && (
@@ -1016,7 +1005,9 @@ function PipelineCard({ request, isDark, border, onClick }) {
         borderRadius: "10px",
         border: `1px solid ${border}`,
         backgroundColor: "background.paper",
-        boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+        boxShadow: isDark
+          ? "0 1px 10px rgba(0,0,0,0.4)"
+          : "0 1px 8px rgba(0,0,0,0.07)",
         cursor: "pointer",
         transition: "border-color 0.15s, box-shadow 0.15s",
         "&:hover": {
@@ -1314,9 +1305,28 @@ function PipelineCard({ request, isDark, border, onClick }) {
 }
 
 // G��G�� Grid Tabs G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
-function RequestsGrid({ rows, columns, border, isDark, gridApiRef, filterModel }) {
+function RequestsGrid({
+  rows,
+  columns,
+  border,
+  isDark,
+  gridApiRef,
+  filterModel,
+  loading,
+}) {
   return (
-    <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        width: "100%",
+        overflowX: "auto",
+        borderRadius: "10px",
+        boxShadow: isDark
+          ? "0 1px 10px rgba(0,0,0,0.4)"
+          : "0 1px 8px rgba(0,0,0,0.07)",
+      }}
+    >
       <Box
         sx={{
           minWidth: 640,
@@ -1330,6 +1340,7 @@ function RequestsGrid({ rows, columns, border, isDark, gridApiRef, filterModel }
         <DataGrid
           rows={rows}
           columns={columns}
+          loading={loading}
           pageSize={10}
           rowsPerPageOptions={[10]}
           disableRowSelectionOnClick
@@ -1726,12 +1737,12 @@ function AllRequestsTab({
     }
   };
 
-  if (loading) return <Loader />;
   return (
     <>
       <RequestsGrid
         rows={rows}
         columns={columns}
+        loading={loading}
         isDark={isDark}
         border={border}
         gridApiRef={gridApiRef}
@@ -1838,12 +1849,12 @@ function PendingTab({
     }
   };
 
-  if (loading) return <Loader />;
   return (
     <>
       <RequestsGrid
         rows={rows}
         columns={columns}
+        loading={loading}
         isDark={isDark}
         border={border}
         gridApiRef={gridApiRef}
@@ -1950,12 +1961,12 @@ function ApprovedTab({
     }
   };
 
-  if (loading) return <Loader />;
   return (
     <>
       <RequestsGrid
         rows={rows}
         columns={columns}
+        loading={loading}
         isDark={isDark}
         border={border}
         gridApiRef={gridApiRef}
@@ -2021,12 +2032,13 @@ function DeclinedTab({
   const rows = requests.filter((r) => r.status === "Declined").map(toRow);
 
   useAutoOpenRequest(rows, openRequestId, setSelected);
-  if (loading) return <Loader />;
+
   return (
     <>
       <RequestsGrid
         rows={rows}
         columns={columns}
+        loading={loading}
         isDark={isDark}
         border={border}
         gridApiRef={gridApiRef}

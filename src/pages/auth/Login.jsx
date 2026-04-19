@@ -359,7 +359,7 @@ function Login() {
           text-align: center;
         }
         .lr-footer a {
-          color: #ffffff;
+          color: #f5c52b;
           text-decoration: none;
           font-weight: 600;
           transition: opacity 0.2s;
@@ -395,15 +395,18 @@ function Login() {
         </div>
 
         <div className={`lr-right${ready ? " ready" : ""}`}>
-
           <div className="lr-title">Welcome back</div>
           <div className="lr-sub">Sign in to your TGP account</div>
 
           {error && (
             <div className="lr-error">
               <svg
-                width="14" height="14" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" strokeWidth="2.2"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
                 style={{ flexShrink: 0, marginTop: 1 }}
               >
                 <circle cx="12" cy="12" r="10" />
@@ -428,7 +431,9 @@ function Login() {
                   disabled={loading}
                   autoComplete="email"
                 />
-                <label className="lr-label" htmlFor="lr-email">Email</label>
+                <label className="lr-label" htmlFor="lr-email">
+                  Email
+                </label>
               </div>
             </div>
 
@@ -445,8 +450,11 @@ function Login() {
                   disabled={loading}
                   autoComplete="current-password"
                 />
-                <label className="lr-label" htmlFor="lr-password">Password</label>
-                <button className="lr-toggle"
+                <label className="lr-label" htmlFor="lr-password">
+                  Password
+                </label>
+                <button
+                  className="lr-toggle"
                   onClick={() => setShowPassword((p) => !p)}
                   tabIndex={-1}
                   aria-label={showPassword ? "Hide password" : "Show password"}
@@ -470,22 +478,48 @@ function Login() {
           </form>
 
           <div className="lr-footer">
-            Don't have an account yet?{" "}
-            <Link to="/signup">Sign up</Link>
+            Don't have an account yet? <Link to="/signup">Sign up</Link>
           </div>
 
           {/* ── Social footer ────────────────────────────────────────── */}
           <div className="lr-social">
             <div className="lr-social-group">
-              <a href="https://www.facebook.com/thegoldpanicles" target="_blank" rel="noopener noreferrer"><Facebook style={{ fontSize: 14 }} /></a>
-              <a href="https://www.instagram.com/thegoldpanicles/" target="_blank" rel="noopener noreferrer"><Instagram style={{ fontSize: 14 }} /></a>
-              <a href="https://www.youtube.com/@thegoldpanicles" target="_blank" rel="noopener noreferrer"><YouTube style={{ fontSize: 14 }} /></a>
+              <a
+                href="https://www.facebook.com/thegoldpanicles"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Facebook style={{ fontSize: 14 }} />
+              </a>
+              <a
+                href="https://www.instagram.com/thegoldpanicles/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Instagram style={{ fontSize: 14 }} />
+              </a>
+              <a
+                href="https://www.youtube.com/@thegoldpanicles"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <YouTube style={{ fontSize: 14 }} />
+              </a>
               <span className="lr-social-handle">@thegoldpanicles</span>
             </div>
             <div className="lr-social-sep" />
             <div className="lr-social-group">
-              <a href="https://x.com/tgpCSU" target="_blank" rel="noopener noreferrer">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <a
+                href="https://x.com/tgpCSU"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
               </a>

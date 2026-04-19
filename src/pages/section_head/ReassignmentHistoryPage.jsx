@@ -9,16 +9,22 @@ import {
   MenuItem,
   Tooltip,
   useTheme,
+  OutlinedInput,
+  InputAdornment,
 } from "@mui/material";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForwardOutlined";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import {
   CONTROL_RADIUS,
   FILTER_INPUT_HEIGHT,
-  MODAL_TAB_HEIGHT,
+  FILTER_ROW_GAP,
+  FILTER_SEARCH_MIN_WIDTH,
+  FILTER_SEMESTER_MIN_WIDTH,
   TABLE_FIRST_COL_FLEX,
   TABLE_FIRST_COL_MIN_WIDTH,
 } from "../../utils/layoutTokens";
@@ -81,7 +87,8 @@ export default function ReassignmentHistoryPage() {
   const [rows, setRows] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [selectedSemester, setSelectedSemester] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("emergency"); // emergency | noshow
+  const [typeFilter, setTypeFilter] = useState("all"); // all | emergency | noshow
+  const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Load current user
@@ -204,12 +211,22 @@ export default function ReassignmentHistoryPage() {
 
   const filtered = useMemo(() => {
     let out = rows;
-    if (typeFilter === "emergency")
-      out = out.filter((r) => isAnnouncedEmergency(r));
-    else if (typeFilter === "noshow")
-      out = out.filter((r) => !isAnnouncedEmergency(r));
+    if (typeFilter === "emergency") out = out.filter((r) => isAnnouncedEmergency(r));
+    else if (typeFilter === "noshow") out = out.filter((r) => !isAnnouncedEmergency(r));
+    if (searchText.trim()) {
+      const tokens = searchText.toLowerCase().split(/\s+/).filter(Boolean);
+      out = out.filter((r) => {
+        const haystack = [
+          r.request?.title ?? "",
+          r.cancellation_reason ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        return tokens.every((t) => haystack.includes(t));
+      });
+    }
     return out;
-  }, [rows, typeFilter]);
+  }, [rows, typeFilter, searchText]);
 
   // â”€â”€ DataGrid rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const dataRows = useMemo(
@@ -507,73 +524,86 @@ export default function ReassignmentHistoryPage() {
         sx={{
           mb: 2,
           display: "flex",
-          flexWrap: "wrap",
-          gap: 1,
+          gap: FILTER_ROW_GAP,
           alignItems: "center",
+          flexWrap: "nowrap",
+          overflowX: "auto",
           flexShrink: 0,
-          px: 1.25,
-          py: 1,
-          borderRadius: CONTROL_RADIUS,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
-        {/* Tabs */}
-        <Box sx={{ display: "flex", gap: 0.75 }}>
-          {[
-            { label: "Announced Emergency", key: "emergency" },
-            { label: "No Show", key: "noshow" },
-          ].map((tab) => {
-            const active = typeFilter === tab.key;
-            return (
-              <Box
-                key={tab.key}
-                onClick={() => setTypeFilter(tab.key)}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  px: 1.25,
-                  height: MODAL_TAB_HEIGHT,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  border: `1px solid ${active ? "#212121" : border}`,
-                  backgroundColor: active ? "#212121" : "transparent",
-                  color: active ? "#ffffff" : "text.secondary",
-                  fontFamily: dm,
-                  fontSize: "0.74rem",
-                  fontWeight: active ? 700 : 500,
-                  userSelect: "none",
-                }}
-              >
-                {tab.label}
-              </Box>
-            );
-          })}
-        </Box>
+        {/* Search */}
+        <FormControl size="small" sx={{ flexShrink: 0, minWidth: FILTER_SEARCH_MIN_WIDTH }}>
+          <OutlinedInput
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            startAdornment={
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+              </InputAdornment>
+            }
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          />
+        </FormControl>
 
-        <Box sx={{ flex: 1 }} />
+        {/* Type filter */}
+        <FormControl size="small" sx={{ flexShrink: 0, minWidth: 190 }}>
+          <Select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
+              height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
+            }}
+          >
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All</MenuItem>
+            <MenuItem value="emergency" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Announced Emergency</MenuItem>
+            <MenuItem value="noshow" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>No Show</MenuItem>
+          </Select>
+        </FormControl>
 
         {/* Semester filter */}
-        <FormControl size="small" sx={{ minWidth: 170 }}>
+        <FormControl size="small" sx={{ flexShrink: 0, minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
           <Select
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
+            IconComponent={UnfoldMoreIcon}
             displayEmpty
             sx={{
               fontFamily: dm,
-              fontSize: "0.82rem",
-              borderRadius: `${CONTROL_RADIUS}px`,
+              fontSize: "0.78rem",
+              borderRadius: CONTROL_RADIUS,
               height: FILTER_INPUT_HEIGHT,
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(0,0,0,0.12)",
+              },
             }}
           >
-            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.82rem" }}>
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
               All Semesters
             </MenuItem>
             {semesters.map((s) => (
               <MenuItem
                 key={s.id}
                 value={s.id}
-                sx={{ fontFamily: dm, fontSize: "0.82rem" }}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
               >
                 {getSemesterDisplayName(s)}
                 {s.is_active ? " (Active)" : ""}
@@ -582,13 +612,13 @@ export default function ReassignmentHistoryPage() {
           </Select>
         </FormControl>
 
-        <Box sx={{ ml: "auto" }}>
-          <Typography
-            sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.disabled" }}
-          >
-            {filtered.length} {filtered.length === 1 ? "event" : "events"}
-          </Typography>
-        </Box>
+        <Box sx={{ flex: 1 }} />
+
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.disabled", flexShrink: 0 }}
+        >
+          {filtered.length} {filtered.length === 1 ? "event" : "events"}
+        </Typography>
       </Box>
 
       {/* ── Content ── */}
@@ -599,7 +629,9 @@ export default function ReassignmentHistoryPage() {
           border: `1px solid ${border}`,
           borderRadius: "10px",
           overflow: "hidden",
-          boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
         }}
       >
         <DataGrid

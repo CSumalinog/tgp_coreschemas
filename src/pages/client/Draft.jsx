@@ -356,7 +356,18 @@ export default function Draft() {
       </Box>
 
       {/* ── Grid ── */}
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+          overflowX: "auto",
+          borderRadius: "10px",
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
+        }}
+      >
         <Box
           sx={{
             minWidth: 640,

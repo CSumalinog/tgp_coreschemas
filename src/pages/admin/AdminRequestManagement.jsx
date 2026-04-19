@@ -42,10 +42,13 @@ import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
+  FILTER_CLIENT_MIN_WIDTH,
   FILTER_SEARCH_FLEX,
   FILTER_INPUT_HEIGHT,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  FILTER_SEMESTER_MIN_WIDTH,
+  FILTER_STATUS_MIN_WIDTH,
   MODAL_TAB_HEIGHT,
   TABLE_FIRST_COL_FLEX,
   TABLE_FIRST_COL_MIN_WIDTH,
@@ -817,7 +820,12 @@ export default function AdminRequestManagement() {
           }}
         >
           {p.value !== "—" && (
-            <StaffAvatar path={p.row[avatarField]} name={p.value} bg={avatarBg} fg={avatarColor} />
+            <StaffAvatar
+              path={p.row[avatarField]}
+              name={p.value}
+              bg={avatarBg}
+              fg={avatarColor}
+            />
           )}
           <Typography
             sx={{
@@ -1043,16 +1051,7 @@ export default function AdminRequestManagement() {
       }}
     >
       {/* ── Filter row ── */}
-      <PageFilterToolbar
-        mb={2}
-        sx={{
-          px: 1.25,
-          py: 1,
-          borderRadius: CONTROL_RADIUS,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
-        }}
-      >
+      <PageFilterToolbar mb={2} sx={{}}>
         {/* Search */}
         <FormControl
           size="small"
@@ -1086,7 +1085,7 @@ export default function AdminRequestManagement() {
         </FormControl>
 
         {/* Status — clean trigger, counts only inside dropdown items */}
-        <FormControl size="small" sx={{ minWidth: 158 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH }}>
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -1159,7 +1158,7 @@ export default function AdminRequestManagement() {
         </FormControl>
 
         {/* Semester */}
-        <FormControl size="small" sx={{ minWidth: 148 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
           <Select
             value={selectedSem}
             onChange={(e) => setSelectedSem(e.target.value)}
@@ -1184,7 +1183,7 @@ export default function AdminRequestManagement() {
         </FormControl>
 
         {/* Client */}
-        <FormControl size="small" sx={{ minWidth: 140 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_CLIENT_MIN_WIDTH }}>
           <Select
             value={selectedEntity}
             onChange={(e) => setSelectedEntity(e.target.value)}
@@ -1222,34 +1221,28 @@ export default function AdminRequestManagement() {
         />
 
         {/* Export */}
-        <Box
-          onClick={handleExportCsv}
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: FILTER_BUTTON_HEIGHT,
-            borderRadius: CONTROL_RADIUS,
-            cursor: "pointer",
-            border: "1px solid rgba(0,0,0,0.12)",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 500,
-            color: "text.secondary",
-            backgroundColor: isDark ? "transparent" : "#f7f7f8",
-            transition: "all 0.15s",
-            flexShrink: 0,
-            "&:hover": {
-              borderColor: "rgba(53,53,53,0.3)",
-              color: "text.primary",
-              backgroundColor: "#ededee",
-            },
-          }}
-        >
-          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-          Export
-        </Box>
+        <Tooltip title="Export" arrow>
+          <IconButton
+            size="small"
+            onClick={handleExportCsv}
+            sx={{
+              borderRadius: CONTROL_RADIUS,
+              width: FILTER_BUTTON_HEIGHT,
+              height: FILTER_BUTTON_HEIGHT,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
 
         {/* Settings gear */}
         <Tooltip title="Manage requests" arrow>
@@ -1282,7 +1275,18 @@ export default function AdminRequestManagement() {
       </PageFilterToolbar>
 
       {/* ── Table ── */}
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+          overflowX: "auto",
+          borderRadius: "10px",
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
+        }}
+      >
         <Box
           sx={{
             minWidth: 680,
@@ -1293,74 +1297,60 @@ export default function AdminRequestManagement() {
             overflow: "hidden",
           }}
         >
-          {loading ? (
-            <Box
-              sx={{
-                height: 300,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BrandedLoader size={40} inline />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={buildColumns()}
-              pageSize={10}
-              rowsPerPageOptions={[10]}
-              checkboxSelection
-              disableRowSelectionOnClick
-              apiRef={gridApiRef}
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={setRowSelectionModel}
-              enableSearch={false}
-              filterModel={externalFilterModel}
-              selectionActions={
-                selectedRowCount > 1
-                  ? [
-                      {
-                        label: "Archive",
-                        icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
-                        onClick: handleBulkArchive,
-                      },
-                      {
-                        label: "Move to Trash",
-                        icon: (
-                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />
-                        ),
-                        onClick: handleBulkTrash,
-                        color: "error",
-                      },
-                    ]
-                  : []
-              }
-              slotProps={{
-                toolbar: {
-                  csvOptions: { disableToolbarButton: true },
-                  printOptions: { disableToolbarButton: true },
-                },
-              }}
-              rowHeight={statusFilter === "Forwarded" ? 56 : 56}
-              getRowHeight={
-                statusFilter === "Forwarded"
-                  ? ({ model }) => {
-                      const s = model.forwardedTo?.length || 1;
-                      if (s <= 1) return 56;
-                      if (s === 2) return 68;
-                      return 88;
-                    }
-                  : undefined
-              }
-              getRowClassName={(params) =>
-                highlight &&
-                params.row.requestTitle?.toLowerCase().includes(highlight)
-                  ? "highlighted-row"
-                  : ""
-              }
-            />
-          )}
+          <DataGrid
+            rows={rows}
+            columns={buildColumns()}
+            loading={loading}
+            pageSize={10}
+            rowsPerPageOptions={[10]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            apiRef={gridApiRef}
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={setRowSelectionModel}
+            enableSearch={false}
+            filterModel={externalFilterModel}
+            selectionActions={
+              selectedRowCount > 1
+                ? [
+                    {
+                      label: "Archive",
+                      icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
+                      onClick: handleBulkArchive,
+                    },
+                    {
+                      label: "Move to Trash",
+                      icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
+                      onClick: handleBulkTrash,
+                      color: "error",
+                    },
+                  ]
+                : []
+            }
+            slotProps={{
+              toolbar: {
+                csvOptions: { disableToolbarButton: true },
+                printOptions: { disableToolbarButton: true },
+              },
+            }}
+            rowHeight={statusFilter === "Forwarded" ? 56 : 56}
+            getRowHeight={
+              statusFilter === "Forwarded"
+                ? ({ model }) => {
+                    const s = model.forwardedTo?.length || 1;
+                    if (s <= 1) return 56;
+                    if (s === 2) return 68;
+                    return 88;
+                  }
+                : undefined
+            }
+            getRowClassName={(params) =>
+              highlight &&
+              params.row.requestTitle?.toLowerCase().includes(highlight)
+                ? "highlighted-row"
+                : ""
+            }
+          />
         </Box>
       </Box>
 

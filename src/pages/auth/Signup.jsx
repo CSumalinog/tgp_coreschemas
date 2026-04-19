@@ -515,15 +515,17 @@ function Signup() {
         {/* ── RIGHT: Sign-up form ───────────────────────────────── */}
         <div className={`su-right ${ready ? "ready" : ""}`}>
           <div className="su-title">Create Account</div>
-          <div className="su-sub">
-            Submit and track your coverage requests
-          </div>
+          <div className="su-sub">Submit and track your coverage requests</div>
 
           {error && (
             <div className="su-error">
               <svg
-                width="14" height="14" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" strokeWidth="2.2"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
                 style={{ flexShrink: 0, marginTop: 1 }}
               >
                 <circle cx="12" cy="12" r="10" />
@@ -548,7 +550,9 @@ function Signup() {
                   disabled={loading}
                   autoComplete="name"
                 />
-                <label className="su-label" htmlFor="su-fullname">Full Name</label>
+                <label className="su-label" htmlFor="su-fullname">
+                  Full Name
+                </label>
               </div>
             </div>
 
@@ -565,7 +569,9 @@ function Signup() {
                   disabled={loading}
                   autoComplete="email"
                 />
-                <label className="su-label" htmlFor="su-email">Email</label>
+                <label className="su-label" htmlFor="su-email">
+                  Email
+                </label>
               </div>
             </div>
 
@@ -582,7 +588,9 @@ function Signup() {
                   disabled={loading}
                   autoComplete="new-password"
                 />
-                <label className="su-label" htmlFor="su-password">Password</label>
+                <label className="su-label" htmlFor="su-password">
+                  Password
+                </label>
                 <button
                   type="button"
                   className="su-toggle"
@@ -603,8 +611,12 @@ function Signup() {
                     const pass = test(password);
                     return (
                       <div className="su-rule" key={label}>
-                        <div className={`su-rule-dot ${pass ? "pass" : "fail"}`} />
-                        <span className={`su-rule-text ${pass ? "pass" : "fail"}`}>
+                        <div
+                          className={`su-rule-dot ${pass ? "pass" : "fail"}`}
+                        />
+                        <span
+                          className={`su-rule-text ${pass ? "pass" : "fail"}`}
+                        >
                           {label}
                         </span>
                       </div>
@@ -627,13 +639,19 @@ function Signup() {
                   disabled={loading}
                   autoComplete="new-password"
                 />
-                <label className="su-label" htmlFor="su-confirm">Confirm Password</label>
+                <label className="su-label" htmlFor="su-confirm">
+                  Confirm Password
+                </label>
                 <button
                   type="button"
                   className="su-toggle"
                   onClick={() => setShowConfirm((p) => !p)}
                   tabIndex={-1}
-                  aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
+                  aria-label={
+                    showConfirm
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
                 >
                   {showConfirm ? (
                     <VisibilityOff style={{ fontSize: 17 }} />
@@ -654,22 +672,48 @@ function Signup() {
           </form>
 
           <div className="su-footer">
-            Already have an account?{" "}
-            <Link to="/login">Sign in</Link>
+            Already have an account? <Link to="/login">Sign in</Link>
           </div>
 
           {/* ── Social footer ──────────────────────────────────── */}
           <div className="su-social">
             <div className="su-social-group">
-              <a href="https://www.facebook.com/thegoldpanicles" target="_blank" rel="noopener noreferrer"><Facebook style={{ fontSize: 14 }} /></a>
-              <a href="https://www.instagram.com/thegoldpanicles/" target="_blank" rel="noopener noreferrer"><Instagram style={{ fontSize: 14 }} /></a>
-              <a href="https://www.youtube.com/@thegoldpanicles" target="_blank" rel="noopener noreferrer"><YouTube style={{ fontSize: 14 }} /></a>
+              <a
+                href="https://www.facebook.com/thegoldpanicles"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Facebook style={{ fontSize: 14 }} />
+              </a>
+              <a
+                href="https://www.instagram.com/thegoldpanicles/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Instagram style={{ fontSize: 14 }} />
+              </a>
+              <a
+                href="https://www.youtube.com/@thegoldpanicles"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <YouTube style={{ fontSize: 14 }} />
+              </a>
               <span className="su-social-handle">@thegoldpanicles</span>
             </div>
             <div className="su-social-sep" />
             <div className="su-social-group">
-              <a href="https://x.com/tgpCSU" target="_blank" rel="noopener noreferrer">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <a
+                href="https://x.com/tgpCSU"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
               </a>
@@ -677,8 +721,6 @@ function Signup() {
             </div>
           </div>
         </div>
-
-        
       </div>
     </>
   );

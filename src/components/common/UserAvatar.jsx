@@ -235,19 +235,21 @@ export default function UserAvatar({ profileRoute = "profile" }) {
         // opens upward, aligned to the left of the avatar
         anchorOrigin={{ horizontal: "left", vertical: "top" }}
         transformOrigin={{ horizontal: "left", vertical: "bottom" }}
-        slotProps={{ paper: {
-          sx: {
-            fontFamily: dm,
-            width: 240, // matches sidebar width
-            borderRadius: "10px",
-            backgroundColor: "#1A2820",
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 -16px 48px rgba(0,0,0,0.55)",
-            mb: 1, // gap above the avatar
-            overflow: "hidden",
-            "& .MuiList-root": { py: 0 },
+        slotProps={{
+          paper: {
+            sx: {
+              fontFamily: dm,
+              width: 240, // matches sidebar width
+              borderRadius: "10px",
+              backgroundColor: "#1A2820",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 -16px 48px rgba(0,0,0,0.55)",
+              mb: 1, // gap above the avatar
+              overflow: "hidden",
+              "& .MuiList-root": { py: 0 },
+            },
           },
-        } }}
+        }}
       >
         {/* ── User header ── */}
         <Box
@@ -431,4 +433,3 @@ export default function UserAvatar({ profileRoute = "profile" }) {
     </>
   );
 }
-

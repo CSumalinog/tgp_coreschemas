@@ -125,7 +125,9 @@ function Card({ children, sx = {}, onClick }) {
         bgcolor: "background.paper",
         borderRadius: "10px",
         border: `1px solid ${isDark ? BRAND.borderDark : BRAND.borderLight}`,
-        boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+        boxShadow: isDark
+          ? "0 1px 10px rgba(0,0,0,0.4)"
+          : "0 1px 8px rgba(0,0,0,0.07)",
         overflow: "hidden",
         ...(onClick
           ? {
@@ -193,7 +195,11 @@ export default function SecHeadDashboard() {
   const [stats, setStats] = useState({ pending: 0, assigned: 0, complete: 0 });
   const [recentRequests, setRecentRequests] = useState([]);
   const [teamSnapshot, setTeamSnapshot] = useState([]);
-  const [todayCoverage, setTodayCoverage] = useState({ total: 0, onGoing: 0, complete: 0 });
+  const [todayCoverage, setTodayCoverage] = useState({
+    total: 0,
+    onGoing: 0,
+    complete: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -274,7 +280,8 @@ export default function SecHeadDashboard() {
     setTodayCoverage({
       total: todayReqs.length,
       onGoing: todayReqs.filter((r) => r.status === "On Going").length,
-      complete: todayReqs.filter((r) => r.status === "Coverage Complete").length,
+      complete: todayReqs.filter((r) => r.status === "Coverage Complete")
+        .length,
     });
 
     if (activeSemester?.id) {
@@ -402,22 +409,46 @@ export default function SecHeadDashboard() {
           py: 1.25,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            flexWrap: "wrap",
+          }}
+        >
           <Typography
-            sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled", fontWeight: 600 }}
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.78rem",
+              color: "text.disabled",
+              fontWeight: 600,
+            }}
           >
             Today
           </Typography>
           {todayCoverage.total === 0 ? (
-            <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.78rem",
+                color: "text.disabled",
+              }}
+            >
               Nothing scheduled for today.
             </Typography>
           ) : (
             <>
               <Typography
-                sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "text.primary",
+                }}
               >
-                {todayCoverage.total} event{todayCoverage.total !== 1 ? "s" : ""}
+                {todayCoverage.total} event
+                {todayCoverage.total !== 1 ? "s" : ""}
               </Typography>
               {[
                 {
@@ -434,15 +465,24 @@ export default function SecHeadDashboard() {
                 },
                 {
                   label: "In Pipeline",
-                  value: todayCoverage.total - todayCoverage.onGoing - todayCoverage.complete,
+                  value:
+                    todayCoverage.total -
+                    todayCoverage.onGoing -
+                    todayCoverage.complete,
                   color: isDark ? BRAND.gold : "#7a5c00",
                   hide:
-                    todayCoverage.total - todayCoverage.onGoing - todayCoverage.complete === 0,
+                    todayCoverage.total -
+                      todayCoverage.onGoing -
+                      todayCoverage.complete ===
+                    0,
                 },
               ]
                 .filter((s) => !s.hide)
                 .map((s) => (
-                  <Box key={s.label} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Box
+                    key={s.label}
+                    sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                  >
                     <Box
                       sx={{
                         width: 6,
@@ -453,12 +493,21 @@ export default function SecHeadDashboard() {
                       }}
                     />
                     <Typography
-                      sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: s.color }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        color: s.color,
+                      }}
                     >
                       {s.value}
                     </Typography>
                     <Typography
-                      sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        color: "text.disabled",
+                      }}
                     >
                       {s.label}
                     </Typography>
@@ -468,7 +517,12 @@ export default function SecHeadDashboard() {
           )}
         </Box>
         <Typography
-          sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled", flexShrink: 0 }}
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.72rem",
+            color: "text.disabled",
+            flexShrink: 0,
+          }}
         >
           {currentUser.section}
         </Typography>
@@ -528,7 +582,9 @@ export default function SecHeadDashboard() {
                       alignItems: "center",
                       justifyContent: "center",
                       backgroundColor: k.isRed
-                        ? isDark ? BRAND.redAlpha15 : BRAND.redLight
+                        ? isDark
+                          ? BRAND.redAlpha15
+                          : BRAND.redLight
                         : iconWell,
                     }}
                   >
@@ -564,7 +620,11 @@ export default function SecHeadDashboard() {
                     {k.value}
                   </Typography>
                   <Typography
-                    sx={{ fontSize: "0.7rem", color: "text.disabled", mt: 0.25 }}
+                    sx={{
+                      fontSize: "0.7rem",
+                      color: "text.disabled",
+                      mt: 0.25,
+                    }}
                   >
                     {k.sub}
                   </Typography>
@@ -742,7 +802,14 @@ export default function SecHeadDashboard() {
         </Card>
 
         {/* Team Snapshot — spans 1 col */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, gridColumn: { xs: "1 / -1", sm: "3 / 4", md: "3 / 4" } }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+            gridColumn: { xs: "1 / -1", sm: "3 / 4", md: "3 / 4" },
+          }}
+        >
           <Card>
             <SectionHeader
               title={`Team — ${currentUser.division}`}

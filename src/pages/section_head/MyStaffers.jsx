@@ -5,11 +5,13 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  IconButton,
   useTheme,
   GlobalStyles,
   FormControl,
   OutlinedInput,
   InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -390,7 +392,12 @@ export default function MyStaffers() {
               height: "100%",
             }}
           >
-            <StaffAvatar path={params.row.avatar_url} name={params.value} bg={avatarColor.bg} fg={avatarColor.color} />
+            <StaffAvatar
+              path={params.row.avatar_url}
+              name={params.value}
+              bg={avatarColor.bg}
+              fg={avatarColor.color}
+            />
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 sx={{
@@ -547,11 +554,6 @@ export default function MyStaffers() {
             alignItems: "center",
             gap: FILTER_ROW_GAP,
             mt: { xs: 2, sm: 0 },
-            px: 1.25,
-            py: 1,
-            borderRadius: CONTROL_RADIUS,
-            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
           }}
         >
           {/* Search bar */}
@@ -587,71 +589,65 @@ export default function MyStaffers() {
           </FormControl>
 
           {/* Export button */}
-          <Box
-            onClick={() => {
-              // Simple CSV export
-              const csvRows = [
-                [
-                  "Staffer",
-                  "Section",
-                  "Duty Day",
-                  "Total",
-                  "Pending",
-                  "Completed",
-                ],
-                ...filteredStaffers.map((s) => [
-                  s.full_name,
-                  s.section,
-                  typeof s.dutyDay === "number"
-                    ? DAY_CFG[s.dutyDay]?.label
-                    : "",
-                  s.total,
-                  s.pending,
-                  s.completed,
-                ]),
-              ];
-              const csvContent = csvRows
-                .map((r) =>
-                  r
-                    .map(String)
-                    .map((v) => `"${v.replace(/"/g, '""')}"`)
-                    .join(","),
-                )
-                .join("\n");
-              const blob = new Blob([csvContent], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "staffers.csv";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1.5,
-              height: FILTER_BUTTON_HEIGHT,
-              borderRadius: CONTROL_RADIUS,
-              cursor: "pointer",
-              border: "1px solid rgba(0,0,0,0.12)",
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              fontWeight: 500,
-              color: "text.secondary",
-              backgroundColor: isDark ? "transparent" : "#f7f7f8",
-              transition: "all 0.15s",
-              flexShrink: 0,
-              "&:hover": {
-                borderColor: "rgba(53,53,53,0.3)",
-                color: "text.primary",
-                backgroundColor: "#ededee",
-              },
-            }}
-          >
-            <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-            Export
-          </Box>
+          <Tooltip title="Export" arrow>
+            <IconButton
+              size="small"
+              onClick={() => {
+                // Simple CSV export
+                const csvRows = [
+                  [
+                    "Staffer",
+                    "Section",
+                    "Duty Day",
+                    "Total",
+                    "Pending",
+                    "Completed",
+                  ],
+                  ...filteredStaffers.map((s) => [
+                    s.full_name,
+                    s.section,
+                    typeof s.dutyDay === "number"
+                      ? DAY_CFG[s.dutyDay]?.label
+                      : "",
+                    s.total,
+                    s.pending,
+                    s.completed,
+                  ]),
+                ];
+                const csvContent = csvRows
+                  .map((r) =>
+                    r
+                      .map(String)
+                      .map((v) => `"${v.replace(/"/g, '""')}"`)
+                      .join(","),
+                  )
+                  .join("\n");
+                const blob = new Blob([csvContent], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "staffers.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              sx={{
+                borderRadius: CONTROL_RADIUS,
+                width: FILTER_BUTTON_HEIGHT,
+                height: FILTER_BUTTON_HEIGHT,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+                color: "text.secondary",
+                backgroundColor: isDark ? "transparent" : "#f7f7f8",
+                flexShrink: 0,
+                "&:hover": {
+                  borderColor: "rgba(53,53,53,0.3)",
+                  color: "text.primary",
+                  backgroundColor: "#ededee",
+                },
+              }}
+            >
+              <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
 
@@ -694,18 +690,7 @@ export default function MyStaffers() {
             overflow: "hidden",
           }}
         >
-          {loading ? (
-            <Box
-              sx={{
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BrandedLoader size={44} inline />
-            </Box>
-          ) : staffers.length === 0 ? (
+          {!loading && staffers.length === 0 ? (
             <Box
               sx={{
                 height: "100%",
@@ -728,6 +713,7 @@ export default function MyStaffers() {
             <DataGrid
               rows={rows}
               columns={columns}
+              loading={loading}
               pageSize={10}
               rowsPerPageOptions={[10, 25, 50, 100]}
               disableRowSelectionOnClick

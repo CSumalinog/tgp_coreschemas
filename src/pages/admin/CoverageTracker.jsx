@@ -35,11 +35,14 @@ import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import {
   CONTROL_RADIUS,
+  FILTER_CLIENT_MIN_WIDTH,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  FILTER_SEMESTER_MIN_WIDTH,
+  FILTER_STATUS_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -512,7 +515,10 @@ export default function CoverageTracker() {
       return dedupeById([
         ...(onGoing || []),
         ...requests.filter((r) => hasAnyTimeIn(r)),
-      ]).filter((r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r));
+      ]).filter(
+        (r) =>
+          hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
+      );
     }
     if (stageFilter === "Completed") {
       return dedupeById([
@@ -535,7 +541,8 @@ export default function CoverageTracker() {
       ...(onGoing || []),
       ...requests.filter((r) => hasAnyTimeIn(r)),
     ]).filter(
-      (r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
+      (r) =>
+        hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
     );
 
     const completedList = dedupeById([
@@ -1056,11 +1063,6 @@ export default function CoverageTracker() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
-          px: 1.25,
-          py: 1,
-          borderRadius: CONTROL_RADIUS,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         <FormControl
@@ -1094,7 +1096,7 @@ export default function CoverageTracker() {
         </FormControl>
 
         {activeTab === "tracker" && (
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH }}>
             <Select
               value={stageFilter}
               onChange={(e) => setStageFilter(e.target.value)}
@@ -1130,7 +1132,7 @@ export default function CoverageTracker() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: 1,
-                    minWidth: 180,
+                    minWidth: FILTER_STATUS_MIN_WIDTH,
                   }}
                 >
                   <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
@@ -1148,7 +1150,7 @@ export default function CoverageTracker() {
           </FormControl>
         )}
 
-        <FormControl size="small" sx={{ minWidth: 148 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
           <Select
             value={selectedSem}
             onChange={(e) => setSelectedSem(e.target.value)}
@@ -1172,7 +1174,7 @@ export default function CoverageTracker() {
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 140 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_CLIENT_MIN_WIDTH }}>
           <Select
             value={selectedEntity}
             onChange={(e) => setSelectedEntity(e.target.value)}
@@ -1209,34 +1211,28 @@ export default function CoverageTracker() {
           }}
         />
 
-        <Box
-          onClick={openGlobalExportMenu}
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: FILTER_INPUT_HEIGHT,
-            borderRadius: CONTROL_RADIUS,
-            cursor: "pointer",
-            border: "1px solid rgba(0,0,0,0.12)",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 500,
-            color: "text.secondary",
-            backgroundColor: isDark ? "transparent" : "#f7f7f8",
-            transition: "all 0.15s",
-            flexShrink: 0,
-            "&:hover": {
-              borderColor: "rgba(53,53,53,0.3)",
-              color: "text.primary",
-              backgroundColor: "#ededee",
-            },
-          }}
-        >
-          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-          Export
-        </Box>
+        <Tooltip title="Export" arrow>
+          <IconButton
+            size="small"
+            onClick={openGlobalExportMenu}
+            sx={{
+              borderRadius: CONTROL_RADIUS,
+              width: FILTER_INPUT_HEIGHT,
+              height: FILTER_INPUT_HEIGHT,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
 
         <Menu
           anchorEl={exportMenuAnchorEl}
@@ -1291,7 +1287,9 @@ export default function CoverageTracker() {
           width: "100%",
           overflowX: "auto",
           borderRadius: "10px",
-          boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
         }}
       >
         {activeTab === "tracker" ? (

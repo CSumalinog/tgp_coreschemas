@@ -428,6 +428,7 @@ export default function TrashManagementBase({
             <DataGrid
               rows={trashedRequests}
               columns={trashColumns}
+              loading={loading}
               showToolbar={!embedded}
               density="compact"
               autoHeight

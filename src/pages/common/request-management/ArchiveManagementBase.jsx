@@ -415,6 +415,7 @@ export default function ArchiveManagementBase({
             <DataGrid
               rows={archivedRequests}
               columns={archiveColumns}
+              loading={loading}
               showToolbar={!embedded}
               density="compact"
               autoHeight

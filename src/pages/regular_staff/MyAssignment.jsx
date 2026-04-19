@@ -335,7 +335,9 @@ function AssignmentCard({
         borderRadius: "10px",
         border: `1px solid ${border}`,
         backgroundColor: "background.paper",
-        boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+        boxShadow: isDark
+          ? "0 1px 10px rgba(0,0,0,0.4)"
+          : "0 1px 8px rgba(0,0,0,0.07)",
         cursor: "pointer",
         transition: "box-shadow 0.15s",
         "&:hover": {
@@ -2125,19 +2127,13 @@ export default function MyAssignment() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
-          px: 1.25,
-          py: 1,
-          borderRadius: CONTROL_RADIUS,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         <FormControl
           size="small"
           sx={{
-            flex: FILTER_SEARCH_FLEX,
+            flexShrink: 0,
             minWidth: FILTER_SEARCH_MIN_WIDTH,
-            maxWidth: FILTER_SEARCH_MAX_WIDTH,
           }}
         >
           <OutlinedInput

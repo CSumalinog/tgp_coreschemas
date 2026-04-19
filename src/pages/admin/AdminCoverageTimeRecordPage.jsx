@@ -1,4 +1,4 @@
-﻿// src/pages/section_head/CoverageTimeRecordPage.jsx
+// src/pages/admin/AdminCoverageTimeRecordPage.jsx
 import React, {
   useCallback,
   useEffect,
@@ -10,7 +10,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Avatar,
   Box,
-  CircularProgress,
   FormControl,
   IconButton,
   InputAdornment,
@@ -45,7 +44,7 @@ import {
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 
-// â”€â”€ Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tokens ──────────────────────────────────────────────────────────────────
 const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
 const dm = "'Inter', sans-serif";
@@ -60,11 +59,11 @@ const AVATAR_COLORS = [
   { bg: "#dbeafe", color: "#1e40af" },
 ];
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ──────────────────────────────────────────────────────────────────
 const getAvatarColor = (id) => {
   let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < (id || "").length; i++) {
+    hash = (id || "").charCodeAt(i) + ((hash << 5) - hash);
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
@@ -80,7 +79,7 @@ const getInitials = (name) => {
 };
 
 const fmtTime = (ts) => {
-  if (!ts) return "\u2014";
+  if (!ts) return "—";
   return new Date(ts).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -105,9 +104,9 @@ const formatLightboxTimestamp = (ts) => {
 };
 
 const computeDuration = (timedIn, completedAt) => {
-  if (!timedIn || !completedAt) return "\u2014";
+  if (!timedIn || !completedAt) return "—";
   const diffMs = new Date(completedAt) - new Date(timedIn);
-  if (diffMs <= 0) return "\u2014";
+  if (diffMs <= 0) return "—";
   const totalMins = Math.floor(diffMs / 60000);
   const hrs = Math.floor(totalMins / 60);
   const mins = totalMins % 60;
@@ -118,7 +117,7 @@ const computeDuration = (timedIn, completedAt) => {
 
 const buildEventDateDisplay = (req) => {
   const fmtDs = (d, opts) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d + "T00:00:00").toLocaleDateString("en-US", opts);
   };
   if (req.is_multiday && req.event_days?.length > 0) {
@@ -137,7 +136,7 @@ const buildEventDateDisplay = (req) => {
           day: "numeric",
           year: "numeric",
         })
-      : `${first} â€“ ${last}`;
+      : `${first} – ${last}`;
   }
   return req.event_date
     ? new Date(req.event_date).toLocaleDateString("en-US", {
@@ -145,7 +144,7 @@ const buildEventDateDisplay = (req) => {
         day: "numeric",
         year: "numeric",
       })
-    : "â€”";
+    : "—";
 };
 
 const resolveSelfieUrl = (rawSelfieUrl) => {
@@ -212,13 +211,12 @@ const sanitizeFileNamePart = (value) => {
   return cleaned || "export";
 };
 
-// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export default function CoverageTimeRecordPage({ embedded = false }) {
+// ── Component ────────────────────────────────────────────────────────────────
+export default function AdminCoverageTimeRecordPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const border = isDark ? BORDER_DARK : BORDER;
 
-  const [currentUser, setCurrentUser] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [semesters, setSemesters] = useState([]);
@@ -229,6 +227,10 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
   const [lightboxSelfie, setLightboxSelfie] = useState(null);
   const [hoveredProof, setHoveredProof] = useState(null);
   const hoverPreviewTimerRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const gridApiRef = useGridApiRef();
+  const highlightReqId = location.state?.highlightRequestId ?? null;
 
   const handleProofMouseEnter = (proof) => {
     if (hoverPreviewTimerRef.current)
@@ -246,29 +248,8 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     }
     setHoveredProof((prev) => (prev?.id === proofId ? null : prev));
   };
-  const navigate = useNavigate();
-  const location = useLocation();
-  const gridApiRef = useGridApiRef();
-  const highlightReqId = location.state?.highlightRequestId ?? null;
 
-  // â”€â”€ Load user â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(() => {
-    async function loadUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, full_name, role, section, division")
-        .eq("id", user.id)
-        .single();
-      setCurrentUser(profile);
-    }
-    loadUser();
-  }, []);
-
-  // â”€â”€ Load semesters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load semesters ────────────────────────────────────────────────────────
   useEffect(() => {
     async function loadSemesters() {
       const { data } = await supabase
@@ -280,23 +261,22 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     loadSemesters();
   }, []);
 
-  // â”€â”€ Load requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load requests (all, no section filter) ───────────────────────────────
   const loadRequests = useCallback(async () => {
-    if (!currentUser?.section) return;
     setLoading(true);
     try {
-      const baseSelect = `
-        id, title, event_date, is_multiday, event_days, venue, status,
-        entity:client_entities ( id, name ),
-        coverage_assignments (
-          id, status, assigned_to, section, timed_in_at, completed_at, selfie_url,
-          staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
-        )
-      `;
-
       const { data, error } = await supabase
         .from("coverage_requests")
-        .select(baseSelect)
+        .select(
+          `
+          id, title, event_date, is_multiday, event_days, venue, status,
+          entity:client_entities ( id, name ),
+          coverage_assignments (
+            id, status, assigned_to, section, timed_in_at, completed_at, selfie_url,
+            staffer:profiles!assigned_to ( id, full_name, section, role, avatar_url )
+          )
+        `,
+        )
         .in("status", [
           "Assigned",
           "Approved",
@@ -304,53 +284,38 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
           "Coverage Complete",
           "Completed",
         ])
-        .contains("forwarded_sections", [currentUser.section])
+        .is("archived_at", null)
+        .is("trashed_at", null)
         .order("event_date", { ascending: false });
 
       if (error) throw error;
-
-      // Only keep requests that have at least one assignment for this section
-      const mySection = currentUser.section;
-      const filtered = (data || []).filter((req) =>
-        (req.coverage_assignments || []).some((a) => a.section === mySection),
-      );
-
-      setRequests(filtered);
+      setRequests(data || []);
     } catch (err) {
-      console.error("CTR load error:", err);
+      console.error("AdminCTR load error:", err);
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, []);
 
   useEffect(() => {
     loadRequests();
   }, [loadRequests]);
 
-  // â”€â”€ Build attendance map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Build attendance map ──────────────────────────────────────────────────
   const attendanceByRequest = useMemo(() => {
-    if (!currentUser?.section) return {};
-    const mySection = currentUser.section;
     const grouped = {};
-
     requests.forEach((req) => {
-      // Only assignments for this section that are not cancelled/no-show
-      const sectionAssignments = (req.coverage_assignments || []).filter(
-        (a) =>
-          a.section === mySection &&
-          a.status !== "Cancelled" &&
-          a.status !== "No Show",
+      const assignments = (req.coverage_assignments || []).filter(
+        (a) => a.status !== "Cancelled" && a.status !== "No Show",
       );
 
-      // Dedup by staff (same logic as admin CTR)
       const byStaff = new Map();
-      sectionAssignments.forEach((item) => {
+      assignments.forEach((item) => {
         const fallbackStaffName = item.staffer?.full_name || "Unknown";
         const staffKey =
           item.assigned_to ||
           item.staffer?.id ||
           `name:${fallbackStaffName.toLowerCase()}`;
-
         if (!byStaff.has(staffKey)) {
           byStaff.set(staffKey, item);
           return;
@@ -369,11 +334,10 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
 
       grouped[req.id] = deduped;
     });
-
     return grouped;
-  }, [requests, currentUser]);
+  }, [requests]);
 
-  // â”€â”€ Filter by semester + search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Filter by semester + search ───────────────────────────────────────────
   const filteredRequests = useMemo(() => {
     let list = requests;
 
@@ -408,7 +372,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     return list;
   }, [requests, selectedSem, semesters, searchText]);
 
-  // â”€â”€ DataGrid rows (flat, one per assignment) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── DataGrid rows (flat, one per assignment) ─────────────────────────────
   const dataRows = useMemo(() => {
     const rows = [];
     filteredRequests.forEach((req) => {
@@ -423,10 +387,12 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
           id: a.id,
           reqId: req.id,
           title: req.title || "Coverage Request",
+          client: req.entity?.name || "—",
           staffName: a.staffer?.full_name || "Unknown",
           staffAvatarUrl: getAvatarUrl(a.staffer?.avatar_url),
-          avatarBg: getAvatarColor(a.assigned_to).bg,
-          avatarFg: getAvatarColor(a.assigned_to).color,
+          avatarBg: getAvatarColor(a.assigned_to || "").bg,
+          avatarFg: getAvatarColor(a.assigned_to || "").color,
+          section: a.section || a.staffer?.section || "—",
           timeIn: fmtTime(a.timed_in_at),
           timeOut: fmtTime(a.completed_at),
           duration: computeDuration(a.timed_in_at, a.completed_at),
@@ -442,7 +408,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     return rows;
   }, [filteredRequests, attendanceByRequest, brokenSelfieById]);
 
-  // -- Scroll to highlighted row when navigated from View CTR
+  // ── Scroll to highlighted row ─────────────────────────────────────────────
   useEffect(() => {
     if (!highlightReqId || loading || dataRows.length === 0) return;
     const targetRow = dataRows.find((r) => r.reqId === highlightReqId);
@@ -451,7 +417,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     gridApiRef.current?.scrollToIndexes({ rowIndex });
   }, [highlightReqId, dataRows, loading, gridApiRef]);
 
-  // â”€â”€ DataGrid columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── DataGrid columns ──────────────────────────────────────────────────────
   const columns = useMemo(
     () => [
       {
@@ -504,12 +470,12 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
               height: "100%",
             }}
           >
-            <Tooltip title="View assignment" placement="top">
+            <Tooltip title="View request" placement="top">
               <Box
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate("/sec_head/coverage-management/assignment", {
-                    state: { openRequestId: p.row.reqId },
+                  navigate(`/admin/coverage-request-details/${p.row.reqId}`, {
+                    state: { backTo: "/admin/coverage-tracker/time-record" },
                   });
                 }}
                 sx={{
@@ -529,6 +495,28 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                 <ArrowForwardIcon sx={{ fontSize: 13 }} />
               </Box>
             </Tooltip>
+          </Box>
+        ),
+      },
+      {
+        field: "client",
+        headerName: "Client",
+        flex: 1,
+        minWidth: 120,
+        renderCell: (p) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "text.secondary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {p.value}
+            </Typography>
           </Box>
         ),
       },
@@ -577,6 +565,25 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         ),
       },
       {
+        field: "section",
+        headerName: "Section",
+        flex: 0.8,
+        minWidth: 100,
+        renderCell: (p) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                color: "text.secondary",
+              }}
+            >
+              {p.value}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
         field: "timeIn",
         headerName: "Time In",
         flex: 0.9,
@@ -594,7 +601,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.8rem",
-                color: p.value === "\u2014" ? "text.disabled" : "text.primary",
+                color: p.value === "—" ? "text.disabled" : "text.primary",
               }}
             >
               {p.value}
@@ -620,7 +627,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
               sx={{
                 fontFamily: dm,
                 fontSize: "0.8rem",
-                color: p.value === "\u2014" ? "text.disabled" : "text.primary",
+                color: p.value === "—" ? "text.disabled" : "text.primary",
               }}
             >
               {p.value}
@@ -647,7 +654,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                 fontFamily: dm,
                 fontSize: "0.8rem",
                 color:
-                  p.value === "\u2014"
+                  p.value === "—"
                     ? "text.disabled"
                     : isDark
                       ? "#f5c52b"
@@ -724,7 +731,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
                     color: "text.disabled",
                   }}
                 >
-                  {"\u2014"}
+                  —
                 </Typography>
               </Box>
             );
@@ -814,7 +821,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     [navigate, isDark, border],
   );
 
-  // â”€â”€ Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Export ────────────────────────────────────────────────────────────────
   const buildExportRows = () => {
     const rows = [];
     filteredRequests.forEach((req) => {
@@ -826,6 +833,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
           req.entity?.name || "",
           buildEventDateDisplay(req),
           req.venue || "",
+          "",
           "",
           "No attendance",
           "",
@@ -848,6 +856,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
           buildEventDateDisplay(req),
           req.venue || "",
           a.staffer?.full_name || "Unknown",
+          a.section || a.staffer?.section || "",
           status,
           fmtTime(a.timed_in_at),
           fmtTime(a.completed_at),
@@ -867,6 +876,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
       "Event Date",
       "Venue",
       "Staff Name",
+      "Section",
       "Status",
       "Time In",
       "Time Out",
@@ -875,7 +885,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     ];
     if (format === "csv") {
       downloadCsvFile(
-        `coverage-time-record-${sanitizeFileNamePart(currentUser?.section || "section")}.csv`,
+        `coverage-time-record-${sanitizeFileNamePart("all")}.csv`,
         headers,
         buildExportRows(),
       );
@@ -897,7 +907,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
     <Box
       sx={{
         px: { xs: 1.5, sm: 2, md: 3 },
-        pt: embedded ? { xs: 0.5, sm: 0.75, md: 1 } : { xs: 1.5, sm: 2, md: 3 },
+        pt: { xs: 1.5, sm: 2, md: 3 },
         pb: { xs: 1.5, sm: 2, md: 3 },
         height: "100%",
         boxSizing: "border-box",
@@ -908,7 +918,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         fontFamily: dm,
       }}
     >
-      {/* â”€â”€ Filter row â”€â”€ */}
+      {/* ── Filter row ── */}
       <Box
         sx={{
           mb: 2,
@@ -1012,7 +1022,7 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
         </Menu>
       </Box>
 
-      {/* â”€â”€ Content â”€â”€ */}
+      {/* ── DataGrid ── */}
       <Box
         sx={{
           flex: 1,

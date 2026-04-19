@@ -1951,11 +1951,6 @@ export default function DutyScheduleView() {
                 justifyContent: "flex-start",
                 width: "100%",
                 minWidth: "100%",
-                px: 1.25,
-                py: 1,
-                borderRadius: CONTROL_RADIUS,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-                backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
               }}
             >
               {activeTab === 1 ? (
@@ -2716,7 +2711,15 @@ export default function DutyScheduleView() {
       )}
 
       {activeSemester && activeTab === 1 && (
-        <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px" }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            width: "100%",
+            overflowX: "auto",
+            borderRadius: "10px",
+          }}
+        >
           <Box
             sx={{
               minWidth: 600,
@@ -2730,6 +2733,7 @@ export default function DutyScheduleView() {
             <DataGrid
               rows={requestRows}
               columns={requestColumns}
+              loading={loading}
               pageSize={10}
               rowsPerPageOptions={[10]}
               disableRowSelectionOnClick
@@ -2749,7 +2753,18 @@ export default function DutyScheduleView() {
 
       {/* ── Table ── */}
       {activeSemester && activeTab === 0 && (
-        <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "hidden", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            width: "100%",
+            overflowX: "hidden",
+            borderRadius: "10px",
+            boxShadow: isDark
+              ? "0 1px 10px rgba(0,0,0,0.4)"
+              : "0 1px 8px rgba(0,0,0,0.07)",
+          }}
+        >
           <Box
             sx={{
               minWidth: 0,
@@ -2760,35 +2775,23 @@ export default function DutyScheduleView() {
               overflow: "hidden",
             }}
           >
-            {loading ? (
-              <Box
-                sx={{
-                  height: 300,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <CircularProgress size={22} sx={{ color: "text.secondary" }} />
-              </Box>
-            ) : (
-              <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSize={10}
-                rowsPerPageOptions={[10]}
-                disableRowSelectionOnClick
-                rowHeight={56}
-                enableSearch={false}
-                apiRef={gridApiRef}
-                slotProps={{
-                  toolbar: {
-                    csvOptions: { disableToolbarButton: true },
-                    printOptions: { disableToolbarButton: true },
-                  },
-                }}
-              />
-            )}
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              loading={loading}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
+              disableRowSelectionOnClick
+              rowHeight={56}
+              enableSearch={false}
+              apiRef={gridApiRef}
+              slotProps={{
+                toolbar: {
+                  csvOptions: { disableToolbarButton: true },
+                  printOptions: { disableToolbarButton: true },
+                },
+              }}
+            />
           </Box>
         </Box>
       )}
@@ -4636,6 +4639,7 @@ export default function DutyScheduleView() {
                   <DataGrid
                     rows={auditRows}
                     columns={auditColumns}
+                    loading={loading}
                     pageSize={10}
                     rowsPerPageOptions={[10]}
                     disableRowSelectionOnClick

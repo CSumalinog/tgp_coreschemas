@@ -62,6 +62,7 @@ import {
   FILTER_ROW_GAP,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  FILTER_STATUS_MIN_WIDTH,
   MODAL_TAB_HEIGHT,
   TABLE_FIRST_COL_STAFF_FLEX,
   TABLE_FIRST_COL_STAFF_MIN_WIDTH,
@@ -908,11 +909,6 @@ export default function StaffersManagement() {
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
-          px: 1.25,
-          py: 1,
-          borderRadius: CONTROL_RADIUS,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
@@ -947,7 +943,7 @@ export default function StaffersManagement() {
         </FormControl>
 
         {/* Division */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH }}>
           <Select
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
@@ -1064,34 +1060,28 @@ export default function StaffersManagement() {
         </Box>
 
         {/* Export */}
-        <Box
-          onClick={handleExportCsv}
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: FILTER_BUTTON_HEIGHT,
-            borderRadius: CONTROL_RADIUS,
-            cursor: "pointer",
-            border: "1px solid rgba(0,0,0,0.12)",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 500,
-            color: "text.secondary",
-            backgroundColor: "#f7f7f8",
-            transition: "all 0.15s",
-            flexShrink: 0,
-            "&:hover": {
-              borderColor: "rgba(53,53,53,0.3)",
-              color: "text.primary",
-              backgroundColor: "#ededee",
-            },
-          }}
-        >
-          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-          Export
-        </Box>
+        <Tooltip title="Export" arrow>
+          <IconButton
+            size="small"
+            onClick={handleExportCsv}
+            sx={{
+              borderRadius: CONTROL_RADIUS,
+              width: FILTER_BUTTON_HEIGHT,
+              height: FILTER_BUTTON_HEIGHT,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
 
         {/* Manage Records */}
         <Tooltip title="Manage Staff Records" arrow>
@@ -1225,7 +1215,18 @@ export default function StaffersManagement() {
         </MenuItem>
       </Menu>
 
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+          overflowX: "auto",
+          borderRadius: "10px",
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
+        }}
+      >
         <Box
           sx={{
             minWidth: 700,
@@ -1236,66 +1237,54 @@ export default function StaffersManagement() {
             overflow: "hidden",
           }}
         >
-          {loading ? (
-            <Box
-              sx={{
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BrandedLoader size={44} inline />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={filteredRows}
-              columns={columns}
-              columnVisibilityModel={{ division: activeTab === "All" }}
-              pageSize={10}
-              rowsPerPageOptions={[10]}
-              disableRowSelectionOnClick
-              rowHeight={56}
-              enableSearch={false}
-              apiRef={gridApiRef}
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={setRowSelectionModel}
-              filterModel={externalFilterModel}
-              slotProps={{
-                toolbar: {
-                  csvOptions: { disableToolbarButton: true },
-                  printOptions: { disableToolbarButton: true },
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            loading={loading}
+            columnVisibilityModel={{ division: activeTab === "All" }}
+            pageSize={10}
+            rowsPerPageOptions={[10]}
+            disableRowSelectionOnClick
+            rowHeight={56}
+            enableSearch={false}
+            apiRef={gridApiRef}
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={setRowSelectionModel}
+            filterModel={externalFilterModel}
+            slotProps={{
+              toolbar: {
+                csvOptions: { disableToolbarButton: true },
+                printOptions: { disableToolbarButton: true },
+              },
+            }}
+            selectionActions={[
+              {
+                label: `Deactivate selected`,
+                icon: <BlockOutlinedIcon sx={{ fontSize: 20 }} />,
+                onClick: (ids) => {
+                  setBulkDeactivateIds(ids);
+                  setBulkDeactivateOpen(true);
                 },
-              }}
-              selectionActions={[
-                {
-                  label: `Deactivate selected`,
-                  icon: <BlockOutlinedIcon sx={{ fontSize: 20 }} />,
-                  onClick: (ids) => {
-                    setBulkDeactivateIds(ids);
-                    setBulkDeactivateOpen(true);
-                  },
+              },
+              {
+                label: `Delete selected`,
+                icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
+                color: "error",
+                onClick: (ids) => {
+                  setBulkDeleteIds(ids);
+                  setBulkDeleteOpen(true);
                 },
-                {
-                  label: `Delete selected`,
-                  icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
-                  color: "error",
-                  onClick: (ids) => {
-                    setBulkDeleteIds(ids);
-                    setBulkDeleteOpen(true);
-                  },
-                },
-              ]}
-              getRowClassName={(params) =>
-                (focusStaffId &&
-                  String(params.row.id) === String(focusStaffId)) ||
-                (highlight &&
-                  params.row.full_name?.toLowerCase().includes(highlight))
-                  ? "highlighted-row"
-                  : ""
-              }
-            />
-          )}
+              },
+            ]}
+            getRowClassName={(params) =>
+              (focusStaffId &&
+                String(params.row.id) === String(focusStaffId)) ||
+              (highlight &&
+                params.row.full_name?.toLowerCase().includes(highlight))
+                ? "highlighted-row"
+                : ""
+            }
+          />
         </Box>
       </Box>
 

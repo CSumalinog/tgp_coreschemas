@@ -1,10 +1,9 @@
-# TGP Coverage Request Management System — System Synthesis
+# TGP Coverage Request and Scheduling Management System — System Synthesis
 
-> **Note:** This document is current as of April 2026. All referenced components, hooks, services, and utilities are actively used in the codebase. No unused files are present in the main src/components directories. For hooks, services, and utils, all referenced files are in use as described below.
 
 ## 1. System Overview!
 
-The **TGP Coverage Request Management System** is a comprehensive, role-based web application designed to streamline the submission, tracking, and fulfillment of media coverage requests within an organization. The system facilitates the coordination between clients who need coverage services (such as news articles, photo documentation, and video documentation) and the staff members responsible for delivering those services.
+The **TGP Coverage Request and Scheduling Management System** is a comprehensive, role-based web application designed to streamline the submission, tracking, and fulfillment of media coverage requests within an organization. The system facilitates the coordination between clients who need coverage services (such as news articles, photo documentation, and video documentation) and the staff members responsible for delivering those services.
 
 Built on a modern technology stack comprising **React 18** with **Vite** for the frontend, **Supabase** for the backend-as-a-service infrastructure (including authentication, database, and storage), and **Material-UI (MUI)** for the component library, the system provides a responsive and intuitive user experience across all device types. The application is designed with a dark and light theme toggle, ensuring accessibility and user preference accommodation.
 

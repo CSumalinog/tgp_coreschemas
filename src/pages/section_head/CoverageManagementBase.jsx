@@ -78,9 +78,12 @@ import { reassignAfterNoShow } from "../../services/ReassignmentService";
 import {
   CONTROL_RADIUS,
   FILTER_BUTTON_HEIGHT,
+  FILTER_CLIENT_MIN_WIDTH,
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
+  FILTER_SEMESTER_MIN_WIDTH,
+  FILTER_STATUS_MIN_WIDTH,
   MODAL_TAB_HEIGHT,
   TABLE_FIRST_COL_FLEX,
   TABLE_FIRST_COL_MIN_WIDTH,
@@ -2935,11 +2938,6 @@ export default function CoverageManagementBase({
           flexWrap: "nowrap",
           overflowX: "auto",
           flexShrink: 0,
-          px: 1.25,
-          py: 1,
-          borderRadius: "10px",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         {/* Search */}
@@ -2973,7 +2971,7 @@ export default function CoverageManagementBase({
           />
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 168 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH }}>
           <Select
             value={viewFilter}
             onChange={(e) => setViewFilter(e.target.value)}
@@ -3044,7 +3042,7 @@ export default function CoverageManagementBase({
         </FormControl>
 
         {/* Semester */}
-        <FormControl size="small" sx={{ minWidth: 148 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
           <Select
             value={selectedSem}
             onChange={(e) => setSelectedSem(e.target.value)}
@@ -3070,7 +3068,7 @@ export default function CoverageManagementBase({
         </FormControl>
 
         {/* Staffer */}
-        <FormControl size="small" sx={{ minWidth: 140 }}>
+        <FormControl size="small" sx={{ minWidth: FILTER_CLIENT_MIN_WIDTH }}>
           <Select
             value={stafferFilter}
             onChange={(e) => setStafferFilter(e.target.value)}
@@ -3108,34 +3106,28 @@ export default function CoverageManagementBase({
         />
 
         {/* Export */}
-        <Box
-          onClick={handleExportCsv}
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1.5,
-            height: FILTER_BUTTON_HEIGHT,
-            borderRadius: CONTROL_RADIUS,
-            cursor: "pointer",
-            border: "1px solid rgba(0,0,0,0.12)",
-            fontFamily: dm,
-            fontSize: "0.78rem",
-            fontWeight: 500,
-            color: "text.secondary",
-            backgroundColor: isDark ? "transparent" : "#f7f7f8",
-            transition: "all 0.15s",
-            flexShrink: 0,
-            "&:hover": {
-              borderColor: "rgba(53,53,53,0.3)",
-              color: "text.primary",
-              backgroundColor: "#ededee",
-            },
-          }}
-        >
-          <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-          Export
-        </Box>
+        <Tooltip title="Export" arrow>
+          <IconButton
+            size="small"
+            onClick={handleExportCsv}
+            sx={{
+              borderRadius: CONTROL_RADIUS,
+              width: FILTER_BUTTON_HEIGHT,
+              height: FILTER_BUTTON_HEIGHT,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              color: "text.secondary",
+              backgroundColor: isDark ? "transparent" : "#f7f7f8",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "rgba(53,53,53,0.3)",
+                color: "text.primary",
+                backgroundColor: "#ededee",
+              },
+            }}
+          >
+            <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
 
         {/* Settings gear */}
         <Tooltip title="Manage record" arrow>
@@ -3180,7 +3172,18 @@ export default function CoverageManagementBase({
       )}
 
       {/* ── Table ── */}
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+          overflowX: "auto",
+          borderRadius: "10px",
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
+        }}
+      >
         <Box
           sx={{
             minWidth: 680,
@@ -3191,73 +3194,57 @@ export default function CoverageManagementBase({
             overflow: "hidden",
           }}
         >
-          {loading ? (
-            <Box
-              sx={{
-                height: 300,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BrandedLoader size={40} inline />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={buildColumns()}
-              pageSize={10}
-              rowsPerPageOptions={[10]}
-              checkboxSelection
-              disableRowSelectionOnClick
-              apiRef={gridApiRef}
-              onRowSelectionModelChange={handleRowSelectionModelChange}
-              enableSearch={false}
-              filterModel={externalFilterModel}
-              selectionActions={
-                hasBulkSelection
-                  ? [
-                      {
-                        label: "Archive",
-                        icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
-                        onClick: handleBulkArchive,
-                      },
-                      {
-                        label: "Move to Trash",
-                        icon: (
-                          <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />
-                        ),
-                        onClick: handleBulkTrash,
-                        color: "error",
-                      },
-                    ]
-                  : []
-              }
-              slotProps={{
-                toolbar: {
-                  csvOptions: { disableToolbarButton: true },
-                  printOptions: { disableToolbarButton: true },
-                },
-              }}
-              rowHeight={
-                ["on-going", "completed"].includes(viewFilter) ? 60 : 56
-              }
-              getRowClassName={(params) =>
-                highlight && params.row.title?.toLowerCase().includes(highlight)
-                  ? "highlighted-row"
-                  : ""
-              }
-              sx={{
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
-                  borderBottom: `1px solid ${border}`,
-                  minHeight: "42px !important",
-                  maxHeight: "42px !important",
-                  lineHeight: "42px !important",
-                },
-              }}
-            />
-          )}
+          <DataGrid
+            rows={rows}
+            columns={buildColumns()}
+            loading={loading}
+            pageSize={10}
+            rowsPerPageOptions={[10]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            apiRef={gridApiRef}
+            onRowSelectionModelChange={handleRowSelectionModelChange}
+            enableSearch={false}
+            filterModel={externalFilterModel}
+            selectionActions={
+              hasBulkSelection
+                ? [
+                    {
+                      label: "Archive",
+                      icon: <ArchiveOutlinedIcon sx={{ fontSize: 20 }} />,
+                      onClick: handleBulkArchive,
+                    },
+                    {
+                      label: "Move to Trash",
+                      icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 20 }} />,
+                      onClick: handleBulkTrash,
+                      color: "error",
+                    },
+                  ]
+                : []
+            }
+            slotProps={{
+              toolbar: {
+                csvOptions: { disableToolbarButton: true },
+                printOptions: { disableToolbarButton: true },
+              },
+            }}
+            rowHeight={["on-going", "completed"].includes(viewFilter) ? 60 : 56}
+            getRowClassName={(params) =>
+              highlight && params.row.title?.toLowerCase().includes(highlight)
+                ? "highlighted-row"
+                : ""
+            }
+            sx={{
+              "& .MuiDataGrid-columnHeaders": {
+                backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
+                borderBottom: `1px solid ${border}`,
+                minHeight: "42px !important",
+                maxHeight: "42px !important",
+                lineHeight: "42px !important",
+              },
+            }}
+          />
         </Box>
       </Box>
 

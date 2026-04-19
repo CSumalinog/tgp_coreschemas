@@ -70,13 +70,18 @@ const ACTIVE_ICON_BG = "rgba(245,197,43,0.22)";
 const HOVER_BG = "rgba(255,255,255,0.10)";
 const BORDER = "rgba(53,53,53,0.08)";
 
-const NAV_ITEMS = [
-  { label: "Calendar", to: "calendar", Icon: CalendarTodayOutlinedIcon },
-  { label: "Draft", to: "draft", Icon: DescriptionOutlinedIcon },
+const MENU_SECTIONS = [
   {
-    label: "Request Tracker",
-    to: "request-tracker",
-    Icon: TrackChangesOutlinedIcon,
+    group: "MENU",
+    items: [
+      { label: "Calendar", to: "calendar", Icon: CalendarTodayOutlinedIcon },
+      { label: "Draft", to: "draft", Icon: DescriptionOutlinedIcon },
+      {
+        label: "Request Tracker",
+        to: "request-tracker",
+        Icon: TrackChangesOutlinedIcon,
+      },
+    ],
   },
 ];
 
@@ -496,32 +501,36 @@ function SidebarContent({ onClose, isMobile }) {
         sx={{
           flex: 1,
           overflowY: "auto",
-          px: 1.5,
+          px: 0,
           py: 1.5,
           "&::-webkit-scrollbar": { width: 0 },
         }}
       >
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.6rem",
-            fontWeight: 700,
-            color: TEXT_LABEL,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            px: 1.25,
-            mb: 0.75,
-          }}
-        >
-          MENU
-        </Typography>
-        {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.to}
-            label={item.label}
-            Icon={item.Icon}
-            to={item.to}
-          />
+        {MENU_SECTIONS.map((section) => (
+          <Box key={section.group} sx={{ mb: 2 }}>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.6rem",
+                fontWeight: 700,
+                color: TEXT_LABEL,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                px: 2,
+                mb: 0.75,
+              }}
+            >
+              {section.group}
+            </Typography>
+            {section.items.map((item) => (
+              <NavItem
+                key={item.to}
+                label={item.label}
+                Icon={item.Icon}
+                to={item.to}
+              />
+            ))}
+          </Box>
         ))}
         <CalendarLegendSection />
       </Box>
@@ -614,14 +623,6 @@ function CalendarLegendSection() {
           { color: "#d32f2f", label: "Office Unavailable" },
         ]}
       />
-      <CollapsibleLegend
-        title="Other Calendars"
-        items={[
-          { color: "#4caf50", label: "Holidays in the Philippines" },
-          { color: "rgba(53,53,53,0.2)", label: "Weekend", isBorder: true },
-          { color: "#1976d2", label: "Today" },
-        ]}
-      />
     </Box>
   );
 }
@@ -709,83 +710,93 @@ function CollapsibleLegend({ title, items }) {
 }
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
-function NavItem({ label, Icon, to }) {
+function NavItem({ label, Icon, to, onClick, isActive, trailing }) {
   const location = useLocation();
-  const active = location.pathname.includes(to);
-  return (
-    <NavLink to={to} style={{ textDecoration: "none" }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.25,
-          px: 1.25,
-          py: 0.8,
-          borderRadius: "10px",
-          cursor: "pointer",
-          position: "relative",
-          mb: 0.2,
-          backgroundColor: active ? ACTIVE_BG : "transparent",
-          transition: "background 0.15s",
-          "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
-          "&:hover .nav-item-icon": { color: GOLD },
-          "&:hover .nav-item-label": {
-            color: active ? GOLD : TEXT_SECONDARY,
-          },
-          "&::before": active
-            ? {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                top: "20%",
-                height: "60%",
-                width: "2.5px",
-                borderRadius: "0 2px 2px 0",
-                backgroundColor: GOLD,
-              }
-            : {},
-        }}
-      >
-        {Icon && (
-          <Box
-            sx={{
-              width: 24,
-              height: 24,
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-          >
-            <Icon
-              className="nav-item-icon"
-              sx={{
-                color: active ? GOLD : TEXT_ICON,
-                transition: "color 0.15s",
-              }}
-            />
-          </Box>
-        )}
-        <Typography
-          className="nav-item-label"
+  const routeActive = to ? location.pathname.includes(to) : false;
+  const active = isActive || routeActive;
+
+  const inner = (
+    <Box
+      onClick={onClick}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1.5,
+        pl: 1.5,
+        pr: 1.5,
+        py: 1.1,
+        cursor: "pointer",
+        position: "relative",
+        mb: 0.1,
+        transition: "background 0.15s",
+        "&:hover .nav-item-icon": { color: GOLD },
+        "&:hover .nav-label": { color: TEXT_PRIMARY },
+        "&::before": active
+          ? {
+              content: '""',
+              position: "absolute",
+              left: 0,
+              top: 0,
+              height: "100%",
+              width: "2.5px",
+              borderRadius: "0 2px 2px 0",
+              backgroundColor: GOLD,
+            }
+          : {},
+      }}
+    >
+      {Icon && (
+        <Box
           sx={{
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: active ? 600 : 400,
-            color: active ? GOLD : TEXT_SECONDARY,
-            flex: 1,
-            transition: "color 0.15s",
-            lineHeight: 1,
+            width: 28,
+            height: 28,
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
+            transition: "background 0.15s",
           }}
         >
-          {label}
-        </Typography>
-      </Box>
-    </NavLink>
+          <Icon
+            className="nav-item-icon"
+            sx={{
+              fontSize: 16,
+              color: active ? GOLD : TEXT_ICON,
+              transition: "color 0.15s",
+            }}
+          />
+        </Box>
+      )}
+      <Typography
+        className="nav-label"
+        sx={{
+          fontFamily: dm,
+          fontSize: "0.8rem",
+          fontWeight: active ? 600 : 400,
+          color: active ? TEXT_PRIMARY : TEXT_SECONDARY,
+          flex: 1,
+          transition: "color 0.15s",
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {label}
+      </Typography>
+      {trailing}
+    </Box>
   );
+
+  if (to)
+    return (
+      <NavLink to={to} style={{ textDecoration: "none", display: "block" }}>
+        {inner}
+      </NavLink>
+    );
+  return inner;
 }
 
 // ── Main layout ───────────────────────────────────────────────────────────────

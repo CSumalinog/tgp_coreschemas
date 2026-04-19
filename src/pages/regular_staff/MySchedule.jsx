@@ -1145,7 +1145,9 @@ export default function MySchedule() {
               borderRadius: "10px",
               overflow: "hidden",
               backgroundColor: "background.paper",
-              boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+              boxShadow: isDark
+                ? "0 1px 10px rgba(0,0,0,0.4)"
+                : "0 1px 8px rgba(0,0,0,0.07)",
               mb: 3,
             }}
           >
@@ -1625,7 +1627,7 @@ export default function MySchedule() {
                 ]}
                 autoHeight
                 disableRowSelectionOnClick
-                hideFooter
+                pageSizeOptions={[25, 50, 100]}
                 sx={{
                   border: `1px solid ${border}`,
                   borderRadius: "10px",
