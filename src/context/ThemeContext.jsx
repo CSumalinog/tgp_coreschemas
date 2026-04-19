@@ -183,7 +183,28 @@ function buildTheme(isDark) {
       MuiInputBase: { styleOverrides: { root: { fontFamily: dm } } },
       MuiInputLabel: { styleOverrides: { root: { fontFamily: dm } } },
       MuiTableCell: { styleOverrides: { root: { fontFamily: dm } } },
-      MuiTooltip: { styleOverrides: { tooltip: { fontFamily: dm } } },
+      MuiTooltip: {
+        defaultProps: {
+          arrow: true,
+          enterDelay: 220,
+        },
+        styleOverrides: {
+          tooltip: {
+            fontFamily: dm,
+            fontSize: "0.72rem",
+            fontWeight: 500,
+            lineHeight: 1.35,
+            borderRadius: 8,
+            padding: "6px 10px",
+            backgroundColor: "#1f2937",
+            color: "#f9fafb",
+            border: "1px solid rgba(255,255,255,0.12)",
+          },
+          arrow: {
+            color: "#1f2937",
+          },
+        },
+      },
       MuiAlert: { styleOverrides: { root: { fontFamily: dm } } },
       MuiChip: { styleOverrides: { root: { fontFamily: dm } } },
       MuiTab: {

@@ -2062,34 +2062,28 @@ export default function DutyScheduleView() {
                     }}
                   />
 
-                  <Box
-                    onClick={handleExportRequestsCsv}
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      px: 1.5,
-                      height: ACTION_BTN_HEIGHT,
-                      borderRadius: CONTROL_RADIUS,
-                      cursor: "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      fontWeight: 500,
-                      color: "text.secondary",
-                      backgroundColor: "#f7f7f8",
-                      transition: "all 0.15s",
-                      flexShrink: 0,
-                      "&:hover": {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: "text.primary",
-                        backgroundColor: "#ededee",
-                      },
-                    }}
-                  >
-                    <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-                    Export
-                  </Box>
+                  <Tooltip title="Export" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={handleExportRequestsCsv}
+                      sx={{
+                        borderRadius: CONTROL_RADIUS,
+                        width: ACTION_BTN_HEIGHT,
+                        height: ACTION_BTN_HEIGHT,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        color: "text.secondary",
+                        backgroundColor: "#f7f7f8",
+                        flexShrink: 0,
+                        "&:hover": {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: "text.primary",
+                          backgroundColor: "#ededee",
+                        },
+                      }}
+                    >
+                      <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
 
                   <Box
                     onClick={() =>
@@ -2124,34 +2118,31 @@ export default function DutyScheduleView() {
                     Duty Blocking
                   </Box>
 
-                  <Box
-                    onClick={() => {
-                      setSettingsPanelTab("governance");
-                      setSettingsDrawerOpen(true);
-                    }}
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: ACTION_BTN_HEIGHT,
-                      height: ACTION_BTN_HEIGHT,
-                      borderRadius: CONTROL_RADIUS,
-                      cursor: "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      color: "text.secondary",
-                      backgroundColor: "#f7f7f8",
-                      transition: "all 0.15s",
-                      flexShrink: 0,
-                      "&:hover": {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: "text.primary",
-                        backgroundColor: "#ededee",
-                      },
-                    }}
-                    title="Open governance and audit"
-                  >
-                    <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
-                  </Box>
+                  <Tooltip title="Open governance and audit" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSettingsPanelTab("governance");
+                        setSettingsDrawerOpen(true);
+                      }}
+                      sx={{
+                        borderRadius: CONTROL_RADIUS,
+                        width: ACTION_BTN_HEIGHT,
+                        height: ACTION_BTN_HEIGHT,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        color: "text.secondary",
+                        backgroundColor: "#f7f7f8",
+                        flexShrink: 0,
+                        "&:hover": {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: "text.primary",
+                          backgroundColor: "#ededee",
+                        },
+                      }}
+                    >
+                      <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
                 </>
               ) : (
                 <>
@@ -2337,63 +2328,54 @@ export default function DutyScheduleView() {
                     }}
                   />
 
-                  <Box
-                    onClick={handleExportCsv}
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      px: 1.5,
-                      height: ACTION_BTN_HEIGHT,
-                      borderRadius: CONTROL_RADIUS,
-                      cursor: "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      fontWeight: 500,
-                      color: "text.secondary",
-                      backgroundColor: "#f7f7f8",
-                      transition: "all 0.15s",
-                      flexShrink: 0,
-                      "&:hover": {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: "text.primary",
-                        backgroundColor: "#ededee",
-                      },
-                    }}
-                  >
-                    <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
-                    Export
-                  </Box>
+                  <Tooltip title="Export" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={handleExportCsv}
+                      sx={{
+                        borderRadius: CONTROL_RADIUS,
+                        width: ACTION_BTN_HEIGHT,
+                        height: ACTION_BTN_HEIGHT,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        color: "text.secondary",
+                        backgroundColor: "#f7f7f8",
+                        flexShrink: 0,
+                        "&:hover": {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: "text.primary",
+                          backgroundColor: "#ededee",
+                        },
+                      }}
+                    >
+                      <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
 
-                  <Box
-                    onClick={() => {
-                      setSettingsPanelTab("governance");
-                      setSettingsDrawerOpen(true);
-                    }}
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: ACTION_BTN_HEIGHT,
-                      height: ACTION_BTN_HEIGHT,
-                      borderRadius: CONTROL_RADIUS,
-                      cursor: "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      color: "text.secondary",
-                      backgroundColor: "#f7f7f8",
-                      transition: "all 0.15s",
-                      flexShrink: 0,
-                      "&:hover": {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: "text.primary",
-                        backgroundColor: "#ededee",
-                      },
-                    }}
-                    title="Open governance and audit"
-                  >
-                    <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
-                  </Box>
+                  <Tooltip title="Open governance and audit" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSettingsPanelTab("governance");
+                        setSettingsDrawerOpen(true);
+                      }}
+                      sx={{
+                        borderRadius: CONTROL_RADIUS,
+                        width: ACTION_BTN_HEIGHT,
+                        height: ACTION_BTN_HEIGHT,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        color: "text.secondary",
+                        backgroundColor: "#f7f7f8",
+                        flexShrink: 0,
+                        "&:hover": {
+                          borderColor: "rgba(53,53,53,0.3)",
+                          color: "text.primary",
+                          backgroundColor: "#ededee",
+                        },
+                      }}
+                    >
+                      <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
                 </>
               )}
             </PageFilterToolbar>
@@ -3856,37 +3838,32 @@ export default function DutyScheduleView() {
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
             {selectedPublication?.snapshot?.length > 0 && (
-              <Box
-                onClick={() =>
-                  exportSnapshotCsv(
-                    selectedPublication.snapshot,
-                    selectedPublication.version,
-                  )
-                }
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  px: 1.25,
-                  py: 0.5,
-                  borderRadius: "8px",
-                  border: "1px solid rgba(0,0,0,0.12)",
-                  cursor: "pointer",
-                  backgroundColor: "#f7f7f8",
-                  fontFamily: dm,
-                  fontSize: "0.72rem",
-                  fontWeight: 500,
-                  color: "text.secondary",
-                  "&:hover": {
-                    borderColor: "rgba(53,53,53,0.3)",
-                    color: "text.primary",
-                    backgroundColor: "#ededee",
-                  },
-                }}
-              >
-                <FileDownloadOutlinedIcon sx={{ fontSize: 13 }} />
-                Export CSV
-              </Box>
+              <Tooltip title="Export CSV" arrow>
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    exportSnapshotCsv(
+                      selectedPublication.snapshot,
+                      selectedPublication.version,
+                    )
+                  }
+                  sx={{
+                    borderRadius: CONTROL_RADIUS,
+                    width: 30,
+                    height: 30,
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    color: "text.secondary",
+                    backgroundColor: "#f7f7f8",
+                    "&:hover": {
+                      borderColor: "rgba(53,53,53,0.3)",
+                      color: "text.primary",
+                      backgroundColor: "#ededee",
+                    },
+                  }}
+                >
+                  <FileDownloadOutlinedIcon sx={{ fontSize: 13 }} />
+                </IconButton>
+              </Tooltip>
             )}
             <IconButton
               size="small"
@@ -4379,41 +4356,40 @@ export default function DutyScheduleView() {
                     </Box>
                   )}
 
-                  <Box
-                    onClick={() =>
-                      selectedPublication?.snapshot?.length > 0
-                        ? exportSnapshotCsv(
+                  <Tooltip title="Export selected CSV" arrow>
+                    <span>
+                      <IconButton
+                        size="small"
+                        disabled={!selectedPublication?.snapshot?.length}
+                        onClick={() =>
+                          exportSnapshotCsv(
                             selectedPublication.snapshot,
                             selectedPublication.version,
                           )
-                        : undefined
-                    }
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      px: 1.4,
-                      py: 0.65,
-                      borderRadius: "10px",
-                      cursor: "pointer",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      backgroundColor: "#f7f7f8",
-                      color: "text.secondary",
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      opacity:
-                        selectedPublication?.snapshot?.length > 0 ? 1 : 0.6,
-                      transition: "all 0.15s",
-                      "&:hover": {
-                        borderColor: "rgba(53,53,53,0.3)",
-                        color: "text.primary",
-                        backgroundColor: "#ededee",
-                      },
-                    }}
-                  >
-                    Export Selected CSV
-                  </Box>
+                        }
+                        sx={{
+                          borderRadius: CONTROL_RADIUS,
+                          width: ACTION_BTN_HEIGHT,
+                          height: ACTION_BTN_HEIGHT,
+                          border: "1px solid rgba(0,0,0,0.12)",
+                          color: "text.secondary",
+                          backgroundColor: "#f7f7f8",
+                          transition: "all 0.15s",
+                          "&:hover": {
+                            borderColor: "rgba(53,53,53,0.3)",
+                            color: "text.primary",
+                            backgroundColor: "#ededee",
+                          },
+                          "&.Mui-disabled": {
+                            opacity: 0.6,
+                            color: "text.disabled",
+                          },
+                        }}
+                      >
+                        <FileDownloadOutlinedIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
 
                 <Box
