@@ -177,6 +177,9 @@ const formatTime = (timeStr) => {
 };
 const getTimeInState = (request) => {
   if (!request?.event_date || !request?.from_time) return "unavailable";
+  // ── Test mode: always open ────────────────────────────────────────────────
+  if (import.meta.env.VITE_TEST_MODE === "true") return "open";
+
   const timeStr = request.from_time.slice(0, 5);
   const eventStart = new Date(`${request.event_date}T${timeStr}`).getTime();
   const now = Date.now();
@@ -332,6 +335,7 @@ function AssignmentCard({
         borderRadius: "10px",
         border: `1px solid ${border}`,
         backgroundColor: "background.paper",
+        boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
         cursor: "pointer",
         transition: "box-shadow 0.15s",
         "&:hover": {
@@ -3017,7 +3021,15 @@ export default function MyAssignment() {
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
-          <Box sx={{ display: "flex", gap: "6px", px: 2.5, pb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: "6px",
+              px: 2.5,
+              pb: 2,
+              flexWrap: "wrap",
+            }}
+          >
             {[
               {
                 label: "Archive",
@@ -3026,6 +3038,14 @@ export default function MyAssignment() {
               {
                 label: "Trash",
                 icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />,
+              },
+              {
+                label: "Rectifications",
+                icon: <GavelOutlinedIcon sx={{ fontSize: 13 }} />,
+              },
+              {
+                label: "Emergencies",
+                icon: <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} />,
               },
             ].map((t, idx) => {
               const active = settingsTab === idx;
@@ -3067,6 +3087,20 @@ export default function MyAssignment() {
               <RoleArchiveManagement role="staff" embedded />
             )}
             {settingsTab === 1 && <RoleTrashManagement role="staff" embedded />}
+            {settingsTab === 2 && (
+              <RectifHistoryTab
+                userId={currentUser?.id}
+                border={border}
+                isDark={isDark}
+              />
+            )}
+            {settingsTab === 3 && (
+              <EmergencyHistoryTab
+                userId={currentUser?.id}
+                border={border}
+                isDark={isDark}
+              />
+            )}
           </Box>
         </Box>
       </Drawer>
@@ -3236,6 +3270,254 @@ function PrimaryBtn({ onClick, loading, children }) {
     >
       {loading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
       {children}
+    </Box>
+  );
+}
+
+// ── Settings drawer sub-tabs ──────────────────────────────────────────────────
+
+const RECTIF_STATUS_CFG = {
+  pending: {
+    bg: "#fef9ec",
+    color: "#b45309",
+    dot: "#f59e0b",
+    label: "Pending",
+  },
+  approved: {
+    bg: "#f0fdf4",
+    color: "#15803d",
+    dot: "#22c55e",
+    label: "Approved",
+  },
+  rejected: {
+    bg: "#fef2f2",
+    color: "#dc2626",
+    dot: "#ef4444",
+    label: "Rejected",
+  },
+};
+
+function fmtShortDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function RectifHistoryTab({ userId, border, isDark }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("rectification_requests")
+      .select(
+        "id, status, created_at, request:coverage_requests!request_id(title)",
+      )
+      .eq("staff_id", userId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setItems(data || []);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  if (loading)
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <CircularProgress size={20} sx={{ color: GOLD }} />
+      </Box>
+    );
+
+  if (!items.length)
+    return (
+      <Box sx={{ py: 4, textAlign: "center" }}>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.disabled" }}
+        >
+          No rectification requests yet.
+        </Typography>
+      </Box>
+    );
+
+  return (
+    <Box>
+      {items.map((item) => {
+        const cfg = RECTIF_STATUS_CFG[item.status] ?? RECTIF_STATUS_CFG.pending;
+        return (
+          <Box
+            key={item.id}
+            sx={{
+              px: 1.5,
+              py: 1.25,
+              mb: 0.75,
+              borderRadius: "10px",
+              border: `1px solid ${border}`,
+              backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#fafafa",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.82rem",
+                fontWeight: 500,
+                mb: 0.5,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {item.request?.title ?? "—"}
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  color: "text.secondary",
+                }}
+              >
+                {fmtShortDate(item.created_at)}
+              </Typography>
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.4,
+                  px: 0.75,
+                  py: 0.15,
+                  borderRadius: "20px",
+                  backgroundColor: cfg.bg,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    backgroundColor: cfg.dot,
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: cfg.color,
+                  }}
+                >
+                  {cfg.label}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+function EmergencyHistoryTab({ userId, border, isDark }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("coverage_assignments")
+      .select(
+        "id, assignment_date, cancellation_reason, cancelled_at, request:request_id(title)",
+      )
+      .eq("assigned_to", userId)
+      .eq("status", "Cancelled")
+      .ilike("cancellation_reason", "Emergency%")
+      .order("cancelled_at", { ascending: false, nullsFirst: false })
+      .then(({ data }) => {
+        setItems(data || []);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  const extractReason = (text) => {
+    if (!text) return "Emergency announced";
+    return (
+      String(text)
+        .replace(/\(Proof:\s*[^)]+\)\s*$/i, "")
+        .replace(/^Emergency announced:\s*/i, "")
+        .trim() || "Emergency announced"
+    );
+  };
+
+  if (loading)
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <CircularProgress size={20} sx={{ color: GOLD }} />
+      </Box>
+    );
+
+  if (!items.length)
+    return (
+      <Box sx={{ py: 4, textAlign: "center" }}>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.disabled" }}
+        >
+          No emergency announcements yet.
+        </Typography>
+      </Box>
+    );
+
+  return (
+    <Box>
+      {items.map((item) => (
+        <Box
+          key={item.id}
+          sx={{
+            px: 1.5,
+            py: 1.25,
+            mb: 0.75,
+            borderRadius: "10px",
+            border: `1px solid rgba(220,38,38,0.2)`,
+            backgroundColor: isDark ? "rgba(220,38,38,0.06)" : "#fef2f2",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.82rem",
+              fontWeight: 500,
+              mb: 0.4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.request?.title ?? "—"}
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.74rem",
+              color: "#b91c1c",
+              mb: 0.25,
+            }}
+          >
+            {extractReason(item.cancellation_reason)}
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.72rem",
+              color: "text.secondary",
+            }}
+          >
+            {fmtShortDate(item.cancelled_at || item.assignment_date)}
+          </Typography>
+        </Box>
+      ))}
     </Box>
   );
 }

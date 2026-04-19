@@ -50,7 +50,7 @@ const WHITE = "#ffffff";
 const dm = "'Inter', sans-serif";
 
 // ── Dark sidebar tokens ───────────────────────────────────────────────────────
-const SIDEBAR_BG = "#212121";
+const SIDEBAR_BG = "#000000";
 const SIDEBAR_BORDER = "rgba(255,255,255,0.07)";
 const TEXT_PRIMARY = "#ffffff";
 const TEXT_SECONDARY = "rgba(255,255,255,0.85)";
@@ -66,56 +66,48 @@ const BORDER = "rgba(53,53,53,0.08)";
 
 const MENU_SECTIONS = [
   {
-    group: "MENU",
+    group: "OVERVIEW",
     items: [
       { label: "Dashboard", to: "dashboard", Icon: DashboardOutlinedIcon },
       {
-        label: "Request Management",
+        label: "Requests",
         to: "request-management",
         Icon: DescriptionOutlinedIcon,
       },
+    ],
+  },
+  {
+    group: "COVERAGE",
+    items: [
       {
         label: "Coverage Tracker",
         Icon: TrackChangesOutlinedIcon,
         children: [
-          {
-            label: "Assigned",
-            to: "coverage-tracker/requests",
-          },
-          {
-            label: "Time Record",
-            to: "coverage-tracker/time-record",
-          },
-          {
-            label: "Rectifications Log",
-            to: "rectifications-log",
-          },
+          { label: "Assigned", to: "coverage-tracker/requests" },
+          { label: "Time Record", to: "coverage-tracker/time-record" },
+          { label: "Rectifications Log", to: "rectifications-log" },
         ],
       },
+    ],
+  },
+  {
+    group: "OPERATIONS",
+    items: [
       {
         label: "Scheduling",
         Icon: SchoolOutlinedIcon,
         children: [
-          {
-            label: "Semester Management",
-            to: "semester-management",
-          },
-          {
-            label: "Duty Schedule",
-            to: "duty-schedule-view",
-          },
+          { label: "Semester Management", to: "semester-management" },
+          { label: "Duty Schedule", to: "duty-schedule-view" },
         ],
       },
-      {
-        label: "Calendar Management",
-        to: "calendar-management",
-        Icon: EventOutlinedIcon,
-      },
-      {
-        label: "Staffers Management",
-        to: "staffers-management",
-        Icon: GroupOutlinedIcon,
-      },
+      { label: "Calendar", to: "calendar-management", Icon: EventOutlinedIcon },
+    ],
+  },
+  {
+    group: "PEOPLE",
+    items: [
+      { label: "Staffers", to: "staffers-management", Icon: GroupOutlinedIcon },
     ],
   },
 ];
@@ -309,10 +301,6 @@ function SidebarContent({ onClose, isMobile }) {
   const isChildActive = (children) =>
     children?.some((c) => location.pathname.includes(c.to));
 
-  // icon container width + gap to align child text with parent label text
-  // icon box = 24px, gap = 1.25 * 8px = 10px → total offset = 34px
-  const ICON_OFFSET = 34;
-
   return (
     <Box
       sx={{
@@ -354,7 +342,7 @@ function SidebarContent({ onClose, isMobile }) {
               fontWeight: 700,
               fontSize: "0.92rem",
               color: TEXT_PRIMARY,
-              letterSpacing: "-0.015em",
+              letterSpacing: ".030em",
             }}
           >
             core schemas
@@ -379,7 +367,7 @@ function SidebarContent({ onClose, isMobile }) {
         sx={{
           flex: 1,
           overflowY: "auto",
-          px: 1.5,
+          px: 0,
           py: 1.5,
           "&::-webkit-scrollbar": { width: 0 },
         }}
@@ -394,7 +382,7 @@ function SidebarContent({ onClose, isMobile }) {
                 color: TEXT_LABEL,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                px: 1.25,
+                px: 2,
                 mb: 0.75,
               }}
             >
@@ -425,14 +413,12 @@ function SidebarContent({ onClose, isMobile }) {
                       }
                     />
                     <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                      {/* Align child items: left-pad by px(1.25) + icon(24px) + gap(10px) */}
-                      <Box sx={{ mt: 0.25 }}>
+                      <Box sx={{ mt: 0.1 }}>
                         {item.children.map((child) => (
                           <ChildNavItem
                             key={child.to}
                             label={child.label}
                             to={child.to}
-                            iconOffset={ICON_OFFSET}
                           />
                         ))}
                       </Box>
@@ -456,35 +442,35 @@ function SidebarContent({ onClose, isMobile }) {
   );
 }
 
-// ── Child nav item (no icon, aligned to parent label text) ────────────────────
-function ChildNavItem({ label, to, iconOffset }) {
+// ── Child nav item ────────────────────────────────────────────────────────────
+function ChildNavItem({ label, to }) {
   const location = useLocation();
   const active = to ? location.pathname.includes(to) : false;
 
-  // Hover box matches parent item dimensions (px: 1.25, py: 0.8)
-  // Only the text is indented to align with parent label text
-  // iconOffset = 24px (icon box) + 10px (gap 1.25*8) = 34px
   const inner = (
     <Box
       sx={{
         display: "flex",
         alignItems: "center",
-        px: 1.25,
-        py: 0.8,
-        borderRadius: "10px",
+        gap: 1.5,
+        pl: 5,
+        pr: 1.5,
+        py: 1.0,
         cursor: "pointer",
         position: "relative",
-        mb: 0.2,
-        backgroundColor: active ? ACTIVE_BG : "transparent",
-        transition: "background 0.15s",
-        "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
+        mb: 0.1,
+        transition: "color 0.15s",
+        "&:hover .nav-dot": {
+          backgroundColor: active ? GOLD : "rgba(255,255,255,0.6)",
+        },
+        "&:hover .nav-label": { color: TEXT_PRIMARY },
         "&::before": active
           ? {
               content: '""',
               position: "absolute",
               left: 0,
-              top: "20%",
-              height: "60%",
+              top: 0,
+              height: "100%",
               width: "2.5px",
               borderRadius: "0 2px 2px 0",
               backgroundColor: GOLD,
@@ -492,18 +478,31 @@ function ChildNavItem({ label, to, iconOffset }) {
           : {},
       }}
     >
-      {/* Spacer — height:24 matches the parent icon box so all rows are the same height */}
-      <Box sx={{ width: `${iconOffset}px`, height: 24, flexShrink: 0 }} />
+      <Box
+        className="nav-dot"
+        sx={{
+          width: 5,
+          height: 5,
+          borderRadius: "50%",
+          flexShrink: 0,
+          backgroundColor: active ? GOLD : "rgba(255,255,255,0.22)",
+          transition: "background 0.15s",
+          boxShadow: active ? `0 0 5px ${GOLD}` : "none",
+        }}
+      />
       <Typography
+        className="nav-label"
         sx={{
           fontFamily: dm,
           fontSize: "0.8rem",
           fontWeight: active ? 600 : 400,
-          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+          color: active ? TEXT_PRIMARY : TEXT_SECONDARY,
           flex: 1,
           transition: "color 0.15s",
-          lineHeight: 1.3,
-          "&:hover": { color: active ? ACTIVE_COLOR : TEXT_PRIMARY },
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         {label}
@@ -521,7 +520,7 @@ function ChildNavItem({ label, to, iconOffset }) {
 }
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
-function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
+function NavItem({ label, Icon, to, onClick, isActive, trailing }) {
   const location = useLocation();
   const routeActive = to ? location.pathname.includes(to) : false;
   const active = isActive || routeActive;
@@ -532,27 +531,23 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1.25,
-        px: 1.25,
-        py: 0.8,
-        borderRadius: "10px",
+        gap: 1.5,
+        pl: 1.5,
+        pr: 1.5,
+        py: 1.1,
         cursor: "pointer",
         position: "relative",
-        mb: 0.2,
-        backgroundColor: active ? ACTIVE_BG : "transparent",
+        mb: 0.1,
         transition: "background 0.15s",
-        "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
         "&:hover .nav-item-icon": { color: GOLD },
-        "&:hover .nav-item-label": {
-          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
-        },
+        "&:hover .nav-label": { color: TEXT_PRIMARY },
         "&::before": active
           ? {
               content: '""',
               position: "absolute",
               left: 0,
-              top: "20%",
-              height: "60%",
+              top: 0,
+              height: "100%",
               width: "2.5px",
               borderRadius: "0 2px 2px 0",
               backgroundColor: GOLD,
@@ -563,20 +558,21 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
       {Icon && (
         <Box
           sx={{
-            width: 24,
-            height: 24,
-            borderRadius: "10px",
+            width: 28,
+            height: 28,
+            borderRadius: "8px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
             flexShrink: 0,
+            backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
             transition: "background 0.15s",
           }}
         >
           <Icon
             className="nav-item-icon"
             sx={{
+              fontSize: 16,
               color: active ? GOLD : TEXT_ICON,
               transition: "color 0.15s",
             }}
@@ -584,12 +580,12 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
         </Box>
       )}
       <Typography
-        className="nav-item-label"
+        className="nav-label"
         sx={{
           fontFamily: dm,
-          fontSize: isChild ? "0.76rem" : "0.8rem",
+          fontSize: "0.8rem",
           fontWeight: active ? 600 : 400,
-          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+          color: active ? TEXT_PRIMARY : TEXT_SECONDARY,
           flex: 1,
           transition: "color 0.15s",
           lineHeight: 1,

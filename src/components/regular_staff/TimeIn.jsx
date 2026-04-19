@@ -476,6 +476,14 @@ export function TimeInModal({
   // ── Request GPS when modal opens ──────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
+
+    // ── Test mode: skip GPS check ─────────────────────────────────────────
+    if (import.meta.env.VITE_TEST_MODE === "true") {
+      setGpsStatus("verified");
+      setGpsData({ lat: 8.955481, lng: 125.597788, verified: true });
+      return;
+    }
+
     setGpsStatus("checking");
     setGpsData(null);
 

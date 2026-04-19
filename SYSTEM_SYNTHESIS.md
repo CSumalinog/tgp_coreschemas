@@ -1150,7 +1150,7 @@ Centralized logic for emergency announcements:
 
 - **Proof Upload**: Handles image/PDF upload to Supabase Storage (`emergency-proof` bucket)
 - **Assignment Update**: Updates assignment status to "Cancelled" with cancellation reason
-- **Notification System**: 
+- **Notification System**:
   - Notifies section head immediately upon announcement
   - Notifies admins about the emergency
   - Triggers reassignment workflow for section head
@@ -1180,7 +1180,7 @@ Enhanced to handle emergency reassignments:
 
 - **Emergency Detection**: Identifies assignments with emergency cancellation status
 - **Reassignment Types**: Visual differentiation between "emergency" and "no-show" candidates
-- **Status Indicators**: 
+- **Status Indicators**:
   - Red indicator for announced emergencies
   - Amber indicator for unannounced no-shows
 - **Reassign Action**: "Reassign" button appears for emergency-affected assignments
@@ -1234,14 +1234,14 @@ Two toggle tabs filter the incident type:
 
 #### Data Displayed (DataGrid)
 
-| Column | Description |
-|---|---|
-| Title | Request title with quick-navigate arrow to the assignment page |
-| Date Occurred | `assignment_date` of the original cancelled assignment |
-| Reason | Extracted emergency reason text (strips proof path suffix) |
-| Proof | Clickable file icon linking to the emergency proof stored in Supabase Storage (`emergency-proof` bucket) |
-| Reassigned To | Full name(s) of replacement staffer(s) matched by `is_reassigned=true` on same day/service key |
-| Date of Reassignment | `created_at` of the replacement assignment record |
+| Column               | Description                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| Title                | Request title with quick-navigate arrow to the assignment page                                           |
+| Date Occurred        | `assignment_date` of the original cancelled assignment                                                   |
+| Reason               | Extracted emergency reason text (strips proof path suffix)                                               |
+| Proof                | Clickable file icon linking to the emergency proof stored in Supabase Storage (`emergency-proof` bucket) |
+| Reassigned To        | Full name(s) of replacement staffer(s) matched by `is_reassigned=true` on same day/service key           |
+| Date of Reassignment | `created_at` of the replacement assignment record                                                        |
 
 #### Filtering
 
@@ -1280,6 +1280,141 @@ A new reusable dialog component for administrators to inspect the completion det
 #### Usage
 
 Used by the admin `CoverageTracker` to view completion records for finished requests, and referenced in `CoverageRequestDetailsPage` for in-page detail inspection.
+
+### 9.37 Admin Rectifications Log (v2.8)
+
+A dedicated full-page DataGrid ([`RectificationsLog.jsx`](src/pages/admin/RectificationsLog.jsx:1)) gives administrators a system-wide view of all submitted rectification requests across every section:
+
+#### Navigation
+
+`AdminLayout` now exposes **Rectifications Log** as a third child route under the collapsible **Coverage Tracker** group, alongside Requests and Time Record. The nav item includes a live count badge using the same `#F5C52B` / `#212121` gold-on-dark scheme.
+
+#### Columns
+
+| Column      | Description                                                         |
+| ----------- | ------------------------------------------------------------------- |
+| Assignment  | Request title with quick-navigate arrow (`_nav`, width 48)          |
+| Staff       | Staff member's full name with avatar and navigate arrow             |
+| Submitted   | `created_at` of the rectification request                           |
+| Reviewed By | Full name of the admin reviewer (or "—")                            |
+| Proof       | Clickable file icon linking to uploaded proof (width 80, icon only) |
+| Status      | Pill badge: pending (gold), approved (green), rejected (red)        |
+
+#### Toolbar
+
+- **Search**: Full-text search across staff name, assignment title, reason
+- **Status Filter**: Dropdown to filter by Pending / Approved / Rejected / All
+- **CSV Export**: Exports all visible rows
+
+#### Data Source
+
+Queries `rectification_requests` with joins to `coverage_requests!request_id(title)` and `staff:profiles!staff_id(full_name, avatar_url)` and `reviewer:profiles!reviewed_by(full_name)`.
+
+### 9.38 DataGrid Navigation Standardization — `_nav` Columns (v2.8)
+
+All data grids that link to a detail page now use a standardized invisible arrow column (`_nav`) rather than inline buttons or row click handlers:
+
+- **Column spec**: `field: "_nav"`, `width: 48`, `sortable: false`, `disableColumnMenu: true`, no `headerName`
+- **Cell renderer**: `ArrowForwardOutlinedIcon` at `fontSize: 16` with `color: "text.disabled"`
+- **Applied across**: CoverageTracker (admin), RectificationsLog (admin), CoverageManagementBase (section head), RectificationsPage (section head), and Request Management pages
+
+This ensures users always know where to click to navigate while keeping the column narrowly sized and visually unobtrusive.
+
+### 9.39 Avatar URL Centralization (v2.8)
+
+Raw `avatar_url` column values (Supabase storage paths) are now always resolved through the shared `getAvatarUrl(path)` helper from [`UserAvatar.jsx`](src/components/common/UserAvatar.jsx:1) before being passed to `<Avatar>` components. This was audited and corrected across:
+
+- `TimeoutPage` (admin)
+- `MySchedule` (regular staff)
+- `RectificationsLog` (admin)
+- `RectificationsPage` (section head)
+
+The helper fetches the public URL from the `coverage-files` bucket, ensuring consistent avatar resolution regardless of where in the app an avatar is displayed.
+
+### 9.40 Coverage Tracker — Column & Navigation Enhancements (v2.8)
+
+#### Admin Coverage Tracker
+
+- **Section column removed** from the Tracker DataGrid; replaced with a dedicated `_nav_staff` arrow navigating to the assignment detail
+- `staffer_id` added to row data to support navigation targets
+- **AssignedByStack component**: A new inline avatar stack showing who assigned each coverage record, using `TABLE_USER_AVATAR_SIZE` and `TABLE_USER_AVATAR_FONT_SIZE` tokens
+
+#### Section Head Coverage Tracker (CoverageManagementBase)
+
+- Rectifications toolbar badge button **removed** from the Coverage Tracker toolbar — rectification access is now exclusively via the sidebar nav item
+- Rectifications are accessible through the dedicated **Rectifications** child route in the Coverage Management collapsible group (fifth child: Assignment → Tracker → Time Record → Reassignment History → Rectifications)
+- The `ChildNavItem` component gained a `trailing` prop (rendered after the label) to support the live count badge on the Rectifications nav item
+- Badge styling: `#F5C52B` background, `#212121` text, `borderRadius: "9px"`
+
+### 9.41 Admin Request Management — Per-Filter Column Enhancements (v2.8)
+
+The Request Management DataGrid (`buildColumns` factory in the admin pages) now adapts its visible columns based on the active view filter:
+
+| Filter       | Column Changes                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| **Pending**  | Event Date column is hidden (less relevant at this stage)                                               |
+| **Assigned** | Adds **Assigned Staff Count** column showing how many staffers have been assigned                       |
+| **Declined** | Adds **Decline Reason** column (truncated text) and a `_nav` arrow for navigating to the decline detail |
+
+#### Implementation details
+
+- `assignedCount` is computed per row by counting related `coverage_assignments` records
+- `declinedReasonCol` renders a truncated reason string with an ellipsis tooltip
+- `declinedNavCol` is a standard `_nav` width-48 arrow column
+
+### 9.42 Regular Staff My Assignment — History Tabs (v2.8)
+
+The Settings drawer (gear icon) on the My Assignment page expanded from 2 to 4 tabs:
+
+| Tab                | Content                    |
+| ------------------ | -------------------------- |
+| 0 — Archive        | Existing archived requests |
+| 1 — Trash          | Existing trashed requests  |
+| 2 — Rectifications | New: `RectifHistoryTab`    |
+| 3 — Emergencies    | New: `EmergencyHistoryTab` |
+
+The tab container uses `flexWrap: "wrap"` to prevent overflow on narrow drawers.
+
+#### RectifHistoryTab
+
+- Queries `rectification_requests` filtered by `staff_id = currentUser.id`, joined with `coverage_requests!request_id(title)`
+- Orders by `created_at desc`
+- Renders a card list: assignment title, submitted date, status pill (pending=gold, approved=green, rejected=red)
+- Shows gold `CircularProgress` while loading; empty state message when no records exist
+
+#### EmergencyHistoryTab
+
+- Queries `coverage_assignments` where `assigned_to = currentUser.id`, `status = 'Cancelled'`, and `cancellation_reason ilike 'Emergency%'`
+- Orders by `cancelled_at desc`
+- Parses the cancellation reason: strips the `"Emergency announced: "` prefix and `"(Proof: ...)"` suffix
+- Renders cards with a red-tint style (`border: rgba(220,38,38,0.2)`, `background: #fef2f2` / dark variant)
+- Shows assignment title, extracted reason, and date
+
+### 9.43 Regular Staff My Schedule — Change Request History DataGrid (v2.8)
+
+The MySchedule page now shows a full history of reviewed duty change requests below the calendar grid:
+
+#### State and Data Changes
+
+- Added `allReviewedRequests` state (array)
+- Removed `.limit(1)` from the `reviewedRows` query — the page now fetches **all** reviewed requests (approved / rejected / cancelled), not just the most recent one
+- `latestReviewedRequest` continues to drive the existing "latest result" banner; `allReviewedRequests` drives the new history grid
+
+#### Change Request History Section
+
+- Appears only when `allReviewedRequests.length > 0`
+- Section heading: **"Change Request History"** (uppercase, `text.disabled`, `letterSpacing: 0.09em`)
+- Uses the shared `<DataGrid>` component from `AppDataGrid`
+
+#### Columns
+
+| Column         | Description                                                      |
+| -------------- | ---------------------------------------------------------------- |
+| Requested Day  | Day name mapped via `DAY_LABELS[r.requested_duty_day]`           |
+| Date Requested | `created_at` formatted as "Mon DD, YYYY"                         |
+| Status         | Pill badge: Approved (green) · Declined (red) · Cancelled (grey) |
+
+The grid uses `autoHeight`, `hideFooter`, and a `border`/`borderRadius` matching the page's existing card style.
 
 ---
 

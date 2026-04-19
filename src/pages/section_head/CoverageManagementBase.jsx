@@ -3162,69 +3162,6 @@ export default function CoverageManagementBase({
             <SettingsOutlinedIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
-
-        {/* Rectification requests badge button */}
-        {rectifRequests.length > 0 && (
-          <Tooltip
-            title={`${rectifRequests.length} pending rectification${rectifRequests.length > 1 ? "s" : ""}`}
-            arrow
-          >
-            <Box
-              onClick={() => setRectifDialogOpen(true)}
-              sx={{
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                gap: 0.75,
-                px: 1.5,
-                height: FILTER_BUTTON_HEIGHT,
-                borderRadius: CONTROL_RADIUS,
-                border: "1px solid rgba(139,92,246,0.3)",
-                backgroundColor: isDark
-                  ? "rgba(139,92,246,0.12)"
-                  : "rgba(139,92,246,0.06)",
-                color: "#6d28d9",
-                cursor: "pointer",
-                flexShrink: 0,
-                transition: "all 0.15s",
-                "&:hover": {
-                  backgroundColor: isDark
-                    ? "rgba(139,92,246,0.2)"
-                    : "rgba(139,92,246,0.1)",
-                },
-              }}
-            >
-              <GavelOutlinedIcon sx={{ fontSize: 14 }} />
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.78rem",
-                  fontWeight: 600,
-                  lineHeight: 1,
-                }}
-              >
-                Rectifications
-              </Typography>
-              <Box
-                sx={{
-                  minWidth: 18,
-                  height: 18,
-                  borderRadius: "9px",
-                  backgroundColor: "#6d28d9",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.65rem",
-                  fontWeight: 700,
-                  px: 0.5,
-                }}
-              >
-                {rectifRequests.length}
-              </Box>
-            </Box>
-          </Tooltip>
-        )}
       </Box>
 
       {error && (
@@ -3243,7 +3180,7 @@ export default function CoverageManagementBase({
       )}
 
       {/* ── Table ── */}
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
         <Box
           sx={{
             minWidth: 680,

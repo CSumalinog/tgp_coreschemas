@@ -8,7 +8,6 @@ import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { supabase } from "../../lib/supabaseClient";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
 import {
   notifyAdmins,
   notifyClient,
@@ -549,7 +548,7 @@ export default function TimeoutPage() {
                 >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Avatar
-                      src={getAvatarUrl(assign.staffer?.avatar_url)}
+                      src={assign.staffer?.avatar_url}
                       sx={{
                         width: TABLE_USER_AVATAR_SIZE,
                         height: TABLE_USER_AVATAR_SIZE,
@@ -745,7 +744,7 @@ export default function TimeoutPage() {
           }}
         >
           <Avatar
-            src={getAvatarUrl(currentUser.avatar_url)}
+            src={currentUser.avatar_url}
             sx={{
               width: 26,
               height: 26,
@@ -824,7 +823,7 @@ export default function TimeoutPage() {
             }}
           >
             <Avatar
-              src={getAvatarUrl(currentUser.avatar_url)}
+              src={currentUser.avatar_url}
               sx={{
                 width: 44,
                 height: 44,
@@ -1019,7 +1018,7 @@ export default function TimeoutPage() {
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Avatar
-                    src={getAvatarUrl(assign.staffer?.avatar_url)}
+                    src={assign.staffer?.avatar_url}
                     sx={{
                       width: 30,
                       height: 30,
@@ -1086,3 +1085,5 @@ export default function TimeoutPage() {
     </Box>
   );
 }
+
+

@@ -39,7 +39,7 @@ const GOLD = "#F5C52B";
 const CHARCOAL = "#353535";
 const WHITE = "#ffffff";
 const dm = "'Inter', sans-serif";
-const SIDEBAR_BG = "#121212";
+const SIDEBAR_BG = "#000000";
 const SIDEBAR_BORDER = "rgba(255,255,255,0.07)";
 const TEXT_PRIMARY = "#ffffff";
 const TEXT_SECONDARY = "rgba(255,255,255,0.85)";
@@ -53,7 +53,7 @@ const BORDER = "rgba(53,53,53,0.08)";
 
 const MENU_SECTIONS = [
   {
-    group: "MENU",
+    group: "OVERVIEW",
     items: [
       {
         label: "My Assignment",
@@ -311,7 +311,7 @@ function SidebarContent({ onClose, isMobile }) {
         sx={{
           flex: 1,
           overflowY: "auto",
-          px: 1.5,
+          px: 0,
           py: 1.5,
           "&::-webkit-scrollbar": { width: 0 },
         }}
@@ -326,7 +326,7 @@ function SidebarContent({ onClose, isMobile }) {
                 color: TEXT_LABEL,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                px: 1.25,
+                px: 2,
                 mb: 0.75,
               }}
             >
@@ -388,7 +388,7 @@ function SidebarContent({ onClose, isMobile }) {
   );
 }
 
-function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
+function NavItem({ label, Icon, to, onClick, isActive, trailing }) {
   const location = useLocation();
   const routeActive = to ? location.pathname.includes(to) : false;
   const active = isActive || routeActive;
@@ -399,27 +399,23 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1.25,
-        px: 1.25,
-        py: 0.8,
-        borderRadius: "10px",
+        gap: 1.5,
+        pl: 1.5,
+        pr: 1.5,
+        py: 1.1,
         cursor: "pointer",
         position: "relative",
-        mb: 0.2,
-        backgroundColor: active ? ACTIVE_BG : "transparent",
+        mb: 0.1,
         transition: "background 0.15s",
-        "&:hover": { backgroundColor: active ? ACTIVE_BG : HOVER_BG },
         "&:hover .nav-item-icon": { color: GOLD },
-        "&:hover .nav-item-label": {
-          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
-        },
+        "&:hover .nav-label": { color: TEXT_PRIMARY },
         "&::before": active
           ? {
               content: '""',
               position: "absolute",
               left: 0,
-              top: "20%",
-              height: "60%",
+              top: 0,
+              height: "100%",
               width: "2.5px",
               borderRadius: "0 2px 2px 0",
               backgroundColor: GOLD,
@@ -430,20 +426,21 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
       {Icon && (
         <Box
           sx={{
-            width: 24,
-            height: 24,
-            borderRadius: "10px",
+            width: 28,
+            height: 28,
+            borderRadius: "8px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
             flexShrink: 0,
+            backgroundColor: active ? ACTIVE_ICON_BG : "transparent",
             transition: "background 0.15s",
           }}
         >
           <Icon
             className="nav-item-icon"
             sx={{
+              fontSize: 16,
               color: active ? GOLD : TEXT_ICON,
               transition: "color 0.15s",
             }}
@@ -451,12 +448,12 @@ function NavItem({ label, Icon, to, onClick, isActive, isChild, trailing }) {
         </Box>
       )}
       <Typography
-        className="nav-item-label"
+        className="nav-label"
         sx={{
           fontFamily: dm,
-          fontSize: isChild ? "0.76rem" : "0.8rem",
+          fontSize: "0.8rem",
           fontWeight: active ? 600 : 400,
-          color: active ? ACTIVE_COLOR : TEXT_SECONDARY,
+          color: active ? TEXT_PRIMARY : TEXT_SECONDARY,
           flex: 1,
           transition: "color 0.15s",
           lineHeight: 1,

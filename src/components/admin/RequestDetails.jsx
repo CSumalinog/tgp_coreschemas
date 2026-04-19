@@ -94,7 +94,6 @@ const STATUS_CONFIG = {
   "On Going": { bg: "#dbeafe", color: "#1d4ed8" },
   Completed: { bg: "#f0fdf4", color: "#15803d" },
   Declined: { bg: "#fee2e2", color: "#dc2626" },
-  Rectified: { bg: "rgba(139,92,246,0.08)", color: "#6d28d9" },
 };
 
 const SCORE_CONFIG = {
@@ -399,21 +398,19 @@ function ServiceRow({
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: "10px",
-              border: "1px solid",
-              borderColor: isDark
-                ? "rgba(255,255,255,0.1)"
-                : "rgba(53,53,53,0.1)",
-              boxShadow: isDark
-                ? "0 12px 40px rgba(0,0,0,0.55)"
-                : "0 4px 24px rgba(53,53,53,0.12)",
-              backgroundColor: "background.paper",
-              minWidth: 210,
-              mt: 0.75,
-            },
+        PaperProps={{
+          sx: {
+            borderRadius: "10px",
+            border: "1px solid",
+            borderColor: isDark
+              ? "rgba(255,255,255,0.1)"
+              : "rgba(53,53,53,0.1)",
+            boxShadow: isDark
+              ? "0 12px 40px rgba(0,0,0,0.55)"
+              : "0 4px 24px rgba(53,53,53,0.12)",
+            backgroundColor: "background.paper",
+            minWidth: 210,
+            mt: 0.75,
           },
         }}
       >
@@ -709,7 +706,6 @@ export default function RequestDetails({
         "Approved",
         "On Going",
         "Completed",
-        "Rectified",
       ].includes(request.status)
     ) {
       setAssignedStaffers([]);
@@ -867,9 +863,7 @@ export default function RequestDetails({
     bg: "#f3f4f6",
     color: "#6b7280",
   };
-  const isMultiDay = !!(
-    request?.is_multiday && request?.event_days?.length > 0
-  );
+  const isMultiDay = !!(request?.is_multiday && request?.event_days?.length > 0);
   // FIX #3: show staff panel for more statuses including On Going / Completed
   const showStaff = [
     "Forwarded",
@@ -878,18 +872,12 @@ export default function RequestDetails({
     "Approved",
     "On Going",
     "Completed",
-    "Rectified",
   ].includes(request?.status);
   // FIX #4: decline available at any pre-completion stage
   const canDecline = DECLINABLE_STATUSES.includes(request?.status);
-  const canOpenCoverageDetails = [
-    "Assigned",
-    "For Approval",
-    "Approved",
-    "On Going",
-    "Completed",
-    "Rectified",
-  ].includes(request?.status);
+  const canOpenCoverageDetails = ["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(
+    request?.status,
+  );
 
   const eventDateDisplay = React.useMemo(() => {
     if (!request) return "—";
@@ -903,9 +891,7 @@ export default function RequestDetails({
         day: "numeric",
         year: "numeric",
       });
-      return sorted.length === 1
-        ? fmtDate(sorted[0].date)
-        : `${first} – ${last}`;
+      return sorted.length === 1 ? fmtDate(sorted[0].date) : `${first} – ${last}`;
     }
     return request.event_date ? fmtDate(request.event_date) : "—";
   }, [request]);
@@ -1000,11 +986,7 @@ export default function RequestDetails({
             </Typography>
           </Box>
           <Tooltip
-            title={
-              assessmentSidebarOpen
-                ? "Hide assessment panel"
-                : "Show assessment panel"
-            }
+            title={assessmentSidebarOpen ? "Hide assessment panel" : "Show assessment panel"}
             arrow
           >
             <IconButton
@@ -1025,13 +1007,9 @@ export default function RequestDetails({
             <IconButton
               onClick={handleClose}
               size="small"
-              sx={{
-                color: "text.secondary",
-                borderRadius: "10px",
-                "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" },
-              }}
+              sx={{ color: "text.secondary" }}
             >
-              <CloseIcon sx={{ fontSize: 16 }} />
+              <CloseIcon fontSize="small" />
             </IconButton>
           )}
         </Box>
@@ -1211,7 +1189,9 @@ export default function RequestDetails({
             open={panelOpen.coverageRequirements}
             onToggle={() => togglePanel("coverageRequirements")}
           >
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
+            <Box
+              sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}
+            >
               {coverageComponents.length > 0 ? (
                 coverageComponents.map((c, idx) => (
                   <Box
@@ -1290,14 +1270,18 @@ export default function RequestDetails({
                 </Typography>
               </Box>
             ) : (
-              <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>
+              <Typography
+                sx={{ fontSize: "0.85rem", color: "text.secondary" }}
+              >
                 No file attached
               </Typography>
             )}
           </Section>
 
           {/* FIX #6: show forwarded sections on both Forwarded AND For Approval */}
-          {["Forwarded", "Assigned", "For Approval"].includes(request.status) &&
+          {["Forwarded", "Assigned", "For Approval"].includes(
+            request.status,
+          ) &&
             request.forwarded_sections?.length > 0 && (
               <Section label="Forwarded To">
                 <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
@@ -1336,9 +1320,7 @@ export default function RequestDetails({
                   border: "1px solid",
                   borderColor: "divider",
                   borderRadius: "10px",
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.01)"
-                    : "#ffffff",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "#ffffff",
                   overflow: "hidden",
                   transition: "background-color 0.18s ease",
                   "& .assigned-staff-ctr-action": {
@@ -1346,9 +1328,7 @@ export default function RequestDetails({
                     pointerEvents: "none",
                   },
                   "&:hover": {
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.03)"
-                      : "rgba(53,53,53,0.02)",
+                    backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(53,53,53,0.02)",
                   },
                   "&:hover .assigned-staff-ctr-action": {
                     opacity: 1,
@@ -1376,11 +1356,8 @@ export default function RequestDetails({
                         background: isDark
                           ? "linear-gradient(90deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.08) 100%)"
                           : "linear-gradient(90deg, rgba(53,53,53,0.00) 0%, rgba(53,53,53,0.06) 100%)",
-                        color: isDark
-                          ? "rgba(255,255,255,0.85)"
-                          : "rgba(17,17,17,0.75)",
-                        transition:
-                          "opacity 0.2s ease, background 0.2s ease, color 0.2s ease",
+                        color: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,17,17,0.75)",
+                        transition: "opacity 0.2s ease, background 0.2s ease, color 0.2s ease",
                         "&:hover": {
                           background: isDark
                             ? "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.14) 100%)"
@@ -1389,9 +1366,7 @@ export default function RequestDetails({
                         },
                       }}
                     >
-                      <ChevronRightIcon
-                        sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 700 }}
-                      />
+                      <ChevronRightIcon sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 700 }} />
                     </IconButton>
                   </Tooltip>
                 )}
@@ -1460,9 +1435,7 @@ export default function RequestDetails({
           )}
 
           {/* FIX #3: show admin_notes for all post-approval statuses */}
-          {["Approved", "Assigned", "On Going", "Completed"].includes(
-            request.status,
-          ) &&
+          {["Approved", "Assigned", "On Going", "Completed"].includes(request.status) &&
             request.admin_notes && (
               <Section label="Admin Notes">
                 <Box
@@ -1492,15 +1465,25 @@ export default function RequestDetails({
           sx={{ display: { xs: "none", md: "block" } }}
         >
           <Box sx={{ display: "flex", height: "100%" }}>
-            <Divider orientation="vertical" flexItem sx={{ display: "flex" }} />
-            <RequestAssessmentPanel checks={checks} isDark={isDark} />
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ display: "flex" }}
+            />
+            <RequestAssessmentPanel
+              checks={checks}
+              isDark={isDark}
+            />
           </Box>
         </Collapse>
 
         {assessmentSidebarOpen && (
           <Box sx={{ display: { xs: "block", md: "none" }, width: "100%" }}>
             <Divider orientation="horizontal" flexItem />
-            <RequestAssessmentPanel checks={checks} isDark={isDark} />
+            <RequestAssessmentPanel
+              checks={checks}
+              isDark={isDark}
+            />
           </Box>
         )}
       </DialogContent>
@@ -1608,18 +1591,16 @@ export default function RequestDetails({
           onClose={handleClose}
           fullWidth
           maxWidth="md"
-          slotProps={{
-            paper: {
-              sx: {
-                borderRadius: "10px",
-                fontFamily: "'Helvetica Neue', sans-serif",
-                height: { md: "90vh" },
-                maxHeight: "95vh",
-                backgroundColor: "background.paper",
-                boxShadow: isDark
-                  ? "0 8px 32px rgba(0,0,0,0.5)"
-                  : "0 4px 24px rgba(0,0,0,0.08)",
-              },
+          PaperProps={{
+            sx: {
+              borderRadius: "10px",
+              fontFamily: "'Helvetica Neue', sans-serif",
+              height: { md: "90vh" },
+              maxHeight: "95vh",
+              backgroundColor: "background.paper",
+              boxShadow: isDark
+                ? "0 8px 32px rgba(0,0,0,0.5)"
+                : "0 4px 24px rgba(0,0,0,0.08)",
             },
           }}
         >
@@ -1631,12 +1612,10 @@ export default function RequestDetails({
       <Dialog
         open={warningOpen}
         onClose={() => setWarningOpen(false)}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
-        slotProps={{
-          paper: {
-            sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-          },
+        PaperProps={{
+          sx: { borderRadius: "10px", backgroundColor: "background.paper" },
         }}
       >
         <Box
@@ -1650,6 +1629,15 @@ export default function RequestDetails({
             gap: 1.5,
           }}
         >
+          <Box
+            sx={{
+              width: 3,
+              height: 28,
+              borderRadius: 1,
+              backgroundColor: "#d97706",
+              flexShrink: 0,
+            }}
+          />
           <Box>
             <Typography
               sx={{
@@ -1803,12 +1791,10 @@ export default function RequestDetails({
       <Dialog
         open={approveWarningOpen}
         onClose={() => setApproveWarningOpen(false)}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
-        slotProps={{
-          paper: {
-            sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-          },
+        PaperProps={{
+          sx: { borderRadius: "10px", backgroundColor: "background.paper" },
         }}
       >
         <Box
@@ -1822,6 +1808,15 @@ export default function RequestDetails({
             gap: 1.5,
           }}
         >
+          <Box
+            sx={{
+              width: 3,
+              height: 28,
+              borderRadius: 1,
+              backgroundColor: "#dc2626",
+              flexShrink: 0,
+            }}
+          />
           <Box>
             <Typography
               sx={{
@@ -1835,8 +1830,7 @@ export default function RequestDetails({
             <Typography
               sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}
             >
-              All requested services must have at least one staff assigned
-              before approval.
+              All requested services must have at least one staff assigned before approval.
             </Typography>
           </Box>
         </Box>
@@ -1941,12 +1935,10 @@ export default function RequestDetails({
       <Dialog
         open={approveSoftWarnOpen}
         onClose={() => setApproveSoftWarnOpen(false)}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
-        slotProps={{
-          paper: {
-            sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-          },
+        PaperProps={{
+          sx: { borderRadius: "10px", backgroundColor: "background.paper" },
         }}
       >
         <Box
@@ -1960,6 +1952,15 @@ export default function RequestDetails({
             gap: 1.5,
           }}
         >
+          <Box
+            sx={{
+              width: 3,
+              height: 28,
+              borderRadius: 1,
+              backgroundColor: "#d97706",
+              flexShrink: 0,
+            }}
+          />
           <Box>
             <Typography
               sx={{
@@ -2112,12 +2113,10 @@ export default function RequestDetails({
       <Dialog
         open={forwardOpen}
         onClose={() => !actionLoading && setForwardOpen(false)}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
-        slotProps={{
-          paper: {
-            sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-          },
+        PaperProps={{
+          sx: { borderRadius: "10px", backgroundColor: "background.paper" },
         }}
       >
         <Box
@@ -2140,13 +2139,9 @@ export default function RequestDetails({
             onClick={() => setForwardOpen(false)}
             size="small"
             disabled={actionLoading}
-            sx={{
-              color: "text.secondary",
-              borderRadius: "10px",
-              "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" },
-            }}
+            sx={{ color: "text.secondary" }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
@@ -2330,10 +2325,8 @@ export default function RequestDetails({
         onClose={() => !actionLoading && setDeclineOpen(false)}
         maxWidth="sm"
         fullWidth
-        slotProps={{
-          paper: {
-            sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-          },
+        PaperProps={{
+          sx: { borderRadius: "10px", backgroundColor: "background.paper" },
         }}
       >
         <Box
@@ -2356,13 +2349,9 @@ export default function RequestDetails({
             onClick={() => setDeclineOpen(false)}
             size="small"
             disabled={actionLoading}
-            sx={{
-              color: "text.secondary",
-              borderRadius: "10px",
-              "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" },
-            }}
+            sx={{ color: "text.secondary" }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
@@ -2438,10 +2427,8 @@ export default function RequestDetails({
         onClose={() => !actionLoading && setApproveOpen(false)}
         maxWidth="sm"
         fullWidth
-        slotProps={{
-          paper: {
-            sx: { borderRadius: "10px", backgroundColor: "background.paper" },
-          },
+        PaperProps={{
+          sx: { borderRadius: "10px", backgroundColor: "background.paper" },
         }}
       >
         <Box
@@ -2464,13 +2451,9 @@ export default function RequestDetails({
             onClick={() => setApproveOpen(false)}
             size="small"
             disabled={actionLoading}
-            sx={{
-              color: "text.secondary",
-              borderRadius: "10px",
-              "&:hover": { backgroundColor: "rgba(0,0,0,0.04)" },
-            }}
+            sx={{ color: "text.secondary" }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
@@ -2624,3 +2607,7 @@ function InfoGrid({ rows, isDark }) {
     </Box>
   );
 }
+
+
+
+

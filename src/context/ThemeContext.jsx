@@ -440,8 +440,8 @@ function DataGridStyles({ isDark }) {
           fontSize: "0.8rem !important",
           fontFamily: `${dm} !important`,
           fontWeight: "550 !important",
-          textTransform: "uppercase !important",
-          letterSpacing: "0.07em !important",
+          textTransform: "none !important",
+          letterSpacing: "0.03em !important",
         },
 
         "body .MuiMenuItem-root": {

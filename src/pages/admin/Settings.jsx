@@ -25,10 +25,6 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import BrandedLoader from "../../components/common/BrandedLoader";
-import {
-  TABLE_FIRST_COL_FLEX,
-  TABLE_FIRST_COL_MIN_WIDTH,
-} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -163,15 +159,13 @@ function ConfirmDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      slotProps={{
-        paper: {
-          sx: {
-            borderRadius: "10px",
-            width: 400,
-            p: 0,
-            fontFamily: dm,
-            bgcolor: "background.paper",
-          },
+      PaperProps={{
+        sx: {
+          borderRadius: "10px",
+          width: 400,
+          p: 0,
+          fontFamily: dm,
+          bgcolor: "background.paper",
         },
       }}
     >
@@ -305,7 +299,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [adminUserId, setAdminUserId] = useState(null);
 
   // ── Requests data ────────────────────────────────────────
   const [archivedRequests, setArchivedRequests] = useState([]);
@@ -326,96 +319,40 @@ export default function Settings() {
     action: null,
   });
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setAdminUserId(user.id);
-    });
-  }, []);
-
   // ── Fetch ────────────────────────────────────────────────
-  const fetchArchived = useCallback(async (userId) => {
-    if (!userId) return;
-    const { data: stateRows, error: stateError } = await supabase
-      .from("request_user_state")
-      .select("request_id, archived_at")
-      .eq("user_id", userId)
+  const fetchArchived = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("coverage_requests")
+      .select(
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, archived_at, requester_id",
+      )
       .not("archived_at", "is", null)
       .is("trashed_at", null)
-      .is("purged_at", null);
-    if (stateError) return;
-    const archivedMap = new Map(
-      (stateRows || []).map((r) => [r.request_id, r.archived_at]),
-    );
-    const archivedIds = [...archivedMap.keys()];
-    if (!archivedIds.length) {
-      setArchivedRequests([]);
-      return;
-    }
+      .order("archived_at", { ascending: false });
+    if (!error) setArchivedRequests(data || []);
+  }, []);
+
+  const fetchTrashed = useCallback(async () => {
     const { data, error } = await supabase
       .from("coverage_requests")
       .select(
-        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
+        "id, title, status, event_date, is_multiday, event_days, submitted_at, trashed_at, requester_id",
       )
-      .in("id", archivedIds);
-    if (!error) {
-      setArchivedRequests(
-        (data || [])
-          .map((r) => ({ ...r, archived_at: archivedMap.get(r.id) }))
-          .sort((a, b) => new Date(b.archived_at) - new Date(a.archived_at)),
-      );
-    }
-  }, []);
-
-  const fetchTrashed = useCallback(async (userId) => {
-    if (!userId) return;
-    const { data: stateRows, error: stateError } = await supabase
-      .from("request_user_state")
-      .select("request_id, trashed_at")
-      .eq("user_id", userId)
       .not("trashed_at", "is", null)
-      .is("purged_at", null);
-    if (stateError) return;
-    const trashedMap = new Map(
-      (stateRows || []).map((r) => [r.request_id, r.trashed_at]),
-    );
-    const trashedIds = [...trashedMap.keys()];
-    if (!trashedIds.length) {
-      setTrashedRequests([]);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("coverage_requests")
-      .select(
-        "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
-      )
-      .in("id", trashedIds);
-    if (!error) {
-      setTrashedRequests(
-        (data || [])
-          .map((r) => ({ ...r, trashed_at: trashedMap.get(r.id) }))
-          .sort((a, b) => new Date(b.trashed_at) - new Date(a.trashed_at)),
-      );
-    }
+      .order("trashed_at", { ascending: false });
+    if (!error) setTrashedRequests(data || []);
   }, []);
 
-  const fetchArchivable = useCallback(async (userId) => {
-    const { data: stateRows } = userId
-      ? await supabase
-          .from("request_user_state")
-          .select("request_id")
-          .eq("user_id", userId)
-      : { data: [] };
-    const hiddenIds = (stateRows || []).map((r) => r.request_id);
-    let query = supabase
+  const fetchArchivable = useCallback(async () => {
+    const { data, error } = await supabase
       .from("coverage_requests")
       .select(
         "id, title, status, event_date, is_multiday, event_days, submitted_at, requester_id",
       )
       .in("status", ["Completed", "Declined", "Cancelled"])
+      .is("archived_at", null)
+      .is("trashed_at", null)
       .order("submitted_at", { ascending: false });
-    if (hiddenIds.length)
-      query = query.not("id", "in", `(${hiddenIds.join(",")})`);
-    const { data, error } = await query;
     if (!error) setArchivableRequests(data || []);
   }, []);
 
@@ -430,144 +367,107 @@ export default function Settings() {
     setNotifStats({ total: total || 0, read: read || 0 });
   }, []);
 
-  const loadAll = useCallback(
-    async (userId) => {
-      setLoading(true);
-      await Promise.all([
-        fetchArchived(userId),
-        fetchTrashed(userId),
-        fetchArchivable(userId),
-        fetchNotifStats(),
-      ]);
-      setLoading(false);
-    },
-    [fetchArchived, fetchTrashed, fetchArchivable, fetchNotifStats],
-  );
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchArchived(),
+      fetchTrashed(),
+      fetchArchivable(),
+      fetchNotifStats(),
+    ]);
+    setLoading(false);
+  }, [fetchArchived, fetchTrashed, fetchArchivable, fetchNotifStats]);
 
   useEffect(() => {
-    if (adminUserId) loadAll(adminUserId);
-  }, [loadAll, adminUserId]);
+    loadAll();
+  }, [loadAll]);
 
   // ── Actions ──────────────────────────────────────────────
   const archiveRequests = useCallback(
     async (ids) => {
-      if (!adminUserId) return;
       setActionLoading(true);
       try {
-        const ts = new Date().toISOString();
-        const rows = ids.map((id) => ({
-          user_id: adminUserId,
-          request_id: id,
-          archived_at: ts,
-          trashed_at: null,
-          purged_at: null,
-        }));
         const { error } = await supabase
-          .from("request_user_state")
-          .upsert(rows, { onConflict: "user_id,request_id" });
+          .from("coverage_requests")
+          .update({ archived_at: new Date().toISOString() })
+          .in("id", ids);
         if (error) throw error;
         setMsg({ type: "success", text: `${ids.length} request(s) archived.` });
         setSelected([]);
-        await Promise.all([
-          fetchArchived(adminUserId),
-          fetchArchivable(adminUserId),
-        ]);
+        await Promise.all([fetchArchived(), fetchArchivable()]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchArchived, fetchArchivable, adminUserId],
+    [fetchArchived, fetchArchivable],
   );
 
   const restoreFromArchive = useCallback(
     async (ids) => {
-      if (!adminUserId) return;
       setActionLoading(true);
       try {
         const { error } = await supabase
-          .from("request_user_state")
-          .delete()
-          .eq("user_id", adminUserId)
-          .in("request_id", ids);
+          .from("coverage_requests")
+          .update({ archived_at: null })
+          .in("id", ids);
         if (error) throw error;
         setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
         setSelected([]);
-        await Promise.all([
-          fetchArchived(adminUserId),
-          fetchArchivable(adminUserId),
-        ]);
+        await Promise.all([fetchArchived(), fetchArchivable()]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchArchived, fetchArchivable, adminUserId],
+    [fetchArchived, fetchArchivable],
   );
 
   const moveToTrash = useCallback(
     async (ids) => {
-      if (!adminUserId) return;
       setActionLoading(true);
       try {
-        const ts = new Date().toISOString();
-        const rows = ids.map((id) => ({
-          user_id: adminUserId,
-          request_id: id,
-          archived_at: null,
-          trashed_at: ts,
-          purged_at: null,
-        }));
         const { error } = await supabase
-          .from("request_user_state")
-          .upsert(rows, { onConflict: "user_id,request_id" });
+          .from("coverage_requests")
+          .update({ trashed_at: new Date().toISOString() })
+          .in("id", ids);
         if (error) throw error;
         setMsg({
           type: "success",
           text: `${ids.length} request(s) moved to trash.`,
         });
         setSelected([]);
-        await Promise.all([
-          fetchArchived(adminUserId),
-          fetchTrashed(adminUserId),
-          fetchArchivable(adminUserId),
-        ]);
+        await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchArchived, fetchTrashed, fetchArchivable, adminUserId],
+    [fetchArchived, fetchTrashed, fetchArchivable],
   );
 
   const restoreFromTrash = useCallback(
     async (ids) => {
-      if (!adminUserId) return;
       setActionLoading(true);
       try {
         const { error } = await supabase
-          .from("request_user_state")
-          .delete()
-          .eq("user_id", adminUserId)
-          .in("request_id", ids);
+          .from("coverage_requests")
+          .update({ trashed_at: null, archived_at: null })
+          .in("id", ids);
         if (error) throw error;
         setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
         setSelected([]);
-        await Promise.all([
-          fetchArchived(adminUserId),
-          fetchTrashed(adminUserId),
-          fetchArchivable(adminUserId),
-        ]);
+        await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchArchived, fetchTrashed, fetchArchivable, adminUserId],
+    [fetchArchived, fetchTrashed, fetchArchivable],
   );
 
   const deleteForever = useCallback(
@@ -584,14 +484,14 @@ export default function Settings() {
           text: `${ids.length} request(s) permanently deleted.`,
         });
         setSelected([]);
-        await fetchTrashed(adminUserId);
+        await fetchTrashed();
       } catch (err) {
         setMsg({ type: "error", text: err.message });
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchTrashed, adminUserId],
+    [fetchTrashed],
   );
 
   const emptyTrash = async () => {
@@ -635,14 +535,14 @@ export default function Settings() {
       {
         field: "title",
         headerName: "Title",
-        flex: TABLE_FIRST_COL_FLEX,
-        minWidth: TABLE_FIRST_COL_MIN_WIDTH,
+        flex: 1,
+        minWidth: 200,
         renderCell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.8rem",
+                fontSize: "0.82rem",
                 fontWeight: 600,
                 color: "text.primary",
                 overflow: "hidden",
@@ -674,7 +574,7 @@ export default function Settings() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.8rem",
+                fontSize: "0.78rem",
                 color: "text.secondary",
               }}
             >
@@ -692,7 +592,7 @@ export default function Settings() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.8rem",
+                fontSize: "0.78rem",
                 color: "text.secondary",
               }}
             >
@@ -717,7 +617,7 @@ export default function Settings() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.8rem",
+                fontSize: "0.78rem",
                 color: "text.secondary",
               }}
             >
@@ -796,7 +696,7 @@ export default function Settings() {
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.8rem",
+                fontSize: "0.78rem",
                 color: "text.secondary",
               }}
             >
@@ -955,7 +855,7 @@ export default function Settings() {
         <Typography
           sx={{
             fontFamily: dm,
-            fontSize: "0.8rem",
+            fontSize: "0.78rem",
             fontWeight: 600,
             color: "text.primary",
           }}
@@ -1071,7 +971,7 @@ export default function Settings() {
             mb: 2,
             borderRadius: "10px",
             fontFamily: dm,
-            fontSize: "0.8rem",
+            fontSize: "0.78rem",
             py: 0.75,
           }}
         >
@@ -1864,3 +1764,5 @@ export default function Settings() {
     </Box>
   );
 }
+
+

@@ -1016,6 +1016,7 @@ function PipelineCard({ request, isDark, border, onClick }) {
         borderRadius: "10px",
         border: `1px solid ${border}`,
         backgroundColor: "background.paper",
+        boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
         cursor: "pointer",
         transition: "border-color 0.15s, box-shadow 0.15s",
         "&:hover": {
@@ -1313,9 +1314,9 @@ function PipelineCard({ request, isDark, border, onClick }) {
 }
 
 // G��G�� Grid Tabs G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
-function RequestsGrid({ rows, columns, border, gridApiRef, filterModel }) {
+function RequestsGrid({ rows, columns, border, isDark, gridApiRef, filterModel }) {
   return (
-    <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+    <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
       <Box
         sx={{
           minWidth: 640,

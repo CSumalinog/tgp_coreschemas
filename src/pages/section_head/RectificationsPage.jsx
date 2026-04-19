@@ -8,7 +8,6 @@ import {
   Alert,
   LinearProgress,
   IconButton,
-  Avatar,
   useTheme,
   Tooltip,
   FormControl,
@@ -29,10 +28,8 @@ import {
   notifySpecificStaff,
   notifyAdmins,
 } from "../../services/NotificationService";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import { StaffAvatar } from "../../components/common/UserAvatar";
 import {
-  TABLE_USER_AVATAR_SIZE,
-  TABLE_USER_AVATAR_FONT_SIZE,
   CONTROL_RADIUS,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
@@ -361,16 +358,6 @@ const getAvatarColor = (id) => {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-};
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function RectificationsPage() {
   const theme = useTheme();
@@ -578,20 +565,7 @@ export default function RectificationsPage() {
               gap: 0.75,
             }}
           >
-            <Avatar
-              src={getAvatarUrl(p.row.staffAvatarUrl)}
-              sx={{
-                width: TABLE_USER_AVATAR_SIZE,
-                height: TABLE_USER_AVATAR_SIZE,
-                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-                fontWeight: 700,
-                backgroundColor: p.row.avatarBg,
-                color: p.row.avatarFg,
-                flexShrink: 0,
-              }}
-            >
-              {!getAvatarUrl(p.row.staffAvatarUrl) && getInitials(p.value)}
-            </Avatar>
+            <StaffAvatar path={p.row.staffAvatarUrl} name={p.value} bg={p.row.avatarBg} fg={p.row.avatarFg} />
             <Typography
               sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}
             >
@@ -802,28 +776,8 @@ export default function RectificationsPage() {
         </Box>
       )}
 
-      {/* Empty state */}
-      {!loading && requests.length === 0 && (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            py: 10,
-            gap: 1.5,
-            color: "text.secondary",
-          }}
-        >
-          <GavelOutlinedIcon sx={{ fontSize: 36, opacity: 0.25 }} />
-          <Typography sx={{ fontFamily: dm, fontSize: "0.85rem" }}>
-            No pending rectification requests.
-          </Typography>
-        </Box>
-      )}
-
-      {/* DataGrid */}
-      {!loading && requests.length > 0 && (
+      {/* DataGrid — always rendered when not loading, handles empty state natively */}
+      {!loading && (
         <Box
           sx={{
             flex: 1,
@@ -831,6 +785,7 @@ export default function RectificationsPage() {
             border: `1px solid ${border}`,
             borderRadius: "10px",
             overflow: "hidden",
+            boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
           }}
         >
           <DataGrid

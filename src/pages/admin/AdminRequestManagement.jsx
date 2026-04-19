@@ -10,7 +10,6 @@ import {
   InputAdornment,
   OutlinedInput,
   useTheme,
-  Avatar,
   Menu,
   ListItemIcon,
   ListItemText,
@@ -37,7 +36,8 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import ArrowForwardOutlinedIcon from "@mui/icons-material/ArrowForwardOutlined";
+import { StaffAvatar } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   CONTROL_RADIUS,
@@ -49,8 +49,6 @@ import {
   MODAL_TAB_HEIGHT,
   TABLE_FIRST_COL_FLEX,
   TABLE_FIRST_COL_MIN_WIDTH,
-  TABLE_USER_AVATAR_FONT_SIZE,
-  TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 import {
   RoleArchiveManagement,
@@ -89,16 +87,6 @@ const SECTION_COLORS = {
   News: { bg: "#e3f2fd", color: "#1565c0", dot: "#1976d2" },
   Photojournalism: { bg: "#f3e5f5", color: "#7b1fa2", dot: "#8b5cf6" },
   Videojournalism: { bg: "#e8f5e9", color: "#2e7d32", dot: "#22c55e" },
-};
-
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 };
 
 const fmtDateStr = (
@@ -302,20 +290,18 @@ export default function AdminRequestManagement() {
 
   const handleArchive = async (row) => {
     if (!row?.id || !currentUserId) return;
-    const { error } = await supabase
-      .from("request_user_state")
-      .upsert(
-        [
-          {
-            user_id: currentUserId,
-            request_id: row.id,
-            archived_at: new Date().toISOString(),
-            trashed_at: null,
-            purged_at: null,
-          },
-        ],
-        { onConflict: "user_id,request_id" },
-      );
+    const { error } = await supabase.from("request_user_state").upsert(
+      [
+        {
+          user_id: currentUserId,
+          request_id: row.id,
+          archived_at: new Date().toISOString(),
+          trashed_at: null,
+          purged_at: null,
+        },
+      ],
+      { onConflict: "user_id,request_id" },
+    );
     if (!error) {
       refetch();
       setToast({
@@ -327,20 +313,18 @@ export default function AdminRequestManagement() {
   };
   const handleTrash = async (row) => {
     if (!row?.id || !currentUserId) return;
-    const { error } = await supabase
-      .from("request_user_state")
-      .upsert(
-        [
-          {
-            user_id: currentUserId,
-            request_id: row.id,
-            archived_at: null,
-            trashed_at: new Date().toISOString(),
-            purged_at: null,
-          },
-        ],
-        { onConflict: "user_id,request_id" },
-      );
+    const { error } = await supabase.from("request_user_state").upsert(
+      [
+        {
+          user_id: currentUserId,
+          request_id: row.id,
+          archived_at: null,
+          trashed_at: new Date().toISOString(),
+          purged_at: null,
+        },
+      ],
+      { onConflict: "user_id,request_id" },
+    );
     if (!error) {
       refetch();
       setToast({
@@ -590,6 +574,7 @@ export default function AdminRequestManagement() {
     declinedReason: req.declined_reason || "—",
     status: req.status,
     assignments: req.coverage_assignments || [],
+    assignedCount: (req.coverage_assignments || []).length,
     _raw: req,
   }));
 
@@ -822,7 +807,6 @@ export default function AdminRequestManagement() {
     flex: 1,
     minWidth: 150,
     renderCell: (p) => {
-      const url = getAvatarUrl(p.row[avatarField]);
       return (
         <Box
           sx={{
@@ -833,20 +817,7 @@ export default function AdminRequestManagement() {
           }}
         >
           {p.value !== "—" && (
-            <Avatar
-              src={url || undefined}
-              sx={{
-                width: TABLE_USER_AVATAR_SIZE,
-                height: TABLE_USER_AVATAR_SIZE,
-                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-                fontWeight: 600,
-                backgroundColor: avatarBg,
-                color: avatarColor,
-                flexShrink: 0,
-              }}
-            >
-              {!url && getInitials(p.value)}
-            </Avatar>
+            <StaffAvatar path={p.row[avatarField]} name={p.value} bg={avatarBg} fg={avatarColor} />
           )}
           <Typography
             sx={{
@@ -888,6 +859,111 @@ export default function AdminRequestManagement() {
     "#dc2626",
   );
 
+  const assignedCountCol = {
+    field: "assignedCount",
+    headerName: "Assigned",
+    flex: 0.6,
+    minWidth: 90,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1,
+            py: 0.3,
+            borderRadius: "10px",
+            backgroundColor:
+              p.value > 0
+                ? "#f0fdf4"
+                : isDark
+                  ? "rgba(255,255,255,0.04)"
+                  : "#f3f4f6",
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              color: p.value > 0 ? "#15803d" : "text.disabled",
+            }}
+          >
+            {p.value} staff
+          </Typography>
+        </Box>
+      </Box>
+    ),
+  };
+
+  const declinedReasonCol = {
+    field: "declinedReason",
+    headerName: "Reason",
+    flex: 1.2,
+    minWidth: 160,
+    renderCell: (p) => (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Typography
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.78rem",
+            color: p.value === "—" ? "text.disabled" : "text.secondary",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {p.value}
+        </Typography>
+      </Box>
+    ),
+  };
+
+  const declinedNavCol = {
+    field: "_nav_declined",
+    headerName: "",
+    width: 48,
+    sortable: false,
+    disableColumnMenu: true,
+    renderCell: (p) => (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        <Tooltip title="View request">
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/admin/coverage-request-details/${p.row.id}`, {
+                state: { backTo: "/admin/request-management" },
+              });
+            }}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: "6px",
+              border: `1px solid ${border}`,
+              cursor: "pointer",
+              color: "text.disabled",
+              transition: "all 0.15s",
+              "&:hover": { borderColor: "#212121", color: "#212121" },
+            }}
+          >
+            <ArrowForwardOutlinedIcon sx={{ fontSize: 13 }} />
+          </Box>
+        </Tooltip>
+      </Box>
+    ),
+  };
+
   const buildColumns = () => {
     const key = statusFilter;
     if (key === "all")
@@ -917,10 +993,21 @@ export default function AdminRequestManagement() {
         clientCol,
         eventDateCol,
         approvedByCol,
+        assignedCountCol,
         actionCol,
       ];
     if (key === "Declined")
-      return [titleCol, typeCol, clientCol, declinedByCol, actionCol];
+      return [
+        titleCol,
+        typeCol,
+        clientCol,
+        declinedByCol,
+        declinedReasonCol,
+        declinedNavCol,
+      ];
+    // Pending, For Approval, On Going — show Received, drop Event Date
+    if (key === "Pending")
+      return [titleCol, typeCol, clientCol, receivedCol, actionCol];
     return [titleCol, typeCol, clientCol, receivedCol, eventDateCol, actionCol];
   };
 
@@ -1195,7 +1282,7 @@ export default function AdminRequestManagement() {
       </PageFilterToolbar>
 
       {/* ── Table ── */}
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto", borderRadius: "10px", boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)" }}>
         <Box
           sx={{
             minWidth: 680,

@@ -6,7 +6,6 @@ import {
   Box,
   Typography,
   Dialog,
-  Avatar,
   useTheme,
   Tooltip,
   FormControl,
@@ -24,12 +23,10 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import ArrowForwardOutlinedIcon from "@mui/icons-material/ArrowForwardOutlined";
 import IconButton from "@mui/material/IconButton";
 import BrandedLoader from "../../components/common/BrandedLoader";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import { StaffAvatar } from "../../components/common/UserAvatar";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
 import {
-  TABLE_USER_AVATAR_SIZE,
-  TABLE_USER_AVATAR_FONT_SIZE,
   CONTROL_RADIUS,
   FILTER_INPUT_HEIGHT,
   FILTER_ROW_GAP,
@@ -72,15 +69,6 @@ const AVATAR_COLORS = [
 function getAvatarColor(id = "") {
   const sum = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
-}
-
-function getInitials(name = "") {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function fmtDate(iso) {
@@ -214,8 +202,6 @@ function ViewDialog({ open, request, isDark, border, onClose }) {
             {request.reason ?? "—"}
           </Typography>
         </Box>
-
-
 
         {request.status !== "pending" && (
           <>
@@ -522,20 +508,7 @@ export default function RectificationsLog() {
               gap: 0.75,
             }}
           >
-            <Avatar
-              src={getAvatarUrl(p.row.staffAvatarUrl)}
-              sx={{
-                width: TABLE_USER_AVATAR_SIZE,
-                height: TABLE_USER_AVATAR_SIZE,
-                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-                fontWeight: 700,
-                backgroundColor: p.row.avatarBg,
-                color: p.row.avatarFg,
-                flexShrink: 0,
-              }}
-            >
-              {!getAvatarUrl(p.row.staffAvatarUrl) && getInitials(p.value)}
-            </Avatar>
+            <StaffAvatar path={p.row.staffAvatarUrl} name={p.value} bg={p.row.avatarBg} fg={p.row.avatarFg} />
             <Typography
               sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}
             >
@@ -735,7 +708,6 @@ export default function RectificationsLog() {
         fontFamily: dm,
       }}
     >
-      
       {/* ── Toolbar ── */}
       <Box
         sx={{
@@ -890,6 +862,7 @@ export default function RectificationsLog() {
             border: `1px solid ${border}`,
             borderRadius: "10px",
             overflow: "hidden",
+            boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
           }}
         >
           <DataGrid

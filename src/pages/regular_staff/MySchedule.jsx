@@ -28,6 +28,7 @@ import { useDutyChangeRequestQuota } from "../../hooks/useDutyChangeRequestQuota
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { useLocation } from "react-router-dom";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { DataGrid } from "../../components/common/AppDataGrid";
 
 // -- Brand tokens -------------------------------------------------------------
 const GOLD = "#F5C52B";
@@ -119,6 +120,7 @@ export default function MySchedule() {
   const [existingSchedule, setExistingSchedule] = useState(null);
   const [pendingRequest, setPendingRequest] = useState(null);
   const [latestReviewedRequest, setLatestReviewedRequest] = useState(null);
+  const [allReviewedRequests, setAllReviewedRequests] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
   const [pendingSelection, setPendingSelection] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -237,8 +239,7 @@ export default function MySchedule() {
         .eq("staffer_id", currentUser.id)
         .in("status", ["approved", "rejected", "cancelled"])
         .order("reviewed_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1),
+        .order("created_at", { ascending: false }),
       supabase
         .from("duty_schedule_blackout_dates")
         .select("id, blackout_date, reason")
@@ -272,6 +273,7 @@ export default function MySchedule() {
     const nextPending = pendingRows?.[0] || null;
     setPendingRequest(nextPending);
     setLatestReviewedRequest(reviewedRows?.[0] || null);
+    setAllReviewedRequests(reviewedRows || []);
     if (nextPending) setSaveSuccess("");
     const myPick = (allSchedules || []).find(
       (s) => s.staffer_id === currentUser.id,
@@ -1143,6 +1145,7 @@ export default function MySchedule() {
               borderRadius: "10px",
               overflow: "hidden",
               backgroundColor: "background.paper",
+              boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
               mb: 3,
             }}
           >
@@ -1468,6 +1471,172 @@ export default function MySchedule() {
               );
             })}
           </Box>
+
+          {/* ── Schedule change request history ── */}
+          {allReviewedRequests.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  color: "text.disabled",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.09em",
+                  mb: 1.25,
+                }}
+              >
+                Change Request History
+              </Typography>
+              <DataGrid
+                rows={allReviewedRequests.map((r) => ({
+                  id: r.id,
+                  requestedDay: DAY_LABELS[r.requested_duty_day] ?? "—",
+                  dateRequested: r.created_at
+                    ? new Date(r.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "—",
+                  status: r.status,
+                }))}
+                columns={[
+                  {
+                    field: "requestedDay",
+                    headerName: "Requested Day",
+                    flex: 1,
+                    minWidth: 130,
+                    renderCell: (p) => (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          height: "100%",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {p.value}
+                        </Typography>
+                      </Box>
+                    ),
+                  },
+                  {
+                    field: "dateRequested",
+                    headerName: "Date Requested",
+                    flex: 1,
+                    minWidth: 140,
+                    renderCell: (p) => (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          height: "100%",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.8rem",
+                            color: "text.secondary",
+                          }}
+                        >
+                          {p.value}
+                        </Typography>
+                      </Box>
+                    ),
+                  },
+                  {
+                    field: "status",
+                    headerName: "Status",
+                    flex: 0.8,
+                    minWidth: 110,
+                    renderCell: (p) => {
+                      const cfgMap = {
+                        approved: {
+                          bg: "#f0fdf4",
+                          color: "#15803d",
+                          dot: "#22c55e",
+                          label: "Approved",
+                        },
+                        rejected: {
+                          bg: "#fef2f2",
+                          color: "#dc2626",
+                          dot: "#ef4444",
+                          label: "Declined",
+                        },
+                        cancelled: {
+                          bg: isDark ? "rgba(255,255,255,0.06)" : "#f3f4f6",
+                          color: "#6b7280",
+                          dot: "#9ca3af",
+                          label: "Cancelled",
+                        },
+                      };
+                      const cfg = cfgMap[p.value] ?? cfgMap.cancelled;
+                      return (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            height: "100%",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                              px: 1,
+                              py: 0.3,
+                              borderRadius: "20px",
+                              backgroundColor: cfg.bg,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 5,
+                                height: 5,
+                                borderRadius: "50%",
+                                backgroundColor: cfg.dot,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                color: cfg.color,
+                              }}
+                            >
+                              {cfg.label}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      );
+                    },
+                  },
+                ]}
+                autoHeight
+                disableRowSelectionOnClick
+                hideFooter
+                sx={{
+                  border: `1px solid ${border}`,
+                  borderRadius: "10px",
+                  fontFamily: dm,
+                  "& .MuiDataGrid-columnHeaders": {
+                    borderRadius: "10px 10px 0 0",
+                  },
+                }}
+              />
+            </Box>
+          )}
 
           <Popover
             open={Boolean(stafferListAnchorEl)}

@@ -11,7 +11,10 @@ const SCORE_CONFIG = {
   "Very High": { color: "#1d4ed8" },
 };
 
-export default function RequestAssessmentPanel({ checks, isDark }) {
+export default function RequestAssessmentPanel({
+  checks,
+  isDark,
+}) {
   return (
     <Box
       sx={{
@@ -145,9 +148,7 @@ export default function RequestAssessmentPanel({ checks, isDark }) {
                     )}
                   </>
                 ) : (
-                  <Typography
-                    sx={{ fontSize: "0.75rem", color: "text.secondary" }}
-                  >
+                  <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
                     {checks.newsworthiness.reasoning}
                   </Typography>
                 )}
@@ -159,3 +160,5 @@ export default function RequestAssessmentPanel({ checks, isDark }) {
     </Box>
   );
 }
+
+

@@ -125,6 +125,7 @@ function Card({ children, sx = {}, onClick }) {
         bgcolor: "background.paper",
         borderRadius: "10px",
         border: `1px solid ${isDark ? BRAND.borderDark : BRAND.borderLight}`,
+        boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
         overflow: "hidden",
         ...(onClick
           ? {
@@ -192,6 +193,7 @@ export default function SecHeadDashboard() {
   const [stats, setStats] = useState({ pending: 0, assigned: 0, complete: 0 });
   const [recentRequests, setRecentRequests] = useState([]);
   const [teamSnapshot, setTeamSnapshot] = useState([]);
+  const [todayCoverage, setTodayCoverage] = useState({ total: 0, onGoing: 0, complete: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -266,6 +268,14 @@ export default function SecHeadDashboard() {
     ).length;
     setStats({ pending, assigned, complete });
     setRecentRequests(allRequests.slice(0, 5));
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayReqs = allRequests.filter((r) => r.event_date === todayStr);
+    setTodayCoverage({
+      total: todayReqs.length,
+      onGoing: todayReqs.filter((r) => r.status === "On Going").length,
+      complete: todayReqs.filter((r) => r.status === "Coverage Complete").length,
+    });
 
     if (activeSemester?.id) {
       // ── Only show regular staff in the same division, excluding sec heads ──
@@ -363,6 +373,8 @@ export default function SecHeadDashboard() {
     },
   ];
 
+  const dm = "'Inter', sans-serif";
+
   return (
     <Box
       sx={{
@@ -371,199 +383,109 @@ export default function SecHeadDashboard() {
         minHeight: "100%",
       }}
     >
-      {/* ── ROW 1: Hero card + 3 KPI cards ── */}
+      {/* ── Today's Coverage Pulse ── */}
+      <Box
+        sx={{
+          mb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1,
+          bgcolor: "background.paper",
+          borderRadius: "10px",
+          border: `1px solid ${border}`,
+          boxShadow: isDark
+            ? "0 1px 10px rgba(0,0,0,0.4)"
+            : "0 1px 8px rgba(0,0,0,0.07)",
+          px: 2,
+          py: 1.25,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled", fontWeight: 600 }}
+          >
+            Today
+          </Typography>
+          {todayCoverage.total === 0 ? (
+            <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
+              Nothing scheduled for today.
+            </Typography>
+          ) : (
+            <>
+              <Typography
+                sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}
+              >
+                {todayCoverage.total} event{todayCoverage.total !== 1 ? "s" : ""}
+              </Typography>
+              {[
+                {
+                  label: "On Going",
+                  value: todayCoverage.onGoing,
+                  color: "#3b82f6",
+                  hide: todayCoverage.onGoing === 0,
+                },
+                {
+                  label: "Covered",
+                  value: todayCoverage.complete,
+                  color: isDark ? "#4ade80" : "#166534",
+                  hide: todayCoverage.complete === 0,
+                },
+                {
+                  label: "In Pipeline",
+                  value: todayCoverage.total - todayCoverage.onGoing - todayCoverage.complete,
+                  color: isDark ? BRAND.gold : "#7a5c00",
+                  hide:
+                    todayCoverage.total - todayCoverage.onGoing - todayCoverage.complete === 0,
+                },
+              ]
+                .filter((s) => !s.hide)
+                .map((s) => (
+                  <Box key={s.label} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: s.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: s.color }}
+                    >
+                      {s.value}
+                    </Typography>
+                    <Typography
+                      sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}
+                    >
+                      {s.label}
+                    </Typography>
+                  </Box>
+                ))}
+            </>
+          )}
+        </Box>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled", flexShrink: 0 }}
+        >
+          {currentUser.section}
+        </Typography>
+      </Box>
+
+      {/* ── Unified 3-col grid: KPI row + content row ── */}
       <Box
         sx={{
           display: "grid",
-          gap: { xs: 1.5, md: 1.5 },
+          gap: 1.5,
           gridTemplateColumns: {
             xs: "repeat(2, 1fr)",
             sm: "repeat(3, 1fr)",
-            md: "240px repeat(3, 1fr)",
+            md: "repeat(3, 1fr)",
           },
-          mb: { xs: 2, md: 2.5 },
         }}
       >
-        {/* Hero card */}
-        <Box
-          sx={{
-            gridColumn: { xs: "1 / -1", md: "1 / 2" },
-            borderRadius: "10px",
-            overflow: "hidden",
-            position: "relative",
-            background: isDark
-              ? `linear-gradient(140deg, #1e1a00 0%, ${BRAND.charcoal} 55%, #141400 100%)`
-              : `linear-gradient(140deg, ${BRAND.charcoal} 0%, #1a1a1a 60%, #0d0d0d 100%)`,
-            p: { xs: 2, md: 2.5 },
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            minHeight: { xs: 100, md: 130 },
-          }}
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              top: -32,
-              right: -32,
-              width: 100,
-              height: 100,
-              borderRadius: "50%",
-              border: `1.5px solid ${BRAND.goldAlpha12}`,
-              pointerEvents: "none",
-            }}
-          />
-          <Box
-            sx={{
-              position: "absolute",
-              top: -14,
-              right: -14,
-              width: 62,
-              height: 62,
-              borderRadius: "50%",
-              border: `1.5px solid rgba(245,197,43,0.07)`,
-              pointerEvents: "none",
-            }}
-          />
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: -20,
-              left: -20,
-              width: 70,
-              height: 70,
-              borderRadius: "50%",
-              backgroundColor: "rgba(245,197,43,0.04)",
-              pointerEvents: "none",
-            }}
-          />
-
-          <Box>
-            <Box
-              sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 1 }}
-            >
-              <Box
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  backgroundColor: BRAND.gold,
-                  boxShadow: `0 0 6px ${BRAND.gold}`,
-                  animation: "blink 2s ease-in-out infinite",
-                  "@keyframes blink": {
-                    "0%,100%": { opacity: 1 },
-                    "50%": { opacity: 0.35 },
-                  },
-                }}
-              />
-              <Typography
-                sx={{
-                  fontSize: "0.68rem",
-                  fontWeight: 700,
-                  color: BRAND.gold,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                {currentUser.section}
-              </Typography>
-            </Box>
-
-            {stats.pending > 0 ? (
-              <>
-                <Typography
-                  sx={{
-                    fontSize: { xs: "0.88rem", md: "0.95rem" },
-                    fontWeight: 800,
-                    color: BRAND.white,
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  {stats.pending} request{stats.pending > 1 ? "s" : ""} need
-                  assignment
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: "0.7rem",
-                    color: "rgba(255,255,255,0.42)",
-                    mt: 0.5,
-                  }}
-                >
-                  Assign staffers now
-                </Typography>
-              </>
-            ) : stats.assigned > 0 ? (
-              <>
-                <Typography
-                  sx={{
-                    fontSize: { xs: "0.88rem", md: "0.95rem" },
-                    fontWeight: 800,
-                    color: BRAND.white,
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  {stats.assigned} request{stats.assigned > 1 ? "s" : ""} in
-                  progress
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: "0.7rem",
-                    color: "rgba(255,255,255,0.42)",
-                    mt: 0.5,
-                  }}
-                >
-                  Coverage ongoing
-                </Typography>
-              </>
-            ) : (
-              <>
-                <Typography
-                  sx={{
-                    fontSize: { xs: "0.88rem", md: "0.95rem" },
-                    fontWeight: 800,
-                    color: BRAND.white,
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  All caught up!
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: "0.7rem",
-                    color: "rgba(255,255,255,0.42)",
-                    mt: 0.5,
-                  }}
-                >
-                  No pending assignments
-                </Typography>
-              </>
-            )}
-          </Box>
-
-          <Box
-            onClick={() => goToTab("for-assignment")}
-            sx={{
-              mt: 1.5,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.4,
-              cursor: "pointer",
-              color: "rgba(255,255,255,0.38)",
-              fontSize: "0.7rem",
-              fontWeight: 500,
-              "&:hover": { color: BRAND.gold },
-              transition: "color 0.15s",
-              width: "fit-content",
-            }}
-          >
-            <OpenInNewOutlinedIcon sx={{ fontSize: 12 }} />
-            View requests
-          </Box>
-        </Box>
-
         {/* 3 KPI cards */}
         {kpiCards.map((k) => {
           const Icon = k.icon;
@@ -581,7 +503,8 @@ export default function SecHeadDashboard() {
                   borderRadius: "10px",
                   border: `1px solid ${border}`,
                   p: { xs: 1.75, md: 2.5 },
-                  minHeight: { xs: 100, md: 130 },
+                  height: { xs: 110, md: 140 },
+                  boxSizing: "border-box",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
@@ -593,50 +516,45 @@ export default function SecHeadDashboard() {
                   },
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: { xs: "0.68rem", md: "0.72rem" },
-                      color: "text.secondary",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {k.label}
-                  </Typography>
+                {/* Top row: icon + label */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
                   <Box
                     sx={{
-                      width: { xs: 26, md: 30 },
-                      height: { xs: 26, md: 30 },
+                      width: { xs: 36, md: 42 },
+                      height: { xs: 36, md: 42 },
                       borderRadius: "10px",
                       flexShrink: 0,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       backgroundColor: k.isRed
-                        ? isDark
-                          ? BRAND.redAlpha15
-                          : BRAND.redLight
+                        ? isDark ? BRAND.redAlpha15 : BRAND.redLight
                         : iconWell,
                     }}
                   >
                     <Icon
                       sx={{
-                        fontSize: { xs: 13, md: 15 },
+                        fontSize: { xs: 17, md: 20 },
                         color: k.isRed ? BRAND.red : BRAND.gold,
                       }}
                     />
                   </Box>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "0.68rem", md: "0.72rem" },
+                      color: "text.secondary",
+                      fontWeight: 500,
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {k.label}
+                  </Typography>
                 </Box>
+                {/* Bottom: big number + sub */}
                 <Box>
                   <Typography
                     sx={{
-                      fontSize: { xs: "1.6rem", md: "2rem" },
+                      fontSize: { xs: "1.7rem", md: "2rem" },
                       fontWeight: 800,
                       lineHeight: 1,
                       letterSpacing: "-0.03em",
@@ -646,7 +564,7 @@ export default function SecHeadDashboard() {
                     {k.value}
                   </Typography>
                   <Typography
-                    sx={{ fontSize: "0.7rem", color: "text.disabled", mt: 0.5 }}
+                    sx={{ fontSize: "0.7rem", color: "text.disabled", mt: 0.25 }}
                   >
                     {k.sub}
                   </Typography>
@@ -655,19 +573,9 @@ export default function SecHeadDashboard() {
             </Tooltip>
           );
         })}
-      </Box>
 
-      {/* ── ROW 2: Recent requests + Team snapshot ── */}
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", lg: "1fr 300px" },
-          gap: { xs: 2, md: 2 },
-          alignItems: "start",
-        }}
-      >
-        {/* Recent Requests */}
-        <Card>
+        {/* Recent Requests — spans 2 cols */}
+        <Card sx={{ gridColumn: { xs: "1 / -1", sm: "1 / 3", md: "1 / 3" } }}>
           <SectionHeader
             title="Recent Requests"
             action={
@@ -833,8 +741,8 @@ export default function SecHeadDashboard() {
           )}
         </Card>
 
-        {/* Team Snapshot */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Team Snapshot — spans 1 col */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, gridColumn: { xs: "1 / -1", sm: "3 / 4", md: "3 / 4" } }}>
           <Card>
             <SectionHeader
               title={`Team — ${currentUser.division}`}

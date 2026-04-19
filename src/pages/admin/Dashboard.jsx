@@ -189,13 +189,6 @@ function getUrgency(event_date) {
   if (diff <= 7) return "soon";
   return "upcoming";
 }
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
-
 export default function Dashboard() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -204,22 +197,46 @@ export default function Dashboard() {
 
   const border = isDark ? BORDER_D : BORDER_L;
   const surf = isDark ? SURF_D : SURF_L;
+  const cardShadow = isDark
+    ? "0 1px 10px rgba(0,0,0,0.4)"
+    : "0 1px 8px rgba(0,0,0,0.07)";
   const stCfg = isDark ? STATUS.dark : STATUS.light;
   const urgCfg = isDark ? URGENCY.dark : URGENCY.light;
 
-  const [currentUser, setCurrentUser] = useState(null);
   const [semesters, setSemesters] = useState([]);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [isAllTime, setIsAllTime] = useState(false);
   const [activeSemester, setActiveSemester] = useState(null);
+  const [upcomingSemester, setUpcomingSemester] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showReports, setShowReports] = useState(false);
+  const [adminName, setAdminName] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAdminName() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+      if (!cancelled && data?.full_name) {
+        setAdminName(data.full_name.split(" ")[0]);
+      }
+    }
+    loadAdminName();
+    return () => { cancelled = true; };
+  }, []);
   const [statusCounts, setStatusCounts] = useState({});
   const [perfStats, setPerfStats] = useState({
     total: 0,
     approved: 0,
     declined: 0,
+    covered: 0,
+    completed: 0,
     declineRate: 0,
     completionRate: 0,
     avgTurnaround: null,
@@ -227,23 +244,7 @@ export default function Dashboard() {
   const [sectionWorkload, setSectionWorkload] = useState([]);
   const [recentRequests, setRecentRequests] = useState([]);
   const [scheduleStats, setScheduleStats] = useState({ total: 0, set: 0 });
-
-  // ── Load current user for greeting ──
-  useEffect(() => {
-    async function loadUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
-      setCurrentUser(profile);
-    }
-    loadUser();
-  }, []);
+  const [todayCoverage, setTodayCoverage] = useState({ total: 0, onGoing: 0, approved: 0 });
 
   useEffect(() => {
     async function loadSemesters() {
@@ -255,6 +256,10 @@ export default function Dashboard() {
       const active = (data || []).find((s) => s.is_active);
       setActiveSemester(active || null);
       setSelectedSemester(active || (data || [])[0] || null);
+      const upcoming = (data || [])
+        .filter((s) => !s.is_active && new Date(s.start_date) > new Date())
+        .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0] || null;
+      setUpcomingSemester(upcoming);
     }
     loadSemesters();
   }, []);
@@ -376,6 +381,8 @@ export default function Dashboard() {
         total,
         approved,
         declined,
+        covered,
+        completed,
         declineRate: total > 0 ? ((declined / total) * 100).toFixed(1) : 0,
         completionRate:
           assigned > 0 ? ((covered / assigned) * 100).toFixed(1) : 0,
@@ -399,6 +406,18 @@ export default function Dashboard() {
         })
         .slice(0, 8);
       setRecentRequests(attention);
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayReqs = requestsWithComputedStatus.filter(
+        (r) =>
+          r.event_date === todayStr &&
+          ["Approved", "On Going", "Assigned", "For Approval", "Forwarded"].includes(r.status),
+      );
+      setTodayCoverage({
+        total: todayReqs.length,
+        onGoing: todayReqs.filter((r) => r.status === "On Going").length,
+        approved: todayReqs.filter((r) => r.status === "Approved").length,
+      });
 
       if (activeSemester?.id) {
         const { data: staffers } = await supabase
@@ -481,9 +500,9 @@ export default function Dashboard() {
 
   const kpiCards = [
     {
-      label: "Total",
+      label: "Total Requests",
       value: perfStats.total,
-      sub: "requests submitted",
+      sub: "submitted this period",
       navTab: "all",
       isRed: false,
       icon: AssignmentOutlinedIcon,
@@ -505,12 +524,12 @@ export default function Dashboard() {
       icon: CancelOutlinedIcon,
     },
     {
-      label: "Completion",
-      value: `${perfStats.completionRate}%`,
-      sub: "assigned → covered",
-      navTab: null,
+      label: "Completed Coverage",
+      value: perfStats.completed,
+      sub: "fully covered",
+      navTab: "Approved",
       isRed: false,
-      icon: TrendingUpOutlinedIcon,
+      icon: TaskAltOutlinedIcon,
     },
   ];
 
@@ -550,343 +569,190 @@ export default function Dashboard() {
         fontFamily: dm,
       }}
     >
-      {/* ── Greeting ── */}
-      {currentUser?.full_name && (
-        <Box sx={{ mb: 2 }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontWeight: 700,
-              fontSize: { xs: "0.95rem", md: "1rem" },
-              color: "text.primary",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {getGreeting()}, {currentUser.full_name.trim().split(" ")[0]} 👋
-          </Typography>
-        </Box>
-      )}
-
-      {/* ── Hero banner ── */}
+      {/* ── Toolbar ── */}
       <Box
         sx={{
           mb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1,
+          bgcolor: "background.paper",
           borderRadius: "10px",
-          overflow: "hidden",
-          position: "relative",
-          background: isDark
-            ? "linear-gradient(135deg,#1a1600 0%,#2a2a2a 50%,#111 100%)"
-            : "linear-gradient(135deg,#353535 0%,#1c1c1c 60%,#0f0f0f 100%)",
-          border: `1px solid ${isDark ? "#2a2400" : "#1a1a1a"}`,
+          border: `1px solid ${border}`,
+          boxShadow: cardShadow,
+          px: 2,
+          py: 1.25,
         }}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: "3px",
-            backgroundColor: GOLD,
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            right: -50,
-            top: -50,
-            width: 200,
-            height: 200,
-            borderRadius: "50%",
-            border: `1px solid ${GOLD_12}`,
-            pointerEvents: "none",
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            right: -15,
-            top: -15,
-            width: 110,
-            height: 110,
-            borderRadius: "50%",
-            border: "1px solid rgba(245,197,43,0.05)",
-            pointerEvents: "none",
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            bottom: -30,
-            left: 60,
-            width: 120,
-            height: 120,
-            borderRadius: "50%",
-            backgroundColor: "rgba(245,197,43,0.03)",
-            pointerEvents: "none",
-          }}
-        />
-
-        <Box
-          sx={{
-            px: { xs: 2.5, md: 3 },
-            py: { xs: 2, md: 2.5 },
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 2,
-            position: "relative",
-          }}
-        >
-          {/* Left */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: { xs: 2, md: 3.5 },
-              flexWrap: "wrap",
-            }}
+        {/* Daily pulse — today's coverage */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled", fontWeight: 600 }}
           >
-            <Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  mb: 0.5,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    backgroundColor: GOLD,
-                    boxShadow: `0 0 7px ${GOLD}`,
-                    animation: "blink 2s ease-in-out infinite",
-                    "@keyframes blink": {
-                      "0%,100%": { opacity: 1 },
-                      "50%": { opacity: 0.25 },
-                    },
-                  }}
-                />
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.6rem",
-                    fontWeight: 700,
-                    color: GOLD,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.13em",
-                  }}
-                >
-                  Live
-                </Typography>
-              </Box>
-              {forApprovalCount > 0 ? (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: { xs: "0.92rem", md: "1rem" },
-                    fontWeight: 800,
-                    color: "#fff",
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  {forApprovalCount} request{forApprovalCount > 1 ? "s" : ""}{" "}
-                  awaiting approval
-                </Typography>
-              ) : overdueCount > 0 ? (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: { xs: "0.92rem", md: "1rem" },
-                    fontWeight: 800,
-                    color: "#fff",
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  {overdueCount} overdue event{overdueCount > 1 ? "s" : ""} need
-                  attention
-                </Typography>
-              ) : (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: { xs: "0.92rem", md: "1rem" },
-                    fontWeight: 800,
-                    color: "#fff",
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  Pipeline running smoothly
-                </Typography>
-              )}
+            Today
+          </Typography>
+          {todayCoverage.total === 0 ? (
+            <Typography sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}>
+              Nothing scheduled for today.
+            </Typography>
+          ) : (
+            <>
               <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.7rem",
-                  color: "rgba(255,255,255,0.35)",
-                  mt: 0.35,
-                }}
+                sx={{ fontFamily: dm, fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}
               >
-                {isAllTime ? "All-time data" : selectedSemester ? getSemesterDisplayName(selectedSemester) : "—"}
+                {todayCoverage.total} event{todayCoverage.total !== 1 ? "s" : ""}
               </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                width: "1px",
-                height: 38,
-                backgroundColor: "rgba(255,255,255,0.07)",
-                display: { xs: "none", sm: "block" },
-              }}
-            />
-
-            <Box
-              sx={{ display: "flex", gap: { xs: 2, md: 3 }, flexWrap: "wrap" }}
-            >
               {[
                 {
-                  label: "Pending",
-                  value: statusCounts["Pending"] || 0,
-                  activeColor: GOLD,
+                  label: "On Going",
+                  value: todayCoverage.onGoing,
+                  color: "#3b82f6",
+                  hide: todayCoverage.onGoing === 0,
                 },
                 {
-                  label: "For Approval",
-                  value: statusCounts["For Approval"] || 0,
-                  activeColor: "#60a5fa",
+                  label: "Approved",
+                  value: todayCoverage.approved,
+                  color: isDark ? "#4ade80" : "#166534",
+                  hide: todayCoverage.approved === 0,
                 },
                 {
-                  label: "Overdue",
-                  value: overdueCount,
-                  activeColor: "#f87171",
+                  label: "In Pipeline",
+                  value:
+                    todayCoverage.total -
+                    todayCoverage.onGoing -
+                    todayCoverage.approved,
+                  color: isDark ? GOLD : "#7a5c00",
+                  hide:
+                    todayCoverage.total -
+                      todayCoverage.onGoing -
+                      todayCoverage.approved ===
+                    0,
                 },
-              ].map((s) => (
-                <Box key={s.label}>
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "1.25rem",
-                      fontWeight: 800,
-                      letterSpacing: "-0.03em",
-                      lineHeight: 1,
-                      color:
-                        s.value > 0 ? s.activeColor : "rgba(255,255,255,0.15)",
-                    }}
+              ]
+                .filter((s) => !s.hide)
+                .map((s) => (
+                  <Box
+                    key={s.label}
+                    sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                   >
-                    {s.value}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.6rem",
-                      color: "rgba(255,255,255,0.28)",
-                      mt: 0.2,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.07em",
-                    }}
-                  >
-                    {s.label}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: s.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        color: s.color,
+                      }}
+                    >
+                      {s.value}
+                    </Typography>
+                    <Typography
+                      sx={{ fontFamily: dm, fontSize: "0.78rem", color: "text.disabled" }}
+                    >
+                      {s.label}
+                    </Typography>
+                  </Box>
+                ))}
+            </>
+          )}
+        </Box>
 
-          {/* Right — controls */}
+        {/* Right: Reports + filter */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+          {/* Reports toggle */}
           <Box
+            onClick={() => setShowReports((p) => !p)}
             sx={{
               display: "flex",
               alignItems: "center",
-              flexWrap: "wrap",
-              gap: 0.75,
+              gap: 0.5,
+              cursor: "pointer",
+              userSelect: "none",
+              transition: "color 0.15s",
+              color: showReports ? (isDark ? GOLD : CHARCOAL) : "text.secondary",
+              "&:hover": { color: isDark ? GOLD : CHARCOAL },
             }}
           >
-            {[
-              {
-                label: "Reports",
-                active: showReports,
-                onClick: () => setShowReports((p) => !p),
-                icon: <AssessmentOutlinedIcon sx={{ fontSize: 13 }} />,
-              },
-              {
-                label: "All Time",
-                active: isAllTime,
-                onClick: () => setIsAllTime((p) => !p),
-                icon: null,
-              },
-            ].map((btn) => (
-              <Box
-                key={btn.label}
-                onClick={btn.onClick}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  px: 1.25,
-                  py: 0.55,
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  border: `1px solid ${btn.active ? GOLD : "rgba(255,255,255,0.1)"}`,
-                  backgroundColor: btn.active ? GOLD_12 : "transparent",
-                  color: btn.active ? GOLD : "rgba(255,255,255,0.45)",
-                  fontFamily: dm,
-                  fontSize: "0.73rem",
-                  fontWeight: 500,
-                  transition: "all 0.15s",
-                  "&:hover": { borderColor: GOLD, color: GOLD },
-                }}
-              >
-                {btn.icon}
-                {btn.label}
-              </Box>
-            ))}
-            <FormControl size="small" disabled={isAllTime}>
-              <Select
-                value={selectedSemester?.id || ""}
-                onChange={(e) =>
-                  setSelectedSemester(
-                    semesters.find((s) => s.id === e.target.value) || null,
-                  )
-                }
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.73rem",
-                  borderRadius: "10px",
-                  color: "rgba(255,255,255,0.6)",
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(255,255,255,0.1)",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: GOLD,
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: GOLD,
-                  },
-                  "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.35)" },
-                  minWidth: 155,
-                }}
-              >
-                {semesters.map((s) => (
-                  <MenuItem
-                    key={s.id}
-                    value={s.id}
-                    sx={{ fontFamily: dm, fontSize: "0.78rem" }}
-                  >
-                    {getSemesterDisplayName(s)}
-                    {s.is_active ? " ●" : ""}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <AssessmentOutlinedIcon sx={{ fontSize: 15, color: "inherit" }} />
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: showReports ? 700 : 400,
+                color: "inherit",
+              }}
+            >
+              Reports
+            </Typography>
           </Box>
+
+          {/* Divider */}
+          <Box sx={{ width: 1, height: 18, backgroundColor: border }} />
+
+          {/* Semester filter dropdown */}
+        <Select
+          size="small"
+          value={
+            isAllTime
+              ? "all"
+              : selectedSemester?.id === upcomingSemester?.id
+              ? "upcoming"
+              : "current"
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "all") {
+              setIsAllTime(true);
+            } else if (v === "current") {
+              setIsAllTime(false);
+              setSelectedSemester(activeSemester);
+            } else {
+              setIsAllTime(false);
+              setSelectedSemester(upcomingSemester);
+            }
+          }}
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.73rem",
+            borderRadius: "4px",
+            height: 30,
+            minWidth: 180,
+            "& .MuiSelect-select": { py: 0, fontFamily: dm, fontSize: "0.73rem" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: border },
+            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: isDark ? GOLD : CHARCOAL },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: isDark ? GOLD : CHARCOAL,
+              borderWidth: "1px",
+            },
+          }}
+        >
+          <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.73rem" }}>All</MenuItem>
+          <MenuItem
+            value="current"
+            disabled={!activeSemester}
+            sx={{ fontFamily: dm, fontSize: "0.73rem" }}
+          >
+            {activeSemester ? getSemesterDisplayName(activeSemester) : "Current Semester"}
+          </MenuItem>
+          {upcomingSemester && (
+            <MenuItem value="upcoming" sx={{ fontFamily: dm, fontSize: "0.73rem" }}>
+              {getSemesterDisplayName(upcomingSemester)}
+            </MenuItem>
+          )}
+        </Select>
         </Box>
       </Box>
+
 
       {error && (
         <Alert
@@ -901,24 +767,42 @@ export default function Dashboard() {
           {error}
         </Alert>
       )}
+
+      {/* ── Reports-only view ── */}
       {showReports && (
-        <Box sx={{ mb: 2 }}>
-          <ReportGenerator
-            selectedSemester={selectedSemester}
-            isAllTime={isAllTime}
-          />
+        <Box
+          sx={{
+            bgcolor: "background.paper",
+            borderRadius: "10px",
+            border: `1px solid ${border}`,
+            boxShadow: cardShadow,
+            overflow: "hidden",
+          }}
+        >
+          <Box sx={{ ...cardHeaderSx, px: 2.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={cardAccent} />
+              <Typography sx={cardTitleSx}>Reports</Typography>
+            </Box>
+          </Box>
+          <Box sx={{ p: 2 }}>
+            <ReportGenerator
+              selectedSemester={selectedSemester}
+              isAllTime={isAllTime}
+            />
+          </Box>
         </Box>
       )}
 
-      {loading ? (
+      {!showReports && loading ? (
         <BrandedLoader size={84} minHeight="40vh" />
-      ) : (
+      ) : !showReports ? (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           {/* ── KPI Strip ── */}
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "repeat(2,1fr)", sm: "repeat(4,1fr)" },
+              gridTemplateColumns: { xs: "repeat(2,1fr)", md: "repeat(4,1fr)" },
               gap: 1.5,
             }}
           >
@@ -932,48 +816,61 @@ export default function Dashboard() {
                     bgcolor: "background.paper",
                     borderRadius: "10px",
                     border: `1px solid ${border}`,
-                    px: 2,
-                    py: 1.5,
+                    boxShadow: cardShadow,
+                    p: { xs: 1.75, md: 2.25 },
+                    height: { xs: 110, md: 140 },
+                    boxSizing: "border-box",
                     display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
+                    flexDirection: "column",
+                    justifyContent: "space-between",
                     ...(k.navTab
                       ? {
                           cursor: "pointer",
                           transition: "border-color 0.15s, box-shadow 0.15s",
                           "&:hover": {
                             borderColor: GOLD,
-                            boxShadow: `0 2px 10px ${GOLD_12}`,
+                            boxShadow: `0 4px 16px ${GOLD_12}`,
                           },
                         }
                       : {}),
                   }}
                 >
-                  <Box
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: "10px",
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: k.isRed
-                        ? isDark
-                          ? RED_15
-                          : RED_L
-                        : isDark
-                          ? GOLD_12
-                          : "rgba(245,197,43,0.09)",
-                    }}
-                  >
-                    <Icon sx={{ fontSize: 17, color: k.isRed ? RED : GOLD }} />
+                  {/* Top row: icon + label */}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                    <Box
+                      sx={{
+                        width: { xs: 36, md: 42 },
+                        height: { xs: 36, md: 42 },
+                        borderRadius: "10px",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: k.isRed
+                          ? isDark ? RED_15 : RED_L
+                          : isDark ? GOLD_12 : "rgba(245,197,43,0.09)",
+                      }}
+                    >
+                      <Icon sx={{ fontSize: { xs: 17, md: 20 }, color: k.isRed ? RED : GOLD }} />
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: { xs: "0.68rem", md: "0.72rem" },
+                        fontWeight: 500,
+                        color: "text.secondary",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {k.label}
+                    </Typography>
                   </Box>
+                  {/* Bottom: big number + sub */}
                   <Box>
                     <Typography
                       sx={{
                         fontFamily: dm,
-                        fontSize: "1.55rem",
+                        fontSize: { xs: "1.7rem", md: "2rem" },
                         fontWeight: 800,
                         lineHeight: 1,
                         letterSpacing: "-0.03em",
@@ -987,10 +884,10 @@ export default function Dashboard() {
                         fontFamily: dm,
                         fontSize: "0.67rem",
                         color: "text.disabled",
-                        mt: 0.2,
+                        mt: 0.25,
                       }}
                     >
-                      {k.label} · {k.sub}
+                      {k.sub}
                     </Typography>
                   </Box>
                 </Box>
@@ -1002,7 +899,7 @@ export default function Dashboard() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", lg: "1fr 272px" },
+              gridTemplateColumns: { xs: "1fr", lg: "3fr 1fr" },
               gap: 1.5,
               alignItems: "start",
             }}
@@ -1013,7 +910,11 @@ export default function Dashboard() {
                 bgcolor: "background.paper",
                 borderRadius: "10px",
                 border: `1px solid ${border}`,
+                boxShadow: cardShadow,
                 overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                height: { xs: "auto", lg: 420 },
               }}
             >
               <Box sx={cardHeaderSx}>
@@ -1125,16 +1026,38 @@ export default function Dashboard() {
                   </Typography>
                 </Box>
               ) : (
-                recentRequests.map((r, idx) => {
+                <>
+                <Box sx={{ flex: 1, overflowY: "auto" }}>
+                  {recentRequests.map((r, idx) => {
+                    const isFirstOfGroup =
+                      idx === 0 || r.urgency !== recentRequests[idx - 1].urgency;
                   const urg = urgCfg[r.urgency];
                   const st = stCfg[r.status] || {
                     bg: isDark ? "#252525" : "#f5f5f5",
                     color: "#888",
                   };
                   return (
-                    <Box
-                      key={r.id}
-                      onClick={() => goToRequest(r.id, r.status)}
+                    <React.Fragment key={r.id}>
+                      {isFirstOfGroup && (
+                        <Box
+                          sx={{
+                            px: 2.5,
+                            py: 0.55,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.75,
+                            backgroundColor: isDark ? "#181818" : "#f5f5f5",
+                            borderBottom: `1px solid ${border}`,
+                          }}
+                        >
+                          <Box sx={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: urg.dot, flexShrink: 0 }} />
+                          <Typography sx={{ fontFamily: dm, fontSize: "0.6rem", fontWeight: 700, color: urg.color, textTransform: "uppercase", letterSpacing: "0.09em" }}>
+                            {urg.label}
+                          </Typography>
+                        </Box>
+                      )}
+                      <Box
+                        onClick={() => goToRequest(r.id, r.status)}
                       sx={{
                         px: 2.5,
                         py: 1.4,
@@ -1335,8 +1258,40 @@ export default function Dashboard() {
                         />
                       </Box>
                     </Box>
+                    </React.Fragment>
                   );
-                })
+                  })}
+                </Box>
+
+                {/* View more footer */}
+                <Box
+                  onClick={() => navigate("/admin/request-management")}
+                  sx={{
+                    px: 2.5,
+                    py: 1,
+                    borderTop: `1px solid ${border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 0.4,
+                    cursor: "pointer",
+                    transition: "background 0.12s",
+                    "&:hover": { backgroundColor: surf },
+                    flexShrink: 0,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.72rem",
+                      color: "text.disabled",
+                    }}
+                  >
+                    View all requests
+                  </Typography>
+                  <ChevronRightIcon sx={{ fontSize: 13, color: "text.disabled" }} />
+                </Box>
+                </>
               )}
             </Box>
 
@@ -1348,7 +1303,11 @@ export default function Dashboard() {
                   bgcolor: "background.paper",
                   borderRadius: "10px",
                   border: `1px solid ${border}`,
+                  boxShadow: cardShadow,
                   overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                  height: { xs: "auto", lg: 420 },
                 }}
               >
                 <Box sx={cardHeaderSx}>
@@ -1364,6 +1323,8 @@ export default function Dashboard() {
                     display: "flex",
                     flexDirection: "column",
                     gap: 0.2,
+                    flex: 1,
+                    overflowY: "auto",
                   }}
                 >
                   <Box
@@ -1386,7 +1347,7 @@ export default function Dashboard() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      Phase 1
+                      Request
                     </Typography>
                     <Divider sx={{ flex: 1, borderColor: border }} />
                   </Box>
@@ -1433,7 +1394,7 @@ export default function Dashboard() {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              Phase 2
+                              Coverage Assignment
                             </Typography>
                             <Divider sx={{ flex: 1, borderColor: border }} />
                           </Box>
@@ -1565,170 +1526,182 @@ export default function Dashboard() {
                 </Box>
               </Box>
 
-              {/* Scheduling */}
-              <Box
-                onClick={() => navigate("/admin/duty-schedule-view")}
-                sx={{
-                  bgcolor: "background.paper",
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  overflow: "hidden",
-                  cursor: "pointer",
-                  transition: "border-color 0.15s,box-shadow 0.15s",
-                  "&:hover": {
-                    borderColor: GOLD,
-                    boxShadow: `0 2px 12px ${GOLD_12}`,
-                  },
-                }}
-              >
-                <Box sx={cardHeaderSx}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Box sx={cardAccent} />
-                    <Typography sx={cardTitleSx}>Scheduling</Typography>
-                  </Box>
-                  {activeSemester && (
-                    <Box
-                      sx={{
-                        px: 0.75,
-                        py: 0.15,
-                        borderRadius: "10px",
-                        backgroundColor: activeSemester.scheduling_open
-                          ? GOLD_12
-                          : isDark
-                            ? "rgba(255,255,255,0.04)"
-                            : "rgba(53,53,53,0.04)",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.62rem",
-                          fontWeight: 700,
-                          color: activeSemester.scheduling_open
-                            ? isDark
-                              ? GOLD
-                              : "#7a5c00"
-                            : "text.disabled",
-                        }}
-                      >
-                        {activeSemester.scheduling_open ? "Open" : "Closed"}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-                <Box sx={{ px: 2, py: 1.75 }}>
-                  {!activeSemester ? (
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.78rem",
-                        color: "text.disabled",
-                      }}
-                    >
-                      No active semester.
-                    </Typography>
-                  ) : (
-                    <>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          mb: 1,
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                          }}
-                        >
-                          <GroupOutlinedIcon
-                            sx={{ fontSize: 12, color: "text.secondary" }}
-                          />
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.73rem",
-                              color: "text.secondary",
-                            }}
-                          >
-                            Duty days set
-                          </Typography>
-                        </Box>
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.92rem",
-                            fontWeight: 800,
-                            color: schedDone ? GOLD : RED,
-                            letterSpacing: "-0.02em",
-                          }}
-                        >
-                          {scheduleStats.set}
-                          <Typography
-                            component="span"
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.7rem",
-                              fontWeight: 400,
-                              color: "text.disabled",
-                            }}
-                          >
-                            /{scheduleStats.total}
-                          </Typography>
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          height: 4,
-                          borderRadius: "10px",
-                          backgroundColor: isDark ? "#252525" : "#f0f0f0",
-                          mb: 1.25,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            height: "100%",
-                            borderRadius: "10px",
-                            backgroundColor: GOLD,
-                            width: `${schedPct}%`,
-                            transition: "width 0.4s ease",
-                          }}
-                        />
-                      </Box>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.67rem",
-                          color: "text.disabled",
-                        }}
-                      >
-                        {new Date(activeSemester.start_date).toLocaleDateString(
-                          "en-US",
-                          { month: "short", day: "numeric" },
-                        )}
-                        {" – "}
-                        {new Date(activeSemester.end_date).toLocaleDateString(
-                          "en-US",
-                          { month: "short", day: "numeric", year: "numeric" },
-                        )}
-                      </Typography>
-                    </>
-                  )}
-                </Box>
-              </Box>
             </Box>
           </Box>
 
-          {/* ── Section Workload ── */}
+          {/* ── Bottom row: Scheduling + Section Workload ── */}
           <Box
             sx={{
-              bgcolor: "background.paper",
-              borderRadius: "10px",
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", lg: "280px 1fr" },
+              gap: 1.5,
+              alignItems: "start",
+            }}
+          >
+            {/* Scheduling */}
+            <Box
+              onClick={() => navigate("/admin/duty-schedule-view")}
+              sx={{
+                bgcolor: "background.paper",
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                boxShadow: cardShadow,
+                overflow: "hidden",
+                cursor: "pointer",
+                transition: "border-color 0.15s,box-shadow 0.15s",
+                "&:hover": {
+                  borderColor: GOLD,
+                  boxShadow: `0 4px 18px ${GOLD_12}`,
+                },
+              }}
+            >
+              <Box sx={cardHeaderSx}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={cardAccent} />
+                  <Typography sx={cardTitleSx}>Scheduling</Typography>
+                </Box>
+                {activeSemester && (
+                  <Box
+                    sx={{
+                      px: 0.75,
+                      py: 0.15,
+                      borderRadius: "10px",
+                      backgroundColor: activeSemester.scheduling_open
+                        ? GOLD_12
+                        : isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(53,53,53,0.04)",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.62rem",
+                        fontWeight: 700,
+                        color: activeSemester.scheduling_open
+                          ? isDark
+                            ? GOLD
+                            : "#7a5c00"
+                          : "text.disabled",
+                      }}
+                    >
+                      {activeSemester.scheduling_open ? "Open" : "Closed"}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              <Box sx={{ px: 2, py: 1.75 }}>
+                {!activeSemester ? (
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.78rem",
+                      color: "text.disabled",
+                    }}
+                  >
+                    No active semester.
+                  </Typography>
+                ) : (
+                  <>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mb: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        <GroupOutlinedIcon
+                          sx={{ fontSize: 12, color: "text.secondary" }}
+                        />
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.73rem",
+                            color: "text.secondary",
+                          }}
+                        >
+                          Duty days set
+                        </Typography>
+                      </Box>
+                      <Typography
+                        sx={{
+                          fontFamily: dm,
+                          fontSize: "0.92rem",
+                          fontWeight: 800,
+                          color: schedDone ? GOLD : RED,
+                          letterSpacing: "-0.02em",
+                        }}
+                      >
+                        {scheduleStats.set}
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.7rem",
+                            fontWeight: 400,
+                            color: "text.disabled",
+                          }}
+                        >
+                          /{scheduleStats.total}
+                        </Typography>
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        height: 4,
+                        borderRadius: "10px",
+                        backgroundColor: isDark ? "#252525" : "#f0f0f0",
+                        mb: 1.25,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          height: "100%",
+                          borderRadius: "10px",
+                          backgroundColor: GOLD,
+                          width: `${schedPct}%`,
+                          transition: "width 0.4s ease",
+                        }}
+                      />
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.67rem",
+                        color: "text.disabled",
+                      }}
+                    >
+                      {new Date(activeSemester.start_date).toLocaleDateString(
+                        "en-US",
+                        { month: "short", day: "numeric" },
+                      )}
+                      {" – "}
+                      {new Date(activeSemester.end_date).toLocaleDateString(
+                        "en-US",
+                        { month: "short", day: "numeric", year: "numeric" },
+                      )}
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            </Box>
+
+            {/* Section Workload */}
+            <Box
+              sx={{
+                bgcolor: "background.paper",
+                borderRadius: "10px",
               border: `1px solid ${border}`,
+              boxShadow: cardShadow,
               overflow: "hidden",
             }}
           >
@@ -1897,9 +1870,11 @@ export default function Dashboard() {
                 );
               })}
             </Box>
+            </Box>
           </Box>
+
         </Box>
-      )}
+      ) : null}
     </Box>
   );
 }

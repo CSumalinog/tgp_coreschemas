@@ -5,7 +5,6 @@ import {
   Divider,
   CircularProgress,
   Avatar,
-  Chip,
   FormControl,
   Select,
   MenuItem,
@@ -17,7 +16,6 @@ import {
   Switch,
   FormControlLabel,
   Menu,
-  Popover,
   useTheme,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -29,7 +27,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import BrokenImageOutlinedIcon from "@mui/icons-material/BrokenImageOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForwardOutlined";
 import NumberBadge from "../../components/common/NumberBadge";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
@@ -43,8 +40,6 @@ import {
   FILTER_SEARCH_FLEX,
   FILTER_SEARCH_MAX_WIDTH,
   FILTER_SEARCH_MIN_WIDTH,
-  TABLE_FIRST_COL_FLEX,
-  TABLE_FIRST_COL_MIN_WIDTH,
   TABLE_USER_AVATAR_FONT_SIZE,
   TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
@@ -112,25 +107,15 @@ const hasAnyTimeIn = (request) =>
   (request?.coverage_assignments || []).some((a) => !!a?.timed_in_at);
 
 const hasAnyCompleted = (request) =>
-  (request?.coverage_assignments || []).some(
-    (a) => a?.status === "Completed" || a?.status === "Rectified",
-  );
+  (request?.coverage_assignments || []).some((a) => !!a?.completed_at);
 
 const hasAnyAssignments = (request) =>
   (request?.coverage_assignments || []).length > 0;
 
 const hasAnyAssignmentPending = (request) => {
-  // Exclude replaced/terminal assignments — only active ones count.
-  const active = (request?.coverage_assignments || []).filter(
-    (a) => !["Cancelled", "No Show", "Rectified"].includes(a?.status),
-  );
-  return active.some((a) => !["Completed"].includes(a?.status));
+  const assignments = request?.coverage_assignments || [];
+  return assignments.some((a) => !a?.completed_at);
 };
-
-const hasAnyActiveAssignment = (request) =>
-  (request?.coverage_assignments || []).some(
-    (a) => !["Cancelled", "No Show", "Rectified"].includes(a?.status),
-  );
 
 const isCtrEligibleStatus = (status) => {
   const normalized = String(status || "")
@@ -140,8 +125,7 @@ const isCtrEligibleStatus = (status) => {
     normalized === "assigned" ||
     normalized === "approved" ||
     normalized === "on going" ||
-    normalized === "completed" ||
-    normalized === "rectified"
+    normalized === "completed"
   );
 };
 
@@ -179,192 +163,14 @@ function MetaCell({ children }) {
       <Typography
         sx={{
           fontFamily: dm,
-          fontSize: "0.8rem",
-          fontWeight: 500,
+          fontSize: "0.78rem",
+          fontWeight: 400,
           color: "text.secondary",
         }}
       >
         {children}
       </Typography>
     </Box>
-  );
-}
-
-const STACK_AVATAR_SIZE = 26;
-const STACK_AVATAR_FONT_SIZE = "0.6rem";
-
-function AssignedByStack({ profiles = [], isDark }) {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const border = isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.1)";
-
-  if (!profiles.length) {
-    return (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: 500,
-            color: "text.secondary",
-          }}
-        >
-          —
-        </Typography>
-      </Box>
-    );
-  }
-
-  const visible = profiles.slice(0, 3);
-  const extra = profiles.length - 3;
-
-  return (
-    <>
-      <Box
-        onMouseEnter={(e) => setAnchorEl(e.currentTarget)}
-        onMouseLeave={() => setAnchorEl(null)}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          height: "100%",
-          cursor: "default",
-        }}
-      >
-        {visible.map((p, i) => {
-          const url = getAvatarUrl(p.avatar_url);
-          const clr = getAvatarColor(p.id);
-          return (
-            <Avatar
-              key={p.id}
-              src={url}
-              sx={{
-                width: STACK_AVATAR_SIZE,
-                height: STACK_AVATAR_SIZE,
-                fontSize: STACK_AVATAR_FONT_SIZE,
-                fontWeight: 700,
-                backgroundColor: clr.bg,
-                color: clr.color,
-                ml: i === 0 ? 0 : "-6px",
-                border: `2px solid ${isDark ? "#1e1e1e" : "#fff"}`,
-                zIndex: visible.length - i,
-                flexShrink: 0,
-              }}
-            >
-              {!url && getInitials(p.full_name)}
-            </Avatar>
-          );
-        })}
-        {extra > 0 && (
-          <Box
-            sx={{
-              width: STACK_AVATAR_SIZE,
-              height: STACK_AVATAR_SIZE,
-              borderRadius: "50%",
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(53,53,53,0.08)",
-              color: "text.secondary",
-              fontSize: "0.58rem",
-              fontWeight: 700,
-              fontFamily: dm,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              ml: "-6px",
-              border: `2px solid ${isDark ? "#1e1e1e" : "#fff"}`,
-              flexShrink: 0,
-            }}
-          >
-            +{extra}
-          </Box>
-        )}
-      </Box>
-
-      <Popover
-        open={Boolean(anchorEl)}
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        disableRestoreFocus
-        disableScrollLock
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
-        sx={{ pointerEvents: "none" }}
-        slotProps={{
-          paper: {
-            sx: {
-              pointerEvents: "none",
-              borderRadius: "8px",
-              border: `1px solid ${border}`,
-              boxShadow: isDark
-                ? "0 8px 24px rgba(0,0,0,0.5)"
-                : "0 4px 20px rgba(0,0,0,0.1)",
-              backgroundColor: isDark ? "#1e1e1e" : "#fff",
-              minWidth: 180,
-              py: 0.5,
-            },
-          },
-        }}
-      >
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.68rem",
-            fontWeight: 700,
-            color: "text.secondary",
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            px: 1.5,
-            pt: 0.85,
-            pb: 0.5,
-          }}
-        >
-          Assigned by
-        </Typography>
-        {profiles.map((p) => {
-          const url = getAvatarUrl(p.avatar_url);
-          const clr = getAvatarColor(p.id);
-          return (
-            <Box
-              key={p.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 1.5,
-                py: 0.65,
-              }}
-            >
-              <Avatar
-                src={url}
-                sx={{
-                  width: TABLE_USER_AVATAR_SIZE,
-                  height: TABLE_USER_AVATAR_SIZE,
-                  fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-                  fontWeight: 700,
-                  backgroundColor: clr.bg,
-                  color: clr.color,
-                  flexShrink: 0,
-                }}
-              >
-                {!url && getInitials(p.full_name)}
-              </Avatar>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.78rem",
-                  fontWeight: 500,
-                  color: isDark ? "rgba(255,255,255,0.85)" : "#1a1a1a",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {p.full_name}
-              </Typography>
-            </Box>
-          );
-        })}
-      </Popover>
-    </>
   );
 }
 
@@ -706,10 +512,7 @@ export default function CoverageTracker() {
       return dedupeById([
         ...(onGoing || []),
         ...requests.filter((r) => hasAnyTimeIn(r)),
-      ]).filter(
-        (r) =>
-          hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
-      );
+      ]).filter((r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r));
     }
     if (stageFilter === "Completed") {
       return dedupeById([
@@ -732,8 +535,7 @@ export default function CoverageTracker() {
       ...(onGoing || []),
       ...requests.filter((r) => hasAnyTimeIn(r)),
     ]).filter(
-      (r) =>
-        hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
+      (r) => hasAnyAssignments(r) && hasAnyTimeIn(r) && hasAnyAssignmentPending(r),
     );
 
     const completedList = dedupeById([
@@ -764,12 +566,7 @@ export default function CoverageTracker() {
         ...requests.filter(
           (r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status),
         ),
-      ]).filter(
-        (r) =>
-          hasAnyAssignments(r) &&
-          isCtrEligibleStatus(r.status) &&
-          hasAnyActiveAssignment(r),
-      ),
+      ]).filter((r) => hasAnyAssignments(r) && isCtrEligibleStatus(r.status)),
     [onGoing, completed, requests],
   );
 
@@ -870,24 +667,6 @@ export default function CoverageTracker() {
       const completedCount = assignments.filter((a) => !!a.completed_at).length;
       const proofCount = assignments.filter((a) => !!a.selfie_url).length;
 
-      // Unique sec heads who assigned staff (for "Assigned by" column)
-      const assignerMap = new Map();
-      assignments.forEach((a) => {
-        if (a.assigner?.id && !assignerMap.has(a.assigner.id)) {
-          assignerMap.set(a.assigner.id, a.assigner);
-        }
-      });
-      const assignedByProfiles = Array.from(assignerMap.values());
-
-      // Date assigned — use the request's forwarded_at (when sec head received + assigned)
-      const firstAssignedAt = req.forwarded_at
-        ? new Date(req.forwarded_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "—";
-
       return {
         id: req.id,
         requestTitle: req.title || "—",
@@ -899,8 +678,6 @@ export default function CoverageTracker() {
         completedCount,
         proofCount,
         totalAssignments: assignments.length,
-        assignedByProfiles,
-        firstAssignedAt,
         _raw: req,
       };
     });
@@ -916,20 +693,18 @@ export default function CoverageTracker() {
 
     const grouped = {};
     ctrRequestSource.forEach((req) => {
-      const normalized = (req.coverage_assignments || [])
-        .filter((item) => !["Cancelled", "No Show"].includes(item?.status))
-        .map((item) => {
-          const sectionName = item.sections?.name || item.section || null;
-          return {
-            ...item,
-            request_id: item.request_id || req.id,
-            section_id: item.section_id || null,
-            staff_id: item.staff_id || item.assigned_to || null,
-            sections:
-              item.sections || (sectionName ? { name: sectionName } : null),
-            staff: item.staff || item.staffer || null,
-          };
-        });
+      const normalized = (req.coverage_assignments || []).map((item) => {
+        const sectionName = item.sections?.name || item.section || null;
+        return {
+          ...item,
+          request_id: item.request_id || req.id,
+          section_id: item.section_id || null,
+          staff_id: item.staff_id || item.assigned_to || null,
+          sections:
+            item.sections || (sectionName ? { name: sectionName } : null),
+          staff: item.staff || item.staffer || null,
+        };
+      });
 
       const byStaff = new Map();
       normalized.forEach((item) => {
@@ -981,50 +756,6 @@ export default function CoverageTracker() {
   }, [activeTab, ctrRequestSource]);
 
   const attendanceLoading = false;
-
-  const dataRowsCtr = useMemo(() => {
-    if (activeTab !== "ctr") return [];
-
-    const rowsCtr = [];
-    const seenRequestIds = new Set();
-    ctrRequestSource.forEach((req) => {
-      const attendance = attendanceByRequest[req.id] || [];
-      attendance.forEach((a) => {
-        const isFirstInGroup = !seenRequestIds.has(req.id);
-        seenRequestIds.add(req.id);
-        const status = a.completed_at
-          ? "Completed"
-          : a.timed_in_at
-            ? "Ongoing"
-            : "Pending";
-        const proofUrl = resolveSelfieUrl(a.selfie_url);
-        const avatarColor = getAvatarColor(a.staff_id);
-        rowsCtr.push({
-          id: a.id,
-          requestId: req.id,
-          requestTitle: req.title || req.request_title || "Coverage Request",
-          client: req.entity?.name || "—",
-          eventDate: buildEventDateDisplay(req),
-          staffName: a.staff?.full_name || "Unknown",
-          staffAvatarUrl: getAvatarUrl(a.staff?.avatar_url),
-          staffer_id: a.staff_id,
-          sectionName: a.sections?.name || a.section || "Unassigned Section",
-          timeInDisplay: fmtTime(a.timed_in_at),
-          timeOutDisplay: fmtTime(a.completed_at),
-          durationDisplay: computeDuration(a.timed_in_at, a.completed_at),
-          statusDisplay: status,
-          proofUrl,
-          hasProof: !!a.selfie_url,
-          isBroken: !!brokenSelfieById[a.id],
-          avatarBg: avatarColor.bg,
-          avatarFg: avatarColor.color,
-          isFirstInGroup,
-        });
-      });
-    });
-
-    return rowsCtr;
-  }, [activeTab, ctrRequestSource, attendanceByRequest, brokenSelfieById]);
 
   const buildCtrExportRows = (requestList) => {
     const rowsForExport = [];
@@ -1214,8 +945,8 @@ export default function CoverageTracker() {
     {
       field: "requestTitle",
       headerName: "Request Title",
-      flex: TABLE_FIRST_COL_FLEX,
-      minWidth: TABLE_FIRST_COL_MIN_WIDTH,
+      flex: 1.5,
+      minWidth: 220,
       renderCell: (p) => (
         <Box
           sx={{
@@ -1242,420 +973,64 @@ export default function CoverageTracker() {
       ),
     },
     {
-      field: "_nav_req",
-      headerName: "",
-      width: 48,
+      field: "eventType",
+      headerName: "Type",
+      flex: 0.68,
+      minWidth: 95,
       sortable: false,
-      disableColumnMenu: true,
       renderCell: (p) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Tooltip title="Open in Request Management" arrow placement="top">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/admin/request-management", {
-                  state: { openRequestId: p.row.id },
-                });
-              }}
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: "4px",
-                color: "text.secondary",
-                "&:hover": {
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.06)"
-                    : "rgba(53,53,53,0.06)",
-                  color: "text.primary",
-                },
-              }}
-            >
-              <ArrowForwardIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
+          <EventTypePill isMultiDay={p.value} isDark={isDark} />
         </Box>
       ),
     },
     {
-      field: "assignedBy",
-      headerName: "Assigned By",
-      flex: 1.1,
-      minWidth: 140,
-      sortable: false,
-      renderCell: (p) => (
-        <AssignedByStack profiles={p.row.assignedByProfiles} isDark={isDark} />
-      ),
-    },
-    {
-      field: "firstAssignedAt",
-      headerName: "Date Assigned",
-      flex: 1,
-      minWidth: 140,
+      field: "client",
+      headerName: "Client",
+      flex: 1.35,
+      minWidth: 220,
       renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
     {
-      field: "_nav_ctr",
-      headerName: "",
-      width: 48,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Tooltip title="View Coverage Time Record" arrow placement="top">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/admin/coverage-tracker/time-record", {
-                  state: { focusRequestId: p.row.id },
-                });
-              }}
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: "4px",
-                color: "text.secondary",
-                "&:hover": {
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.06)"
-                    : "rgba(53,53,53,0.06)",
-                  color: "text.primary",
-                },
-              }}
-            >
-              <ArrowForwardIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+      field: "eventDate",
+      headerName: "Event Date",
+      flex: 1.1,
+      minWidth: 150,
+      renderCell: (p) => <MetaCell>{p.value}</MetaCell>,
     },
-  ];
-
-  const ctrColumns = [
     {
-      field: "requestTitle",
-      headerName: "Event",
-      flex: TABLE_FIRST_COL_FLEX,
-      minWidth: TABLE_FIRST_COL_MIN_WIDTH,
+      field: "actions",
+      headerName: "",
+      minWidth: 150,
+      flex: 0.75,
+      sortable: false,
+      align: "right",
+      headerAlign: "right",
       renderCell: (p) => (
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 0.75,
-            height: "100%",
+            justifyContent: "flex-end",
             width: "100%",
-            minWidth: 0,
-            pr: 0.5,
-          }}
-        >
-          {p.row.isFirstInGroup ? (
-            <>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.8rem",
-                  fontWeight: 500,
-                  color: "text.primary",
-                  flex: 1,
-                  minWidth: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {p.value}
-              </Typography>
-            </>
-          ) : null}
-        </Box>
-      ),
-    },
-    {
-      field: "_nav",
-      headerName: "",
-      width: 48,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (p) =>
-        p.row.isFirstInGroup ? (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-            }}
-          >
-            <Tooltip title="View request" placement="top">
-              <Box
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(
-                    `/admin/coverage-request-details/${p.row.requestId}`,
-                    { state: { backTo: "/admin/coverage-tracker" } },
-                  );
-                }}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 24,
-                  height: 24,
-                  borderRadius: "6px",
-                  border: `1px solid ${border}`,
-                  cursor: "pointer",
-                  color: "text.disabled",
-                  transition: "all 0.15s",
-                  "&:hover": { borderColor: "#212121", color: "#212121" },
-                }}
-              >
-                <ArrowForwardIcon sx={{ fontSize: 13 }} />
-              </Box>
-            </Tooltip>
-          </Box>
-        ) : null,
-    },
-    {
-      field: "staffName",
-      headerName: "Staff Assigned",
-      flex: 1,
-      minWidth: 170,
-      renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
             height: "100%",
-            gap: 0.75,
+            pr: 1,
+            boxSizing: "border-box",
           }}
         >
-          <Avatar
-            sx={{
-              width: TABLE_USER_AVATAR_SIZE,
-              height: TABLE_USER_AVATAR_SIZE,
-              fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-              fontWeight: 700,
-              backgroundColor: p.row.avatarBg,
-              color: p.row.avatarFg,
-              flexShrink: 0,
-            }}
-            src={p.row.staffAvatarUrl}
-          >
-            {getInitials(p.value)}
-          </Avatar>
-          <Typography
-            sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}
-          >
-            {p.value}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "_nav_staff",
-      headerName: "",
-      width: 48,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (p) => (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-          }}
-        >
-          <Tooltip title="View in Staffers Management" placement="top">
-            <Box
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(
-                  `/admin/staffers-management?focus=${p.row.staffer_id}`,
-                );
-              }}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 24,
-                height: 24,
-                borderRadius: "6px",
-                border: `1px solid ${border}`,
-                cursor: "pointer",
-                color: "text.disabled",
-                transition: "all 0.15s",
-                "&:hover": { borderColor: "#212121", color: "#212121" },
-              }}
-            >
-              <ArrowForwardIcon sx={{ fontSize: 13 }} />
-            </Box>
-          </Tooltip>
-        </Box>
-      ),
-    },
-    {
-      field: "timeInDisplay",
-      headerName: "Time In",
-      flex: 0.85,
-      minWidth: 90,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
-            {p.value}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "timeOutDisplay",
-      headerName: "Time Out",
-      flex: 0.85,
-      minWidth: 90,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
-            {p.value}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "durationDisplay",
-      headerName: "Duration",
-      flex: 0.75,
-      minWidth: 80,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.78rem",
-              color:
-                p.value === "—"
-                  ? "text.disabled"
-                  : isDark
-                    ? "#f5c52b"
-                    : "#d97706",
+          <ViewActionButton
+            onClick={() => {
+              navigate(`/admin/coverage-tracker/time-record`, {
+                state: {
+                  focusRequestId: p.row.id,
+                },
+              });
             }}
           >
-            {p.value}
-          </Typography>
+            View CTR
+          </ViewActionButton>
         </Box>
       ),
-    },
-    {
-      field: "statusDisplay",
-      headerName: "Status",
-      flex: 0.75,
-      minWidth: 90,
-      renderCell: (p) => {
-        const statusColors = {
-          Completed: { bg: "#dcfce7", text: "#166534" },
-          Ongoing: { bg: "#fef3c7", text: "#92400e" },
-          Pending: { bg: "#e5e7eb", text: "#374151" },
-        };
-        const colors = statusColors[p.value] || statusColors.Pending;
-        return (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Chip
-              label={p.value}
-              size="small"
-              sx={{
-                backgroundColor: colors.bg,
-                color: colors.text,
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                fontWeight: 600,
-                height: 22,
-                borderRadius: "999px",
-                "& .MuiChip-label": { px: 1.2 },
-              }}
-            />
-          </Box>
-        );
-      },
-    },
-    {
-      field: "proofUrl",
-      headerName: "Proof",
-      flex: 1,
-      minWidth: 120,
-      sortable: false,
-      renderCell: (p) => {
-        if (!p.row.hasProof) {
-          return (
-            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.75rem",
-                  color: "text.disabled",
-                }}
-              >
-                No proof
-              </Typography>
-            </Box>
-          );
-        }
-        return (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Box
-              sx={{
-                width: 80,
-                height: 44,
-                borderRadius: "6px",
-                border: `1px solid ${border}`,
-                overflow: "hidden",
-                backgroundColor: isDark
-                  ? "rgba(17,17,17,0.45)"
-                  : "rgba(53,53,53,0.03)",
-                flexShrink: 0,
-              }}
-            >
-              {p.value && !p.row.isBroken ? (
-                <Box
-                  component="img"
-                  src={p.value}
-                  alt="Proof"
-                  sx={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                  onError={() =>
-                    setBrokenSelfieById((prev) => ({
-                      ...prev,
-                      [p.row.id]: true,
-                    }))
-                  }
-                  onMouseEnter={() =>
-                    handleProofMouseEnter({ id: p.row.id, url: p.value })
-                  }
-                  onMouseLeave={() => handleProofMouseLeave(p.row.id)}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <BrokenImageOutlinedIcon
-                    sx={{ fontSize: 16, color: "text.disabled" }}
-                  />
-                </Box>
-              )}
-            </Box>
-          </Box>
-        );
-      },
     },
   ];
 
@@ -1685,7 +1060,7 @@ export default function CoverageTracker() {
           py: 1,
           borderRadius: CONTROL_RADIUS,
           border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-          backgroundColor: isDark ? "#1a1a1d" : "#f7f7f8",
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "#f3f3f4",
         }}
       >
         <FormControl
@@ -1909,7 +1284,16 @@ export default function CoverageTracker() {
         </Tooltip>
       </Box>
 
-      <Box sx={{ flex: 1, minHeight: 0, width: "100%", overflowX: "auto" }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+          overflowX: "auto",
+          borderRadius: "10px",
+          boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
+        }}
+      >
         {activeTab === "tracker" ? (
           <Box
             sx={{
@@ -1932,30 +1316,6 @@ export default function CoverageTracker() {
               enableSearch={false}
               showToolbar={false}
               filterModel={externalFilterModel}
-              checkboxSelection={false}
-            />
-          </Box>
-        ) : activeTab === "ctr" ? (
-          <Box
-            sx={{
-              minWidth: 760,
-              height: "100%",
-              bgcolor: isDark ? "background.paper" : "#f7f7f8",
-              borderRadius: "10px",
-              border: `1px solid ${border}`,
-              overflow: "hidden",
-            }}
-          >
-            <DataGrid
-              apiRef={gridApiRef}
-              rows={dataRowsCtr}
-              columns={ctrColumns}
-              loading={attendanceLoading}
-              pageSize={10}
-              rowsPerPageOptions={[10, 20]}
-              disableRowSelectionOnClick
-              enableSearch={false}
-              showToolbar={false}
               checkboxSelection={false}
             />
           </Box>

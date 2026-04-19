@@ -5,7 +5,6 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Avatar,
   useTheme,
   GlobalStyles,
   FormControl,
@@ -16,7 +15,7 @@ import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import { StaffAvatar } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import {
@@ -29,8 +28,6 @@ import {
   FILTER_SEARCH_MIN_WIDTH,
   TABLE_FIRST_COL_STAFF_FLEX,
   TABLE_FIRST_COL_STAFF_MIN_WIDTH,
-  TABLE_USER_AVATAR_FONT_SIZE,
-  TABLE_USER_AVATAR_SIZE,
 } from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
@@ -63,15 +60,6 @@ const AVATAR_COLORS = [
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-};
 
 const getAvatarColor = (seed) => {
   if (!seed) return AVATAR_COLORS[0];
@@ -392,7 +380,6 @@ export default function MyStaffers() {
       flex: TABLE_FIRST_COL_STAFF_FLEX,
       minWidth: TABLE_FIRST_COL_STAFF_MIN_WIDTH,
       renderCell: (params) => {
-        const url = getAvatarUrl(params.row.avatar_url);
         const avatarColor = getAvatarColor(params.row.id || params.value);
         return (
           <Box
@@ -403,20 +390,7 @@ export default function MyStaffers() {
               height: "100%",
             }}
           >
-            <Avatar
-              src={url}
-              sx={{
-                width: TABLE_USER_AVATAR_SIZE,
-                height: TABLE_USER_AVATAR_SIZE,
-                fontSize: TABLE_USER_AVATAR_FONT_SIZE,
-                fontWeight: 700,
-                backgroundColor: avatarColor.bg,
-                color: avatarColor.color,
-                flexShrink: 0,
-              }}
-            >
-              {!url && getInitials(params.value)}
-            </Avatar>
+            <StaffAvatar path={params.row.avatar_url} name={params.value} bg={avatarColor.bg} fg={avatarColor.color} />
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 sx={{

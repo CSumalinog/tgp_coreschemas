@@ -20,12 +20,96 @@ import BrandedLoader from "./BrandedLoader";
 
 const dm = "'Inter', sans-serif";
 
+const GOLD = "#F5C52B";
+const CHARCOAL = "#353535";
+
+const AVATAR_PALETTE = [
+  { bg: "#4F46E5", fg: "#fff" }, // indigo
+  { bg: "#0EA5E9", fg: "#fff" }, // sky
+  { bg: "#10B981", fg: "#fff" }, // emerald
+  { bg: "#F59E0B", fg: "#353535" }, // amber
+  { bg: "#EF4444", fg: "#fff" }, // red
+  { bg: "#8B5CF6", fg: "#fff" }, // violet
+  { bg: "#EC4899", fg: "#fff" }, // pink
+  { bg: "#14B8A6", fg: "#fff" }, // teal
+  { bg: "#F97316", fg: "#fff" }, // orange
+  { bg: "#6366F1", fg: "#fff" }, // slate-indigo
+];
+
+/**
+ * Returns a deterministic { bg, fg } color pair for a given name.
+ * Same name always gets the same color across renders.
+ */
+export function getAvatarColor(name = "") {
+  if (!name) return { bg: GOLD, fg: CHARCOAL };
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    hash |= 0;
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
 export function getAvatarUrl(avatarPath) {
   if (!avatarPath) return undefined;
   const { data } = supabase.storage
     .from("coverage-files")
     .getPublicUrl(avatarPath);
   return data?.publicUrl || undefined;
+}
+
+export function getInitials(name = "") {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+/**
+ * StaffAvatar — reusable table/list avatar.
+ *
+ * Props:
+ *   path      — raw avatar_url from DB (resolved internally via getAvatarUrl)
+ *   name      — full name used for initials fallback
+ *   size      — pixel size (width & height). default: 36
+ *   fontSize  — initials font size.          default: "0.7rem"
+ *   bg        — background when no photo.    default: GOLD (#F5C52B)
+ *   fg        — initials text color.         default: CHARCOAL (#353535)
+ *   sx        — extra MUI sx overrides
+ */
+export function StaffAvatar({
+  path,
+  name,
+  size = 36,
+  fontSize = "0.7rem",
+  bg,
+  fg,
+  sx,
+}) {
+  const url = getAvatarUrl(path);
+  const color = getAvatarColor(name);
+  const resolvedBg = bg ?? color.bg;
+  const resolvedFg = fg ?? color.fg;
+  return (
+    <Avatar
+      src={url}
+      sx={{
+        width: size,
+        height: size,
+        fontSize,
+        fontWeight: 700,
+        backgroundColor: resolvedBg,
+        color: resolvedFg,
+        flexShrink: 0,
+        ...sx,
+      }}
+    >
+      {!url && getInitials(name)}
+    </Avatar>
+  );
 }
 
 export default function UserAvatar({ profileRoute = "profile" }) {

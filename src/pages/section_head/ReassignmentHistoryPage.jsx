@@ -24,7 +24,7 @@ import {
 } from "../../utils/layoutTokens";
 
 // â”€â”€ Helpers (mirrors CoverageManagementBase helpers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const dm = "'DM Sans', sans-serif";
+const dm = "'Inter', sans-serif";
 
 const openFile = (filePath, bucket = "coverage-files") => {
   if (!filePath) return;
@@ -599,6 +599,7 @@ export default function ReassignmentHistoryPage() {
           border: `1px solid ${border}`,
           borderRadius: "10px",
           overflow: "hidden",
+          boxShadow: isDark ? "0 1px 10px rgba(0,0,0,0.4)" : "0 1px 8px rgba(0,0,0,0.07)",
         }}
       >
         <DataGrid

@@ -2,8 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import {
+  Visibility,
+  VisibilityOff,
+  Facebook,
+  Instagram,
+  YouTube,
+} from "@mui/icons-material";
 import { supabase } from "../../lib/supabaseClient";
+import loginVid from "../../assets/videos/login-page-vid.mp4";
 
 const COVERAGE_SECTIONS = ["News", "Photojournalism", "Videojournalism"];
 
@@ -75,270 +82,178 @@ function Login() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+        /* ── Root layout ─────────────────────────────────────────── */
         .lr {
           min-height: 100vh;
           width: 100vw;
           display: flex;
           font-family: 'Inter', sans-serif;
-          background: #0d0d0d;
           overflow: hidden;
+          background: #0d0d0d;
         }
 
-        /* ══════════════════════════════
-           LEFT — Editorial Identity
-        ══════════════════════════════ */
+        /* ── LEFT PANEL — 50% width, video/carousel-ready ───────── */
         .lr-left {
-          flex: 1.1;
-          background: #0d0d0d;
-          border-right: 1px solid rgba(255,255,255,0.06);
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          padding: 52px 56px;
+          flex: 0 0 50%;
+          width: 50%;
+          background: #000;
           position: relative;
           overflow: hidden;
+          /*
+            VIDEO / CAROUSEL PLACEHOLDER
+            Drop a <video> or slide children here as position:absolute
+            inset:0 object-fit:cover children.
+          */
         }
 
-        /* Vertical rule accent */
-        .lr-left::before {
+        /* Full-bleed video */
+        .lr-left-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          opacity: 0.85;
+        }
+
+        /* Overlay for dot readability */
+        .lr-left-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            180deg,
+            rgba(0,0,0,0.18) 0%,
+            transparent 40%,
+            rgba(0,0,0,0.45) 100%
+          );
+          z-index: 1;
+        }
+/* ── Social footer ────────────────────────────────────────── */
+        .lr-social {
+          position: absolute;
+          bottom: 24px;
+          left: 0; right: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          pointer-events: none;
+        }
+        .lr-social a {
+          pointer-events: auto;
+          color: inherit;
+          display: flex;
+          align-items: center;
+          text-decoration: none;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        }
+        .lr-social a:hover { opacity: 1; }
+        .lr-social-group {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          color: rgba(255,255,255,0.38);
+        }
+        .lr-social-sep {
+          width: 1px;
+          height: 14px;
+          background: rgba(255,255,255,0.15);
+        }
+        .lr-social-handle {
+          font-size: 0.69rem;
+          font-family: 'Inter', sans-serif;
+          color: rgba(255,255,255,0.38);
+          letter-spacing: 0.02em;
+        }
+
+        /* ── RIGHT PANEL — 50% width, form ─────────────────────── */
+        .lr-right {
+          flex: 0 0 50%;
+          width: 50%;
+          background: #0d0d0d;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 56px 48px 80px;
+          position: relative;
+          overflow-y: auto;
+          max-height: 100vh;
+          opacity: 0;
+          transform: translateX(16px);
+          transition:
+            opacity  0.45s 0.08s cubic-bezier(0.16,1,0.3,1),
+            transform 0.45s 0.08s cubic-bezier(0.16,1,0.3,1);
+        }
+        .lr-right.ready { opacity: 1; transform: translateX(0); }
+
+        /* Left-border accent */
+        .lr-right::before {
           content: '';
           position: absolute;
-          top: 0; bottom: 0;
-          right: 0;
+          top: 0; left: 0; bottom: 0;
           width: 1px;
-          background: linear-gradient(180deg,
+          background: linear-gradient(
+            180deg,
             transparent 0%,
-            rgba(245,197,43,0.25) 30%,
-            rgba(245,197,43,0.25) 70%,
+            rgba(245,197,43,0.22) 25%,
+            rgba(245,197,43,0.22) 75%,
             transparent 100%
           );
         }
 
-        /* Noise texture */
-        .lr-left::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.018'/%3E%3C/svg%3E");
-          pointer-events: none;
-        }
-
-        .lr-left-top { position: relative; z-index: 2; }
-
-        .lr-issue-bar {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 64px;
-        }
-
-        .lr-issue-rule {
-          width: 28px;
-          height: 2px;
-          background: #f5c52b;
-        }
-
-        .lr-issue-text {
-          font-family: 'Inter', sans-serif;
-          font-size: 0.65rem;
-          font-weight: 600;
-          color: rgba(255,255,255,0.25);
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-        }
-
-        .lr-masthead {
-          position: relative;
-          z-index: 2;
-        }
-
-        .lr-pub-label {
-          font-family: 'Inter', sans-serif;
-          font-size: 0.65rem;
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: #f5c52b;
-          margin-bottom: 12px;
-        }
-
-        .lr-pub-name {
-          font-family: 'Inter', sans-serif;
-          font-size: clamp(2.8rem, 4.5vw, 4rem);
-          font-weight: 800;
-          color: #ffffff;
-          line-height: 1.05;
-          letter-spacing: -0.02em;
-          margin-bottom: 20px;
-        }
-
-        .lr-pub-name em {
-          color: #f5c52b;
-          font-style: normal;
-        }
-
-        .lr-rule {
-          width: 48px;
-          height: 3px;
-          background: linear-gradient(90deg, #f5c52b, rgba(245,197,43,0.2));
-          margin-bottom: 20px;
-          border-radius: 2px;
-        }
-
-        .lr-tagline {
-          font-size: 0.88rem;
-          color: rgba(255,255,255,0.3);
-          line-height: 1.75;
-          max-width: 320px;
-          font-weight: 300;
-        }
-
-        .lr-left-bottom {
-          position: relative;
-          z-index: 2;
-        }
-
-        .lr-system-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 6px;
-          padding: 10px 14px;
-          margin-bottom: 24px;
-          background: rgba(255,255,255,0.02);
-        }
-
-        .lr-badge-dot {
-          width: 6px; height: 6px;
-          background: #f5c52b;
-          border-radius: 50%;
-          animation: blink 2.5s ease-in-out infinite;
-        }
-
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-
-        .lr-badge-label {
-          font-size: 0.72rem;
-          font-weight: 500;
-          color: rgba(255,255,255,0.3);
-          letter-spacing: 0.05em;
-        }
-
-        .lr-footer-meta {
-          font-size: 0.65rem;
-          color: rgba(255,255,255,0.12);
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-        }
-
-        /* Big decorative background text */
-        .lr-bg-text {
-          position: absolute;
-          bottom: -40px;
-          left: -10px;
-          font-family: 'Inter', sans-serif;
-          font-size: 22rem;
-          font-weight: 800;
-          color: rgba(255,255,255,0.015);
-          line-height: 1;
-          pointer-events: none;
-          user-select: none;
-          z-index: 0;
-          letter-spacing: -0.05em;
-        }
-
-        /* ══════════════════════════════
-           RIGHT — Login Form
-        ══════════════════════════════ */
-        .lr-right {
-          width: 440px;
-          flex-shrink: 0;
-          background: #111111;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          padding: 52px 48px;
-          position: relative;
-          opacity: 0;
-          transform: translateX(16px);
-          transition: opacity 0.5s 0.1s cubic-bezier(0.16,1,0.3,1),
-                      transform 0.5s 0.1s cubic-bezier(0.16,1,0.3,1);
-        }
-        .lr-right.ready { opacity: 1; transform: translateX(0); }
-
-        .lr-right-header {
-          margin-bottom: 36px;
-          padding-bottom: 28px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .lr-right-eyebrow {
-          font-size: 0.65rem;
-          font-weight: 600;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: #f5c52b;
-          margin-bottom: 10px;
-        }
-
-        .lr-right-title {
-          font-family: 'Inter', sans-serif;
-          font-size: 1.6rem;
+        /* ── Typography ──────────────────────────────────────────── */
+        .lr-title {
+          font-size: 1.75rem;
           font-weight: 700;
           color: #ffffff;
           letter-spacing: -0.02em;
-          line-height: 1.2;
+          line-height: 1.15;
           margin-bottom: 6px;
         }
-
-        .lr-right-sub {
-          font-size: 0.8rem;
-          color: rgba(255,255,255,0.25);
+        .lr-sub {
+          font-size: 0.82rem;
+          color: rgba(255,255,255,0.28);
           font-weight: 300;
+          line-height: 1.55;
+          margin-bottom: 32px;
         }
 
+        /* ── Error banner ────────────────────────────────────────── */
         .lr-error {
           background: rgba(239,68,68,0.07);
           border: 1px solid rgba(239,68,68,0.16);
-          border-left: 3px solid rgba(239,68,68,0.5);
-          border-radius: 6px;
+          border-left: 3px solid rgba(239,68,68,0.45);
+          border-radius: 8px;
           padding: 10px 13px;
           font-size: 0.78rem;
           color: #f87171;
-          margin-bottom: 18px;
+          margin-bottom: 20px;
           display: flex;
           align-items: flex-start;
           gap: 8px;
           line-height: 1.5;
         }
 
-        .lr-field { margin-bottom: 16px; }
+        /* ── Form fields ─────────────────────────────────────────── */
+        .lr-field { margin-bottom: 14px; }
 
-        .lr-label {
-          display: block;
-          font-size: 0.67rem;
-          font-weight: 600;
-          color: rgba(255,255,255,0.28);
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          margin-bottom: 7px;
+        .lr-input-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
         }
-
-        .lr-input-wrap { position: relative; }
 
         .lr-input {
           width: 100%;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px;
-          padding: 11px 14px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 10px;
+          padding: 22px 14px 8px 14px;
+          height: 54px;
           font-family: 'Inter', sans-serif;
           font-size: 0.875rem;
           font-weight: 400;
@@ -346,142 +261,149 @@ function Login() {
           outline: none;
           transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
         }
-        .lr-input::placeholder { color: rgba(255,255,255,0.1); }
+        .lr-input::placeholder { color: rgba(255,255,255,0.18); }
         .lr-input:focus {
-          border-color: rgba(245,197,43,0.4);
-          background: rgba(245,197,43,0.025);
-          box-shadow: 0 0 0 3px rgba(245,197,43,0.06);
+          border-color: rgba(245,197,43,0.45);
+          background: rgba(245,197,43,0.03);
+          box-shadow: 0 0 0 3px rgba(245,197,43,0.07);
         }
         .lr-input:-webkit-autofill,
         .lr-input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px #161616 inset;
+          -webkit-box-shadow: 0 0 0 1000px #131313 inset;
           -webkit-text-fill-color: #ffffff;
           caret-color: #ffffff;
         }
-        .lr-input.pw { padding-right: 44px; }
+        .lr-input.has-toggle { padding-right: 44px; }
 
+        /* Eye toggle */
         .lr-toggle {
           position: absolute;
           right: 11px;
-          top: 50%;
-          transform: translateY(-50%);
           background: none;
           border: none;
           cursor: pointer;
-          color: rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.28);
           display: flex;
           align-items: center;
           padding: 4px;
+          border-radius: 4px;
           transition: color 0.2s;
+          z-index: 1;
         }
-        .lr-toggle:hover { color: rgba(255,255,255,0.5); }
+        .lr-toggle:hover { color: rgba(255,255,255,0.7); }
 
+        /* Floating label */
+        .lr-label {
+          position: absolute;
+          left: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 0.875rem;
+          color: rgba(255,255,255,0.35);
+          font-family: 'Inter', sans-serif;
+          pointer-events: none;
+          transition: top 0.18s ease, transform 0.18s ease, font-size 0.18s ease, color 0.18s ease, background 0.18s ease, padding 0.18s ease;
+          padding: 0;
+          z-index: 2;
+          line-height: 1;
+          white-space: nowrap;
+        }
+        .lr-input:focus ~ .lr-label,
+        .lr-input:not(:placeholder-shown) ~ .lr-label {
+          top: 0;
+          transform: translateY(-50%);
+          font-size: 0.67rem;
+          color: rgba(255,255,255,0.5);
+          background: #0d0d0d;
+          padding: 0 4px;
+        }
+        .lr-input:focus ~ .lr-label {
+          color: rgba(255,255,255,0.8);
+        }
+
+        /* ── Submit ──────────────────────────────────────────────── */
         .lr-submit {
           width: 100%;
-          margin-top: 6px;
-          padding: 12px;
-          background: #f5c52b;
+          margin-top: 8px;
+          padding: 13px;
+          background: #ffffff;
           color: #0d0d0d;
           border: none;
-          border-radius: 8px;
+          border-radius: 4px;
           font-family: 'Inter', sans-serif;
-          font-size: 0.875rem;
-          font-weight: 600;
+          font-size: 0.9rem;
+          font-weight: 700;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          letter-spacing: 0.02em;
-          transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-          box-shadow: 0 4px 16px rgba(245,197,43,0.2);
+          letter-spacing: 0.01em;
+          transition: background 0.2s, transform 0.15s;
+          box-shadow: none;
         }
         .lr-submit:hover:not(:disabled) {
-          background: #fdd835;
+          background: #e8e8e8;
           transform: translateY(-1px);
-          box-shadow: 0 6px 24px rgba(245,197,43,0.3);
         }
         .lr-submit:active:not(:disabled) { transform: translateY(0); }
         .lr-submit:disabled { opacity: 0.45; cursor: not-allowed; }
 
+        /* ── Footer ──────────────────────────────────────────────── */
         .lr-footer {
-          margin-top: 24px;
-          padding-top: 20px;
+          margin-top: 22px;
+          padding-top: 18px;
           border-top: 1px solid rgba(255,255,255,0.05);
-          font-size: 0.75rem;
-          color: rgba(255,255,255,0.18);
+          font-size: 0.78rem;
+          color: rgba(255,255,255,0.22);
           text-align: center;
         }
         .lr-footer a {
-          color: #f5c52b;
+          color: #ffffff;
           text-decoration: none;
-          font-weight: 500;
-          opacity: 0.85;
+          font-weight: 600;
           transition: opacity 0.2s;
         }
-        .lr-footer a:hover { opacity: 1; }
+        .lr-footer a:hover { opacity: 0.75; }
 
-        @media (max-width: 900px) {
+        /* ── Responsive ──────────────────────────────────────────── */
+        @media (max-width: 768px) {
           .lr-left { display: none; }
-          .lr-right { width: 100vw; padding: 48px 32px; }
+          .lr-right { flex: 0 0 100%; width: 100vw; padding: 44px 28px 80px; max-height: unset; }
         }
       `}</style>
 
       <div className="lr">
-        {/* LEFT */}
+        {/* ── LEFT: Video / Carousel placeholder ──────────────────── */}
         <div className="lr-left">
-          <div className="lr-bg-text">TGP</div>
-
-          <div className="lr-left-top">
-            <div className="lr-issue-bar">
-              <div className="lr-issue-rule" />
-              <span className="lr-issue-text">
-                Official Student Publication of Caraga State University - Main
-                Campus
-              </span>
-            </div>
-
-            <div className="lr-masthead">
-              <div className="lr-pub-name">
-                <em>The Gold Panicles</em>
-              </div>
-              <div className="lr-rule" />
-              <p className="lr-tagline" style={{ fontSize: "20px" }}>
-                <i>We never flinch in serving you the truth</i>
-              </p>
-            </div>
-          </div>
-
-          <div className="lr-left-bottom">
-            <div className="lr-system-badge">
-              <div className="lr-badge-dot" />
-              <span className="lr-badge-label">
-                Coverage Request & Scheduling Management System — Active
-              </span>
-            </div>
-            <div className="lr-footer-meta">© 2026 The Gold Panicles</div>
-          </div>
+          {/*
+            VIDEO / CAROUSEL PLACEHOLDER
+            ──────────────────────────────────────────────────────────
+            Replace the src below with your actual video file path.
+            For a carousel, remove <video> and render slide children
+            with position:absolute inset:0 object-fit:cover instead.
+          */}
+          <video
+            className="lr-left-video"
+            src={loginVid}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          <div className="lr-left-overlay" />
         </div>
 
-        {/* RIGHT */}
-        <div className={`lr-right ${ready ? "ready" : ""}`}>
-          <div className="lr-right-header">
-            <div className="lr-right-eyebrow">User Portal</div>
-            <div className="lr-right-title">Sign in</div>
-            <div className="lr-right-sub">
-              Enter your credentials to access the system
-            </div>
-          </div>
+        <div className={`lr-right${ready ? " ready" : ""}`}>
+
+          <div className="lr-title">Welcome back</div>
+          <div className="lr-sub">Sign in to your TGP account</div>
 
           {error && (
             <div className="lr-error">
               <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
+                width="14" height="14" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2.2"
                 style={{ flexShrink: 0, marginTop: 1 }}
               >
                 <circle cx="12" cy="12" r="10" />
@@ -493,38 +415,41 @@ function Login() {
           )}
 
           <form onSubmit={handleLogin}>
+            {/* Email */}
             <div className="lr-field">
-              <label className="lr-label">Email address</label>
               <div className="lr-input-wrap">
                 <input
                   className="lr-input"
+                  id="lr-email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder=" "
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   autoComplete="email"
                 />
+                <label className="lr-label" htmlFor="lr-email">Email</label>
               </div>
             </div>
 
+            {/* Password */}
             <div className="lr-field">
-              <label className="lr-label">Password</label>
               <div className="lr-input-wrap">
                 <input
-                  className="lr-input pw"
+                  className="lr-input has-toggle"
+                  id="lr-password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder=" "
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
                   autoComplete="current-password"
                 />
-                <button
-                  type="button"
-                  className="lr-toggle"
+                <label className="lr-label" htmlFor="lr-password">Password</label>
+                <button className="lr-toggle"
                   onClick={() => setShowPassword((p) => !p)}
                   tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
                     <VisibilityOff style={{ fontSize: 17 }} />
@@ -539,13 +464,33 @@ function Login() {
               {loading ? (
                 <CircularProgress size={17} sx={{ color: "#0d0d0d" }} />
               ) : (
-                "Sign In"
+                "Sign in"
               )}
             </button>
           </form>
 
           <div className="lr-footer">
-            Don't have an account? <Link to="/signup">Sign Up</Link>
+            Don't have an account yet?{" "}
+            <Link to="/signup">Sign up</Link>
+          </div>
+
+          {/* ── Social footer ────────────────────────────────────────── */}
+          <div className="lr-social">
+            <div className="lr-social-group">
+              <a href="https://www.facebook.com/thegoldpanicles" target="_blank" rel="noopener noreferrer"><Facebook style={{ fontSize: 14 }} /></a>
+              <a href="https://www.instagram.com/thegoldpanicles/" target="_blank" rel="noopener noreferrer"><Instagram style={{ fontSize: 14 }} /></a>
+              <a href="https://www.youtube.com/@thegoldpanicles" target="_blank" rel="noopener noreferrer"><YouTube style={{ fontSize: 14 }} /></a>
+              <span className="lr-social-handle">@thegoldpanicles</span>
+            </div>
+            <div className="lr-social-sep" />
+            <div className="lr-social-group">
+              <a href="https://x.com/tgpCSU" target="_blank" rel="noopener noreferrer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </a>
+              <span className="lr-social-handle">@tgpCSU</span>
+            </div>
           </div>
         </div>
       </div>
