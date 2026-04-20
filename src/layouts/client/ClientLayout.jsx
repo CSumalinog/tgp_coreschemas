@@ -28,7 +28,6 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import TrackChangesIcon from "@mui/icons-material/TrackChangesOutlined";
 
 import CoverageRequestDialog from "../../components/client/RequestForm";
-import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
 import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
 import { supabase } from "../../lib/supabaseClient";
@@ -851,7 +850,7 @@ function ClientLayout() {
         display: "flex",
         height: "100vh",
         fontFamily: dm,
-        backgroundColor: "#ffffff",
+        backgroundColor: "background.default",
       }}
     >
       {!isMobile && (
@@ -893,7 +892,7 @@ function ClientLayout() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          backgroundColor: "#ffffff",
+          backgroundColor: "background.default",
           minWidth: 0,
         }}
       >
@@ -956,11 +955,6 @@ function ClientLayout() {
             </Box>
           </Button>
           <Box sx={{ flex: 1 }} />
-          <GlobalSearch
-            role="client"
-            userId={currentUser?.id}
-            alwaysExpanded={!isMobile}
-          />
           <NotificationBell userId={currentUser?.id} />
           <Box sx={{ position: "relative" }}>
             <Avatar

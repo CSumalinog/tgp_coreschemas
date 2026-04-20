@@ -371,6 +371,7 @@ export default function GlobalSearch({
     assignments: [],
   });
   const [focused, setFocused] = useState(-1);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const containerRef = useRef(null);
   const inputRef = useRef(null);
@@ -429,6 +430,7 @@ export default function GlobalSearch({
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setOpen(false);
         setFocused(-1);
+        setInputFocused(false);
         if (!alwaysExpanded) {
           setExpanded(false);
           setQuery("");
@@ -548,14 +550,18 @@ export default function GlobalSearch({
     right: { xs: "auto", sm: 0 },
     left: { xs: 0, sm: "auto" },
     // cap width on mobile so it doesn't overflow viewport
-    width: { xs: "calc(100vw - 32px)", sm: 340 },
-    maxWidth: 340,
+    width: { xs: "calc(100vw - 32px)", sm: inputFocused ? 750 : 340 },
+    maxWidth: inputFocused ? 750 : 340,
   };
 
   return (
     <Box
       ref={containerRef}
-      sx={{ position: "relative", display: "flex", alignItems: "center" }}
+      sx={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+      }}
     >
       {/* ── Collapsed: icon only ── */}
       {!expanded && !alwaysExpanded && (
@@ -581,18 +587,26 @@ export default function GlobalSearch({
               setOpen(true);
               setFocused(-1);
             }}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => { if (!query) setInputFocused(false); }}
             onKeyDown={handleKeyDown}
             sx={{
               width: alwaysExpanded
-                ? { xs: 160, sm: 220, md: 300 }
+                ? inputFocused ? { xs: 220, sm: 500, md: 750 } : { xs: 160, sm: 220, md: 260 }
                 : { xs: 140, sm: 180, md: 260 },
-              transition: "width 0.2s ease",
+              transition: "width 0.3s ease",
               "& .MuiOutlinedInput-root": {
                 borderRadius: 1,
                 height: 36,
                 paddingTop: 0,
                 paddingBottom: 0,
                 fontSize: "0.85rem",
+                ...(alwaysExpanded && {
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: inputFocused ? "#F5C52B" : undefined,
+                    transition: "border-color 0.2s ease",
+                  },
+                }),
               },
             }}
             slotProps={{

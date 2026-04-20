@@ -1044,15 +1044,12 @@ The [`DutyScheduleView`](src/pages/admin/DutyScheduleView.jsx:1) component recei
 - **Snapshot Export**: Published roster versions
 
 ### 9.29 Section Head Interface Restructuring (v2.5)
-
-The Section Head module received a complete architectural overhaul with new page structure and shared base component:
+Head module received a complete architectural overhaul with new page structure and shared base component:
 
 #### New Page Architecture
+ction head navigation now uses a modular component structure:
 
-The section head navigation now uses a modular component structure:
-
-- **CoverageAssignmentPage** ([`CoverageAssignmentPage.jsx`](src/pages/section_head/CoverageAssignmentPage.jsx:1)): Manages staff assignments with views for "All", "For Assignment", "For Approval", and "Assigned" statuses
-- **CoverageTrackerPage** ([`CoverageTrackerPage.jsx`](src/pages/section_head/CoverageTrackerPage.jsx:1)): Tracks ongoing and completed coverage with "All", "On Going", and "Completed" views
+- **CoverageAssignmentPage** ([`CoverageAssignmentPage.jsx`](src/pages/section_head/CoverageAssignmentPage.jsx:1)): Manages staff assignments with views for "All", "For Assignment", "For   CoverageTrackerPage** ([`CoverageTrackerPage.jsx`](src/pages/section_head/CoverageTrackerPage.jsx:1)): Tracks ongoing and completed coverage with "All", "On Going", and "Completed" views
 - **CoverageTimeRecordPage** ([`CoverageTimeRecordPage.jsx`](src/pages/section_head/CoverageTimeRecordPage.jsx:1)): Comprehensive time record management with filtering, search, and CSV export capabilities
 - **ReassignmentHistoryPage** ([`ReassignmentHistoryPage.jsx`](src/pages/section_head/ReassignmentHistoryPage.jsx:1)): Dedicated view for tracking announced emergencies and no-show incidents with replacement details (see §9.34)
 

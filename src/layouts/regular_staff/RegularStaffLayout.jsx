@@ -518,7 +518,7 @@ function RegularStaffLayout() {
         display: "flex",
         height: "100vh",
         fontFamily: dm,
-        backgroundColor: "#ffffff",
+        backgroundColor: "background.default",
       }}
     >
       {!isMobile && (
@@ -559,7 +559,7 @@ function RegularStaffLayout() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          backgroundColor: isDark ? "#0D0D0F" : "#ffffff",
+          backgroundColor: "background.default",
           minWidth: 0,
         }}
       >

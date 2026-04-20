@@ -607,7 +607,7 @@ export default function RequestTracker() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        backgroundColor: "#ffffff",
+        backgroundColor: "transparent",
         fontFamily: dm,
       }}
     >
