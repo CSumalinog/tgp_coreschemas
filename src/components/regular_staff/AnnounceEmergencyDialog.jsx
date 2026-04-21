@@ -8,16 +8,12 @@ import {
   TextField,
   Typography,
   Box,
-  Divider,
-  IconButton,
   CircularProgress,
   useTheme,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 
 const GOLD = "#F5C52B";
-const HOVER_BG = "rgba(53,53,53,0.03)";
 const dm = "'Inter', sans-serif";
 
 /**
@@ -143,37 +139,18 @@ function AnnounceEmergencyDialog({
           borderBottom: `1px solid ${border}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "text.primary",
-              }}
-            >
-              Announce Emergency / Unavailability
-            </Typography>
-          </Box>
-        </Box>
-
-        <IconButton
-          size="small"
-          onClick={handleClose}
-          disabled={loading}
+        <Typography
           sx={{
-            borderRadius: "10px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: HOVER_BG },
+            fontFamily: dm,
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            color: "text.primary",
           }}
         >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+          Announce Emergency / Unavailability
+        </Typography>
       </Box>
 
       <Box
@@ -350,8 +327,6 @@ function AnnounceEmergencyDialog({
           </Typography>
         )}
       </Box>
-
-      <Divider />
 
       <Box
         sx={{

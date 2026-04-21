@@ -780,7 +780,10 @@ export default function RectificationsLog() {
           />
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: FILTER_STATUS_MIN_WIDTH, flexShrink: 0 }}>
+        <FormControl
+          size="small"
+          sx={{ minWidth: FILTER_STATUS_MIN_WIDTH, flexShrink: 0 }}
+        >
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -819,7 +822,10 @@ export default function RectificationsLog() {
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: FILTER_SEMESTER_MIN_WIDTH, flexShrink: 0 }}>
+        <FormControl
+          size="small"
+          sx={{ minWidth: FILTER_SEMESTER_MIN_WIDTH, flexShrink: 0 }}
+        >
           <Select
             value={selectedSem}
             onChange={(e) => setSelectedSem(e.target.value)}

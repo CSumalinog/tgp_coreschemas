@@ -389,10 +389,10 @@ export default function AdminCoverageTimeRecordPage() {
           title: req.title || "Coverage Request",
           client: req.entity?.name || "—",
           staffName: a.staffer?.full_name || "Unknown",
+          staffId: a.assigned_to || a.staffer?.id || null,
           staffAvatarUrl: getAvatarUrl(a.staffer?.avatar_url),
           avatarBg: getAvatarColor(a.assigned_to || "").bg,
           avatarFg: getAvatarColor(a.assigned_to || "").color,
-          section: a.section || a.staffer?.section || "—",
           timeIn: fmtTime(a.timed_in_at),
           timeOut: fmtTime(a.completed_at),
           duration: computeDuration(a.timed_in_at, a.completed_at),
@@ -404,6 +404,9 @@ export default function AdminCoverageTimeRecordPage() {
           timedInAt: a.timed_in_at,
         });
       });
+    });
+    rows.forEach((row, i) => {
+      row.isFirstInGroup = i === 0 || rows[i - 1].reqId !== row.reqId;
     });
     return rows;
   }, [filteredRequests, attendanceByRequest, brokenSelfieById]);
@@ -425,35 +428,36 @@ export default function AdminCoverageTimeRecordPage() {
         headerName: "Title",
         flex: TABLE_FIRST_COL_FLEX,
         minWidth: TABLE_FIRST_COL_MIN_WIDTH,
-        renderCell: (p) => (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.75,
-              width: "100%",
-              minWidth: 0,
-              pr: 0.5,
-              height: "100%",
-            }}
-          >
-            <Typography
+        renderCell: (p) =>
+          p.row.isFirstInGroup ? (
+            <Box
               sx={{
-                fontFamily: dm,
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                color: "text.primary",
-                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                width: "100%",
                 minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                pr: 0.5,
+                height: "100%",
               }}
             >
-              {p.value}
-            </Typography>
-          </Box>
-        ),
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "text.primary",
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {p.value}
+              </Typography>
+            </Box>
+          ) : null,
       },
       {
         field: "_nav",
@@ -461,42 +465,48 @@ export default function AdminCoverageTimeRecordPage() {
         width: 48,
         sortable: false,
         disableColumnMenu: true,
-        renderCell: (p) => (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-            }}
-          >
-            <Tooltip title="View request" placement="top">
-              <Box
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/admin/coverage-request-details/${p.row.reqId}`, {
-                    state: { backTo: "/admin/coverage-tracker/time-record" },
-                  });
-                }}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 24,
-                  height: 24,
-                  borderRadius: "6px",
-                  border: `1px solid ${border}`,
-                  cursor: "pointer",
-                  color: "text.disabled",
-                  transition: "all 0.15s",
-                  "&:hover": { borderColor: "#212121", color: "#212121" },
-                }}
-              >
-                <ArrowForwardIcon sx={{ fontSize: 13 }} />
-              </Box>
-            </Tooltip>
-          </Box>
-        ),
+        renderCell: (p) =>
+          p.row.isFirstInGroup ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+              }}
+            >
+              <Tooltip title="View request" placement="top">
+                <Box
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(
+                      `/admin/coverage-request-details/${p.row.reqId}`,
+                      {
+                        state: {
+                          backTo: "/admin/coverage-tracker/time-record",
+                        },
+                      },
+                    );
+                  }}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 24,
+                    height: 24,
+                    borderRadius: "6px",
+                    border: `1px solid ${border}`,
+                    cursor: "pointer",
+                    color: "text.disabled",
+                    transition: "all 0.15s",
+                    "&:hover": { borderColor: "#212121", color: "#212121" },
+                  }}
+                >
+                  <ArrowForwardIcon sx={{ fontSize: 13 }} />
+                </Box>
+              </Tooltip>
+            </Box>
+          ) : null,
       },
       {
         field: "client",
@@ -565,21 +575,43 @@ export default function AdminCoverageTimeRecordPage() {
         ),
       },
       {
-        field: "section",
-        headerName: "Section",
-        flex: 0.8,
-        minWidth: 100,
+        field: "_staffNav",
+        headerName: "",
+        width: 48,
+        sortable: false,
+        disableColumnMenu: true,
         renderCell: (p) => (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                color: "text.secondary",
-              }}
-            >
-              {p.value}
-            </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Tooltip title="View in Staffers" placement="top">
+              <Box
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/admin/staffers-management?focus=${p.row.staffId}`);
+                }}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 24,
+                  height: 24,
+                  borderRadius: "6px",
+                  border: `1px solid ${border}`,
+                  cursor: "pointer",
+                  color: "text.disabled",
+                  transition: "all 0.15s",
+                  "&:hover": { borderColor: "#212121", color: "#212121" },
+                }}
+              >
+                <ArrowForwardIcon sx={{ fontSize: 13 }} />
+              </Box>
+            </Tooltip>
           </Box>
         ),
       },

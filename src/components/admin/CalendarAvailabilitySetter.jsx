@@ -12,7 +12,6 @@ import {
   Divider,
   useTheme,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
@@ -21,7 +20,6 @@ import dayjs from "dayjs";
 import {
   CONTROL_RADIUS,
   MODAL_ACTION_HEIGHT,
-  MODAL_COMPACT_WIDTH,
   MODAL_INPUT_HEIGHT,
 } from "../../utils/layoutTokens";
 
@@ -136,7 +134,11 @@ export default function CalendarEventDialog({
   const applyTimeToDate = (baseDate, hhmm) => {
     if (!baseDate || !hhmm) return baseDate;
     const [h, m] = hhmm.split(":").map(Number);
-    return dayjs(baseDate).hour(h || 0).minute(m || 0).second(0).millisecond(0);
+    return dayjs(baseDate)
+      .hour(h || 0)
+      .minute(m || 0)
+      .second(0)
+      .millisecond(0);
   };
 
   const confirmDelete = () => {
@@ -170,14 +172,14 @@ export default function CalendarEventDialog({
     },
   };
 
-    const singleLineInputSx = {
-      ...inputSx,
-      "& .MuiOutlinedInput-root": {
-        ...inputSx["& .MuiOutlinedInput-root"],
-        minHeight: MODAL_INPUT_HEIGHT,
-        alignItems: "center",
-      },
-    };
+  const singleLineInputSx = {
+    ...inputSx,
+    "& .MuiOutlinedInput-root": {
+      ...inputSx["& .MuiOutlinedInput-root"],
+      minHeight: MODAL_INPUT_HEIGHT,
+      alignItems: "center",
+    },
+  };
 
   // ── Block type options ────────────────────────────────────────────────────
   const typeOptions = [
@@ -204,10 +206,10 @@ export default function CalendarEventDialog({
         open={open}
         onClose={handleClose}
         fullWidth
+        maxWidth="sm"
         slotProps={{
           paper: {
             sx: {
-              width: MODAL_COMPACT_WIDTH,
               borderRadius: CONTROL_RADIUS,
               backgroundColor: paperBg,
               backgroundImage: "none",
@@ -311,23 +313,6 @@ export default function CalendarEventDialog({
                 <DeleteOutlinedIcon sx={{ fontSize: 14 }} />
               </IconButton>
             )}
-            <IconButton
-              size="small"
-              onClick={handleClose}
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: "10px",
-                color: "text.secondary",
-                "&:hover": {
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.06)"
-                    : "rgba(53,53,53,0.06)",
-                },
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 14 }} />
-            </IconButton>
           </Box>
         </Box>
 
@@ -341,8 +326,14 @@ export default function CalendarEventDialog({
             gap: 0,
           }}
         >
-          {existingEvent && mode === MODE.VIEW && (
-            <Box sx={{ mb: 1.5, display: "flex", flexDirection: "column", gap: 0.3 }}>
+          {existingEvent && (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.3,
+              }}
+            >
               <Typography
                 sx={{
                   fontFamily: dm,
@@ -359,7 +350,10 @@ export default function CalendarEventDialog({
                   color: "text.disabled",
                 }}
               >
-                Created: {existingEvent.created_at ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A") : "Unknown"}
+                Created:{" "}
+                {existingEvent.created_at
+                  ? dayjs(existingEvent.created_at).format("MMM D, YYYY h:mm A")
+                  : "Unknown"}
               </Typography>
             </Box>
           )}
@@ -525,7 +519,14 @@ export default function CalendarEventDialog({
                     fullWidth
                     disabled={!isEditable}
                     value={start ? start.format("HH:mm") : ""}
-                    onChange={(e) => setStart(applyTimeToDate(start || dayjs(defaultDate || new Date()), e.target.value))}
+                    onChange={(e) =>
+                      setStart(
+                        applyTimeToDate(
+                          start || dayjs(defaultDate || new Date()),
+                          e.target.value,
+                        ),
+                      )
+                    }
                     InputLabelProps={{ shrink: true }}
                     sx={singleLineInputSx}
                   />
@@ -536,7 +537,14 @@ export default function CalendarEventDialog({
                     fullWidth
                     disabled={!isEditable}
                     value={end ? end.format("HH:mm") : ""}
-                    onChange={(e) => setEnd(applyTimeToDate(end || start || dayjs(defaultDate || new Date()), e.target.value))}
+                    onChange={(e) =>
+                      setEnd(
+                        applyTimeToDate(
+                          end || start || dayjs(defaultDate || new Date()),
+                          e.target.value,
+                        ),
+                      )
+                    }
                     InputLabelProps={{ shrink: true }}
                     sx={singleLineInputSx}
                   />
@@ -659,19 +667,21 @@ export default function CalendarEventDialog({
             sx: { backgroundColor: "transparent" },
           },
         }}
-        slotProps={{ paper: {
-          sx: {
-            width: 380,
-            borderRadius: "10px",
-            backgroundColor: paperBg,
-            backgroundImage: "none",
-            border: `1px solid ${border}`,
-            boxShadow: isDark
-              ? "0 20px 60px rgba(0,0,0,0.5)"
-              : "0 8px 40px rgba(53,53,53,0.12)",
-            overflow: "hidden",
+        slotProps={{
+          paper: {
+            sx: {
+              width: 380,
+              borderRadius: "10px",
+              backgroundColor: paperBg,
+              backgroundImage: "none",
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 20px 60px rgba(0,0,0,0.5)"
+                : "0 8px 40px rgba(53,53,53,0.12)",
+              overflow: "hidden",
+            },
           },
-        } }}
+        }}
       >
         {/* Header */}
         <Box
@@ -812,5 +822,3 @@ export default function CalendarEventDialog({
     </>
   );
 }
-
-

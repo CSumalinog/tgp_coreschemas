@@ -31,7 +31,11 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { supabase } from "../../lib/supabaseClient";
-import { getAvatarUrl, getAvatarColor, StaffAvatar } from "../../components/common/UserAvatar";
+import {
+  getAvatarUrl,
+  getAvatarColor,
+  StaffAvatar,
+} from "../../components/common/UserAvatar";
 import {
   forwardRequest,
   declineRequest,
@@ -842,8 +846,6 @@ export default function RequestDetails({
     setError("");
     if (unfilledSlots.length > 0) {
       setApproveWarningOpen(true); // hard block dialog — staff issues only
-    } else if (assessmentFlags.length > 0) {
-      setApproveSoftWarnOpen(true); // soft warning dialog — assessment flags only
     } else {
       setApproveOpen(true);
     }
@@ -863,7 +865,9 @@ export default function RequestDetails({
     bg: "#f3f4f6",
     color: "#6b7280",
   };
-  const isMultiDay = !!(request?.is_multiday && request?.event_days?.length > 0);
+  const isMultiDay = !!(
+    request?.is_multiday && request?.event_days?.length > 0
+  );
   // FIX #3: show staff panel for more statuses including On Going / Completed
   const showStaff = [
     "Forwarded",
@@ -875,9 +879,13 @@ export default function RequestDetails({
   ].includes(request?.status);
   // FIX #4: decline available at any pre-completion stage
   const canDecline = DECLINABLE_STATUSES.includes(request?.status);
-  const canOpenCoverageDetails = ["Assigned", "For Approval", "Approved", "On Going", "Completed"].includes(
-    request?.status,
-  );
+  const canOpenCoverageDetails = [
+    "Assigned",
+    "For Approval",
+    "Approved",
+    "On Going",
+    "Completed",
+  ].includes(request?.status);
 
   const eventDateDisplay = React.useMemo(() => {
     if (!request) return "—";
@@ -891,7 +899,9 @@ export default function RequestDetails({
         day: "numeric",
         year: "numeric",
       });
-      return sorted.length === 1 ? fmtDate(sorted[0].date) : `${first} – ${last}`;
+      return sorted.length === 1
+        ? fmtDate(sorted[0].date)
+        : `${first} – ${last}`;
     }
     return request.event_date ? fmtDate(request.event_date) : "—";
   }, [request]);
@@ -986,7 +996,11 @@ export default function RequestDetails({
             </Typography>
           </Box>
           <Tooltip
-            title={assessmentSidebarOpen ? "Hide assessment panel" : "Show assessment panel"}
+            title={
+              assessmentSidebarOpen
+                ? "Hide assessment panel"
+                : "Show assessment panel"
+            }
             arrow
           >
             <IconButton
@@ -1189,9 +1203,7 @@ export default function RequestDetails({
             open={panelOpen.coverageRequirements}
             onToggle={() => togglePanel("coverageRequirements")}
           >
-            <Box
-              sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}
-            >
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 0.5 }}>
               {coverageComponents.length > 0 ? (
                 coverageComponents.map((c, idx) => (
                   <Box
@@ -1270,18 +1282,14 @@ export default function RequestDetails({
                 </Typography>
               </Box>
             ) : (
-              <Typography
-                sx={{ fontSize: "0.85rem", color: "text.secondary" }}
-              >
+              <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>
                 No file attached
               </Typography>
             )}
           </Section>
 
           {/* FIX #6: show forwarded sections on both Forwarded AND For Approval */}
-          {["Forwarded", "Assigned", "For Approval"].includes(
-            request.status,
-          ) &&
+          {["Forwarded", "Assigned", "For Approval"].includes(request.status) &&
             request.forwarded_sections?.length > 0 && (
               <Section label="Forwarded To">
                 <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
@@ -1320,7 +1328,9 @@ export default function RequestDetails({
                   border: "1px solid",
                   borderColor: "divider",
                   borderRadius: "10px",
-                  backgroundColor: isDark ? "rgba(255,255,255,0.01)" : "#ffffff",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.01)"
+                    : "#ffffff",
                   overflow: "hidden",
                   transition: "background-color 0.18s ease",
                   "& .assigned-staff-ctr-action": {
@@ -1328,7 +1338,9 @@ export default function RequestDetails({
                     pointerEvents: "none",
                   },
                   "&:hover": {
-                    backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(53,53,53,0.02)",
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(53,53,53,0.02)",
                   },
                   "&:hover .assigned-staff-ctr-action": {
                     opacity: 1,
@@ -1356,8 +1368,11 @@ export default function RequestDetails({
                         background: isDark
                           ? "linear-gradient(90deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.08) 100%)"
                           : "linear-gradient(90deg, rgba(53,53,53,0.00) 0%, rgba(53,53,53,0.06) 100%)",
-                        color: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,17,17,0.75)",
-                        transition: "opacity 0.2s ease, background 0.2s ease, color 0.2s ease",
+                        color: isDark
+                          ? "rgba(255,255,255,0.85)"
+                          : "rgba(17,17,17,0.75)",
+                        transition:
+                          "opacity 0.2s ease, background 0.2s ease, color 0.2s ease",
                         "&:hover": {
                           background: isDark
                             ? "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.14) 100%)"
@@ -1366,7 +1381,9 @@ export default function RequestDetails({
                         },
                       }}
                     >
-                      <ChevronRightIcon sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 700 }} />
+                      <ChevronRightIcon
+                        sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 700 }}
+                      />
                     </IconButton>
                   </Tooltip>
                 )}
@@ -1435,7 +1452,9 @@ export default function RequestDetails({
           )}
 
           {/* FIX #3: show admin_notes for all post-approval statuses */}
-          {["Approved", "Assigned", "On Going", "Completed"].includes(request.status) &&
+          {["Approved", "Assigned", "On Going", "Completed"].includes(
+            request.status,
+          ) &&
             request.admin_notes && (
               <Section label="Admin Notes">
                 <Box
@@ -1465,25 +1484,15 @@ export default function RequestDetails({
           sx={{ display: { xs: "none", md: "block" } }}
         >
           <Box sx={{ display: "flex", height: "100%" }}>
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ display: "flex" }}
-            />
-            <RequestAssessmentPanel
-              checks={checks}
-              isDark={isDark}
-            />
+            <Divider orientation="vertical" flexItem sx={{ display: "flex" }} />
+            <RequestAssessmentPanel checks={checks} isDark={isDark} />
           </Box>
         </Collapse>
 
         {assessmentSidebarOpen && (
           <Box sx={{ display: { xs: "block", md: "none" }, width: "100%" }}>
             <Divider orientation="horizontal" flexItem />
-            <RequestAssessmentPanel
-              checks={checks}
-              isDark={isDark}
-            />
+            <RequestAssessmentPanel checks={checks} isDark={isDark} />
           </Box>
         )}
       </DialogContent>
@@ -1821,7 +1830,8 @@ export default function RequestDetails({
             <Typography
               sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 0.2 }}
             >
-              All requested services must have at least one staff assigned before approval.
+              All requested services must have at least one staff assigned
+              before approval.
             </Typography>
           </Box>
         </Box>
@@ -2210,18 +2220,24 @@ export default function RequestDetails({
                           sx={{
                             fontSize: "0.85rem",
                             fontWeight: 600,
-                            color: isDisabled ? "text.disabled" : "text.primary",
+                            color: isDisabled
+                              ? "text.disabled"
+                              : "text.primary",
                             lineHeight: 1.3,
                           }}
                         >
                           {secHead?.full_name ?? "No section head assigned"}
                         </Typography>
                         <Typography
-                          sx={{ fontSize: "0.73rem", color: "text.secondary", mt: 0.2 }}
+                          sx={{
+                            fontSize: "0.73rem",
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
                         >
                           {isDisabled
                             ? "Not required for this request"
-                            : secHead?.designation ?? "—"}
+                            : (secHead?.designation ?? "—")}
                         </Typography>
                       </Box>
                       {/* Section column */}
@@ -2411,9 +2427,6 @@ export default function RequestDetails({
             py: 2,
             borderBottom: "1px solid",
             borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -2421,27 +2434,8 @@ export default function RequestDetails({
           >
             Approve Request
           </Typography>
-          <IconButton
-            onClick={() => setApproveOpen(false)}
-            size="small"
-            disabled={actionLoading}
-            sx={{ color: "text.secondary" }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
-          <Typography
-            sx={{
-              fontSize: "0.82rem",
-              color: "text.secondary",
-              mb: 2,
-              lineHeight: 1.6,
-            }}
-          >
-            Approving will notify the client and finalize the request. You may
-            add optional notes.
-          </Typography>
           {error && (
             <Alert
               severity="error"
@@ -2581,7 +2575,3 @@ function InfoGrid({ rows, isDark }) {
     </Box>
   );
 }
-
-
-
-

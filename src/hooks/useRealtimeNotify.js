@@ -27,7 +27,7 @@ if (typeof window !== "undefined") {
 }
 
 function _playChimeNow(ctx) {
-  const now  = ctx.currentTime;
+  const now = ctx.currentTime;
   const gain = ctx.createGain();
   gain.connect(ctx.destination);
   gain.gain.setValueAtTime(0, now);
@@ -35,7 +35,11 @@ function _playChimeNow(ctx) {
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
 
   // Three-tone ascending chime: C5 -> E5 -> G5
-  [[523.25, 0], [659.25, 0.14], [783.99, 0.28]].forEach(([freq, delay]) => {
+  [
+    [523.25, 0],
+    [659.25, 0.14],
+    [783.99, 0.28],
+  ].forEach(([freq, delay]) => {
     const osc = ctx.createOscillator();
     osc.type = "sine";
     osc.frequency.setValueAtTime(freq, now + delay);
@@ -66,7 +70,7 @@ function playChime() {
 
 // ── Tab title flash ────────────────────────────────────────────────────────────
 let _flashInterval = null;
-const _origTitle   = typeof document !== "undefined" ? document.title : "";
+const _origTitle = typeof document !== "undefined" ? document.title : "";
 
 function flashTab(message) {
   if (_flashInterval) return;
@@ -87,15 +91,16 @@ function flashTab(message) {
 }
 
 // ── Main hook ──────────────────────────────────────────────────────────────────
-export function useRealtimeNotify(table, callback, filter = null, options = {}) {
-  const {
-    title    = table,
-    sound    = true,
-    tabFlash = true,
-  } = options;
+export function useRealtimeNotify(
+  table,
+  callback,
+  filter = null,
+  options = {},
+) {
+  const { title = table, sound = true, tabFlash = true } = options;
 
   const notify = useCallback(() => {
-    if (sound)    playChime();
+    if (sound) playChime();
     if (tabFlash) flashTab("New update");
     callback?.();
   }, [callback, title, table, sound, tabFlash]);

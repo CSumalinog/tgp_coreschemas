@@ -104,8 +104,7 @@ function BrandField({ label, type, value, onChange, show, onToggle, isDark }) {
       size="small"
       fullWidth
       slotProps={{
-        input:
-        onToggle
+        input: onToggle
           ? {
               endAdornment: (
                 <InputAdornment position="end">
@@ -298,8 +297,6 @@ export default function ProfilePage() {
     <Box
       sx={{ p: { xs: 2, sm: 3 }, maxWidth: 560, mx: "auto", fontFamily: dm }}
     >
-      
-
       {/* ── Profile Photo ── */}
       <Card isDark={isDark} sx={{ mb: 2 }}>
         <SectionLabel icon={PersonOutlinedIcon} label="Profile Photo" />

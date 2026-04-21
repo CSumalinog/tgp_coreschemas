@@ -361,7 +361,10 @@ export default function Draft() {
       <Menu
         anchorEl={rowMenuAnchor}
         open={Boolean(rowMenuAnchor)}
-        onClose={() => { setRowMenuAnchor(null); setRowMenuTarget(null); }}
+        onClose={() => {
+          setRowMenuAnchor(null);
+          setRowMenuTarget(null);
+        }}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         slotProps={{
@@ -389,7 +392,12 @@ export default function Draft() {
           <ListItemIcon sx={{ minWidth: 28 }}>
             <EditOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
           </ListItemIcon>
-          <ListItemText primary="Edit" slotProps={{ primary: { fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 } }} />
+          <ListItemText
+            primary="Edit"
+            slotProps={{
+              primary: { fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 },
+            }}
+          />
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -397,12 +405,28 @@ export default function Draft() {
             setSelectedDraft(rowMenuTarget);
             setConfirmDeleteOpen(true);
           }}
-          sx={{ fontFamily: dm, fontSize: "0.8rem", py: 1, gap: 0.5, color: "#dc2626" }}
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            py: 1,
+            gap: 0.5,
+            color: "#dc2626",
+          }}
         >
           <ListItemIcon sx={{ minWidth: 28 }}>
             <DeleteOutlineIcon sx={{ fontSize: 16, color: "#dc2626" }} />
           </ListItemIcon>
-          <ListItemText primary="Delete" slotProps={{ primary: { fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "#dc2626" } }} />
+          <ListItemText
+            primary="Delete"
+            slotProps={{
+              primary: {
+                fontFamily: dm,
+                fontSize: "0.8rem",
+                fontWeight: 500,
+                color: "#dc2626",
+              },
+            }}
+          />
         </MenuItem>
       </Menu>
 
@@ -874,10 +898,7 @@ export default function Draft() {
           <ActionBtn onClick={handleClose} border={border}>
             Cancel
           </ActionBtn>
-          <ActionBtn
-            primary
-            onClick={() => setConfirmSubmitOpen(true)}
-          >
+          <ActionBtn primary onClick={() => setConfirmSubmitOpen(true)}>
             Submit Request
           </ActionBtn>
         </Box>

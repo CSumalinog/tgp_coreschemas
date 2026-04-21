@@ -274,7 +274,8 @@ export default function MySchedule() {
     setPendingRequest(nextPending);
     setLatestReviewedRequest(reviewedRows?.[0] || null);
     setAllReviewedRequests(reviewedRows || []);
-    if (nextPending) {}
+    if (nextPending) {
+    }
     const myPick = (allSchedules || []).find(
       (s) => s.staffer_id === currentUser.id,
     );
@@ -1764,11 +1765,12 @@ export default function MySchedule() {
           <Dialog
             open={reasonDialogOpen}
             onClose={handleDialogClose}
+            fullWidth
+            maxWidth="sm"
             slotProps={{
               paper: {
                 sx: {
                   borderRadius: "10px",
-                  width: 450,
                   p: 0,
                   fontFamily: dm,
                   bgcolor: "background.paper",
@@ -1782,24 +1784,9 @@ export default function MySchedule() {
                 py: 2.25,
                 display: "flex",
                 alignItems: "center",
-                gap: 1.5,
                 borderBottom: `1px solid ${border}`,
               }}
             >
-              <Box
-                sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "10px",
-                  backgroundColor: GOLD_08,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <AutorenewOutlinedIcon sx={{ fontSize: 17, color: GOLD }} />
-              </Box>
               <Typography
                 sx={{
                   fontFamily: dm,
@@ -1808,7 +1795,7 @@ export default function MySchedule() {
                   color: "text.primary",
                 }}
               >
-                Confirm Duty Day Change
+                Duty Day Change Request
               </Typography>
             </Box>
 

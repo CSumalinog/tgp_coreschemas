@@ -765,7 +765,10 @@ export default function RectificationsPage() {
           />
         </FormControl>
 
-        <FormControl size="small" sx={{ flexShrink: 0, minWidth: FILTER_STATUS_MIN_WIDTH }}>
+        <FormControl
+          size="small"
+          sx={{ flexShrink: 0, minWidth: FILTER_STATUS_MIN_WIDTH }}
+        >
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -781,14 +784,34 @@ export default function RectificationsPage() {
               },
             }}
           >
-            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Statuses</MenuItem>
-            <MenuItem value="pending" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Pending</MenuItem>
-            <MenuItem value="approved" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Approved</MenuItem>
-            <MenuItem value="rejected" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Rejected</MenuItem>
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Statuses
+            </MenuItem>
+            <MenuItem
+              value="pending"
+              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+            >
+              Pending
+            </MenuItem>
+            <MenuItem
+              value="approved"
+              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+            >
+              Approved
+            </MenuItem>
+            <MenuItem
+              value="rejected"
+              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+            >
+              Rejected
+            </MenuItem>
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ flexShrink: 0, minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
+        <FormControl
+          size="small"
+          sx={{ flexShrink: 0, minWidth: FILTER_SEMESTER_MIN_WIDTH }}
+        >
           <Select
             value={selectedSem}
             onChange={(e) => setSelectedSem(e.target.value)}
@@ -804,9 +827,15 @@ export default function RectificationsPage() {
               },
             }}
           >
-            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All Semesters</MenuItem>
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All Semesters
+            </MenuItem>
             {semesters.map((s) => (
-              <MenuItem key={s.id} value={s.id} sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              <MenuItem
+                key={s.id}
+                value={s.id}
+                sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+              >
                 {getSemesterDisplayName(s)}
               </MenuItem>
             ))}

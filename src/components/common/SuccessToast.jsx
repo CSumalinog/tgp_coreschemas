@@ -26,7 +26,8 @@ export function _registerSuccessToastSetter(fn) {
 }
 
 export function pushSuccessToast(message) {
-  if (_setter) _setter((prev) => [...prev.slice(-4), { id: Date.now(), message }]);
+  if (_setter)
+    _setter((prev) => [...prev.slice(-4), { id: Date.now(), message }]);
 }
 
 // ── Single toast item ─────────────────────────────────────────────────────────
@@ -37,7 +38,10 @@ function ToastItem({ toast, onDone }) {
 
   const dismiss = () => {
     const el = ref.current;
-    if (!el) { onDone(); return; }
+    if (!el) {
+      onDone();
+      return;
+    }
     el.style.transition = `transform ${SLIDE_OUT_MS}ms ease, opacity ${SLIDE_OUT_MS}ms ease`;
     el.style.transform = "translateX(120%)";
     el.style.opacity = "0";
@@ -73,7 +77,7 @@ function ToastItem({ toast, onDone }) {
         display: "flex",
         alignItems: "center",
         gap: 1,
-        width: 300,
+        width: 360,
         px: 1.5,
         py: 1.1,
         borderRadius: "10px",
@@ -112,7 +116,9 @@ function ToastItem({ toast, onDone }) {
           borderRadius: "6px",
           color: isDark ? "#777" : "#9ca3af",
           "&:hover": {
-            backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.06)"
+              : "rgba(0,0,0,0.05)",
             color: isDark ? "#ccc" : "#555",
           },
         }}

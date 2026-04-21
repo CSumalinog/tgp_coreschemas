@@ -447,12 +447,16 @@ export default function NotificationsPage() {
     if (currentRole === "client") {
       if (activeFilter === "unread") {
         return notifications.filter(
-          (notification) => !notification.is_read && (notification.type === "approved" || notification.type !== "approved")
+          (notification) =>
+            !notification.is_read &&
+            (notification.type === "approved" ||
+              notification.type !== "approved"),
         );
       }
       // For 'all', always include 'approved' notifications
       return notifications.filter(
-        (notification) => notification.type === "approved" || notification.type !== "approved"
+        (notification) =>
+          notification.type === "approved" || notification.type !== "approved",
       );
     }
 
@@ -765,10 +769,9 @@ export default function NotificationsPage() {
                   /all sections have submitted/i.test(
                     String(notification.message || ""),
                   ));
-              const displayActorProfile =
-                isAllSectionsSubmission
-                  ? null
-                  : (notification.type === "assigned" ||
+              const displayActorProfile = isAllSectionsSubmission
+                ? null
+                : (notification.type === "assigned" ||
                       notification.title === "Coverage Assignment Finalized") &&
                     assignerProfile
                   ? assignerProfile
@@ -842,7 +845,8 @@ export default function NotificationsPage() {
                   notification.message,
                   notification.title,
                 );
-                const actorDesig = requester?.designation || requester?.position || "";
+                const actorDesig =
+                  requester?.designation || requester?.position || "";
                 displayMessage = `${requesterName}${actorDesig ? ` - ${actorDesig}` : ""} approved "${requestLabel}." Assignments are finalized.`;
               }
 

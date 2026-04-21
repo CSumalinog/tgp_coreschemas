@@ -534,7 +534,11 @@ export default function StaffersManagement() {
       setToggleOpen(false);
       setToggleTarget(null);
       loadStaffers();
-      pushSuccessToast(toggleTarget.is_active ? "Staff member deactivated." : "Staff member activated.");
+      pushSuccessToast(
+        toggleTarget.is_active
+          ? "Staff member deactivated."
+          : "Staff member activated.",
+      );
     } catch (err) {
       setError(err.message);
     } finally {

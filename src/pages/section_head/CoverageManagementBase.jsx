@@ -51,7 +51,6 @@ import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -68,7 +67,7 @@ import NumberBadge from "../../components/common/NumberBadge";
 import { supabase } from "../../lib/supabaseClient";
 import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import { getAvatarUrl, StaffAvatar } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   notifyAdmins,
@@ -172,8 +171,8 @@ const STATUS_CFG = {
 const VIEW_OPTIONS = [
   { label: "All", key: "all" },
   { label: "For Assignment", key: "for-assignment" },
-  { label: "For Approval", key: "for-approval" },
   { label: "Assigned", key: "assigned" },
+  { label: "For Approval", key: "for-approval" },
   { label: "On Going", key: "on-going" },
   { label: "Completed", key: "completed" },
 ];
@@ -1769,7 +1768,9 @@ export default function CoverageManagementBase({
       setAssignDialogOpen(false);
       await loadAll();
       setViewFilter("assigned");
-      pushSuccessToast("Assignment already saved. Please submit for approval when ready.");
+      pushSuccessToast(
+        "Assignment already saved. Please submit for approval when ready.",
+      );
       return;
     }
 
@@ -3572,44 +3573,18 @@ function SubmitConfirmDialog({
           borderBottom: `1px solid ${border}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "text.primary",
-              }}
-            >
-              Submit for Approval
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-              }}
-            >
-              This will notify the admin for final review.
-            </Typography>
-          </Box>
-        </Box>
-        <IconButton
-          size="small"
-          onClick={onCancel}
-          disabled={loading}
+        <Typography
           sx={{
-            borderRadius: "10px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: HOVER_BG },
+            fontFamily: dm,
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            color: "text.primary",
           }}
         >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+          Submit for Approval
+        </Typography>
       </Box>
       <Box
         sx={{
@@ -3669,43 +3644,43 @@ function SubmitConfirmDialog({
             >
               Staffers being submitted
             </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.6 }}>
-              {stafferNames.map((name, i) => (
-                <Box
-                  key={i}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.6,
-                    px: 1.1,
-                    py: 0.3,
-                    borderRadius: "6px",
-                    backgroundColor: isDark
-                      ? "rgba(34,197,94,0.08)"
-                      : "#f0fdf4",
-                    border: "1px solid rgba(34,197,94,0.2)",
-                  }}
-                >
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
+              {(request.staffers || [])
+                .filter((s) => s.full_name)
+                .map((s) => (
                   <Box
+                    key={s.id || s.full_name}
                     sx={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      backgroundColor: "#22c55e",
-                    }}
-                  />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.72rem",
-                      color: "#15803d",
-                      fontWeight: 500,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.25,
+                      px: 1.25,
+                      py: 0.85,
+                      borderRadius: "8px",
+                      border: `1px solid ${border}`,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.02)"
+                        : "rgba(53,53,53,0.01)",
                     }}
                   >
-                    {name}
-                  </Typography>
-                </Box>
-              ))}
+                    <StaffAvatar
+                      path={s.avatar_url}
+                      name={s.full_name}
+                      size={30}
+                      fontSize="0.65rem"
+                    />
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        fontWeight: 500,
+                        color: "text.primary",
+                      }}
+                    >
+                      {s.full_name}
+                    </Typography>
+                  </Box>
+                ))}
             </Box>
           </Box>
         )}
@@ -3750,10 +3725,29 @@ function SubmitConfirmDialog({
         }}
       >
         <CancelBtn onClick={onCancel} disabled={loading} border={border} />
-        <PrimaryBtn onClick={onConfirm} loading={loading}>
-          {!loading && <CheckCircleOutlinedIcon sx={{ fontSize: 14 }} />}
+        <Box
+          onClick={!loading ? onConfirm : undefined}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.6,
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "8px",
+            cursor: loading ? "default" : "pointer",
+            backgroundColor: "#212121",
+            color: "#fff",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            opacity: loading ? 0.7 : 1,
+            transition: "background-color 0.15s",
+            "&:hover": { backgroundColor: loading ? "#212121" : "#333" },
+          }}
+        >
+          {loading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
           Confirm Submission
-        </PrimaryBtn>
+        </Box>
       </Box>
     </Dialog>
   );
@@ -4018,53 +4012,16 @@ function AssignmentDialog({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontWeight: 700,
-                  fontSize: "0.92rem",
-                  color: "text.primary",
-                  lineHeight: 1.3,
-                }}
-              >
-                {req.title}
-              </Typography>
-              {isMultiDay && (
-                <Box
-                  sx={{
-                    px: 0.8,
-                    py: 0.2,
-                    borderRadius: "20px",
-                    backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4",
-                    border: "1px solid",
-                    borderColor: isDark ? "#166534" : "#86efac",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.63rem",
-                      fontWeight: 700,
-                      color: isDark ? "#4ade80" : "#15803d",
-                    }}
-                  >
-                    {days.length}-day event
-                  </Typography>
-                </Box>
-              )}
-            </Box>
             <Typography
               sx={{
                 fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-                mt: 0.2,
+                fontWeight: 700,
+                fontSize: "0.92rem",
+                color: "text.primary",
+                lineHeight: 1.3,
               }}
             >
-              {req.forwarded_at
-                ? `Forwarded ${new Date(req.forwarded_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
-                : "Forwarded date unknown"}
+              Details
             </Typography>
           </Box>
         </Box>
@@ -4088,18 +4045,6 @@ function AssignmentDialog({
               {currentUser.section}
             </Typography>
           </Box>
-          <IconButton
-            onClick={onClose}
-            size="small"
-            disabled={assignLoading}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": { backgroundColor: HOVER_BG },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
       </Box>
 
@@ -5063,10 +5008,31 @@ function AssignmentDialog({
         }}
       >
         <CancelBtn onClick={onClose} disabled={assignLoading} border={border} />
-        <PrimaryBtn onClick={onAssign} loading={assignLoading}>
-          {!assignLoading && <CheckCircleOutlinedIcon sx={{ fontSize: 14 }} />}
+        <Box
+          onClick={!assignLoading ? onAssign : undefined}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.6,
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "8px",
+            cursor: assignLoading ? "default" : "pointer",
+            backgroundColor: "#212121",
+            color: "#fff",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            opacity: assignLoading ? 0.7 : 1,
+            transition: "background-color 0.15s",
+            "&:hover": { backgroundColor: assignLoading ? "#212121" : "#333" },
+          }}
+        >
+          {assignLoading && (
+            <CircularProgress size={13} sx={{ color: "#fff" }} />
+          )}
           Confirm Assignment
-        </PrimaryBtn>
+        </Box>
       </Box>
     </Dialog>
   );
@@ -5203,20 +5169,6 @@ function PostAssignReviewDialog({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: "8px",
-              backgroundColor: "rgba(34,197,94,0.10)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <CheckCircleOutlinedIcon sx={{ fontSize: 17, color: "#22c55e" }} />
-          </Box>
           <Box>
             <Typography
               sx={{
@@ -5228,29 +5180,8 @@ function PostAssignReviewDialog({
             >
               Assignment Saved
             </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-              }}
-            >
-              Review the assigned staff before submitting for admin approval.
-            </Typography>
           </Box>
         </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          disabled={loading}
-          sx={{
-            borderRadius: "8px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: HOVER_BG },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
       </Box>
 
       {/* Body */}
@@ -5411,8 +5342,9 @@ function PostAssignReviewDialog({
               lineHeight: 1.55,
             }}
           >
-            Once submitted, staffers will be locked in and the admin will be
-            notified. This cannot be undone.
+            Review the assigned staff before submitting. Once submitted,
+            staffers will be locked in and the admin will be notified. This
+            cannot be undone.
           </Typography>
         </Box>
       </Box>
@@ -5432,10 +5364,29 @@ function PostAssignReviewDialog({
         }}
       >
         <CancelBtn onClick={onClose} disabled={loading} border={border} />
-        <PrimaryBtn onClick={onSubmit} loading={loading}>
-          {!loading && <CheckCircleOutlinedIcon sx={{ fontSize: 14 }} />}
+        <Box
+          onClick={!loading ? onSubmit : undefined}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.6,
+            px: 1.75,
+            py: 0.65,
+            borderRadius: "8px",
+            cursor: loading ? "default" : "pointer",
+            backgroundColor: "#212121",
+            color: "#fff",
+            fontFamily: dm,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            opacity: loading ? 0.7 : 1,
+            transition: "background-color 0.15s",
+            "&:hover": { backgroundColor: loading ? "#212121" : "#333" },
+          }}
+        >
+          {loading && <CircularProgress size={13} sx={{ color: "#fff" }} />}
           Submit for Approval
-        </PrimaryBtn>
+        </Box>
       </Box>
     </Dialog>
   );
@@ -5554,61 +5505,30 @@ function ReassignPickerDialog({
           borderBottom: `1px solid ${border}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "text.primary",
-              }}
-            >
-              Reassign Staffer
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-              }}
-            >
-              {isAnnouncedEmergency
-                ? `Emergency announced by ${originalName}. Select a replacement.`
-                : `No check-in from ${originalName}. Select a replacement.`}
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-          <Tooltip title="View Reassignment History" placement="top">
-            <IconButton
-              component={Link}
-              to="/sec_head/reassignment-history"
-              size="small"
-              sx={{
-                borderRadius: "10px",
-                color: "text.secondary",
-                "&:hover": { backgroundColor: HOVER_BG },
-              }}
-            >
-              <HistoryOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <IconButton
-            size="small"
-            onClick={onClose}
-            disabled={reassigning}
+        <Box>
+          <Typography
             sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": { backgroundColor: HOVER_BG },
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              color: "text.primary",
             }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
+            Reassign Staffer
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: dm,
+              fontSize: "0.7rem",
+              color: "text.secondary",
+            }}
+          >
+            {isAnnouncedEmergency
+              ? `Emergency announced by ${originalName}. Select a replacement.`
+              : `No check-in from ${originalName}. Select a replacement.`}
+          </Typography>
         </Box>
       </Box>
 
@@ -5622,42 +5542,6 @@ function ReassignPickerDialog({
           gap: 2,
         }}
       >
-        {/* Context card */}
-        <Box
-          sx={{
-            px: 1.75,
-            py: 1.25,
-            borderRadius: "8px",
-            border: `1px solid ${border}`,
-            backgroundColor: isDark
-              ? "rgba(255,255,255,0.02)"
-              : "rgba(53,53,53,0.02)",
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.84rem",
-              fontWeight: 600,
-              color: "text.primary",
-            }}
-          >
-            {request?.title || "Coverage Request"}
-          </Typography>
-          {dateStr && (
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.73rem",
-                color: "text.secondary",
-                mt: 0.3,
-              }}
-            >
-              {fmtDateLabel(dateStr)} · Replacing {originalName}
-            </Typography>
-          )}
-        </Box>
-
         {/* Staffer list */}
         <Box>
           {hasCrossDivisionOptions && (
@@ -5947,7 +5831,7 @@ function ReassignPickerDialog({
           sx={{
             px: 1.75,
             py: 0.65,
-            borderRadius: "4px",
+            borderRadius: "10px",
             cursor: reassigning ? "default" : "pointer",
             fontFamily: dm,
             fontSize: "0.8rem",
@@ -5973,7 +5857,7 @@ function ReassignPickerDialog({
             gap: 0.6,
             px: 1.75,
             py: 0.65,
-            borderRadius: "4px",
+            borderRadius: "10px",
             cursor:
               !selectedId || selectedHasConflict || reassigning
                 ? "default"

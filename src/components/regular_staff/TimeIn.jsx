@@ -591,18 +591,7 @@ export function TimeInModal({
                 color: "text.primary",
               }}
             >
-              {isEmergency ? "Emergency Check-In" : "Confirm Arrival"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-              }}
-            >
-              {isEmergency
-                ? "GPS + selfie required · no retake"
-                : "GPS + selfie required to verify presence"}
+              {isEmergency ? "Emergency Check-In" : "Time-in"}
             </Typography>
           </Box>
         </Box>
@@ -626,56 +615,6 @@ export function TimeInModal({
             {error}
           </Alert>
         )}
-
-        {/* Event summary */}
-        <Box
-          sx={{
-            px: 1.75,
-            py: 1.5,
-            borderRadius: "10px",
-            border: `1px solid ${border}`,
-            backgroundColor: isDark
-              ? "rgba(255,255,255,0.02)"
-              : "rgba(53,53,53,0.02)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.9,
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.84rem",
-              fontWeight: 600,
-              color: "text.primary",
-            }}
-          >
-            {req?.title}
-          </Typography>
-          {req?.event_date && (
-            <MetaItem
-              icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 11 }} />}
-            >
-              {new Date(req.event_date).toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </MetaItem>
-          )}
-          {req?.from_time && (
-            <MetaItem icon={<AccessTimeOutlinedIcon sx={{ fontSize: 11 }} />}>
-              {req.from_time}
-              {req.to_time ? ` — ${req.to_time}` : ""}
-            </MetaItem>
-          )}
-          {req?.venue && (
-            <MetaItem icon={<LocationOnOutlinedIcon sx={{ fontSize: 11 }} />}>
-              {req.venue}
-            </MetaItem>
-          )}
-        </Box>
 
         {/* GPS status */}
         <Box>
@@ -787,7 +726,7 @@ export function TimeInModal({
                 lineHeight: 1.55,
               }}
             >
-              A selfie is required. This photo will be visible to admins.
+              A selfie is required. This photo will be visible to section head and admins.
             </Typography>
           </Box>
         )}
@@ -843,7 +782,6 @@ export function TimeInModal({
             loading={submitting}
             disabled={!canConfirm}
           >
-            {!submitting && <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />}
             Confirm Arrival
           </PrimaryBtn>
         </Box>

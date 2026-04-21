@@ -2385,7 +2385,6 @@ export default function CalendarManagement() {
             borderBottom: `1px solid ${border}`,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -2398,24 +2397,6 @@ export default function CalendarManagement() {
           >
             Client Calendar Slots
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => {
-              if (!slotSaving) {
-                setSlotDialogOpen(false);
-                setSlotError("");
-              }
-            }}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box
@@ -2698,7 +2679,6 @@ export default function CalendarManagement() {
             borderBottom: `1px solid ${border}`,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -2711,24 +2691,6 @@ export default function CalendarManagement() {
           >
             Duty Settings
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => {
-              if (!dutySettingsSaving) {
-                setDutySettingsOpen(false);
-                setDutySettingsError("");
-              }
-            }}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box

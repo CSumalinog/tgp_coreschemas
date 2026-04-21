@@ -588,11 +588,15 @@ export default function GlobalSearch({
               setFocused(-1);
             }}
             onFocus={() => setInputFocused(true)}
-            onBlur={() => { if (!query) setInputFocused(false); }}
+            onBlur={() => {
+              if (!query) setInputFocused(false);
+            }}
             onKeyDown={handleKeyDown}
             sx={{
               width: alwaysExpanded
-                ? inputFocused ? { xs: 220, sm: 500, md: 750 } : { xs: 160, sm: 220, md: 260 }
+                ? inputFocused
+                  ? { xs: 220, sm: 500, md: 750 }
+                  : { xs: 160, sm: 220, md: 260 }
                 : { xs: 140, sm: 180, md: 260 },
               transition: "width 0.3s ease",
               "& .MuiOutlinedInput-root": {

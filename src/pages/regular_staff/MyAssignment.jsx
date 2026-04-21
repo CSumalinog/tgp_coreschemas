@@ -58,6 +58,7 @@ import SearchIcon from "@mui/icons-material/SearchOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
+import { StaffAvatar } from "../../components/common/UserAvatar";
 import { supabase } from "../../lib/supabaseClient";
 import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { useAnnounceEmergency } from "../../hooks/useAnnounceEmergency.jsx";
@@ -158,15 +159,6 @@ const isWeekendDate = (dateStr) => {
   if (!dateStr) return false;
   const d = new Date(dateStr).getDay();
   return d === 0 || d === 6;
-};
-const getInitials = (name) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 };
 const formatTime = (timeStr) => {
   if (!timeStr) return "";
@@ -352,34 +344,32 @@ function AssignmentCard({
         position: "relative",
       }}
     >
-      {/* Top row: status + menu */}
+      {/* Top row: title + menu */}
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
           gap: 1,
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.75,
-            flexWrap: "wrap",
-          }}
-        >
-          <Box
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
             sx={{
-              width: 2.5,
-              height: 18,
-              borderRadius: "10px",
-              backgroundColor: cfg.accent,
-              flexShrink: 0,
+              fontFamily: dm,
+              fontWeight: 700,
+              fontSize: "0.88rem",
+              color: "text.primary",
+              lineHeight: 1.35,
             }}
-          />
-          <StatusPill status={a.status} isDark={isDark} />
-          {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
+          >
+            {req?.title || "–"}
+          </Typography>
+          {isWeekendDate(req?.event_date) && (
+            <Box sx={{ mt: 0.5 }}>
+              <WeekendBadge isDark={isDark} />
+            </Box>
+          )}
         </Box>
 
         <IconButton
@@ -533,19 +523,6 @@ function AssignmentCard({
           </MenuItem>
         </Menu>
       </Box>
-
-      {/* Title */}
-      <Typography
-        sx={{
-          fontFamily: dm,
-          fontWeight: 700,
-          fontSize: "0.88rem",
-          color: "text.primary",
-          lineHeight: 1.35,
-        }}
-      >
-        {req?.title || "–"}
-      </Typography>
 
       {/* Meta info */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
@@ -808,112 +785,21 @@ function AssignmentDetailDialog({
           px: 3,
           py: 2,
           borderBottom: `1px solid ${border}`,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 2,
           flexShrink: 0,
         }}
       >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.75,
-              mb: 0.6,
-              flexWrap: "wrap",
-            }}
-          >
-            <StatusPill status={assignment.status} isDark={isDark} />
-            {isWeekendDate(req?.event_date) && <WeekendBadge isDark={isDark} />}
-          </Box>
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontWeight: 700,
-              fontSize: "0.95rem",
-              color: "text.primary",
-              lineHeight: 1.35,
-              pl: 0.5,
-            }}
-          >
-            {req?.title || "–"}
-          </Typography>
-          {assignment.assigned_by_profile?.full_name && (
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.disabled",
-                mt: 0.3,
-                pl: 0.5,
-              }}
-            >
-              Assigned by {assignment.assigned_by_profile.full_name}
-            </Typography>
-          )}
-        </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
+        <Typography
           sx={{
-            borderRadius: "10px",
-            color: "text.secondary",
-            flexShrink: 0,
-            "&:hover": { backgroundColor: HOVER_BG },
+            fontFamily: dm,
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            color: "text.primary",
           }}
         >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+          Details
+        </Typography>
       </Box>
-      <Box
-        sx={{
-          px: 3,
-          py: 1.75,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 2.5,
-          borderBottom: `1px solid ${border}`,
-          backgroundColor: isDark
-            ? "rgba(255,255,255,0.02)"
-            : "rgba(53,53,53,0.02)",
-          flexShrink: 0,
-        }}
-      >
-        {req?.event_date && (
-          <InfoChip
-            icon={
-              <CalendarTodayOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />
-            }
-            label="Date"
-          >
-            {new Date(req.event_date).toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </InfoChip>
-        )}
-        {req?.from_time && (
-          <InfoChip
-            icon={<AccessTimeOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />}
-            label="Time"
-          >
-            {formatTime(req.from_time)}
-            {req.to_time ? ` – ${formatTime(req.to_time)}` : ""}
-          </InfoChip>
-        )}
-        {req?.venue && (
-          <InfoChip
-            icon={<LocationOnOutlinedIcon sx={{ fontSize: 12, color: GOLD }} />}
-            label="Venue"
-          >
-            {req.venue}
-          </InfoChip>
-        )}
-      </Box>
+
       <DialogContent
         sx={{
           p: 0,
@@ -936,172 +822,220 @@ function AssignmentDetailDialog({
             gap: 2.5,
           }}
         >
-          {req?.description && (
-            <DetailSection
-              label="Description"
-              icon={<DescriptionOutlinedIcon sx={{ fontSize: 13 }} />}
+          {/* EVENT INFORMATION */}
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: dm,
+                fontSize: "0.68rem",
+                fontWeight: 700,
+                color: "text.secondary",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                mb: 1,
+              }}
             >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  color: "text.primary",
-                  lineHeight: 1.65,
-                }}
-              >
-                {req.description}
-              </Typography>
-            </DetailSection>
-          )}
-          <DetailSection
-            label="Client"
-            icon={<PersonOutlineOutlinedIcon sx={{ fontSize: 13 }} />}
-          >
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4 }}>
-              {req?.entity?.name && (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.82rem",
-                    color: "text.primary",
-                    fontWeight: 500,
-                  }}
-                >
-                  {req.entity.name}
-                </Typography>
+              Event Information
+            </Typography>
+            <Divider sx={{ mb: 1.5 }} />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "140px 1fr",
+                rowGap: 1,
+              }}
+            >
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Event Title</Typography>
+              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req?.title || "–"}</Typography>
+              {req?.description && (
+                <>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Description</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", lineHeight: 1.6 }}>{req.description}</Typography>
+                </>
               )}
-              {req?.contact_person && (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.78rem",
-                    color: "text.secondary",
-                  }}
-                >
-                  Contact: {req.contact_person}
-                </Typography>
-              )}
-              {req?.contact_info && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <PhoneOutlinedIcon
-                    sx={{ fontSize: 12, color: "text.disabled" }}
-                  />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.78rem",
-                      color: "text.secondary",
-                    }}
-                  >
-                    {req.contact_info}
+              {req?.event_date && (
+                <>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Date</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>
+                    {new Date(req.event_date).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </Typography>
-                </Box>
+                </>
+              )}
+              {req?.from_time && (
+                <>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Time</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>
+                    {formatTime(req.from_time)}{req.to_time ? ` – ${formatTime(req.to_time)}` : ""}
+                  </Typography>
+                </>
+              )}
+              {req?.venue && (
+                <>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Venue</Typography>
+                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.venue}</Typography>
+                </>
               )}
             </Box>
-          </DetailSection>
-          <DetailSection
-            label="Co-Staffers Assigned"
-            icon={<GroupOutlinedIcon sx={{ fontSize: 13 }} />}
-          >
-            {coStaffers.length === 0 ? (
+          </Box>
+          {/* CONTACT DETAILS */}
+          {(req?.entity?.name || req?.contact_person || req?.contact_info || assignment.assigned_by_profile?.full_name) && (
+            <Box>
               <Typography
                 sx={{
                   fontFamily: dm,
-                  fontSize: "0.78rem",
-                  color: "text.disabled",
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  color: "text.secondary",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  mb: 1,
                 }}
               >
-                No other staffers assigned.
+                Contact Details
               </Typography>
-            ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                {Object.entries(coStaffersBySection).map(
-                  ([section, staffers]) => {
-                    const colors = SECTION_COLORS[section] || {
-                      bg: "#f3f4f6",
-                      color: "#6b7280",
-                    };
-                    return (
-                      <Box key={section}>
-                        <Box
-                          sx={{
-                            display: "inline-flex",
-                            px: 1,
-                            py: 0.2,
-                            borderRadius: "10px",
-                            backgroundColor: colors.bg,
-                            mb: 0.75,
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.62rem",
-                              fontWeight: 700,
-                              color: colors.color,
-                              letterSpacing: "0.07em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            {section}
-                          </Typography>
-                        </Box>
-                        <Box
-                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}
-                        >
-                          {staffers.map((staffer) => (
-                            <Box
-                              key={staffer.id}
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.75,
-                                px: 1,
-                                py: 0.6,
-                                borderRadius: "10px",
-                                border: `1px solid ${border}`,
-                                backgroundColor: isDark
-                                  ? "rgba(255,255,255,0.02)"
-                                  : "rgba(53,53,53,0.02)",
-                              }}
-                            >
-                              <Avatar
-                                sx={{
-                                  width: 20,
-                                  height: 20,
-                                  fontSize: "0.58rem",
-                                  fontWeight: 700,
-                                  backgroundColor: colors.bg,
-                                  color: colors.color,
-                                }}
-                              >
-                                {getInitials(staffer.full_name)}
-                              </Avatar>
-                              <Typography
-                                sx={{
-                                  fontFamily: dm,
-                                  fontSize: "0.78rem",
-                                  fontWeight: 500,
-                                  color: "text.primary",
-                                }}
-                              >
-                                {staffer.full_name}
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Box>
-                      </Box>
-                    );
-                  },
+              <Divider sx={{ mb: 1.5 }} />
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "140px 1fr",
+                  rowGap: 1,
+                }}
+              >
+                {req?.entity?.name && (
+                  <>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Organization</Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.entity.name}</Typography>
+                  </>
+                )}
+                {req?.contact_person && (
+                  <>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Contact Person</Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.contact_person}</Typography>
+                  </>
+                )}
+                {req?.contact_info && (
+                  <>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Contact Info</Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.contact_info}</Typography>
+                  </>
+                )}
+                {assignment.assigned_by_profile?.full_name && (
+                  <>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Assigned by</Typography>
+                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{assignment.assigned_by_profile.full_name}</Typography>
+                  </>
                 )}
               </Box>
-            )}
-          </DetailSection>
+            </Box>
+          )}
+          {/* CO-STAFFERS */}
+          {coStaffers.length > 0 && (
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  color: "text.secondary",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  mb: 1,
+                }}
+              >
+                Co-Staffers Assigned
+              </Typography>
+              <Divider sx={{ mb: 1.5 }} />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                {Object.entries(coStaffersBySection).map(([section, staffers]) => {
+                  const colors = SECTION_COLORS[section] || { bg: "#f3f4f6", color: "#6b7280" };
+                  return (
+                    <Box key={section}>
+                      <Box
+                        sx={{
+                          display: "inline-flex",
+                          px: 1,
+                          py: 0.2,
+                          borderRadius: "10px",
+                          backgroundColor: colors.bg,
+                          mb: 0.75,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontFamily: dm,
+                            fontSize: "0.62rem",
+                            fontWeight: 700,
+                            color: colors.color,
+                            letterSpacing: "0.07em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {section}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                        {staffers.map((staffer) => (
+                          <Box
+                            key={staffer.id}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              px: 1.25,
+                              py: 0.75,
+                              borderRadius: "8px",
+                              border: `1px solid ${border}`,
+                              backgroundColor: isDark
+                                ? "rgba(255,255,255,0.02)"
+                                : "rgba(53,53,53,0.01)",
+                            }}
+                          >
+                            <StaffAvatar
+                              path={staffer.avatar_url}
+                              name={staffer.full_name}
+                              size={26}
+                              fontSize="0.6rem"
+                            />
+                            <Typography
+                              sx={{
+                                fontFamily: dm,
+                                fontSize: "0.8rem",
+                                fontWeight: 500,
+                                color: "text.primary",
+                              }}
+                            >
+                              {staffer.full_name}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+          {/* ATTACHMENT */}
           {req?.file_url && (
-            <DetailSection
-              label="Attachment"
-              icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 13 }} />}
-            >
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  color: "text.secondary",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  mb: 1,
+                }}
+              >
+                Attachment
+              </Typography>
+              <Divider sx={{ mb: 1.5 }} />
               <Box
                 onClick={() => openFile(req.file_url)}
                 sx={{
@@ -1129,51 +1063,12 @@ function AssignmentDetailDialog({
                 >
                   {getFileName(req.file_url)}
                 </Typography>
-                <ChevronRightIcon
-                  sx={{ fontSize: 13, color: "text.disabled" }}
-                />
               </Box>
-            </DetailSection>
+            </Box>
           )}
-          {["Assigned", "Approved"].includes(assignment.status) &&
-            getTimeInState(assignment.request) === "open" && (
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: 1,
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: "10px",
-                  backgroundColor: "rgba(59,130,246,0.06)",
-                  border: `1px solid rgba(59,130,246,0.25)`,
-                }}
-              >
-                <HowToRegOutlinedIcon
-                  sx={{
-                    fontSize: 14,
-                    color: "#1d4ed8",
-                    flexShrink: 0,
-                    mt: 0.1,
-                  }}
-                />
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.76rem",
-                    color: "#1d4ed8",
-                    lineHeight: 1.55,
-                  }}
-                >
-                  Coverage is starting soon. Tap <strong>Time In</strong> when
-                  you arrive at the venue.
-                </Typography>
-              </Box>
-            )}
           {assignment.status === "On Going" && (
             <Box
               sx={{
-                display: "flex",
-                gap: 1,
                 px: 1.5,
                 py: 1.25,
                 borderRadius: "10px",
@@ -1181,9 +1076,6 @@ function AssignmentDetailDialog({
                 border: `1px solid rgba(34,197,94,0.25)`,
               }}
             >
-              <CheckCircleOutlineIcon
-                sx={{ fontSize: 14, color: "#15803d", flexShrink: 0, mt: 0.1 }}
-              />
               <Typography
                 sx={{
                   fontFamily: dm,
@@ -1240,23 +1132,16 @@ function AssignmentDetailDialog({
                     border: `1px solid rgba(245,197,43,0.3)`,
                   }}
                 >
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      color: "#b45309",
+                    }}
                   >
-                    <WarningAmberOutlinedIcon
-                      sx={{ fontSize: 14, color: "#b45309", flexShrink: 0 }}
-                    />
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.72rem",
-                        fontWeight: 700,
-                        color: "#b45309",
-                      }}
-                    >
-                      Emergency Announced — Received
-                    </Typography>
-                  </Box>
+                    Emergency Announced — Received
+                  </Typography>
                   {reasonText && (
                     <Typography
                       sx={{
@@ -1339,7 +1224,6 @@ function AssignmentDetailDialog({
                     onTimeIn(assignment);
                   }}
                 >
-                  <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
                   Time In
                 </PrimaryBtn>
               );
@@ -1383,7 +1267,6 @@ function AssignmentDetailDialog({
               onMarkComplete(assignment);
             }}
           >
-            <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
             Mark Complete
           </PrimaryBtn>
         )}
@@ -2274,11 +2157,13 @@ export default function MyAssignment() {
           </Select>
         </FormControl>
 
+        <Box sx={{ flex: 1 }} />
+
         <Divider
           orientation="vertical"
           flexItem
           sx={{
-            mx: 0.75,
+            mr: 0.75,
             height: 18,
             alignSelf: "center",
             borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)",
@@ -2445,32 +2330,13 @@ export default function MyAssignment() {
             px: 3,
             py: 2,
             borderBottom: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <GavelOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-            <Typography
-              sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
-            >
-              Request Rectification
-            </Typography>
-          </Box>
-          <IconButton
-            size="small"
-            disabled={rectifSubmitting}
-            onClick={() => {
-              setRectificationTarget(null);
-              setRectifReason("");
-              setRectifFile(null);
-              setRectifError("");
-              setRectifSuccess(false);
-            }}
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
+            Request Rectification
+          </Typography>
         </Box>
 
         {/* Body */}
@@ -2499,94 +2365,6 @@ export default function MyAssignment() {
             </Box>
           ) : (
             <>
-              {/* Assignment info — time-record style */}
-              <Box
-                sx={{
-                  px: 1.75,
-                  py: 1.5,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(53,53,53,0.02)",
-                  mb: 2.5,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.84rem",
-                    fontWeight: 600,
-                    color: "text.primary",
-                    mb: 1.25,
-                  }}
-                >
-                  {rectificationTarget?.request?.title ?? "—"}
-                </Typography>
-                {/* Table rows */}
-                {[
-                  {
-                    icon: <CalendarTodayOutlinedIcon sx={{ fontSize: 11 }} />,
-                    value: rectificationTarget?.request?.event_date
-                      ? new Date(
-                          rectificationTarget.request.event_date,
-                        ).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                      : null,
-                  },
-                  {
-                    icon: <AccessTimeOutlinedIcon sx={{ fontSize: 11 }} />,
-                    value: rectificationTarget?.request?.from_time
-                      ? `${formatTime(rectificationTarget.request.from_time)}${rectificationTarget.request.to_time ? ` — ${formatTime(rectificationTarget.request.to_time)}` : ""}`
-                      : null,
-                  },
-                  {
-                    icon: <LocationOnOutlinedIcon sx={{ fontSize: 11 }} />,
-                    value: rectificationTarget?.request?.venue || null,
-                  },
-                  {
-                    icon: <PersonOutlineOutlinedIcon sx={{ fontSize: 11 }} />,
-                    value: rectificationTarget?.request?.entity?.name || null,
-                  },
-                ]
-                  .filter((row) => row.value)
-                  .map((row, i) => (
-                    <Box
-                      key={i}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.75,
-                        mt: 0.55,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          color: GOLD,
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                      >
-                        {row.icon}
-                      </Box>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.78rem",
-                          color: "text.secondary",
-                        }}
-                      >
-                        {row.value}
-                      </Typography>
-                    </Box>
-                  ))}
-              </Box>
-
               {/* Reason */}
               <Typography
                 sx={{
@@ -2748,7 +2526,7 @@ export default function MyAssignment() {
               sx={{
                 px: 2,
                 py: 0.65,
-                borderRadius: "4px",
+                borderRadius: "10px",
                 cursor: "pointer",
                 backgroundColor: isDark ? "#fff" : CHARCOAL,
                 color: isDark ? CHARCOAL : "#fff",
@@ -2774,7 +2552,7 @@ export default function MyAssignment() {
                 sx={{
                   px: 1.75,
                   py: 0.65,
-                  borderRadius: "4px",
+                  borderRadius: "10px",
                   cursor: rectifSubmitting ? "default" : "pointer",
                   border: `1px solid ${border}`,
                   fontFamily: dm,
@@ -2796,7 +2574,7 @@ export default function MyAssignment() {
                 sx={{
                   px: 2,
                   py: 0.65,
-                  borderRadius: "4px",
+                  borderRadius: "10px",
                   cursor:
                     rectifSubmitting || !rectifReason.trim()
                       ? "default"
@@ -2931,7 +2709,6 @@ export default function MyAssignment() {
               setTimeInTarget(target);
             }}
           >
-            <HowToRegOutlinedIcon sx={{ fontSize: 14 }} />
             Proceed
           </PrimaryBtn>
         </Box>
@@ -3039,14 +2816,6 @@ export default function MyAssignment() {
                 label: "Trash",
                 icon: <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />,
               },
-              {
-                label: "Rectifications",
-                icon: <GavelOutlinedIcon sx={{ fontSize: 13 }} />,
-              },
-              {
-                label: "Emergencies",
-                icon: <WarningAmberOutlinedIcon sx={{ fontSize: 13 }} />,
-              },
             ].map((t, idx) => {
               const active = settingsTab === idx;
               return (
@@ -3087,20 +2856,6 @@ export default function MyAssignment() {
               <RoleArchiveManagement role="staff" embedded />
             )}
             {settingsTab === 1 && <RoleTrashManagement role="staff" embedded />}
-            {settingsTab === 2 && (
-              <RectifHistoryTab
-                userId={currentUser?.id}
-                border={border}
-                isDark={isDark}
-              />
-            )}
-            {settingsTab === 3 && (
-              <EmergencyHistoryTab
-                userId={currentUser?.id}
-                border={border}
-                isDark={isDark}
-              />
-            )}
           </Box>
         </Box>
       </Drawer>

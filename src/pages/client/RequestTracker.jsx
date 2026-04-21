@@ -81,7 +81,7 @@ import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { supabase } from "../../lib/supabaseClient";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import { getAvatarUrl, StaffAvatar } from "../../components/common/UserAvatar";
 import {
   generateConfirmationPDF,
   previewConfirmationPDF,
@@ -2360,7 +2360,7 @@ function RequestDetailDialog({
                       },
                     }}
                   >
-                    <DownloadOutlinedIcon sx={{ fontSize: 17 }} />
+                    <FileDownloadOutlinedIcon sx={{ fontSize: 17 }} />
                   </IconButton>
                 </Tooltip>
               </>
@@ -2546,7 +2546,13 @@ function RequestDetailDialog({
 
           {showTeam && teamSections.length > 0 && (
             <Section label="Coverage Team" border={border}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                  gap: 2,
+                }}
+              >
                 {teamSections.map((sec) => {
                   const colors = SECTION_COLORS[sec] || {
                     bg: "#f3f4f6",
@@ -2578,7 +2584,11 @@ function RequestDetailDialog({
                         </Typography>
                       </Box>
                       <Box
-                        sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.6,
+                        }}
                       >
                         {teamBySection[sec].map((staffer) => (
                           <Box
@@ -2586,9 +2596,9 @@ function RequestDetailDialog({
                             sx={{
                               display: "flex",
                               alignItems: "center",
-                              gap: 0.75,
-                              px: 1,
-                              py: 0.6,
+                              gap: 1,
+                              px: 1.25,
+                              py: 0.75,
                               borderRadius: "10px",
                               border: `1px solid ${border}`,
                               backgroundColor: isDark
@@ -2596,24 +2606,16 @@ function RequestDetailDialog({
                                 : "rgba(53,53,53,0.02)",
                             }}
                           >
-                            <Avatar
-                              src={getAvatarUrl(staffer.avatar_url)}
-                              sx={{
-                                width: 22,
-                                height: 22,
-                                fontSize: "0.6rem",
-                                fontWeight: 700,
-                                backgroundColor: colors.bg,
-                                color: colors.color,
-                              }}
-                            >
-                              {!getAvatarUrl(staffer.avatar_url) &&
-                                getInitials(staffer.full_name)}
-                            </Avatar>
+                            <StaffAvatar
+                              path={staffer.avatar_url}
+                              name={staffer.full_name}
+                              size={28}
+                              fontSize="0.62rem"
+                            />
                             <Typography
                               sx={{
                                 fontFamily: dm,
-                                fontSize: "0.78rem",
+                                fontSize: "0.8rem",
                                 fontWeight: 500,
                                 color: "text.primary",
                               }}
@@ -2936,31 +2938,6 @@ function RequestDetailDialog({
             </Section>
           )}
 
-          {request.status === "Approved" && request.admin_notes && (
-            <Section label="Admin Notes" border={border}>
-              <Box
-                sx={{
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: "10px",
-                  backgroundColor: isDark ? "#0a1a0a" : "#f0fdf4",
-                  borderLeft: "2.5px solid #22c55e",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.82rem",
-                    color: "#15803d",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {request.admin_notes}
-                </Typography>
-              </Box>
-            </Section>
-          )}
-
           {isDeclined && (
             <Section label="Decline Reason" border={border}>
               <Box
@@ -2982,47 +2959,6 @@ function RequestDetailDialog({
                 >
                   {request.declined_reason || "No reason provided."}
                 </Typography>
-              </Box>
-            </Section>
-          )}
-
-          {["Approved", "On Going", "Completed"].includes(request.status) && (
-            <Section label="Approval" border={border}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 2,
-                }}
-              >
-                <Box>
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.72rem",
-                      color: "text.secondary",
-                    }}
-                  >
-                    Approved on
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.85rem",
-                      color: "text.primary",
-                      fontWeight: 600,
-                      mt: 0.2,
-                    }}
-                  >
-                    {request.approved_at
-                      ? new Date(request.approved_at).toLocaleDateString(
-                          "en-US",
-                          { month: "long", day: "numeric", year: "numeric" },
-                        )
-                      : "N/A"}
-                  </Typography>
-                </Box>
               </Box>
             </Section>
           )}

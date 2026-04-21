@@ -617,21 +617,22 @@ export async function rescheduleRequest(
   const newDateLabel = newDatePayload.event_date || "a new date";
 
   // Notify section heads — only when there were forwarded sections to reassign
-  if (!isPending) try {
-    await notifySecHeads({
-      type: "request_rescheduled",
-      title: "Request Rescheduled — Reassignment Needed",
-      message: `${requestTitle} has been rescheduled to ${newDateLabel}. Please reassign staff for the new date.`,
-      requestId: request.id,
-      // null → all active sec heads when forwarded_sections is missing/empty
-      sections: request.forwarded_sections?.length
-        ? request.forwarded_sections
-        : null,
-      createdBy: user.id,
-    });
-  } catch (e) {
-    console.error("notifySecHeads (reschedule) failed:", e);
-  }
+  if (!isPending)
+    try {
+      await notifySecHeads({
+        type: "request_rescheduled",
+        title: "Request Rescheduled — Reassignment Needed",
+        message: `${requestTitle} has been rescheduled to ${newDateLabel}. Please reassign staff for the new date.`,
+        requestId: request.id,
+        // null → all active sec heads when forwarded_sections is missing/empty
+        sections: request.forwarded_sections?.length
+          ? request.forwarded_sections
+          : null,
+        createdBy: user.id,
+      });
+    } catch (e) {
+      console.error("notifySecHeads (reschedule) failed:", e);
+    }
 
   // Notify assigned staff if there were active assignments
   if (activeAssignments.length > 0) {

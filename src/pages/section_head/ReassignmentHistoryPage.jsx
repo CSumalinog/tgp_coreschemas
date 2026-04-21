@@ -211,15 +211,14 @@ export default function ReassignmentHistoryPage() {
 
   const filtered = useMemo(() => {
     let out = rows;
-    if (typeFilter === "emergency") out = out.filter((r) => isAnnouncedEmergency(r));
-    else if (typeFilter === "noshow") out = out.filter((r) => !isAnnouncedEmergency(r));
+    if (typeFilter === "emergency")
+      out = out.filter((r) => isAnnouncedEmergency(r));
+    else if (typeFilter === "noshow")
+      out = out.filter((r) => !isAnnouncedEmergency(r));
     if (searchText.trim()) {
       const tokens = searchText.toLowerCase().split(/\s+/).filter(Boolean);
       out = out.filter((r) => {
-        const haystack = [
-          r.request?.title ?? "",
-          r.cancellation_reason ?? "",
-        ]
+        const haystack = [r.request?.title ?? "", r.cancellation_reason ?? ""]
           .join(" ")
           .toLowerCase();
         return tokens.every((t) => haystack.includes(t));
@@ -532,7 +531,10 @@ export default function ReassignmentHistoryPage() {
         }}
       >
         {/* Search */}
-        <FormControl size="small" sx={{ flexShrink: 0, minWidth: FILTER_SEARCH_MIN_WIDTH }}>
+        <FormControl
+          size="small"
+          sx={{ flexShrink: 0, minWidth: FILTER_SEARCH_MIN_WIDTH }}
+        >
           <OutlinedInput
             placeholder="Search"
             value={searchText}
@@ -572,14 +574,29 @@ export default function ReassignmentHistoryPage() {
               },
             }}
           >
-            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>All</MenuItem>
-            <MenuItem value="emergency" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>Announced Emergency</MenuItem>
-            <MenuItem value="noshow" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>No Show</MenuItem>
+            <MenuItem value="all" sx={{ fontFamily: dm, fontSize: "0.78rem" }}>
+              All
+            </MenuItem>
+            <MenuItem
+              value="emergency"
+              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+            >
+              Announced Emergency
+            </MenuItem>
+            <MenuItem
+              value="noshow"
+              sx={{ fontFamily: dm, fontSize: "0.78rem" }}
+            >
+              No Show
+            </MenuItem>
           </Select>
         </FormControl>
 
         {/* Semester filter */}
-        <FormControl size="small" sx={{ flexShrink: 0, minWidth: FILTER_SEMESTER_MIN_WIDTH }}>
+        <FormControl
+          size="small"
+          sx={{ flexShrink: 0, minWidth: FILTER_SEMESTER_MIN_WIDTH }}
+        >
           <Select
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
@@ -615,7 +632,12 @@ export default function ReassignmentHistoryPage() {
         <Box sx={{ flex: 1 }} />
 
         <Typography
-          sx={{ fontFamily: dm, fontSize: "0.75rem", color: "text.disabled", flexShrink: 0 }}
+          sx={{
+            fontFamily: dm,
+            fontSize: "0.75rem",
+            color: "text.disabled",
+            flexShrink: 0,
+          }}
         >
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
         </Typography>
