@@ -21,6 +21,7 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ExpandLessIcon from "@mui/icons-material/ExpandLessOutlined";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifyAdmins } from "../../services/NotificationService";
@@ -125,7 +126,6 @@ export default function MySchedule() {
   const [pendingSelection, setPendingSelection] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [saveSuccess, setSaveSuccess] = useState("");
   const [requestReason, setRequestReason] = useState("");
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
   const [pendingNoticeExpanded, setPendingNoticeExpanded] = useState(false);
@@ -274,7 +274,7 @@ export default function MySchedule() {
     setPendingRequest(nextPending);
     setLatestReviewedRequest(reviewedRows?.[0] || null);
     setAllReviewedRequests(reviewedRows || []);
-    if (nextPending) setSaveSuccess("");
+    if (nextPending) {}
     const myPick = (allSchedules || []).find(
       (s) => s.staffer_id === currentUser.id,
     );
@@ -395,7 +395,6 @@ export default function MySchedule() {
 
     setSaving(true);
     setSaveError("");
-    setSaveSuccess("");
     try {
       // Re-read current schedule so stale local state cannot bypass request flow.
       const { data: liveSchedule, error: liveScheduleErr } = await supabase
@@ -525,7 +524,7 @@ export default function MySchedule() {
           targetPayload: { openDutyChangeRequestId: changeRequest?.id || null },
         });
 
-        setSaveSuccess("Duty day change request submitted for approval.");
+        pushSuccessToast("Duty day change request submitted for approval.");
         setRequestReason("");
         await refetchQuota();
         await writeDutyAuditLog({
@@ -551,7 +550,7 @@ export default function MySchedule() {
           );
         if (upsertErr) throw upsertErr;
 
-        setSaveSuccess("Duty day saved successfully!");
+        pushSuccessToast("Duty day saved successfully!");
         setRequestReason("");
         await writeDutyAuditLog({
           actionType: "duty_day_saved",
@@ -1105,36 +1104,7 @@ export default function MySchedule() {
               {saveError}
             </Alert>
           )}
-          {saveSuccess && !pendingRequest && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 1.75,
-                py: 1.25,
-                mb: 2.5,
-                borderRadius: "10px",
-                border: `1px solid rgba(34,197,94,0.25)`,
-                backgroundColor: isDark ? "rgba(34,197,94,0.06)" : "#f0fdf4",
-              }}
-            >
-              <Box
-                sx={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  backgroundColor: "#22c55e",
-                  flexShrink: 0,
-                }}
-              />
-              <Typography
-                sx={{ fontFamily: dm, fontSize: "0.78rem", color: "#15803d" }}
-              >
-                {saveSuccess}
-              </Typography>
-            </Box>
-          )}
+          {/* saveSuccess replaced by pushSuccessToast */}
 
           {/* ── Weekly calendar grid ── */}
           <Box

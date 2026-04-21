@@ -12,6 +12,7 @@ import DeleteForeverOutlinedIcon from "@mui/icons-material/DeleteForeverOutlined
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
 import { DataGrid } from "../../../components/common/AppDataGrid";
+import { pushSuccessToast } from "../../../components/common/SuccessToast";
 import RequestBulkBar from "./RequestBulkBar";
 import RequestConfirmDialog from "./RequestConfirmDialog";
 import BrandedLoader from "../../../components/common/BrandedLoader";
@@ -61,6 +62,10 @@ export default function TrashManagementBase({
     (type, text) => {
       if (embedded && onToast) {
         onToast({ severity: type, text });
+        return;
+      }
+      if (type === "success") {
+        pushSuccessToast(text);
         return;
       }
       setMsg({ type, text });

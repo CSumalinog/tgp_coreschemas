@@ -33,6 +33,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlin
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUncheckedOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
   inferSemesterChoice,
@@ -351,6 +352,7 @@ export default function SemesterManagement() {
       }
       setDialogOpen(false);
       loadSemesters();
+      pushSuccessToast("Semester saved.");
     } catch (err) {
       setSaveError(err.message);
     } finally {

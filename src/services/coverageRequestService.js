@@ -548,6 +548,7 @@ export async function rescheduleRequest(
     throw new Error("Request not found or access denied.");
 
   const RESCHEDULABLE_STATUSES = [
+    "Pending",
     "Forwarded",
     "Assigned",
     "For Approval",
@@ -561,6 +562,8 @@ export async function rescheduleRequest(
     );
   }
 
+  const isPending = request.status === "Pending";
+
   const now = new Date().toISOString();
 
   // ── 1. Update request with new date + preserve previous date ──
@@ -569,8 +572,8 @@ export async function rescheduleRequest(
     .update({
       // New date fields
       ...newDatePayload,
-      // Kick back to Forwarded
-      status: "Forwarded",
+      // Pending → stay Pending (no assignment to reset); Forwarded+ → reset to Forwarded
+      status: isPending ? "Pending" : "Forwarded",
       // Reschedule metadata
       reschedule_requested_at: now,
       reschedule_reason: reason || null,
@@ -610,12 +613,11 @@ export async function rescheduleRequest(
   }
 
   // ── 3. Notifications ──
-  const { status } = request;
   const requestTitle = `"${request.title}"`;
   const newDateLabel = newDatePayload.event_date || "a new date";
 
-  // Notify section heads — they need to reassign
-  try {
+  // Notify section heads — only when there were forwarded sections to reassign
+  if (!isPending) try {
     await notifySecHeads({
       type: "request_rescheduled",
       title: "Request Rescheduled — Reassignment Needed",
@@ -657,7 +659,7 @@ export async function rescheduleRequest(
     await notifyAdmins({
       type: "request_rescheduled",
       title: "Request Rescheduled by Client",
-      message: `${requestTitle} has been rescheduled to ${newDateLabel}. Status reset to Forwarded.${reason ? ` Reason: ${reason}` : ""}`,
+      message: `${requestTitle} has been rescheduled to ${newDateLabel}.${isPending ? "" : " Status reset to Forwarded."}${reason ? ` Reason: ${reason}` : ""}`,
       requestId: request.id,
       createdBy: user.id,
     });

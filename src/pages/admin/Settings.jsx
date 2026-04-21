@@ -24,6 +24,7 @@ import CleaningServicesOutlinedIcon from "@mui/icons-material/CleaningServicesOu
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import BrandedLoader from "../../components/common/BrandedLoader";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
@@ -392,7 +393,7 @@ export default function Settings() {
           .update({ archived_at: new Date().toISOString() })
           .in("id", ids);
         if (error) throw error;
-        setMsg({ type: "success", text: `${ids.length} request(s) archived.` });
+        pushSuccessToast(`${ids.length} request(s) archived.`);
         setSelected([]);
         await Promise.all([fetchArchived(), fetchArchivable()]);
       } catch (err) {
@@ -413,7 +414,7 @@ export default function Settings() {
           .update({ archived_at: null })
           .in("id", ids);
         if (error) throw error;
-        setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
+        pushSuccessToast(`${ids.length} request(s) restored.`);
         setSelected([]);
         await Promise.all([fetchArchived(), fetchArchivable()]);
       } catch (err) {
@@ -434,10 +435,7 @@ export default function Settings() {
           .update({ trashed_at: new Date().toISOString() })
           .in("id", ids);
         if (error) throw error;
-        setMsg({
-          type: "success",
-          text: `${ids.length} request(s) moved to trash.`,
-        });
+        pushSuccessToast(`${ids.length} request(s) moved to trash.`);
         setSelected([]);
         await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
       } catch (err) {
@@ -458,7 +456,7 @@ export default function Settings() {
           .update({ trashed_at: null, archived_at: null })
           .in("id", ids);
         if (error) throw error;
-        setMsg({ type: "success", text: `${ids.length} request(s) restored.` });
+        pushSuccessToast(`${ids.length} request(s) restored.`);
         setSelected([]);
         await Promise.all([fetchArchived(), fetchTrashed(), fetchArchivable()]);
       } catch (err) {
@@ -479,10 +477,7 @@ export default function Settings() {
         });
         if (error) throw error;
 
-        setMsg({
-          type: "success",
-          text: `${ids.length} request(s) permanently deleted.`,
-        });
+        pushSuccessToast(`${ids.length} request(s) permanently deleted.`);
         setSelected([]);
         await fetchTrashed();
       } catch (err) {
@@ -508,10 +503,7 @@ export default function Settings() {
         .delete()
         .eq("is_read", true);
       if (error) throw error;
-      setMsg({
-        type: "success",
-        text: `${notifStats.read} read notification(s) cleared.`,
-      });
+      pushSuccessToast(`${notifStats.read} read notification(s) cleared.`);
       await fetchNotifStats();
     } catch (err) {
       setMsg({ type: "error", text: err.message });

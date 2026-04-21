@@ -53,6 +53,7 @@ import {
 } from "../../services/StafferService";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import NumberBadge from "../../components/common/NumberBadge";
 import {
   CONTROL_RADIUS,
@@ -514,6 +515,11 @@ export default function StaffersManagement() {
       }
       setFormOpen(false);
       loadStaffers();
+      if (formMode === "create") {
+        // success toast is shown after account dialog closes
+      } else {
+        pushSuccessToast("Staff member updated.");
+      }
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -528,6 +534,7 @@ export default function StaffersManagement() {
       setToggleOpen(false);
       setToggleTarget(null);
       loadStaffers();
+      pushSuccessToast(toggleTarget.is_active ? "Staff member deactivated." : "Staff member activated.");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -542,6 +549,7 @@ export default function StaffersManagement() {
       setDeleteOpen(false);
       setDeleteTarget(null);
       await Promise.all([loadStaffers(), loadTrashedStaffersList()]);
+      pushSuccessToast("Staff member moved to trash.");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -588,6 +596,7 @@ export default function StaffersManagement() {
     try {
       await restoreTrashedStaffers([id]);
       await Promise.all([loadStaffers(), loadTrashedStaffersList()]);
+      pushSuccessToast("Staff member restored.");
     } catch (err) {
       setError(err.message);
     }
@@ -597,6 +606,7 @@ export default function StaffersManagement() {
     try {
       await deleteStafferAccount(id);
       await loadTrashedStaffersList();
+      pushSuccessToast("Staff member permanently deleted.");
     } catch (err) {
       setError(err.message);
     }

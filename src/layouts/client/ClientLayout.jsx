@@ -29,7 +29,7 @@ import TrackChangesIcon from "@mui/icons-material/TrackChangesOutlined";
 
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import NotificationBell from "../../components/common/NotificationBell";
-import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
+import { SuccessToastProvider } from "../../components/common/SuccessToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -987,9 +987,9 @@ function ClientLayout() {
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>
-          <RealtimeToastProvider>
+          <SuccessToastProvider>
             <Outlet />
-          </RealtimeToastProvider>
+          </SuccessToastProvider>
         </Box>
       </Box>
 

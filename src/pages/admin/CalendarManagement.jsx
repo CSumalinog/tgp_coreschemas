@@ -25,6 +25,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate, useLocation } from "react-router-dom";
 import CalendarEventDialog from "../../components/admin/CalendarAvailabilitySetter";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import {
@@ -1513,6 +1514,7 @@ export default function CalendarManagement() {
       }
       await loadEvents();
       setOpenDialog(false);
+      pushSuccessToast(editingEvent ? "Event updated." : "Event saved.");
     } catch (err) {
       setError(err.message);
     }
@@ -1528,6 +1530,7 @@ export default function CalendarManagement() {
       if (e) throw e;
       await loadEvents();
       setOpenDialog(false);
+      pushSuccessToast("Event deleted.");
     } catch (err) {
       setError(err.message);
     }

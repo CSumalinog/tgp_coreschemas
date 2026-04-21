@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { notifySpecificStaff } from "../../services/NotificationService";
@@ -796,6 +797,7 @@ export default function DutyScheduleView() {
       await loadSemesters();
       setSlotDialogDayIndex(null);
       setSlotDialogOpen(false);
+      pushSuccessToast("Slot capacity saved.");
     } catch (saveError) {
       setSlotError(saveError.message || "Failed to save slot capacities.");
     } finally {
@@ -1032,6 +1034,7 @@ export default function DutyScheduleView() {
         await approveRequestInternal(request, user?.id || null, {
           closeDetails: true,
         });
+        pushSuccessToast("Change request approved.");
       } catch (actionErr) {
         setError(
           actionErr.message || "Failed to approve schedule change request.",
@@ -1091,6 +1094,7 @@ export default function DutyScheduleView() {
         });
 
         await loadPendingRequests();
+        pushSuccessToast("Change request rejected.");
       } catch (actionErr) {
         setError(
           actionErr.message || "Failed to decline schedule change request.",
@@ -1271,6 +1275,7 @@ export default function DutyScheduleView() {
       if (publishExportCsv) exportSnapshotCsv(snapshot, nextVersion);
       setPublishConfirmOpen(false);
       setPublishSuccess(`Roster published as version ${nextVersion}.`);
+      pushSuccessToast(`Roster published as version ${nextVersion}.`);
     } catch (publishErr) {
       setGovernanceMessage(
         publishErr.message || "Failed to publish duty roster.",
@@ -2686,6 +2691,7 @@ export default function DutyScheduleView() {
             borderRadius: "10px",
             fontFamily: dm,
             fontSize: "0.78rem",
+            display: "none",
           }}
         >
           {publishSuccess}

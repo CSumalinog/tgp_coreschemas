@@ -837,7 +837,13 @@ export default function CoverageRequestDialog({
   useEffect(() => {
     if (!clientType) {
       setEntities([]);
-      setEntity("");
+      // Do NOT reset entity here — on initial mount both effects fire in the
+      // same commit phase and this runs after [open, existingRequest] has
+      // already queued setEntity(existingEntityId), so calling setEntity("")
+      // here would overwrite it before it takes effect.
+      // The entity field is disabled when clientType is empty anyway, and
+      // setEntity(prev => ...) below will clear any mismatched value when a
+      // new clientType is selected.
       setOtherEntity("");
       return;
     }

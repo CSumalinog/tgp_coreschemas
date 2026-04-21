@@ -1412,6 +1412,40 @@ The MySchedule page now shows a full history of reviewed duty change requests be
 
 The grid uses `autoHeight`, `hideFooter`, and a `border`/`borderRadius` matching the page's existing card style.
 
+### 9.44 Global Search — Expandable Input and Admin-Only Scope (v2.9)
+
+#### Admin-Only Scope
+
+The `GlobalSearch` component is now exclusively rendered in `AdminLayout`. It was removed from `ClientLayout`, which already has role-specific navigation controls. Section head and regular staff layouts have never included it. This scoping ensures the global search is only available where cross-entity lookup (staffers, requests, semesters, assignments, pages) is relevant.
+
+#### Expand-on-Focus Behavior
+
+The search input now animates between two widths based on focus state:
+
+- **Default (unfocused)**: `260px` — compact, sits right-aligned in the header spacer
+- **Focused / has query**: `750px` — animates leftward into the flex spacer area, stopping before the page title
+- **Transition**: `width 0.3s ease` CSS transition applied directly on the `TextField` `sx` width property
+- **Border accent**: `MuiOutlinedInput-notchedOutline` border color transitions to gold (`#F5C52B`) on focus, matching brand tokens
+- **Collapse on blur**: Input shrinks back to `260px` on blur only if the query is empty; if a query is active, the expanded state is retained until the user clicks outside or clears the field
+
+#### Dropdown Width Sync
+
+The results dropdown width now matches the active input width:
+
+- **Unfocused / collapsed**: `340px` (original fixed width)
+- **Focused / expanded**: `750px` — dropdown grows to match the input, providing more readable result rows
+
+#### Implementation Details
+
+- `inputFocused` state (`useState(false)`) tracks whether the input is actively focused
+- `onFocus` sets `inputFocused = true`; `onBlur` sets `inputFocused = false` only when `query` is empty
+- Clicking outside the container (existing `mousedown` handler) resets both `inputFocused` and `query`
+- `dropdownPositionSx` `width` and `maxWidth` are derived from `inputFocused` at render time, keeping dropdown and input always in sync
+
+#### Dark Mode Layout Background Fix
+
+All four role-based layouts (`AdminLayout`, `ClientLayout`, `SectionHeadLayout`, `RegularStaffLayout`) had hardcoded background colors (`#ffffff` or `isDark ? "#0D0D0F" : "#ffffff"`) on their root and content area `Box` components. These were replaced with the MUI theme token `"background.default"`, ensuring the layout background correctly responds to theme mode changes. The `RequestTracker` page root background was updated to `"transparent"` to inherit from the layout.
+
 ---
 
 ## 10. Conclusion

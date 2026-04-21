@@ -25,6 +25,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import NumberBadge from "../../components/common/NumberBadge";
@@ -576,6 +577,7 @@ export default function NotificationsPage() {
     setNotifications((prev) =>
       prev.map((notification) => ({ ...notification, is_read: true })),
     );
+    pushSuccessToast("All notifications marked as read.");
   };
 
   return (

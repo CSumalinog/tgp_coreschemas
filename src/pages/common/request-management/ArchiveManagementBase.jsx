@@ -10,6 +10,7 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { DataGrid } from "../../../components/common/AppDataGrid";
+import { pushSuccessToast } from "../../../components/common/SuccessToast";
 import RequestBulkBar from "./RequestBulkBar";
 import RequestConfirmDialog from "./RequestConfirmDialog";
 import BrandedLoader from "../../../components/common/BrandedLoader";
@@ -57,6 +58,10 @@ export default function ArchiveManagementBase({
     (type, text) => {
       if (embedded && onToast) {
         onToast({ severity: type, text });
+        return;
+      }
+      if (type === "success") {
+        pushSuccessToast(text);
         return;
       }
       setMsg({ type, text });

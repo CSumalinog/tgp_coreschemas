@@ -747,7 +747,7 @@ export default function Dashboard() {
           </Box>
 
           {/* Divider */}
-          <Box sx={{ width: 1, height: 18, backgroundColor: border }} />
+          <Box sx={{ width: "1px", height: 18, backgroundColor: border }} />
 
           {/* Semester filter dropdown */}
           <Select

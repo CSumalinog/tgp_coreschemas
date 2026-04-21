@@ -66,6 +66,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLessOutlined";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
@@ -765,11 +766,6 @@ export default function CoverageManagementBase({
   const [completedReqs, setCompletedReqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState({
-    open: false,
-    text: "",
-    severity: "success",
-  });
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
   const [allStaffers, setAllStaffers] = useState([]);
@@ -784,11 +780,6 @@ export default function CoverageManagementBase({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
   const hasBulkSelection = selectedRowIds.length > 1;
-  const isErrorToast = toast.severity === "error";
-  const toastAccent = isErrorToast ? RED : GOLD;
-  const toastSurface = isDark ? "#1f1f23" : "#ffffff";
-  const toastBorder = isDark ? "rgba(255,255,255,0.12)" : "#e8e8e8";
-  const toastTitle = isErrorToast ? "Assignment Error" : "Assignment Update";
 
   const handleRowSelectionModelChange = useCallback((model) => {
     const ids = model?.ids instanceof Set ? [...model.ids] : [];
@@ -911,14 +902,11 @@ export default function CoverageManagementBase({
         );
         setRectifTarget(null);
         setRectifReviewNote("");
-        setToast({
-          open: true,
-          text:
-            decision === "approved"
-              ? "Rectification approved."
-              : "Rectification rejected.",
-          severity: "success",
-        });
+        pushSuccessToast(
+          decision === "approved"
+            ? "Rectification approved."
+            : "Rectification rejected.",
+        );
       } catch (err) {
         setRectifReviewError(err?.message ?? "Failed. Please try again.");
       } finally {
@@ -1372,7 +1360,6 @@ export default function CoverageManagementBase({
   const handleBulkArchive = async (ids) => {
     if (!currentUser?.id || !ids?.length) return;
     setError("");
-    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const ts = new Date().toISOString();
     const rows = ids.map((id) => ({
       user_id: currentUser.id,
@@ -1388,17 +1375,12 @@ export default function CoverageManagementBase({
       setError(error.message);
       return;
     }
-    setToast({
-      open: true,
-      text: `${ids.length} request(s) moved to archive.`,
-      severity: "success",
-    });
+    pushSuccessToast(`${ids.length} request(s) moved to archive.`);
     loadAll();
   };
   const handleBulkTrash = async (ids) => {
     if (!currentUser?.id || !ids?.length) return;
     setError("");
-    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const ts = new Date().toISOString();
     const rows = ids.map((id) => ({
       user_id: currentUser.id,
@@ -1414,17 +1396,12 @@ export default function CoverageManagementBase({
       setError(error.message);
       return;
     }
-    setToast({
-      open: true,
-      text: `${ids.length} request(s) moved to trash.`,
-      severity: "success",
-    });
+    pushSuccessToast(`${ids.length} request(s) moved to trash.`);
     loadAll();
   };
   const handleArchive = async (row) => {
     if (!currentUser?.id || !row?.id) return;
     setError("");
-    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const { error } = await supabase.from("request_user_state").upsert(
       {
         user_id: currentUser.id,
@@ -1439,17 +1416,12 @@ export default function CoverageManagementBase({
       setError(error.message);
       return;
     }
-    setToast({
-      open: true,
-      text: "Request moved to archive.",
-      severity: "success",
-    });
+    pushSuccessToast("Request moved to archive.");
     loadAll();
   };
   const handleTrash = async (row) => {
     if (!currentUser?.id || !row?.id) return;
     setError("");
-    setToast((prev) => ({ ...prev, open: false, text: "" }));
     const { error } = await supabase.from("request_user_state").upsert(
       {
         user_id: currentUser.id,
@@ -1464,11 +1436,7 @@ export default function CoverageManagementBase({
       setError(error.message);
       return;
     }
-    setToast({
-      open: true,
-      text: "Request moved to trash.",
-      severity: "success",
-    });
+    pushSuccessToast("Request moved to trash.");
     loadAll();
   };
 
@@ -1801,11 +1769,7 @@ export default function CoverageManagementBase({
       setAssignDialogOpen(false);
       await loadAll();
       setViewFilter("assigned");
-      setToast({
-        open: true,
-        text: "Assignment already saved. Please submit for approval when ready.",
-        severity: "success",
-      });
+      pushSuccessToast("Assignment already saved. Please submit for approval when ready.");
       return;
     }
 
@@ -2026,13 +1990,11 @@ export default function CoverageManagementBase({
       setPostAssignReview(null);
       await loadAll();
       setViewFilter("for-approval");
-      setToast({
-        open: true,
-        text: allSectionsSubmitted
+      pushSuccessToast(
+        allSectionsSubmitted
           ? "Submitted for approval. All sections are complete and the request is now queued for admin review."
           : "Submission saved for your section. Other sections still need to submit their assignments.",
-        severity: "success",
-      });
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2299,15 +2261,13 @@ export default function CoverageManagementBase({
       setReassignRequest(null);
       setReassignSelectedId("");
       await loadAll();
-      setToast({
-        open: true,
-        text: isAnnouncedEmergency
+      pushSuccessToast(
+        isAnnouncedEmergency
           ? isCrossDivisionEmergency
             ? "Emergency replacement assigned across divisions. Admins were notified."
             : "Emergency replacement assigned successfully."
           : "No-show replacement assigned successfully.",
-        severity: "success",
-      });
+      );
     } catch (err) {
       setReassignError(err.message || "Reassignment failed.");
     } finally {
@@ -3447,9 +3407,9 @@ export default function CoverageManagementBase({
               role="sec_head"
               embedded
               onStateChange={loadAll}
-              onToast={({ text, severity = "success" }) =>
-                setToast({ open: true, text, severity })
-              }
+              onToast={({ text, severity = "success" }) => {
+                if (severity === "success") pushSuccessToast(text);
+              }}
             />
           )}
           {settingsTab === 1 && (
@@ -3457,114 +3417,13 @@ export default function CoverageManagementBase({
               role="sec_head"
               embedded
               onStateChange={loadAll}
-              onToast={({ text, severity = "success" }) =>
-                setToast({ open: true, text, severity })
-              }
+              onToast={({ text, severity = "success" }) => {
+                if (severity === "success") pushSuccessToast(text);
+              }}
             />
           )}
         </Box>
       </Drawer>
-
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3200}
-        onClose={(_, reason) => {
-          if (reason === "clickaway") return;
-          setToast((prev) => ({ ...prev, open: false }));
-        }}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        sx={{
-          mt: 1.5,
-          mr: 1,
-        }}
-      >
-        <Box
-          role="status"
-          aria-live="polite"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
-            minWidth: 240,
-            maxWidth: 320,
-            px: 1.75,
-            py: 1.05,
-            borderRadius: "10px",
-            backgroundColor: toastSurface,
-            border: `1px solid ${toastBorder}`,
-            borderLeft: `3px solid ${toastAccent}`,
-            boxShadow: isDark
-              ? "0 10px 26px rgba(0,0,0,0.45)"
-              : "0 4px 20px rgba(53,53,53,0.12)",
-            userSelect: "none",
-          }}
-        >
-          <Box
-            sx={{
-              position: "relative",
-              width: 8,
-              height: 8,
-              flexShrink: 0,
-            }}
-          >
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "50%",
-                backgroundColor: toastAccent,
-              }}
-            />
-          </Box>
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.76rem",
-                fontWeight: 700,
-                color: "text.primary",
-                lineHeight: 1.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {toastTitle}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.67rem",
-                color: "text.secondary",
-                mt: 0.2,
-                whiteSpace: "normal",
-                lineHeight: 1.35,
-              }}
-            >
-              {toast.text}
-            </Typography>
-          </Box>
-
-          <IconButton
-            size="small"
-            onClick={() => setToast((prev) => ({ ...prev, open: false }))}
-            sx={{
-              color: toastAccent,
-              p: 0.35,
-              borderRadius: "8px",
-              flexShrink: 0,
-              "&:hover": {
-                backgroundColor: isErrorToast
-                  ? "rgba(220,38,38,0.1)"
-                  : "rgba(245,197,43,0.1)",
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Box>
-      </Snackbar>
 
       {/* ── Assign Dialog ── */}
       <AssignmentDialog

@@ -5,6 +5,7 @@ import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNewOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIosOutlined";
 import CoverageRequestDialog from "../../components/client/RequestForm";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 
 // ── Brand tokens ───────────────────────────────────────────────────────────
 const GOLD     = "#F5C52B";
@@ -247,6 +248,8 @@ function Calendar() {
   const handleSuccess = () => {
     const year = currentDate.getFullYear(), month = currentDate.getMonth();
     fetchMonthData(toISO(new Date(year, month, 1)), toISO(new Date(year, month + 1, 0)));
+    setOpenDialog(false);
+    pushSuccessToast("Request submitted successfully.");
   };
 
   return (

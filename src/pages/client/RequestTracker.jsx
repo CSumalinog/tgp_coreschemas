@@ -79,6 +79,7 @@ import ViewActionButton from "../../components/common/ViewActionButton";
 import NumberBadge from "../../components/common/NumberBadge";
 import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import {
@@ -187,6 +188,7 @@ const CANCELLABLE_STATUSES = [
 ];
 
 const RESCHEDULABLE_STATUSES = [
+  "Pending",
   "Forwarded",
   "Assigned",
   "For Approval",
@@ -1105,7 +1107,7 @@ function PipelineCard({ request, isDark, border, onClick }) {
         }}
       >
         {buildEventDateDisplay(request)}
-        {request.venue ? ` -+ ${request.venue}` : ""}
+        {request.venue ? ` → ${request.venue}` : ""}
       </Typography>
 
       {/* Pipeline or declined */}
@@ -1711,6 +1713,7 @@ function AllRequestsTab({
       await cancelRequest(cancelTarget.id, reason);
       setCancelTarget(null);
       refetch();
+      pushSuccessToast("Request cancelled.");
     } catch (err) {
       console.error("Cancel failed:", err);
       onActionError?.(
@@ -1727,6 +1730,7 @@ function AllRequestsTab({
       await rescheduleRequest(rescheduleTarget.id, newDatePayload, reason);
       setRescheduleTarget(null);
       refetch();
+      pushSuccessToast("Reschedule request sent.");
     } catch (err) {
       console.error("Reschedule failed:", err);
       onActionError?.(
@@ -1823,6 +1827,7 @@ function PendingTab({
       await cancelRequest(cancelTarget.id, reason);
       setCancelTarget(null);
       refetch();
+      pushSuccessToast("Request cancelled.");
     } catch (err) {
       console.error("Cancel failed:", err);
       onActionError?.(
@@ -1839,6 +1844,7 @@ function PendingTab({
       await rescheduleRequest(rescheduleTarget.id, newDatePayload, reason);
       setRescheduleTarget(null);
       refetch();
+      pushSuccessToast("Reschedule request sent.");
     } catch (err) {
       console.error("Reschedule failed:", err);
       onActionError?.(
@@ -1935,6 +1941,7 @@ function ApprovedTab({
       await cancelRequest(cancelTarget.id, reason);
       setCancelTarget(null);
       refetch();
+      pushSuccessToast("Request cancelled.");
     } catch (err) {
       console.error("Cancel failed:", err);
       onActionError?.(
@@ -1951,6 +1958,7 @@ function ApprovedTab({
       await rescheduleRequest(rescheduleTarget.id, newDatePayload, reason);
       setRescheduleTarget(null);
       refetch();
+      pushSuccessToast("Reschedule request sent.");
     } catch (err) {
       console.error("Reschedule failed:", err);
       onActionError?.(
@@ -2121,6 +2129,7 @@ function RequestDetailDialog({
     try {
       await cancelRequest(request.id, reason);
       setCancelOpen(false);
+      pushSuccessToast("Request cancelled.");
       onCancelSuccess?.();
     } catch (err) {
       console.error("Cancel failed:", err);
@@ -2137,6 +2146,7 @@ function RequestDetailDialog({
     try {
       await rescheduleRequest(request.id, newDatePayload, reason);
       setRescheduleOpen(false);
+      pushSuccessToast("Reschedule request sent.");
       onRescheduleSuccess?.();
     } catch (err) {
       console.error("Reschedule failed:", err);
@@ -2196,24 +2206,9 @@ function RequestDetailDialog({
                   fontSize: "0.92rem",
                   color: "text.primary",
                   lineHeight: 1.3,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
                 }}
               >
-                {request.title}
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.7rem",
-                  color: "text.secondary",
-                  mt: 0.15,
-                }}
-              >
-                {request.submitted_at
-                  ? `Submitted ${new Date(request.submitted_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
-                  : "Date unknown"}
+                Details
               </Typography>
             </Box>
           </Box>

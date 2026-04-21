@@ -21,6 +21,7 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
@@ -231,7 +232,7 @@ export default function ProfilePage() {
         .eq("id", user.id);
       if (updateErr) throw updateErr;
       setAvatarUrl(`${getAvatarUrl(filePath)}?t=${Date.now()}`);
-      setUploadMsg({ type: "success", text: "Profile photo updated." });
+      pushSuccessToast("Profile photo updated.");
     } catch (err) {
       setUploadMsg({ type: "error", text: err.message });
     } finally {
@@ -280,7 +281,7 @@ export default function ProfilePage() {
         password: newPw,
       });
       if (updateErr) throw updateErr;
-      setPwMsg({ type: "success", text: "Password updated successfully." });
+      pushSuccessToast("Password updated successfully.");
       setCurrentPw("");
       setNewPw("");
       setConfirmPw("");
@@ -447,7 +448,7 @@ export default function ProfilePage() {
           </Box>
         </Box>
 
-        {uploadMsg && (
+        {uploadMsg && uploadMsg.type !== "success" && (
           <Alert
             severity={uploadMsg.type}
             icon={
@@ -511,7 +512,7 @@ export default function ProfilePage() {
           />
         </Box>
 
-        {pwMsg && (
+        {pwMsg && pwMsg.type !== "success" && (
           <Alert
             severity={pwMsg.type}
             icon={

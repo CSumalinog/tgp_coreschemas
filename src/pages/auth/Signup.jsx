@@ -515,7 +515,8 @@ function Signup() {
         {/* ── RIGHT: Sign-up form ───────────────────────────────── */}
         <div className={`su-right ${ready ? "ready" : ""}`}>
           <div className="su-title">Create Account</div>
-          <div className="su-sub">Submit and track your coverage requests</div>
+          
+          <br />
 
           {error && (
             <div className="su-error">

@@ -59,6 +59,7 @@ import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import { useAnnounceEmergency } from "../../hooks/useAnnounceEmergency.jsx";
 import { notifySecHeads } from "../../services/NotificationService";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
@@ -1779,6 +1780,7 @@ export default function MyAssignment() {
       }
 
       setRectifSuccess(true);
+      pushSuccessToast("Rectification submitted.");
       setPendingRectifIds((prev) => new Set([...prev, assignment.id]));
     } catch (err) {
       setRectifError(err?.message ?? "Failed to submit. Please try again.");
@@ -1961,6 +1963,7 @@ export default function MyAssignment() {
     setConfirmTarget(null);
     setCompleting(false);
     loadAssignments();
+    pushSuccessToast("Assignment marked as completed.");
   };
 
   const handleTimeIn = async ({ selfieFile, gpsData }) => {
@@ -2065,6 +2068,7 @@ export default function MyAssignment() {
       setTimeInTarget(null);
       setOnGoingAlert(null);
       loadAssignments();
+      pushSuccessToast("Timed in successfully.");
     } catch (err) {
       setTimeInError(err.message || "Something went wrong. Please try again.");
     } finally {

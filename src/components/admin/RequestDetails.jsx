@@ -31,7 +31,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMoreOutlined";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { supabase } from "../../lib/supabaseClient";
-import { getAvatarUrl } from "../../components/common/UserAvatar";
+import { getAvatarUrl, getAvatarColor, StaffAvatar } from "../../components/common/UserAvatar";
 import {
   forwardRequest,
   declineRequest,
@@ -747,7 +747,7 @@ export default function RequestDetails({
       setSecHeadsLoading(true);
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, section, role")
+        .select("id, full_name, section, role, avatar_url, designation")
         .eq("role", "sec_head")
         .in("section", ALL_SECTIONS);
       if (data) {
@@ -1612,7 +1612,7 @@ export default function RequestDetails({
       <Dialog
         open={warningOpen}
         onClose={() => setWarningOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
@@ -1629,15 +1629,6 @@ export default function RequestDetails({
             gap: 1.5,
           }}
         >
-          <Box
-            sx={{
-              width: 3,
-              height: 28,
-              borderRadius: 1,
-              backgroundColor: "#d97706",
-              flexShrink: 0,
-            }}
-          />
           <Box>
             <Typography
               sx={{
@@ -2113,7 +2104,7 @@ export default function RequestDetails({
       <Dialog
         open={forwardOpen}
         onClose={() => !actionLoading && setForwardOpen(false)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: { borderRadius: "10px", backgroundColor: "background.paper" },
@@ -2135,27 +2126,8 @@ export default function RequestDetails({
           >
             Forward to Section
           </Typography>
-          <IconButton
-            onClick={() => setForwardOpen(false)}
-            size="small"
-            disabled={actionLoading}
-            sx={{ color: "text.secondary" }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
         </Box>
         <DialogContent sx={{ pt: 2 }}>
-          <Typography
-            sx={{
-              fontSize: "0.82rem",
-              color: "text.secondary",
-              mb: 2,
-              lineHeight: 1.6,
-            }}
-          >
-            Sections are pre-selected based on the client's requested services.
-            Only relevant sections can be forwarded to.
-          </Typography>
           {error && (
             <Alert
               severity="error"
@@ -2225,46 +2197,48 @@ export default function RequestDetails({
                           : {},
                       }}
                     >
-                      <Avatar
-                        sx={{
-                          width: 44,
-                          height: 44,
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          backgroundColor:
-                            secHead && isAllowed
-                              ? "#f5c52b"
-                              : isDark
-                                ? "#333"
-                                : "#e5e7eb",
-                          color:
-                            secHead && isAllowed ? "#111827" : "text.secondary",
-                        }}
-                      >
-                        {secHead ? getInitials(secHead.full_name) : "?"}
-                      </Avatar>
-                      <Box sx={{ flex: 1 }}>
+                      {/* Avatar with profile photo or deterministic color */}
+                      <StaffAvatar
+                        path={secHead?.avatar_url}
+                        name={secHead?.full_name ?? ""}
+                        size={36}
+                        fontSize="0.7rem"
+                      />
+                      {/* Name + designation */}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography
                           sx={{
                             fontSize: "0.85rem",
                             fontWeight: 600,
-                            color: isDisabled
-                              ? "text.disabled"
-                              : "text.primary",
+                            color: isDisabled ? "text.disabled" : "text.primary",
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {secHead?.full_name ?? "No section head assigned"}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: "0.73rem", color: "text.secondary", mt: 0.2 }}
+                        >
+                          {isDisabled
+                            ? "Not required for this request"
+                            : secHead?.designation ?? "—"}
+                        </Typography>
+                      </Box>
+                      {/* Section column */}
+                      {!isDisabled && (
+                        <Typography
+                          sx={{
+                            fontSize: "0.75rem",
+                            fontWeight: 500,
+                            color: "text.secondary",
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            mr: 1,
                           }}
                         >
                           {section}
                         </Typography>
-                        <Typography
-                          sx={{ fontSize: "0.75rem", color: "text.secondary" }}
-                        >
-                          {isDisabled
-                            ? "Not required for this request"
-                            : secHead
-                              ? secHead.full_name
-                              : "No section head assigned"}
-                        </Typography>
-                      </Box>
+                      )}
                       <Checkbox
                         checked={isChecked}
                         disabled={isDisabled}
@@ -2304,14 +2278,14 @@ export default function RequestDetails({
               textTransform: "none",
               fontSize: "0.82rem",
               fontWeight: 600,
-              backgroundColor: "#f5c52b",
-              color: "#111827",
+              backgroundColor: "#212121",
+              color: "#fff",
               boxShadow: "none",
-              "&:hover": { backgroundColor: "#e6b920", boxShadow: "none" },
+              "&:hover": { backgroundColor: "#333", boxShadow: "none" },
             }}
           >
             {actionLoading ? (
-              <CircularProgress size={16} sx={{ color: "#111827" }} />
+              <CircularProgress size={16} sx={{ color: "#fff" }} />
             ) : (
               "Confirm Forward"
             )}

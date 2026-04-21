@@ -32,7 +32,7 @@ import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import GlobalSearch from "../../components/common/GlobalSearch";
 import NotificationBell from "../../components/common/NotificationBell";
 import TopbarRouteTitle from "../../components/common/TopbarRouteTitle";
-import { RealtimeToastProvider } from "../../components/common/RealtimeToast";
+import { SuccessToastProvider } from "../../components/common/SuccessToast";
 import { supabase } from "../../lib/supabaseClient";
 import { useThemeMode } from "../../context/ThemeContext";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
@@ -777,9 +777,9 @@ function AdminLayout() {
         </Box>
 
         <Box sx={{ flex: 1, overflowY: "auto" }}>
-          <RealtimeToastProvider>
+          <SuccessToastProvider>
             <Outlet />
-          </RealtimeToastProvider>
+          </SuccessToastProvider>
         </Box>
       </Box>
     </Box>

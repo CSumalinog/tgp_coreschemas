@@ -86,32 +86,19 @@ function flashTab(message) {
   window.addEventListener("focus", stop);
 }
 
-// ── Toast state ────────────────────────────────────────────────────────────────
-let _setToasts = null;
-
-export function _registerToastSetter(fn) {
-  _setToasts = fn;
-}
-
-function pushToast(toast) {
-  if (_setToasts) _setToasts((prev) => [...prev.slice(-4), toast]);
-}
-
 // ── Main hook ──────────────────────────────────────────────────────────────────
 export function useRealtimeNotify(table, callback, filter = null, options = {}) {
   const {
     title    = table,
     sound    = true,
-    toast    = true,
     tabFlash = true,
   } = options;
 
   const notify = useCallback(() => {
     if (sound)    playChime();
     if (tabFlash) flashTab("New update");
-    if (toast)    pushToast({ id: Date.now(), title, table });
     callback?.();
-  }, [callback, title, table, sound, toast, tabFlash]);
+  }, [callback, title, table, sound, tabFlash]);
 
   useRealtimeSync(table, notify, filter);
 }

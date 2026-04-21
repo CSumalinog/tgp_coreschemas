@@ -9,6 +9,10 @@ import {
   CircularProgress,
   Alert,
   GlobalStyles,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -16,11 +20,13 @@ import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVertOutlined";
 import { DataGrid } from "../../components/common/AppDataGrid";
 import ViewActionButton from "../../components/common/ViewActionButton";
 import { useTheme } from "@mui/material/styles";
 import { useClientRequests } from "../../hooks/useClientRequests";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import {
   updateDraftRequest,
   deleteDraftRequest,
@@ -150,6 +156,8 @@ export default function Draft() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
+  const [rowMenuTarget, setRowMenuTarget] = useState(null);
 
   const handleView = (row) => {
     setError("");
@@ -160,6 +168,7 @@ export default function Draft() {
     setEditOpen(false);
     setSelectedDraft(null);
     refetch();
+    pushSuccessToast("Draft saved.");
   };
 
   const handleSubmitDraft = async () => {
@@ -193,6 +202,7 @@ export default function Draft() {
       setConfirmSubmitOpen(false);
       setSelectedDraft(null);
       refetch();
+      pushSuccessToast("Request submitted successfully.");
     } catch (err) {
       setError(err.message || "Failed to submit. Please try again.");
     } finally {
@@ -209,6 +219,7 @@ export default function Draft() {
       setConfirmDeleteOpen(false);
       setSelectedDraft(null);
       refetch();
+      pushSuccessToast("Draft deleted.");
     } catch (err) {
       setError(err.message || "Failed to delete. Please try again.");
     } finally {
@@ -295,7 +306,7 @@ export default function Draft() {
     {
       field: "actions",
       headerName: "",
-      width: 110,
+      width: 130,
       sortable: false,
       align: "right",
       headerAlign: "right",
@@ -307,9 +318,25 @@ export default function Draft() {
             justifyContent: "flex-end",
             height: "100%",
             pr: 0.75,
+            gap: 0.5,
           }}
         >
           <ViewActionButton onClick={() => handleView(p.row)} />
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRowMenuTarget(p.row);
+              setRowMenuAnchor(e.currentTarget);
+            }}
+            sx={{
+              borderRadius: "6px",
+              color: "text.secondary",
+              "&:hover": { backgroundColor: HOVER_BG },
+            }}
+          >
+            <MoreVertIcon sx={{ fontSize: 16 }} />
+          </IconButton>
         </Box>
       ),
     },
@@ -329,6 +356,55 @@ export default function Draft() {
       }}
     >
       <ColumnMenuStyles isDark={isDark} border={border} />
+
+      {/* ── Row kebab menu ── */}
+      <Menu
+        anchorEl={rowMenuAnchor}
+        open={Boolean(rowMenuAnchor)}
+        onClose={() => { setRowMenuAnchor(null); setRowMenuTarget(null); }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 0.5,
+              borderRadius: "10px",
+              minWidth: 160,
+              border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 8px 24px rgba(0,0,0,0.5)"
+                : "0 4px 20px rgba(53,53,53,0.10)",
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setRowMenuAnchor(null);
+            setSelectedDraft(rowMenuTarget);
+            setEditOpen(true);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.8rem", py: 1, gap: 0.5 }}
+        >
+          <ListItemIcon sx={{ minWidth: 28 }}>
+            <EditOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+          </ListItemIcon>
+          <ListItemText primary="Edit" slotProps={{ primary: { fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 } }} />
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setRowMenuAnchor(null);
+            setSelectedDraft(rowMenuTarget);
+            setConfirmDeleteOpen(true);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.8rem", py: 1, gap: 0.5, color: "#dc2626" }}
+        >
+          <ListItemIcon sx={{ minWidth: 28 }}>
+            <DeleteOutlineIcon sx={{ fontSize: 16, color: "#dc2626" }} />
+          </ListItemIcon>
+          <ListItemText primary="Delete" slotProps={{ primary: { fontFamily: dm, fontSize: "0.8rem", fontWeight: 500, color: "#dc2626" } }} />
+        </MenuItem>
+      </Menu>
 
       {/* ── Header ── */}
       <Box sx={{ mb: 3, flexShrink: 0 }}>
@@ -442,89 +518,16 @@ export default function Draft() {
             }}
           >
             <Box sx={{ minWidth: 0 }}>
-              <Box
+              <Typography
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  flexWrap: "wrap",
+                  fontFamily: dm,
+                  fontWeight: 700,
+                  fontSize: "0.92rem",
+                  color: "text.primary",
                 }}
               >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontWeight: 700,
-                    fontSize: "0.92rem",
-                    color: "text.primary",
-                  }}
-                >
-                  Draft Details
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1,
-                    py: 0.3,
-                    borderRadius: "10px",
-                    backgroundColor: isDark ? GOLD_08 : "#fef9ec",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: "50%",
-                      backgroundColor: "#f59e0b",
-                    }}
-                  />
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.65rem",
-                      fontWeight: 600,
-                      color: "#b45309",
-                    }}
-                  >
-                    Draft
-                  </Typography>
-                </Box>
-                {/* Multi-day badge */}
-                {selectedDraft?.details?.is_multiday && (
-                  <Box
-                    sx={{
-                      px: 0.9,
-                      py: 0.2,
-                      borderRadius: "10px",
-                      backgroundColor: isDark ? "#0d1f0d" : "#f0fdf4",
-                      border: "1px solid",
-                      borderColor: isDark ? "#166534" : "#86efac",
-                      fontSize: "0.65rem",
-                      fontWeight: 600,
-                      color: isDark ? "#4ade80" : "#15803d",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {selectedDraft.details.event_days.length}-day event
-                  </Box>
-                )}
-              </Box>
-              {selectedDraft && (
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.7rem",
-                    color: "text.secondary",
-                    mt: 0.1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {selectedDraft.eventTitle}
-                </Typography>
-              )}
+                Details
+              </Typography>
             </Box>
           </Box>
 
@@ -561,17 +564,6 @@ export default function Draft() {
               }}
             >
               <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={handleClose}
-              sx={{
-                borderRadius: "10px",
-                color: "text.secondary",
-                "&:hover": { backgroundColor: HOVER_BG },
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
         </Box>
@@ -880,12 +872,11 @@ export default function Draft() {
           }}
         >
           <ActionBtn onClick={handleClose} border={border}>
-            Close
+            Cancel
           </ActionBtn>
           <ActionBtn
             primary
             onClick={() => setConfirmSubmitOpen(true)}
-            icon={<SendOutlinedIcon sx={{ fontSize: 13 }} />}
           >
             Submit Request
           </ActionBtn>
@@ -928,10 +919,7 @@ export default function Draft() {
         onClose={() => !actionLoading && setConfirmDeleteOpen(false)}
         isDark={isDark}
         border={border}
-        icon={<DeleteOutlineIcon sx={{ fontSize: 16, color: "#dc2626" }} />}
-        iconBg={isDark ? "rgba(220,38,38,0.1)" : "#fef2f2"}
         title="Delete Draft"
-        subtitle="This cannot be recovered"
         itemName={selectedDraft?.eventTitle}
         warning="This draft will be permanently deleted and cannot be recovered."
         warningBg={isDark ? "rgba(220,38,38,0.06)" : "#fef2f2"}
@@ -946,11 +934,12 @@ export default function Draft() {
         onConfirm={handleDeleteDraft}
         confirmLabel="Yes, Delete"
         confirmSx={{
-          backgroundColor: isDark ? "rgba(220,38,38,0.12)" : "#fef2f2",
-          color: "#dc2626",
-          border: `1px solid ${isDark ? "rgba(220,38,38,0.2)" : "#fecaca"}`,
+          backgroundColor: "#dc2626",
+          color: "#fff",
+          border: "1px solid #dc2626",
           "&:hover": {
-            backgroundColor: isDark ? "rgba(220,38,38,0.18)" : "#fee2e2",
+            backgroundColor: "#b91c1c",
+            border: "1px solid #b91c1c",
           },
         }}
       />
@@ -978,10 +967,7 @@ function ConfirmDialog({
   onClose,
   isDark,
   border,
-  icon,
-  iconBg,
   title,
-  subtitle,
   itemName,
   warning,
   warningBg,
@@ -1023,55 +1009,16 @@ function ConfirmDialog({
           justifyContent: "space-between",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-          <Box
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: "10px",
-              backgroundColor: iconBg,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            {icon}
-          </Box>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "text.primary",
-              }}
-            >
-              {title}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.7rem",
-                color: "text.secondary",
-              }}
-            >
-              {subtitle}
-            </Typography>
-          </Box>
-        </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          disabled={actionLoading}
+        <Typography
           sx={{
-            borderRadius: "10px",
-            color: "text.secondary",
-            "&:hover": { backgroundColor: HOVER_BG },
+            fontFamily: dm,
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            color: "text.primary",
           }}
         >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+          {title}
+        </Typography>
       </Box>
       <Box
         sx={{

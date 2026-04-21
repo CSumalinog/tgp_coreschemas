@@ -16,7 +16,6 @@ import {
   IconButton,
   Drawer,
   Tooltip,
-  Snackbar,
   Divider,
 } from "@mui/material";
 import { DataGrid, useGridApiRef } from "../../components/common/AppDataGrid";
@@ -28,6 +27,7 @@ import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { useAdminRequests } from "../../hooks/useAdminRequest";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
 import { supabase } from "../../lib/supabaseClient";
+import { pushSuccessToast } from "../../components/common/SuccessToast";
 import CloseIcon from "@mui/icons-material/Close";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMoreOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -254,11 +254,6 @@ export default function AdminRequestManagement() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
-  const [toast, setToast] = useState({
-    open: false,
-    text: "",
-    severity: "success",
-  });
 
   useEffect(() => {
     async function loadViewed() {
@@ -307,11 +302,7 @@ export default function AdminRequestManagement() {
     );
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: "Request moved to archive.",
-        severity: "success",
-      });
+      pushSuccessToast("Request moved to archive.");
     }
   };
   const handleTrash = async (row) => {
@@ -330,11 +321,7 @@ export default function AdminRequestManagement() {
     );
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: "Request moved to trash.",
-        severity: "success",
-      });
+      pushSuccessToast("Request moved to trash.");
     }
   };
   const handleBulkArchive = async (ids) => {
@@ -352,11 +339,7 @@ export default function AdminRequestManagement() {
       .upsert(rows, { onConflict: "user_id,request_id" });
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: `${ids.length} request(s) moved to archive.`,
-        severity: "success",
-      });
+      pushSuccessToast(`${ids.length} request(s) moved to archive.`);
     }
   };
   const handleBulkTrash = async (ids) => {
@@ -374,11 +357,7 @@ export default function AdminRequestManagement() {
       .upsert(rows, { onConflict: "user_id,request_id" });
     if (!error) {
       refetch();
-      setToast({
-        open: true,
-        text: `${ids.length} request(s) moved to trash.`,
-        severity: "success",
-      });
+      pushSuccessToast(`${ids.length} request(s) moved to trash.`);
     }
   };
 
@@ -1031,11 +1010,6 @@ export default function AdminRequestManagement() {
   };
 
   const isStatusFiltered = statusFilter !== "all";
-  const isErrorToast = toast.severity === "error";
-  const toastAccent = isErrorToast ? RED : GOLD;
-  const toastSurface = isDark ? "#1f1f23" : "#ffffff";
-  const toastBorder = isDark ? "rgba(255,255,255,0.12)" : "#e8e8e8";
-  const toastTitle = isErrorToast ? "Request Error" : "Request Update";
 
   return (
     <Box
@@ -1536,9 +1510,9 @@ export default function AdminRequestManagement() {
               onStateChange={refetch}
               suppressedArchivableIds={[...suppressedArchivableIds]}
               onSuppressArchivableIds={handleSuppressArchivableIds}
-              onToast={({ text, severity = "success" }) =>
-                setToast({ open: true, text, severity })
-              }
+              onToast={({ text, severity = "success" }) => {
+                if (severity === "success") pushSuccessToast(text);
+              }}
             />
           )}
           {settingsTab === 1 && (
@@ -1547,115 +1521,13 @@ export default function AdminRequestManagement() {
               embedded
               onStateChange={refetch}
               onSuppressArchivableIds={handleSuppressArchivableIds}
-              onToast={({ text, severity = "success" }) =>
-                setToast({ open: true, text, severity })
-              }
+              onToast={({ text, severity = "success" }) => {
+                if (severity === "success") pushSuccessToast(text);
+              }}
             />
           )}
         </Box>
       </Drawer>
-
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={2200}
-        onClose={(_, reason) => {
-          if (reason === "clickaway") return;
-          setToast((prev) => ({ ...prev, open: false }));
-        }}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        sx={{
-          mt: 1.5,
-          mr: 1,
-        }}
-      >
-        <Box
-          role="status"
-          aria-live="polite"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
-            minWidth: 240,
-            maxWidth: 320,
-            px: 1.75,
-            py: 1.05,
-            borderRadius: "10px",
-            backgroundColor: toastSurface,
-            border: `1px solid ${toastBorder}`,
-            borderLeft: `3px solid ${toastAccent}`,
-            boxShadow: isDark
-              ? "0 10px 26px rgba(0,0,0,0.45)"
-              : "0 4px 20px rgba(53,53,53,0.12)",
-            userSelect: "none",
-          }}
-        >
-          <Box
-            sx={{
-              position: "relative",
-              width: 8,
-              height: 8,
-              flexShrink: 0,
-            }}
-          >
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "50%",
-                backgroundColor: toastAccent,
-              }}
-            />
-          </Box>
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.76rem",
-                fontWeight: 700,
-                color: "text.primary",
-                lineHeight: 1.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {toastTitle}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.67rem",
-                color: "text.secondary",
-                mt: 0.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {toast.text}
-            </Typography>
-          </Box>
-
-          <IconButton
-            size="small"
-            onClick={() => setToast((prev) => ({ ...prev, open: false }))}
-            sx={{
-              color: toastAccent,
-              p: 0.35,
-              borderRadius: "8px",
-              flexShrink: 0,
-              "&:hover": {
-                backgroundColor: isErrorToast
-                  ? "rgba(220,38,38,0.1)"
-                  : "rgba(245,197,43,0.1)",
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Box>
-      </Snackbar>
     </Box>
   );
 }
