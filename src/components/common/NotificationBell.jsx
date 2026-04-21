@@ -27,6 +27,7 @@ import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlin
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { getAvatarUrl } from "./UserAvatar";
@@ -821,6 +822,7 @@ export default function NotificationBell({ userId }) {
                       /all sections have submitted/i.test(
                         String(notif.message || ""),
                       ));
+                  const isNoShow = notif.title === "Marked as No Show";
                   const requesterSection = requester?.section || "";
                   const requesterDesignation =
                     requester?.designation || requesterSection;
@@ -835,7 +837,7 @@ export default function NotificationBell({ userId }) {
                   const displayActorName = isAllSectionsSubmission
                     ? "All Sections"
                     : assignerProfile?.full_name || requesterName;
-                  const requesterAvatarUrl = isAllSectionsSubmission
+                  const requesterAvatarUrl = isAllSectionsSubmission || isNoShow
                     ? null
                     : getAvatarUrl(
                         assignerProfile != null ? assignerProfile.avatar_url : requester?.avatar_url,
@@ -937,6 +939,10 @@ export default function NotificationBell({ userId }) {
                           {!requesterAvatarUrl &&
                             (isAllSectionsSubmission ? (
                               <GroupsOutlinedIcon
+                                sx={{ fontSize: 15, color: cfg.dot }}
+                              />
+                            ) : isNoShow ? (
+                              <PersonOffOutlinedIcon
                                 sx={{ fontSize: 15, color: cfg.dot }}
                               />
                             ) : (

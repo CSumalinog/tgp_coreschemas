@@ -885,8 +885,8 @@ export default function DutyScheduleView() {
 
       const sourceViolation =
         source.total > 0 && (source.scribes === 0 || source.creatives === 0);
-      const targetViolation =
-        target.total > 0 && (target.scribes === 0 || target.creatives === 0);
+      // Target day composition is not enforced — only leaving must not break balance.
+      const targetViolation = false;
 
       return {
         source,
@@ -948,11 +948,9 @@ export default function DutyScheduleView() {
       const projection = getProjectedDivisionForRequest(request);
       if (
         projection.actorDivision &&
-        (projection.sourceViolation || projection.targetViolation)
+        projection.sourceViolation
       ) {
-        const blockedDay = projection.sourceViolation
-          ? request.current_duty_day
-          : request.requested_duty_day;
+        const blockedDay = request.current_duty_day;
         setError(
           `Balance policy: ${DAY_LABELS[blockedDay]} must keep both Scribes and Creatives assigned.`,
         );
@@ -2809,7 +2807,6 @@ export default function DutyScheduleView() {
             borderBottom: `1px solid ${border}`,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -2822,19 +2819,6 @@ export default function DutyScheduleView() {
           >
             Pending Schedule Request
           </Typography>
-          <IconButton
-            size="small"
-            onClick={closeRequestDetails}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box
@@ -3298,7 +3282,6 @@ export default function DutyScheduleView() {
             borderBottom: `1px solid ${border}`,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -3311,19 +3294,6 @@ export default function DutyScheduleView() {
           >
             Decline Schedule Change
           </Typography>
-          <IconButton
-            size="small"
-            onClick={closeRejectDialog}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box

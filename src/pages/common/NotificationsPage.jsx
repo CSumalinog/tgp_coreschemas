@@ -23,6 +23,7 @@ import ForwardToInboxOutlinedIcon from "@mui/icons-material/ForwardToInboxOutlin
 import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { pushSuccessToast } from "../../components/common/SuccessToast";
@@ -769,6 +770,7 @@ export default function NotificationsPage() {
                   /all sections have submitted/i.test(
                     String(notification.message || ""),
                   ));
+              const isNoShow = notification.title === "Marked as No Show";
               const displayActorProfile = isAllSectionsSubmission
                 ? null
                 : (notification.type === "assigned" ||
@@ -779,7 +781,7 @@ export default function NotificationsPage() {
               const displayActorName = isAllSectionsSubmission
                 ? "All Sections"
                 : displayActorProfile?.full_name || requesterName;
-              const displayActorAvatarUrl = isAllSectionsSubmission
+              const displayActorAvatarUrl = isAllSectionsSubmission || isNoShow
                 ? null
                 : getAvatarUrl(displayActorProfile?.avatar_url);
               const typeCfg = getTypeCfg(notification.type);
@@ -852,6 +854,7 @@ export default function NotificationsPage() {
 
               const shouldShowRequesterLine =
                 !isAllSectionsSubmission &&
+                !isNoShow &&
                 !isAssigned &&
                 !isApproved &&
                 requesterName !== "Unknown requester" &&
@@ -925,6 +928,13 @@ export default function NotificationsPage() {
                             {!displayActorAvatarUrl &&
                               (isAllSectionsSubmission ? (
                                 <GroupsOutlinedIcon
+                                  sx={{
+                                    fontSize: 16,
+                                    color: typeCfg.dot,
+                                  }}
+                                />
+                              ) : isNoShow ? (
+                                <PersonOffOutlinedIcon
                                   sx={{
                                     fontSize: 16,
                                     color: typeCfg.dot,

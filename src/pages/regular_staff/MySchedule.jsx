@@ -428,12 +428,12 @@ export default function MySchedule() {
       const actorDivision = normalizeDivision(currentUser?.division);
       if (isTrackedDivision(actorDivision) && (isNew || isChanging)) {
         const sourceDay = effectiveExistingSchedule?.duty_day;
-        const affectedDays = Array.from(
-          new Set([
-            requestedDay,
-            sourceDay !== undefined && sourceDay !== null ? sourceDay : null,
-          ]),
-        ).filter((day) => day !== null);
+        // Only check the source day — the day the staffer is leaving.
+        // The target day composition is not enforced; only leaving must not break balance.
+        const affectedDays =
+          isChanging && sourceDay !== undefined && sourceDay !== null
+            ? [sourceDay]
+            : [];
 
         const getProjectedCountsForDay = (dayIndex) => {
           const baseStaffers = dayStaffers[dayIndex] || [];

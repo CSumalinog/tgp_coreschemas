@@ -298,6 +298,7 @@ export default function BlockingDetailsLog() {
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: 0.6,
                   px: 1.25,
                   height: MODAL_TAB_HEIGHT,
                   flexShrink: 0,
@@ -313,7 +314,25 @@ export default function BlockingDetailsLog() {
                   userSelect: "none",
                 }}
               >
-                All ({rows.length})
+                All
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 18,
+                    height: 18,
+                    px: 0.5,
+                    borderRadius: "999px",
+                    fontSize: "0.62rem",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    backgroundColor: activeTab === "all" ? "rgba(255,255,255,0.2)" : "rgba(53,53,53,0.1)",
+                    color: activeTab === "all" ? "#fff" : "text.secondary",
+                  }}
+                >
+                  {rows.length}
+                </Box>
               </Box>
               <Box
                 onClick={() => setActiveTab("upcoming")}
@@ -321,6 +340,7 @@ export default function BlockingDetailsLog() {
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: 0.6,
                   px: 1.25,
                   height: MODAL_TAB_HEIGHT,
                   flexShrink: 0,
@@ -337,7 +357,25 @@ export default function BlockingDetailsLog() {
                   userSelect: "none",
                 }}
               >
-                Upcoming ({upcomingCount})
+                Upcoming
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 18,
+                    height: 18,
+                    px: 0.5,
+                    borderRadius: "999px",
+                    fontSize: "0.62rem",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    backgroundColor: activeTab === "upcoming" ? "rgba(255,255,255,0.2)" : "rgba(53,53,53,0.1)",
+                    color: activeTab === "upcoming" ? "#fff" : "text.secondary",
+                  }}
+                >
+                  {upcomingCount}
+                </Box>
               </Box>
             </Box>
           </Box>

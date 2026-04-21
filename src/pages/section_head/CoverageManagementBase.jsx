@@ -1311,7 +1311,7 @@ export default function CoverageManagementBase({
 
     (async () => {
       for (const { assignment, req } of toMark) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from("coverage_assignments")
           .update({
             status: "No Show",
@@ -1319,8 +1319,9 @@ export default function CoverageManagementBase({
             completed_at: now.toISOString(),
           })
           .eq("id", assignment.id)
-          .eq("status", "Assigned"); // guard: only update if still Assigned
-        if (!error) {
+          .eq("status", "Assigned") // guard: only update if still Assigned
+          .select("id");
+        if (!error && updated?.length > 0) {
           await notifySpecificStaff({
             staffIds: [assignment.assigned_to],
             type: "assignment",
