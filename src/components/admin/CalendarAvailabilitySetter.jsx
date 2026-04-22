@@ -17,6 +17,7 @@ import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import dayjs from "dayjs";
+import BrandDatePicker from "../common/BrandDatePicker";
 import {
   CONTROL_RADIUS,
   MODAL_ACTION_HEIGHT,
@@ -551,29 +552,19 @@ export default function CalendarEventDialog({
                 </>
               ) : (
                 <>
-                  <TextField
+                  <BrandDatePicker
                     label="From"
-                    type="date"
-                    size="small"
-                    fullWidth
+                    value={start ? start.toDate() : null}
+                    onChange={(d) => d && setStart(dayjs(d).startOf("day"))}
                     disabled={!isEditable}
-                    value={start ? start.format("YYYY-MM-DD") : ""}
-                    onChange={(e) =>
-                      setStart(dayjs(e.target.value).startOf("day"))
-                    }
-                    InputLabelProps={{ shrink: true }}
-                    sx={singleLineInputSx}
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
-                  <TextField
+                  <BrandDatePicker
                     label="To"
-                    type="date"
-                    size="small"
-                    fullWidth
+                    value={end ? end.toDate() : null}
+                    onChange={(d) => d && setEnd(dayjs(d).endOf("day"))}
                     disabled={!isEditable}
-                    value={end ? end.format("YYYY-MM-DD") : ""}
-                    onChange={(e) => setEnd(dayjs(e.target.value).endOf("day"))}
-                    InputLabelProps={{ shrink: true }}
-                    sx={singleLineInputSx}
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
                 </>
               )}

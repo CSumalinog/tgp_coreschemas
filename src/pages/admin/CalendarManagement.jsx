@@ -27,6 +27,7 @@ import CalendarEventDialog from "../../components/admin/CalendarAvailabilitySett
 import { supabase } from "../../lib/supabaseClient";
 import { pushSuccessToast } from "../../components/common/SuccessToast";
 import BrandedLoader from "../../components/common/BrandedLoader";
+import BrandDatePicker from "../../components/common/BrandDatePicker";
 import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import {
   BUTTON_HEIGHT,
@@ -2512,22 +2513,12 @@ export default function CalendarManagement() {
             >
               Date override:
             </Typography>
-            <TextField
+            <BrandDatePicker
               label="Date"
-              type="date"
-              size="small"
-              value={overrideDateInput}
-              onChange={(e) => setOverrideDateInput(e.target.value)}
+              value={overrideDateInput ? new Date(overrideDateInput + "T00:00:00") : null}
+              onChange={(d) => setOverrideDateInput(d ? formatISO(d) : "")}
               disabled={slotSaving || slotLoading}
-              slotProps={{ inputLabel: { shrink: true } }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  borderRadius: "10px",
-                  height: 46,
-                },
-              }}
+              border={border}
             />
             <TextField
               label="Slots"
@@ -2795,17 +2786,13 @@ export default function CalendarManagement() {
                   gap: 1,
                 }}
               >
-                <TextField
+                <BrandDatePicker
                   label="Date"
-                  type="date"
-                  value={dutyBlackoutInput}
-                  onChange={(e) => setDutyBlackoutInput(e.target.value)}
+                  value={dutyBlackoutInput ? new Date(dutyBlackoutInput + "T00:00:00") : null}
+                  onChange={(d) => setDutyBlackoutInput(d ? formatISO(d) : "")}
                   disabled={dutySettingsSaving || !selectedDutySemesterId}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  sx={{
-                    maxWidth: 220,
-                    ...MODAL_FIELD_SX,
-                  }}
+                  border={border}
+                  slotProps={{ textField: { sx: { maxWidth: 220 } } }}
                 />
                 <TextField
                   label="Reason (optional)"

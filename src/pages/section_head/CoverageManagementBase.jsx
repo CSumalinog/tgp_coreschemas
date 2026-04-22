@@ -1338,6 +1338,14 @@ export default function CoverageManagementBase({
             requestId: req.id,
             createdBy: currentUser.id,
           });
+          await notifySecHeads({
+            sections: [assignment.section],
+            type: "assignment",
+            title: "Staff No Show — Reassignment Needed",
+            message: `A staffer did not check in for "${req.title}". Please reassign from the Coverage Tracker.`,
+            requestId: req.id,
+            createdBy: currentUser.id,
+          });
         }
       }
       // Refresh so "Reassign" button appears for the newly-marked assignments

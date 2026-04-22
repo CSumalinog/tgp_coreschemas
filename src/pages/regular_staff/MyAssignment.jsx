@@ -1901,10 +1901,10 @@ export default function MyAssignment() {
         minute: "2-digit",
       });
       const gpsNote = gpsData?.verified
-        ? " Â· GPS verified âœ“"
+        ? " - GPS verified"
         : gpsData?.lat
-          ? " Â· GPS unverified"
-          : " Â· GPS unavailable";
+          ? " - GPS unverified"
+          : " - GPS unavailable";
       const adminNotifs = (admins || []).map((admin) => ({
         user_id: admin.id,
         recipient_id: admin.id,
@@ -1915,6 +1915,7 @@ export default function MyAssignment() {
           ? "Emergency Check-In"
           : "Staff Checked In",
         message: `${currentUser.full_name} checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
+        created_by: currentUser.id,
       }));
       const { data: secHeads } = await supabase
         .from("profiles")
@@ -1930,6 +1931,7 @@ export default function MyAssignment() {
         type: "time_in_alert",
         title: "Staff Checked In",
         message: `${currentUser.full_name} has checked in for "${timeInTarget.request.title}" at ${timeLabel}${gpsNote}.`,
+        created_by: currentUser.id,
       }));
       const clientId = timeInTarget.request?.requester_id;
       const clientNotifs = clientId
@@ -1942,6 +1944,7 @@ export default function MyAssignment() {
               type: "time_in_alert",
               title: "Coverage Has Started",
               message: `Coverage for "${timeInTarget.request.title}" has started. Your assigned team is now on the way.`,
+              created_by: currentUser.id,
             },
           ]
         : [];

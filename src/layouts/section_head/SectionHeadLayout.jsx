@@ -257,7 +257,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
   );
 }
 
-function SidebarContent({ onClose, isMobile, rectifCount }) {
+function SidebarContent({ onClose, isMobile, rectifCount, forwardedCount }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({ "Coverage Management": true });
   const toggleGroup = (label) =>
@@ -381,8 +381,8 @@ function SidebarContent({ onClose, isMobile, rectifCount }) {
                             label={child.label}
                             to={child.to}
                             trailing={
-                              child.to === "rectifications" &&
-                              rectifCount > 0 ? (
+                              (child.to === "rectifications" && rectifCount > 0) ||
+                              (child.to === "coverage-management/assignment" && forwardedCount > 0) ? (
                                 <Box
                                   sx={{
                                     minWidth: 18,
@@ -398,7 +398,7 @@ function SidebarContent({ onClose, isMobile, rectifCount }) {
                                     px: 0.5,
                                   }}
                                 >
-                                  {rectifCount}
+                                  {child.to === "rectifications" ? rectifCount : forwardedCount}
                                 </Box>
                               ) : undefined
                             }
@@ -624,6 +624,7 @@ function SectionHeadLayout() {
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [rectifCount, setRectifCount] = useState(0);
+  const [forwardedCount, setForwardedCount] = useState(0);
   useEffect(() => {
     async function loadUser() {
       const {
@@ -651,6 +652,12 @@ function SectionHeadLayout() {
       .eq("section", userProfile.section)
       .eq("status", "pending")
       .then(({ count }) => setRectifCount(count || 0));
+    supabase
+      .from("coverage_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "Forwarded")
+      .contains("forwarded_sections", [userProfile.section])
+      .then(({ count }) => setForwardedCount(count || 0));
   }, [userProfile?.section]);
   const sidebarNode = (
     <SidebarContent
@@ -660,6 +667,7 @@ function SectionHeadLayout() {
       onClose={() => setMobileOpen(false)}
       isMobile={isMobile}
       rectifCount={rectifCount}
+      forwardedCount={forwardedCount}
     />
   );
   return (

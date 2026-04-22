@@ -500,33 +500,6 @@ export default function SemesterManagement() {
             >
               {getSemesterDisplayName(p.row)}
             </Typography>
-            {rowRule.isCurrent && (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.45,
-                  px: 0.8,
-                  py: 0.18,
-                  borderRadius: "10px",
-                  border: "1px solid rgba(21,128,61,0.14)",
-                  backgroundColor: "rgba(34,197,94,0.06)",
-                  color: "#15803d",
-                }}
-              >
-                <CheckCircleOutlineIcon sx={{ fontSize: 10 }} />
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.62rem",
-                    fontWeight: 600,
-                    color: "#15803d",
-                  }}
-                >
-                  {rowRule.label}
-                </Typography>
-              </Box>
-            )}
           </Box>
         );
       },
@@ -589,11 +562,6 @@ export default function SemesterManagement() {
                 },
               }}
             >
-              {isOpen ? (
-                <LockOpenOutlinedIcon sx={{ fontSize: 11, color: chipColor }} />
-              ) : (
-                <LockOutlinedIcon sx={{ fontSize: 11, color: chipColor }} />
-              )}
               <Typography
                 sx={{
                   fontFamily: dm,
@@ -618,7 +586,9 @@ export default function SemesterManagement() {
       sortable: false,
       align: "right",
       headerAlign: "right",
-      renderCell: (p) => (
+      renderCell: (p) => {
+        const rowRule = getRuleForRow(p.row);
+        return (
         <Box
           sx={{
             display: "flex",
@@ -629,18 +599,43 @@ export default function SemesterManagement() {
             pr: 0.5,
           }}
         >
-          {getRuleForRow(p.row).canSetActive && (
-            <ActionChip
-              active={false}
-              onClick={() => openActiveConfirm(p.row)}
-              activeColor="#15803d"
-              activeBg="rgba(34,197,94,0.08)"
-              icon={<RadioButtonUncheckedIcon sx={{ fontSize: 12 }} />}
-              border={border}
+          {rowRule.isCurrent ? (
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                px: 1.25,
+                py: 0.35,
+                borderRadius: "10px",
+                border: "1px solid rgba(21,128,61,0.18)",
+                backgroundColor: "rgba(34,197,94,0.08)",
+              }}
             >
-              Set Active
-            </ActionChip>
-          )}
+              <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "#15803d", letterSpacing: "0.04em" }}>
+                Active
+              </Typography>
+            </Box>
+          ) : getRuleForRow(p.row).canSetActive ? (
+            <Box
+              onClick={() => openActiveConfirm(p.row)}
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                px: 1.25,
+                py: 0.35,
+                borderRadius: "10px",
+                border: `1px solid ${border}`,
+                backgroundColor: "transparent",
+                cursor: "pointer",
+                transition: "all 0.15s",
+                "&:hover": { borderColor: "rgba(53,53,53,0.2)", backgroundColor: HOVER_BG },
+              }}
+            >
+              <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", letterSpacing: "0.04em" }}>
+                Set Active
+              </Typography>
+            </Box>
+          ) : null}
           <IconButton
             size="small"
             onClick={(e) => {
@@ -652,7 +647,8 @@ export default function SemesterManagement() {
             <MoreVertIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
-      ),
+        );
+      },
     },
   ];
 
@@ -840,18 +836,6 @@ export default function SemesterManagement() {
               {editTarget ? "Edit Semester" : "New Semester"}
             </Typography>
           </Box>
-          <IconButton
-            size="small"
-            onClick={() => setDialogOpen(false)}
-            disabled={saving}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": { backgroundColor: HOVER_BG },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box
@@ -1207,18 +1191,6 @@ export default function SemesterManagement() {
           >
             {confirmActionLabel}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={closeConfirmDialog}
-            disabled={confirmingAction}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": { backgroundColor: HOVER_BG },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box sx={{ px: 2.5, py: 2 }}>

@@ -1658,7 +1658,7 @@ export default function StaffersManagement() {
             <PrimaryBtn
               onClick={handleFormSubmit}
               loading={formLoading}
-              tone={formMode === "create" ? "gold" : "dark"}
+              tone="dark"
             >
               {formMode === "create" ? "Create Account" : "Save Changes"}
             </PrimaryBtn>
@@ -2433,19 +2433,6 @@ function BrandDialog({
             {title}
           </Typography>
         </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          sx={{
-            borderRadius: "10px",
-            color: "text.secondary",
-            "&:hover": {
-              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-            },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
       </Box>
 
       {/* ── Scrollable body ── */}
@@ -2570,7 +2557,6 @@ function StyledField({ border, children, InputProps, slotProps, ...props }) {
 
   return (
     <TextField
-      size="small"
       fullWidth
       sx={{
         "& .MuiOutlinedInput-root": {

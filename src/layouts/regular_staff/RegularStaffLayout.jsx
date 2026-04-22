@@ -240,7 +240,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
   );
 }
 
-function SidebarContent({ onClose, isMobile }) {
+function SidebarContent({ onClose, isMobile, assignmentCount }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({});
   const toggleGroup = (label) =>
@@ -378,6 +378,27 @@ function SidebarContent({ onClose, isMobile }) {
                   label={item.label}
                   Icon={item.Icon}
                   to={item.to}
+                  trailing={
+                    item.to === "my-assignment" && assignmentCount > 0 ? (
+                      <Box
+                        sx={{
+                          minWidth: 18,
+                          height: 18,
+                          borderRadius: "9px",
+                          backgroundColor: "#F5C52B",
+                          color: "#212121",
+                          fontSize: "0.62rem",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          px: 0.5,
+                        }}
+                      >
+                        {assignmentCount}
+                      </Box>
+                    ) : undefined
+                  }
                 />
               );
             })}
@@ -484,6 +505,7 @@ function RegularStaffLayout() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [assignmentCount, setAssignmentCount] = useState(0);
   useEffect(() => {
     async function loadUser() {
       const {
@@ -500,6 +522,12 @@ function RegularStaffLayout() {
         setUserProfile(data);
         setAvatarUrl(getAvatarUrl(data.avatar_url) || null);
       }
+      supabase
+        .from("coverage_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("staff_id", user.id)
+        .in("status", ["Assigned", "Approved"])
+        .then(({ count }) => setAssignmentCount(count || 0));
     }
     loadUser();
   }, []);
@@ -510,6 +538,7 @@ function RegularStaffLayout() {
       avatarUrl={avatarUrl}
       onClose={() => setMobileOpen(false)}
       isMobile={isMobile}
+      assignmentCount={assignmentCount}
     />
   );
   return (

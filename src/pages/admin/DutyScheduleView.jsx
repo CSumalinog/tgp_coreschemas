@@ -1481,35 +1481,36 @@ export default function DutyScheduleView() {
             height: "100%",
           }}
         >
-          <Box
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!p.row.staffer_id) return;
-              navigate(
-                `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
-              );
-            }}
-            sx={{
-              width: 24,
-              height: 24,
-              borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.18)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "text.disabled",
-              backgroundColor: "#ffffff",
-              cursor: p.row.staffer_id ? "pointer" : "not-allowed",
-              opacity: p.row.staffer_id ? 1 : 0.35,
-              transition: "all 0.15s",
-              "&:hover": p.row.staffer_id
-                ? { borderColor: "#212121", color: "#212121" }
-                : undefined,
-            }}
-            title="Open in Staffers Management"
-          >
-            <ArrowForwardIcon sx={{ fontSize: 13 }} />
-          </Box>
+          <Tooltip title="Open in Staffers Management">
+            <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!p.row.staffer_id) return;
+                navigate(
+                  `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
+                );
+              }}
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: "6px",
+                border: "1px solid rgba(0,0,0,0.18)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "text.disabled",
+                backgroundColor: "#ffffff",
+                cursor: p.row.staffer_id ? "pointer" : "not-allowed",
+                opacity: p.row.staffer_id ? 1 : 0.35,
+                transition: "all 0.15s",
+                "&:hover": p.row.staffer_id
+                  ? { borderColor: "#212121", color: "#212121" }
+                  : undefined,
+              }}
+            >
+              <ArrowForwardIcon sx={{ fontSize: 13 }} />
+            </Box>
+          </Tooltip>
         </Box>
       ),
     },
@@ -1598,8 +1599,9 @@ export default function DutyScheduleView() {
         const hasLinkedRequest = Boolean(p.row.linkedRequest);
         return (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Box
-              onClick={() => {
+            <Tooltip title={hasLinkedRequest ? "Open schedule change request" : "No schedule change request"}>
+              <Box
+                onClick={() => {
                 if (hasLinkedRequest) openRequestDetails(p.row.linkedRequest);
               }}
               sx={{
@@ -1622,14 +1624,10 @@ export default function DutyScheduleView() {
                     }
                   : undefined,
               }}
-              title={
-                hasLinkedRequest
-                  ? "Open schedule change request"
-                  : "No schedule change request"
-              }
-            >
-              <MailOutlineIcon sx={{ fontSize: 15 }} />
-            </Box>
+              >
+                <MailOutlineIcon sx={{ fontSize: 15 }} />
+              </Box>
+            </Tooltip>
           </Box>
         );
       },
@@ -1756,32 +1754,33 @@ export default function DutyScheduleView() {
             height: "100%",
           }}
         >
-          <Box
-            onClick={(e) => {
-              e.stopPropagation();
-              if (p.row.staffer_id)
-                navigate(
-                  `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
-                );
-            }}
-            sx={{
-              width: 24,
-              height: 24,
-              borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.18)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "text.disabled",
-              backgroundColor: "#ffffff",
-              cursor: "pointer",
-              transition: "all 0.15s",
-              "&:hover": { borderColor: "#212121", color: "#212121" },
-            }}
-            title="Open staffers management"
-          >
-            <ArrowForwardIcon sx={{ fontSize: 13 }} />
-          </Box>
+          <Tooltip title="Open staffers management">
+            <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                if (p.row.staffer_id)
+                  navigate(
+                    `/admin/staffers-management?focus=${encodeURIComponent(String(p.row.staffer_id))}`,
+                  );
+              }}
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: "6px",
+                border: "1px solid rgba(0,0,0,0.18)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "text.disabled",
+                backgroundColor: "#ffffff",
+                cursor: "pointer",
+                transition: "all 0.15s",
+                "&:hover": { borderColor: "#212121", color: "#212121" },
+              }}
+            >
+              <ArrowForwardIcon sx={{ fontSize: 13 }} />
+            </Box>
+          </Tooltip>
         </Box>
       ),
     },
@@ -4670,19 +4669,6 @@ export default function DutyScheduleView() {
                 : `Edit ${DAY_LABELS[slotDialogDayIndex]} Slots`}
             </Typography>
           </Box>
-          <IconButton
-            size="small"
-            onClick={closeSlotDialog}
-            sx={{
-              borderRadius: "10px",
-              color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
         </Box>
 
         <Box
@@ -4717,7 +4703,6 @@ export default function DutyScheduleView() {
             <TextField
               label={`${DAY_LABELS[slotDialogDayIndex]} Slots`}
               type="number"
-              size="small"
               value={slotForm[SLOT_FIELDS[slotDialogDayIndex]]}
               onChange={(event) =>
                 handleSlotChange(
@@ -4788,18 +4773,18 @@ export default function DutyScheduleView() {
               py: 0.65,
               borderRadius: "10px",
               cursor: slotSaving ? "default" : "pointer",
-              backgroundColor: GOLD,
-              color: "#1a1a1a",
+              backgroundColor: "#212121",
+              color: "#ffffff",
               fontFamily: dm,
               fontSize: "0.8rem",
               fontWeight: 600,
               opacity: slotSaving ? 0.7 : 1,
               transition: "background-color 0.15s",
-              "&:hover": { backgroundColor: slotSaving ? GOLD : "#e6b722" },
+              "&:hover": { backgroundColor: slotSaving ? "#212121" : "#333" },
             }}
           >
             {slotSaving && (
-              <CircularProgress size={13} sx={{ color: "#1a1a1a" }} />
+              <CircularProgress size={13} sx={{ color: "#ffffff" }} />
             )}
             Save Slots
           </Box>

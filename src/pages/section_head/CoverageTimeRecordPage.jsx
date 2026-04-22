@@ -732,8 +732,8 @@ export default function CoverageTimeRecordPage({ embedded = false }) {
             <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
               <Box
                 sx={{
-                  width: 80,
-                  height: 44,
+                  width: 52,
+                  height: 34,
                   borderRadius: "6px",
                   border: `1px solid ${border}`,
                   overflow: "hidden",

@@ -1,5 +1,5 @@
 // src/pages/section_head/RectificationsPage.jsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -16,7 +16,6 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
@@ -47,6 +46,12 @@ import {
 const GOLD = "#F5C52B";
 const dm = "'Inter', sans-serif";
 
+const STATUS_CONFIG = {
+  pending:  { label: "Pending",  bg: "#fefce8", color: "#854d0e", dot: "#eab308" },
+  approved: { label: "Approved", bg: "#f0fdf4", color: "#166534", dot: "#22c55e" },
+  rejected: { label: "Rejected", bg: "#fef2f2", color: "#991b1b", dot: "#ef4444" },
+};
+
 // ── Rectification Review Dialog ───────────────────────────────────────────────
 function ReviewDialog({
   open,
@@ -60,6 +65,9 @@ function ReviewDialog({
   onClose,
   onApprove,
   onReject,
+  onOpenLightbox,
+  onProofMouseEnter,
+  onProofMouseLeave,
 }) {
   if (!request) return null;
 
@@ -92,52 +100,17 @@ function ReviewDialog({
           justifyContent: "space-between",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <GavelOutlinedIcon sx={{ fontSize: 16, color: "#6d28d9" }} />
-          <Typography
-            sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
-          >
-            Review Rectification
-          </Typography>
-        </Box>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+        >
+          Review Rectification
+        </Typography>
         <IconButton size="small" disabled={reviewing} onClick={onClose}>
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
 
       <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.75rem",
-            color: "text.secondary",
-            mb: 0.25,
-          }}
-        >
-          Staff member
-        </Typography>
-        <Typography
-          sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}
-        >
-          {request.staff?.full_name ?? "—"}
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: dm,
-            fontSize: "0.75rem",
-            color: "text.secondary",
-            mb: 0.25,
-          }}
-        >
-          Assignment
-        </Typography>
-        <Typography
-          sx={{ fontFamily: dm, fontSize: "0.82rem", fontWeight: 600, mb: 1.5 }}
-        >
-          {request.request?.title ?? "—"}
-        </Typography>
-
         <Typography
           sx={{
             fontFamily: dm,
@@ -176,25 +149,80 @@ function ReviewDialog({
             >
               Proof
             </Typography>
+
+            {/* Attachment chip */}
             <Box
-              component="a"
-              href={proofUrl}
-              target="_blank"
-              rel="noreferrer"
+              onClick={() => onOpenLightbox && onOpenLightbox(proofUrl)}
               sx={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: 0.75,
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                color: "#6d28d9",
+                gap: 1,
                 mb: 1.75,
-                textDecoration: "none",
-                "&:hover": { textDecoration: "underline" },
+                px: 1,
+                py: 0.75,
+                borderRadius: "8px",
+                border: `1px solid ${border}`,
+                backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "#fafafa",
+                cursor: "zoom-in",
+                transition: "background 0.15s, box-shadow 0.15s",
+                "&:hover": {
+                  backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "#f0f0f0",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                },
               }}
             >
-              <InsertDriveFileOutlinedIcon sx={{ fontSize: 15 }} />
-              View attached proof
+              {/* Tiny thumbnail */}
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "5px",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#e8e8e8",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={proofUrl}
+                  alt="proof thumbnail"
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "top",
+                  }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  onMouseEnter={() => onProofMouseEnter && onProofMouseEnter(request.proof_path, proofUrl)}
+                  onMouseLeave={() => onProofMouseLeave && onProofMouseLeave(request.proof_path)}
+                />
+              </Box>
+              <Box>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.8rem",
+                    fontWeight: 500,
+                    color: "text.primary",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  proof_attachment
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.7rem",
+                    color: "text.disabled",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Click to view
+                </Typography>
+              </Box>
             </Box>
           </>
         )}
@@ -270,35 +298,11 @@ function ReviewDialog({
         }}
       >
         <Box
-          onClick={reviewing ? undefined : onClose}
-          sx={{
-            px: 1.75,
-            py: 0.65,
-            borderRadius: "4px",
-            cursor: reviewing ? "default" : "pointer",
-            border: `1px solid ${border}`,
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            color: "text.secondary",
-            userSelect: "none",
-            "&:hover": reviewing
-              ? {}
-              : {
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.04)",
-                },
-          }}
-        >
-          Cancel
-        </Box>
-        <Box
           onClick={reviewing ? undefined : onReject}
           sx={{
             px: 1.75,
             py: 0.65,
-            borderRadius: "4px",
+            borderRadius: "10px",
             cursor: reviewing ? "default" : "pointer",
             border: "1px solid rgba(220,38,38,0.3)",
             backgroundColor: reviewing
@@ -309,15 +313,11 @@ function ReviewDialog({
             fontSize: "0.8rem",
             fontWeight: 600,
             userSelect: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
             "&:hover": reviewing
               ? {}
               : { backgroundColor: "rgba(220,38,38,0.12)" },
           }}
         >
-          <ThumbDownOutlinedIcon sx={{ fontSize: 14 }} />
           Reject
         </Box>
         <Box
@@ -325,7 +325,7 @@ function ReviewDialog({
           sx={{
             px: 1.75,
             py: 0.65,
-            borderRadius: "4px",
+            borderRadius: "10px",
             cursor: reviewing ? "default" : "pointer",
             backgroundColor: reviewing ? "rgba(0,0,0,0.06)" : "#111",
             color: reviewing ? "text.disabled" : "#fff",
@@ -333,13 +333,9 @@ function ReviewDialog({
             fontSize: "0.8rem",
             fontWeight: 600,
             userSelect: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
             "&:hover": reviewing ? {} : { backgroundColor: "#333" },
           }}
         >
-          <ThumbUpOutlinedIcon sx={{ fontSize: 14 }} />
           Approve
         </Box>
       </Box>
@@ -383,6 +379,20 @@ export default function RectificationsPage() {
   const [reviewNote, setReviewNote] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState("");
+
+  // Lightbox / hover preview
+  const [lightboxProof, setLightboxProof] = useState(null);
+  const [hoveredProof, setHoveredProof] = useState(null);
+  const hoverTimerRef = useRef(null);
+
+  const handleProofMouseEnter = (id, url) => {
+    if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(() => setHoveredProof({ id, url }), 150);
+  };
+  const handleProofMouseLeave = (id) => {
+    if (hoverTimerRef.current) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    setHoveredProof((prev) => (prev?.id === id ? null : prev));
+  };
 
   useEffect(() => {
     async function loadUser() {
@@ -486,7 +496,11 @@ export default function RectificationsPage() {
           });
         }
 
-        setRequests((prev) => prev.filter((r) => r.id !== reviewTarget.id));
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.id === reviewTarget.id ? { ...r, status: decision } : r,
+          ),
+        );
         setReviewTarget(null);
         setReviewNote("");
       } catch (err) {
@@ -559,6 +573,7 @@ export default function RectificationsPage() {
         })
         .map((r) => {
           const ac = getAvatarColor(r.staff_id ?? r.id);
+          const statusCfg = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending;
           return {
             id: r.id,
             staffName: r.staff?.full_name ?? "—",
@@ -570,11 +585,54 @@ export default function RectificationsPage() {
             submitted: r.created_at,
             hasProof: !!r.proof_path,
             proofPath: r.proof_path,
+            statusLabel: statusCfg.label,
+            statusBg: statusCfg.bg,
+            statusColor: statusCfg.color,
+            statusDot: statusCfg.dot,
             _raw: r,
           };
         }),
     [requests, searchText, statusFilter, selectedSem, semesters],
   );
+
+  // ── Proof thumbnail cell ─────────────────────────────────────────────────────
+  function ProofCell({ proofPath }) {
+    if (!proofPath) return (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}>—</Typography>
+      </Box>
+    );
+    const { data } = supabase.storage.from("coverage-files").getPublicUrl(proofPath);
+    const url = data?.publicUrl;
+    const cellId = proofPath;
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+        <Box
+          onClick={(e) => { e.stopPropagation(); setLightboxProof(url); }}
+          sx={{
+            width: 52,
+            height: 34,
+            borderRadius: "6px",
+            border: `1px solid ${border}`,
+            overflow: "hidden",
+            backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
+            cursor: "zoom-in",
+            flexShrink: 0,
+          }}
+        >
+          <Box
+            component="img"
+            src={url}
+            alt="proof"
+            sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+            onMouseEnter={() => handleProofMouseEnter(cellId, url)}
+            onMouseLeave={() => handleProofMouseLeave(cellId)}
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   // ── Columns ─────────────────────────────────────────────────────────────────
   const columns = useMemo(
@@ -582,8 +640,8 @@ export default function RectificationsPage() {
       {
         field: "staffName",
         headerName: "Staff",
-        flex: 1,
-        minWidth: 160,
+        flex: 0.9,
+        minWidth: 140,
         renderCell: (p) => (
           <Box
             sx={{
@@ -610,8 +668,8 @@ export default function RectificationsPage() {
       {
         field: "title",
         headerName: "Assignment",
-        flex: 1,
-        minWidth: 160,
+        flex: 1.8,
+        minWidth: 200,
         renderCell: (p) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
             <Typography
@@ -632,8 +690,7 @@ export default function RectificationsPage() {
       {
         field: "submitted",
         headerName: "Submitted",
-        flex: 1,
-        minWidth: 160,
+        width: 120,
         renderCell: (p) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
             <Typography
@@ -655,53 +712,37 @@ export default function RectificationsPage() {
       {
         field: "hasProof",
         headerName: "Proof",
-        width: 60,
+        width: 120,
         sortable: false,
         disableColumnMenu: true,
-        renderCell: (p) => {
-          if (!p.value) {
-            return (
-              <Box
-                sx={{ display: "flex", alignItems: "center", height: "100%" }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.8rem",
-                    color: "text.disabled",
-                  }}
-                >
-                  —
-                </Typography>
-              </Box>
-            );
-          }
-          const { data } = supabase.storage
-            .from("coverage-files")
-            .getPublicUrl(p.row.proofPath);
-          return (
-            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-              <Tooltip title="View Proof">
-                <Box
-                  component="a"
-                  href={data?.publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "text.secondary",
-                    "&:hover": { color: "text.primary" },
-                  }}
-                >
-                  <InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />
-                </Box>
-              </Tooltip>
+        renderCell: (p) => <ProofCell proofPath={p.row.proofPath} />,
+      },
+      {
+        field: "statusLabel",
+        headerName: "Status",
+        width: 120,
+        sortable: false,
+        disableColumnMenu: true,
+        renderCell: (p) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 0.9,
+                py: 0.25,
+                borderRadius: "20px",
+                backgroundColor: p.row.statusBg,
+              }}
+            >
+              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: p.row.statusDot, flexShrink: 0 }} />
+              <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 600, color: p.row.statusColor, textTransform: "capitalize" }}>
+                {p.value}
+              </Typography>
             </Box>
-          );
-        },
+          </Box>
+        ),
       },
     ],
     [],
@@ -922,7 +963,74 @@ export default function RectificationsPage() {
         }}
         onApprove={() => handleDecision("approved")}
         onReject={() => handleDecision("rejected")}
+        onOpenLightbox={setLightboxProof}
+        onProofMouseEnter={handleProofMouseEnter}
+        onProofMouseLeave={handleProofMouseLeave}
       />
+
+      {/* ── Photo lightbox (click) ── */}
+      {lightboxProof && (
+        <Box
+          onClick={() => setLightboxProof(null)}
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            onClick={(e) => e.stopPropagation()}
+            sx={{ position: "relative", maxWidth: "min(800px, 92vw)", maxHeight: "90vh", lineHeight: 0 }}
+          >
+            <Box
+              component="img"
+              src={lightboxProof}
+              alt="Proof"
+              sx={{ display: "block", maxWidth: "100%", maxHeight: "90vh", objectFit: "contain", borderRadius: "4px" }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Photo hover preview ── */}
+      {hoveredProof?.url && (
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: (t) => t.zIndex.modal + 2,
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            pointerEvents: "none",
+          }}
+        >
+          <Box
+            sx={{
+              width: "min(68vw, 700px)",
+              maxHeight: "78vh",
+              borderRadius: "12px",
+              overflow: "hidden",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.45)"}`,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.42)",
+              backgroundColor: "rgba(0,0,0,0.28)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <Box
+              component="img"
+              src={hoveredProof.url}
+              alt="Proof preview"
+              sx={{ width: "100%", maxHeight: "78vh", objectFit: "contain", display: "block", backgroundColor: isDark ? "#0f0f0f" : "#111" }}
+            />
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

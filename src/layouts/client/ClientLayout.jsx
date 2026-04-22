@@ -430,7 +430,7 @@ function ProfileDropdown({ open, currentUser, onClose, footerRef }) {
 }
 
 // ── Sidebar content ───────────────────────────────────────────────────────────
-function SidebarContent({ onClose, isMobile }) {
+function SidebarContent({ onClose, isMobile, draftCount }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef(null);
 
@@ -527,6 +527,27 @@ function SidebarContent({ onClose, isMobile }) {
                 label={item.label}
                 Icon={item.Icon}
                 to={item.to}
+                trailing={
+                  item.to === "draft" && draftCount > 0 ? (
+                    <Box
+                      sx={{
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: "9px",
+                        backgroundColor: "#F5C52B",
+                        color: "#212121",
+                        fontSize: "0.62rem",
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        px: 0.5,
+                      }}
+                    >
+                      {draftCount}
+                    </Box>
+                  ) : undefined
+                }
               />
             ))}
           </Box>
@@ -808,6 +829,7 @@ function ClientLayout() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [draftCount, setDraftCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -827,6 +849,12 @@ function ClientLayout() {
         setUserProfile(data);
         setAvatarUrl(getAvatarUrl(data.avatar_url) || null);
       }
+      supabase
+        .from("coverage_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("requester_id", user.id)
+        .eq("status", "Draft")
+        .then(({ count }) => { if (!cancelled) setDraftCount(count || 0); });
     }
     loadUser();
     return () => {
@@ -841,6 +869,7 @@ function ClientLayout() {
       avatarUrl={avatarUrl}
       onClose={() => setMobileOpen(false)}
       isMobile={isMobile}
+      draftCount={draftCount}
     />
   );
 

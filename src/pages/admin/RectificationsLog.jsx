@@ -1,6 +1,6 @@
 // src/pages/admin/RectificationsLog.jsx
 // Read-only admin view of all rectification requests across all sections.
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -14,9 +14,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import CloseIcon from "@mui/icons-material/Close";
-import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
@@ -119,14 +117,11 @@ function ViewDialog({ open, request, isDark, border, onClose }) {
           justifyContent: "space-between",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <GavelOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-          <Typography
-            sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
-          >
-            Rectification Details
-          </Typography>
-        </Box>
+        <Typography
+          sx={{ fontFamily: dm, fontSize: "0.88rem", fontWeight: 700 }}
+        >
+          Rectification Details
+        </Typography>
         <IconButton size="small" onClick={onClose}>
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
@@ -134,51 +129,6 @@ function ViewDialog({ open, request, isDark, border, onClose }) {
 
       {/* Body */}
       <Box sx={{ px: 3, pt: 2.5, pb: 2.5 }}>
-        {/* Status badge */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-          <Box
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1,
-              py: 0.3,
-              borderRadius: "20px",
-              backgroundColor: statusCfg.bg,
-            }}
-          >
-            <Box
-              sx={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                backgroundColor: statusCfg.dot,
-                flexShrink: 0,
-              }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.72rem",
-                fontWeight: 600,
-                color: statusCfg.color,
-                textTransform: "capitalize",
-              }}
-            >
-              {statusCfg.label}
-            </Typography>
-          </Box>
-          <Typography
-            sx={{ fontFamily: dm, fontSize: "0.72rem", color: "text.disabled" }}
-          >
-            Section: {request.section ?? "—"}
-          </Typography>
-        </Box>
-
-        <Row label="Staff member" value={request.staff?.full_name ?? "—"} />
-        <Row label="Assignment" value={request.request?.title ?? "—"} />
-        <Row label="Submitted" value={fmtDate(request.created_at)} />
-
         <Typography
           sx={{
             fontFamily: dm,
@@ -254,38 +204,7 @@ function ViewDialog({ open, request, isDark, border, onClose }) {
         )}
       </Box>
 
-      {/* Footer */}
-      <Box
-        sx={{
-          px: 3,
-          py: 1.75,
-          borderTop: `1px solid ${border}`,
-          display: "flex",
-          justifyContent: "flex-end",
-        }}
-      >
-        <Box
-          onClick={onClose}
-          sx={{
-            px: 1.75,
-            py: 0.65,
-            borderRadius: "4px",
-            cursor: "pointer",
-            border: `1px solid ${border}`,
-            fontFamily: dm,
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            color: "text.secondary",
-            userSelect: "none",
-            "&:hover": {
-              color: "text.primary",
-              borderColor: "rgba(53,53,53,0.3)",
-            },
-          }}
-        >
-          Close
-        </Box>
-      </Box>
+
     </Dialog>
   );
 }
@@ -324,6 +243,20 @@ export default function RectificationsLog() {
   const [semesters, setSemesters] = useState([]);
   const [selectedSem, setSelectedSem] = useState("all");
   const [viewTarget, setViewTarget] = useState(null);
+
+  // Lightbox / hover preview
+  const [lightboxProof, setLightboxProof] = useState(null);
+  const [hoveredProof, setHoveredProof] = useState(null);
+  const hoverTimerRef = useRef(null);
+
+  const handleProofMouseEnter = useCallback((id, url) => {
+    if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(() => setHoveredProof({ id, url }), 150);
+  }, []);
+  const handleProofMouseLeave = useCallback((id) => {
+    if (hoverTimerRef.current) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    setHoveredProof((prev) => (prev?.id === id ? null : prev));
+  }, []);
 
   const loadRequests = useCallback(async () => {
     setLoading(true);
@@ -426,6 +359,7 @@ export default function RectificationsLog() {
         })
         .map((r) => {
           const ac = getAvatarColor(r.staff_id ?? r.id);
+          const rac = getAvatarColor(r.reviewed_by ?? r.id);
           const statusCfg = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending;
           return {
             id: r.id,
@@ -443,6 +377,9 @@ export default function RectificationsLog() {
             statusDot: statusCfg.dot,
             submitted: r.created_at,
             reviewedBy: r.reviewer?.full_name ?? "—",
+            reviewerAvatarUrl: r.reviewer?.avatar_url ?? null,
+            reviewerAvatarBg: rac.bg,
+            reviewerAvatarFg: rac.color,
             reviewedAt: r.reviewed_at,
             hasProof: !!r.proof_path,
             proofPath: r.proof_path,
@@ -523,8 +460,8 @@ export default function RectificationsLog() {
       {
         field: "staffName",
         headerName: "Staff",
-        flex: 1.2,
-        minWidth: 160,
+        flex: 0.9,
+        minWidth: 140,
         renderCell: (p) => (
           <Box
             sx={{
@@ -592,8 +529,8 @@ export default function RectificationsLog() {
       {
         field: "submitted",
         headerName: "Submitted",
-        flex: 0.9,
-        minWidth: 130,
+        flex: 0.55,
+        minWidth: 95,
         renderCell: (p) => (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
             <Typography
@@ -612,68 +549,70 @@ export default function RectificationsLog() {
         field: "reviewedBy",
         headerName: "Reviewed By",
         flex: 1,
-        minWidth: 140,
+        minWidth: 160,
         renderCell: (p) => (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                color: p.value === "—" ? "text.disabled" : "text.primary",
-              }}
-            >
-              {p.value}
-            </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+            {p.value !== "—" ? (
+              <>
+                <StaffAvatar
+                  path={p.row.reviewerAvatarUrl}
+                  name={p.value}
+                  bg={p.row.reviewerAvatarBg}
+                  fg={p.row.reviewerAvatarFg}
+                />
+                <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}>
+                  {p.value}
+                </Typography>
+              </>
+            ) : (
+              <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}>
+                —
+              </Typography>
+            )}
           </Box>
         ),
       },
       {
         field: "hasProof",
         headerName: "Proof",
-        width: 80,
+        width: 100,
         sortable: false,
         disableColumnMenu: true,
         renderCell: (p) => {
           if (!p.value) {
             return (
-              <Box
-                sx={{ display: "flex", alignItems: "center", height: "100%" }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.8rem",
-                    color: "text.disabled",
-                  }}
-                >
-                  —
-                </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+                <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}>—</Typography>
               </Box>
             );
           }
-          const { data } = supabase.storage
-            .from("coverage-files")
-            .getPublicUrl(p.row.proofPath);
+          const { data } = supabase.storage.from("coverage-files").getPublicUrl(p.row.proofPath);
+          const url = data?.publicUrl;
           return (
             <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-              <Tooltip title="View Proof">
+              <Box
+                onClick={(e) => { e.stopPropagation(); setLightboxProof(url); }}
+                sx={{
+                  width: 52,
+                  height: 34,
+                  borderRadius: "6px",
+                  border: `1px solid ${border}`,
+                  overflow: "hidden",
+                  backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
+                  cursor: "zoom-in",
+                  flexShrink: 0,
+                }}
+              >
                 <Box
-                  component="a"
-                  href={data?.publicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "text.secondary",
-                    "&:hover": { color: "text.primary" },
-                  }}
-                >
-                  <InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />
-                </Box>
-              </Tooltip>
+                  component="img"
+                  src={url}
+                  alt="proof"
+                  sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  onMouseEnter={() => handleProofMouseEnter(p.row.proofPath, url)}
+                  onMouseLeave={() => handleProofMouseLeave(p.row.proofPath)}
+                />
+              </Box>
             </Box>
           );
         },
@@ -914,6 +853,70 @@ export default function RectificationsLog() {
         border={border}
         onClose={() => setViewTarget(null)}
       />
+
+      {/* ── Photo lightbox (click) ── */}
+      {lightboxProof && (
+        <Box
+          onClick={() => setLightboxProof(null)}
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            onClick={(e) => e.stopPropagation()}
+            sx={{ position: "relative", maxWidth: "min(800px, 92vw)", maxHeight: "90vh", lineHeight: 0 }}
+          >
+            <Box
+              component="img"
+              src={lightboxProof}
+              alt="Proof"
+              sx={{ display: "block", maxWidth: "100%", maxHeight: "90vh", objectFit: "contain", borderRadius: "4px" }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Photo hover preview ── */}
+      {hoveredProof?.url && (
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: (t) => t.zIndex.modal + 2,
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            pointerEvents: "none",
+          }}
+        >
+          <Box
+            sx={{
+              width: "min(68vw, 700px)",
+              maxHeight: "78vh",
+              borderRadius: "12px",
+              overflow: "hidden",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.45)"}`,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.42)",
+              backgroundColor: "rgba(0,0,0,0.28)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <Box
+              component="img"
+              src={hoveredProof.url}
+              alt="Proof preview"
+              sx={{ width: "100%", maxHeight: "78vh", objectFit: "contain", display: "block", backgroundColor: isDark ? "#0f0f0f" : "#111" }}
+            />
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }
