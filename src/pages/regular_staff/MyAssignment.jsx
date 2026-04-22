@@ -318,6 +318,7 @@ function AssignmentCard({
   const req = a.request;
   const canTimeIn = ["Assigned", "Approved"].includes(a.status);
   const state = canTimeIn ? getTimeInState(req) : null;
+  const announceEmergencyDisabled = !canTimeIn || state === "passed" || !!a.timed_in_at;
   const [menuAnchor, setMenuAnchor] = useState(null);
 
   return (
@@ -492,7 +493,7 @@ function AssignmentCard({
             </ListItemText>
           </MenuItem>
           <MenuItem
-            disabled={a.status === "Cancelled"}
+            disabled={announceEmergencyDisabled}
             onClick={() => {
               onAnnounceEmergency(a);
               setMenuAnchor(null);
@@ -503,7 +504,7 @@ function AssignmentCard({
               <WarningAmberOutlinedIcon
                 sx={{
                   fontSize: 18,
-                  color: a.status === "Cancelled" ? "text.disabled" : GOLD,
+                  color: announceEmergencyDisabled ? "text.disabled" : GOLD,
                 }}
               />
             </ListItemIcon>
@@ -512,7 +513,7 @@ function AssignmentCard({
                 primary: {
                   fontFamily: dm,
                   fontSize: "0.82rem",
-                  color: a.status === "Cancelled" ? "text.disabled" : GOLD,
+                  color: announceEmergencyDisabled ? "text.disabled" : GOLD,
                 },
               }}
             >
@@ -1500,6 +1501,7 @@ export default function MyAssignment() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
   const timeInNotifiedRef = useRef(new Set());
+  const timeInActiveRef = useRef(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -1717,7 +1719,9 @@ export default function MyAssignment() {
         return diff >= -TWO_MIN && diff <= TEN_MIN;
       });
       if (match) {
-        setOnGoingAlert(match);
+        if (!timeInActiveRef.current) {
+          setOnGoingAlert(match);
+        }
         if (
           !timeInNotifiedRef.current.has(match.id) &&
           "Notification" in window
@@ -1948,6 +1952,7 @@ export default function MyAssignment() {
           .insert(allNotifs);
         if (notifErr) throw notifErr;
       }
+      timeInActiveRef.current = false;
       setTimeInTarget(null);
       setOnGoingAlert(null);
       loadAssignments();
@@ -2706,6 +2711,7 @@ export default function MyAssignment() {
               const target = timeInConfirmTarget;
               setTimeInConfirmTarget(null);
               setTimeInError("");
+              timeInActiveRef.current = true;
               setTimeInTarget(target);
             }}
           >
@@ -2720,6 +2726,7 @@ export default function MyAssignment() {
         submitting={timingIn}
         error={timeInError}
         onClose={() => {
+          timeInActiveRef.current = false;
           setTimeInTarget(null);
           setTimeInError("");
         }}

@@ -12,9 +12,6 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
-import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
@@ -22,7 +19,6 @@ import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import { supabase } from "../../lib/supabaseClient";
 import { useRealtimeNotify } from "../../hooks/useRealtimeNotify";
-import { getSemesterDisplayName } from "../../utils/semesterLabel";
 import { getAvatarUrl } from "../../components/common/UserAvatar";
 import BrandedLoader from "../../components/common/BrandedLoader";
 import {
@@ -186,13 +182,11 @@ export default function SecHeadDashboard() {
 
   const border = isDark ? BRAND.borderDark : BRAND.borderLight;
   const surf = isDark ? BRAND.surfDark : BRAND.surfLight;
-  const iconWell = isDark ? BRAND.goldAlpha15 : BRAND.goldAlpha12;
   const status = isDark ? STATUS.dark : STATUS.light;
   const dayChip = isDark ? DAY_CHIP.dark : DAY_CHIP.light;
 
   const [currentUser, setCurrentUser] = useState(null);
   const [activeSemester, setActiveSemester] = useState(null);
-  const [stats, setStats] = useState({ pending: 0, assigned: 0, complete: 0 });
   const [recentRequests, setRecentRequests] = useState([]);
   const [teamSnapshot, setTeamSnapshot] = useState([]);
   const [todayCoverage, setTodayCoverage] = useState({
@@ -262,18 +256,7 @@ export default function SecHeadDashboard() {
       (r) => !hiddenIds.has(r.id),
     );
 
-    const pending = allRequests.filter((r) => r.status === "Forwarded").length;
-    const assigned = allRequests.filter(
-      (r) =>
-        r.status === "For Approval" ||
-        r.status === "Assigned" ||
-        r.status === "On Going",
-    ).length;
-    const complete = allRequests.filter(
-      (r) => r.status === "Coverage Complete",
-    ).length;
-    setStats({ pending, assigned, complete });
-    setRecentRequests(allRequests.slice(0, 5));
+    setRecentRequests(allRequests.slice(0, 8));
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayReqs = allRequests.filter((r) => r.event_date === todayStr);
@@ -352,33 +335,6 @@ export default function SecHeadDashboard() {
 
   if (!currentUser || loading)
     return <BrandedLoader size={88} minHeight="60vh" />;
-
-  const kpiCards = [
-    {
-      label: "Needs Assignment",
-      value: stats.pending,
-      sub: "awaiting staffers",
-      tab: "for-assignment",
-      icon: AccessTimeOutlinedIcon,
-      isRed: stats.pending > 0,
-    },
-    {
-      label: "In Progress",
-      value: stats.assigned,
-      sub: "submitted / ongoing",
-      tab: "for-approval",
-      icon: AssignmentOutlinedIcon,
-      isRed: false,
-    },
-    {
-      label: "Coverage Done",
-      value: stats.complete,
-      sub: "completed",
-      tab: "history",
-      icon: TaskAltOutlinedIcon,
-      isRed: false,
-    },
-  ];
 
   const dm = "'Inter', sans-serif";
 
@@ -528,7 +484,7 @@ export default function SecHeadDashboard() {
         </Typography>
       </Box>
 
-      {/* ── Unified 3-col grid: KPI row + content row ── */}
+      {/* ── 3-col grid: Recent Requests + Team Snapshot ── */}
       <Box
         sx={{
           display: "grid",
@@ -540,100 +496,6 @@ export default function SecHeadDashboard() {
           },
         }}
       >
-        {/* 3 KPI cards */}
-        {kpiCards.map((k) => {
-          const Icon = k.icon;
-          return (
-            <Tooltip
-              key={k.label}
-              title={`Go to ${k.label}`}
-              placement="top"
-              arrow
-            >
-              <Box
-                onClick={() => goToTab(k.tab)}
-                sx={{
-                  bgcolor: "background.paper",
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  p: { xs: 1.75, md: 2.5 },
-                  height: { xs: 110, md: 140 },
-                  boxSizing: "border-box",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  transition: "border-color 0.2s, box-shadow 0.2s",
-                  "&:hover": {
-                    borderColor: BRAND.gold,
-                    boxShadow: `0 2px 16px ${BRAND.goldAlpha12}`,
-                  },
-                }}
-              >
-                {/* Top row: icon + label */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-                  <Box
-                    sx={{
-                      width: { xs: 36, md: 42 },
-                      height: { xs: 36, md: 42 },
-                      borderRadius: "10px",
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: k.isRed
-                        ? isDark
-                          ? BRAND.redAlpha15
-                          : BRAND.redLight
-                        : iconWell,
-                    }}
-                  >
-                    <Icon
-                      sx={{
-                        fontSize: { xs: 17, md: 20 },
-                        color: k.isRed ? BRAND.red : BRAND.gold,
-                      }}
-                    />
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontSize: { xs: "0.68rem", md: "0.72rem" },
-                      color: "text.secondary",
-                      fontWeight: 500,
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {k.label}
-                  </Typography>
-                </Box>
-                {/* Bottom: big number + sub */}
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: { xs: "1.7rem", md: "2rem" },
-                      fontWeight: 800,
-                      lineHeight: 1,
-                      letterSpacing: "-0.03em",
-                      color: k.isRed ? BRAND.red : "text.primary",
-                    }}
-                  >
-                    {k.value}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: "0.7rem",
-                      color: "text.disabled",
-                      mt: 0.25,
-                    }}
-                  >
-                    {k.sub}
-                  </Typography>
-                </Box>
-              </Box>
-            </Tooltip>
-          );
-        })}
-
         {/* Recent Requests — spans 2 cols */}
         <Card sx={{ gridColumn: { xs: "1 / -1", sm: "1 / 3", md: "1 / 3" } }}>
           <SectionHeader
@@ -814,7 +676,7 @@ export default function SecHeadDashboard() {
             <SectionHeader
               title={`Team — ${currentUser.division}`}
               action={
-                <Tooltip title="Manage staffers" arrow>
+                <Tooltip title="View all staffers" arrow>
                   <Box
                     onClick={() => navigate("/sec_head/my-staffers")}
                     sx={{
@@ -828,7 +690,7 @@ export default function SecHeadDashboard() {
                     }}
                   >
                     <OpenInNewOutlinedIcon sx={{ fontSize: 14 }} />
-                    <Typography sx={{ fontSize: "0.7rem" }}>Manage</Typography>
+                    <Typography sx={{ fontSize: "0.7rem" }}>View all</Typography>
                   </Box>
                 </Tooltip>
               }

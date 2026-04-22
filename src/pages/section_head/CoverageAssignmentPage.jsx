@@ -18,7 +18,7 @@ export default function CoverageAssignmentPage() {
       exportFileName="coverage-assignment-export"
       settingsTitle="Assignment Settings"
       defaultView="all"
-      allowedViews={["all", "for-assignment", "for-approval", "assigned"]}
+      allowedViews={["all", "for-assignment", "assigned", "approved"]}
       descriptions={descriptions}
     />
   );

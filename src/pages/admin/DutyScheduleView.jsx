@@ -2807,6 +2807,7 @@ export default function DutyScheduleView() {
             borderBottom: `1px solid ${border}`,
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -2819,6 +2820,19 @@ export default function DutyScheduleView() {
           >
             Pending Schedule Request
           </Typography>
+          <IconButton
+            size="small"
+            onClick={closeRequestDetails}
+            sx={{
+              borderRadius: "10px",
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
         </Box>
 
         <Box

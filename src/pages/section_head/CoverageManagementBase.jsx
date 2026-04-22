@@ -172,7 +172,7 @@ const VIEW_OPTIONS = [
   { label: "All", key: "all" },
   { label: "For Assignment", key: "for-assignment" },
   { label: "Assigned", key: "assigned" },
-  { label: "For Approval", key: "for-approval" },
+  { label: "Approved", key: "approved" },
   { label: "On Going", key: "on-going" },
   { label: "Completed", key: "completed" },
 ];
@@ -192,7 +192,7 @@ const getPreferredView = (allowedViews, preferredView) => {
 const VIEW_LABEL_BY_KEY = {
   all: "All",
   "for-assignment": "For Assignment",
-  "for-approval": "For Approval",
+  "approved": "Approved",
   assigned: "Assigned",
   "on-going": "On Going",
   completed: "Completed",
@@ -759,7 +759,7 @@ export default function CoverageManagementBase({
 
   const [currentUser, setCurrentUser] = useState(null);
   const [forAssignmentReqs, setForAssignmentReqs] = useState([]);
-  const [forApprovalReqs, setForApprovalReqs] = useState([]);
+  const [approvedReqs, setApprovedReqs] = useState([]);
   const [assignedReqs, setAssignedReqs] = useState([]);
   const [onGoingReqs, setOnGoingReqs] = useState([]);
   const [completedReqs, setCompletedReqs] = useState([]);
@@ -1194,11 +1194,18 @@ export default function CoverageManagementBase({
       );
       const onGoingIds = new Set(sectionOnGoingRows.map((r) => r.id));
 
+      const approvedRows = assignedData.filter(
+        (req) =>
+          req.status === "Approved" &&
+          !onGoingIds.has(req.id) &&
+          !completedIds.has(req.id),
+      );
+      const approvedIds = new Set(approvedRows.map((r) => r.id));
       const cleanAssigned = assignedData.filter(
         (req) =>
           !onGoingIds.has(req.id) &&
           !completedIds.has(req.id) &&
-          !sectionForApprovalIds.has(req.id),
+          !approvedIds.has(req.id),
       );
       const forwardedAssignedRows = forwardedData.filter((req) => {
         if ((req.submitted_sections || []).includes(mySection)) return false;
@@ -1228,6 +1235,7 @@ export default function CoverageManagementBase({
         new Map(
           [
             ...cleanAssigned,
+            ...sectionForApprovalRows,
             ...forwardedAssignedRows,
             ...pendingAssignedRows,
             ...emergencyCancelledRows,
@@ -1245,7 +1253,7 @@ export default function CoverageManagementBase({
       });
 
       setForAssignmentReqs(forAssignRows);
-      setForApprovalReqs(sectionForApprovalRows);
+      setApprovedReqs(approvedRows);
       setAssignedReqs(mergedAssigned);
       setOnGoingReqs(Array.from(mergedOnGoing.values()));
       setCompletedReqs(Array.from(mergedCompleted.values()));
@@ -1486,7 +1494,7 @@ export default function CoverageManagementBase({
         return Array.from(merged.values());
       }
       if (key === "for-assignment") return applyFilters(forAssignmentReqs);
-      if (key === "for-approval") return applyFilters(forApprovalReqs);
+      if (key === "approved") return applyFilters(approvedReqs);
       if (key === "assigned") return applyFilters(assignedReqs);
       if (key === "on-going") return applyFilters(onGoingReqs);
       if (key === "completed") return applyFilters(completedReqs);
@@ -1496,7 +1504,7 @@ export default function CoverageManagementBase({
       allowedViews,
       applyFilters,
       forAssignmentReqs,
-      forApprovalReqs,
+      approvedReqs,
       assignedReqs,
       onGoingReqs,
       completedReqs,
@@ -1707,7 +1715,7 @@ export default function CoverageManagementBase({
 
     const sources = [
       ["for-assignment", forAssignmentReqs],
-      ["for-approval", forApprovalReqs],
+      ["approved", approvedReqs],
       ["assigned", assignedReqs],
       ["on-going", onGoingReqs],
       ["completed", completedReqs],
@@ -1735,7 +1743,7 @@ export default function CoverageManagementBase({
     location.state?.openRequestId,
     loading,
     forAssignmentReqs,
-    forApprovalReqs,
+    approvedReqs,
     assignedReqs,
     onGoingReqs,
     completedReqs,
@@ -1991,7 +1999,7 @@ export default function CoverageManagementBase({
       setConfirmRequest(null);
       setPostAssignReview(null);
       await loadAll();
-      setViewFilter("for-approval");
+      setViewFilter("assigned");
       pushSuccessToast(
         allSectionsSubmitted
           ? "Submitted for approval. All sections are complete and the request is now queued for admin review."
@@ -3470,7 +3478,12 @@ export default function CoverageManagementBase({
         isDark={isDark}
         border={border}
         loading={submitLoading}
-        onClose={() => !submitLoading && setPostAssignReview(null)}
+        onClose={() => {
+          if (!submitLoading) {
+            setPostAssignReview(null);
+            setAssignDialogOpen(true);
+          }
+        }}
         onSubmit={() => handleSubmitForApproval(postAssignReview?.requestId)}
       />
 

@@ -666,8 +666,6 @@ export default function CalendarEventDialog({
           backdrop: {
             sx: { backgroundColor: "transparent" },
           },
-        }}
-        slotProps={{
           paper: {
             sx: {
               width: 380,
