@@ -854,7 +854,9 @@ function ClientLayout() {
         .select("id", { count: "exact", head: true })
         .eq("requester_id", user.id)
         .eq("status", "Draft")
-        .then(({ count }) => { if (!cancelled) setDraftCount(count || 0); });
+        .then(({ count }) => {
+          if (!cancelled) setDraftCount(count || 0);
+        });
     }
     loadUser();
     return () => {

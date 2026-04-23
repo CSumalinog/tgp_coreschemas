@@ -946,10 +946,7 @@ export default function DutyScheduleView() {
       }
 
       const projection = getProjectedDivisionForRequest(request);
-      if (
-        projection.actorDivision &&
-        projection.sourceViolation
-      ) {
+      if (projection.actorDivision && projection.sourceViolation) {
         const blockedDay = request.current_duty_day;
         setError(
           `Balance policy: ${DAY_LABELS[blockedDay]} must keep both Scribes and Creatives assigned.`,
@@ -1599,31 +1596,37 @@ export default function DutyScheduleView() {
         const hasLinkedRequest = Boolean(p.row.linkedRequest);
         return (
           <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-            <Tooltip title={hasLinkedRequest ? "Open schedule change request" : "No schedule change request"}>
+            <Tooltip
+              title={
+                hasLinkedRequest
+                  ? "Open schedule change request"
+                  : "No schedule change request"
+              }
+            >
               <Box
                 onClick={() => {
-                if (hasLinkedRequest) openRequestDetails(p.row.linkedRequest);
-              }}
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: 1,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid rgba(0,0,0,0.14)",
-                backgroundColor: "#ffffff",
-                color: "rgba(0,0,0,0.75)",
-                cursor: hasLinkedRequest ? "pointer" : "not-allowed",
-                opacity: hasLinkedRequest ? 1 : 0.35,
-                transition: "background-color 0.15s, border-color 0.15s",
-                "&:hover": hasLinkedRequest
-                  ? {
-                      backgroundColor: "#f7f7f7",
-                      borderColor: "rgba(0,0,0,0.24)",
-                    }
-                  : undefined,
-              }}
+                  if (hasLinkedRequest) openRequestDetails(p.row.linkedRequest);
+                }}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  backgroundColor: "#ffffff",
+                  color: "rgba(0,0,0,0.75)",
+                  cursor: hasLinkedRequest ? "pointer" : "not-allowed",
+                  opacity: hasLinkedRequest ? 1 : 0.35,
+                  transition: "background-color 0.15s, border-color 0.15s",
+                  "&:hover": hasLinkedRequest
+                    ? {
+                        backgroundColor: "#f7f7f7",
+                        borderColor: "rgba(0,0,0,0.24)",
+                      }
+                    : undefined,
+                }}
               >
                 <MailOutlineIcon sx={{ fontSize: 15 }} />
               </Box>

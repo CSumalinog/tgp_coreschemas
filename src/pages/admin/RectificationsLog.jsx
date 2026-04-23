@@ -1,6 +1,12 @@
 // src/pages/admin/RectificationsLog.jsx
 // Read-only admin view of all rectification requests across all sections.
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -203,8 +209,6 @@ function ViewDialog({ open, request, isDark, border, onClose }) {
           </>
         )}
       </Box>
-
-
     </Dialog>
   );
 }
@@ -251,10 +255,16 @@ export default function RectificationsLog() {
 
   const handleProofMouseEnter = useCallback((id, url) => {
     if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = window.setTimeout(() => setHoveredProof({ id, url }), 150);
+    hoverTimerRef.current = window.setTimeout(
+      () => setHoveredProof({ id, url }),
+      150,
+    );
   }, []);
   const handleProofMouseLeave = useCallback((id) => {
-    if (hoverTimerRef.current) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    if (hoverTimerRef.current) {
+      window.clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
     setHoveredProof((prev) => (prev?.id === id ? null : prev));
   }, []);
 
@@ -551,7 +561,14 @@ export default function RectificationsLog() {
         flex: 1,
         minWidth: 160,
         renderCell: (p) => (
-          <Box sx={{ display: "flex", alignItems: "center", height: "100%", gap: 0.75 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              gap: 0.75,
+            }}
+          >
             {p.value !== "—" ? (
               <>
                 <StaffAvatar
@@ -560,12 +577,20 @@ export default function RectificationsLog() {
                   bg={p.row.reviewerAvatarBg}
                   fg={p.row.reviewerAvatarFg}
                 />
-                <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}>
+                <Typography
+                  sx={{ fontFamily: dm, fontSize: "0.8rem", fontWeight: 500 }}
+                >
                   {p.value}
                 </Typography>
               </>
             ) : (
-              <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.8rem",
+                  color: "text.disabled",
+                }}
+              >
                 —
               </Typography>
             )}
@@ -581,24 +606,41 @@ export default function RectificationsLog() {
         renderCell: (p) => {
           if (!p.value) {
             return (
-              <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-                <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}>—</Typography>
+              <Box
+                sx={{ display: "flex", alignItems: "center", height: "100%" }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.8rem",
+                    color: "text.disabled",
+                  }}
+                >
+                  —
+                </Typography>
               </Box>
             );
           }
-          const { data } = supabase.storage.from("coverage-files").getPublicUrl(p.row.proofPath);
+          const { data } = supabase.storage
+            .from("coverage-files")
+            .getPublicUrl(p.row.proofPath);
           const url = data?.publicUrl;
           return (
             <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
               <Box
-                onClick={(e) => { e.stopPropagation(); setLightboxProof(url); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxProof(url);
+                }}
                 sx={{
                   width: 52,
                   height: 34,
                   borderRadius: "6px",
                   border: `1px solid ${border}`,
                   overflow: "hidden",
-                  backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
+                  backgroundColor: isDark
+                    ? "rgba(17,17,17,0.45)"
+                    : "rgba(53,53,53,0.03)",
                   cursor: "zoom-in",
                   flexShrink: 0,
                 }}
@@ -607,9 +649,19 @@ export default function RectificationsLog() {
                   component="img"
                   src={url}
                   alt="proof"
-                  sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
-                  onMouseEnter={() => handleProofMouseEnter(p.row.proofPath, url)}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "top",
+                    display: "block",
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  onMouseEnter={() =>
+                    handleProofMouseEnter(p.row.proofPath, url)
+                  }
                   onMouseLeave={() => handleProofMouseLeave(p.row.proofPath)}
                 />
               </Box>
@@ -870,13 +922,24 @@ export default function RectificationsLog() {
         >
           <Box
             onClick={(e) => e.stopPropagation()}
-            sx={{ position: "relative", maxWidth: "min(800px, 92vw)", maxHeight: "90vh", lineHeight: 0 }}
+            sx={{
+              position: "relative",
+              maxWidth: "min(800px, 92vw)",
+              maxHeight: "90vh",
+              lineHeight: 0,
+            }}
           >
             <Box
               component="img"
               src={lightboxProof}
               alt="Proof"
-              sx={{ display: "block", maxWidth: "100%", maxHeight: "90vh", objectFit: "contain", borderRadius: "4px" }}
+              sx={{
+                display: "block",
+                maxWidth: "100%",
+                maxHeight: "90vh",
+                objectFit: "contain",
+                borderRadius: "4px",
+              }}
             />
           </Box>
         </Box>
@@ -912,7 +975,13 @@ export default function RectificationsLog() {
               component="img"
               src={hoveredProof.url}
               alt="Proof preview"
-              sx={{ width: "100%", maxHeight: "78vh", objectFit: "contain", display: "block", backgroundColor: isDark ? "#0f0f0f" : "#111" }}
+              sx={{
+                width: "100%",
+                maxHeight: "78vh",
+                objectFit: "contain",
+                display: "block",
+                backgroundColor: isDark ? "#0f0f0f" : "#111",
+              }}
             />
           </Box>
         </Box>

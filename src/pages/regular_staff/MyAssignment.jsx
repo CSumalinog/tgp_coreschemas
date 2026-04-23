@@ -318,7 +318,8 @@ function AssignmentCard({
   const req = a.request;
   const canTimeIn = ["Assigned", "Approved"].includes(a.status);
   const state = canTimeIn ? getTimeInState(req) : null;
-  const announceEmergencyDisabled = !canTimeIn || state === "passed" || !!a.timed_in_at;
+  const announceEmergencyDisabled =
+    !canTimeIn || state === "passed" || !!a.timed_in_at;
   const [menuAnchor, setMenuAnchor] = useState(null);
 
   return (
@@ -846,18 +847,65 @@ function AssignmentDetailDialog({
                 rowGap: 1,
               }}
             >
-              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Event Title</Typography>
-              <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req?.title || "–"}</Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "text.secondary",
+                }}
+              >
+                Event Title
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.82rem",
+                  color: "text.primary",
+                }}
+              >
+                {req?.title || "–"}
+              </Typography>
               {req?.description && (
                 <>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Description</Typography>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary", lineHeight: 1.6 }}>{req.description}</Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    Description
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.primary",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {req.description}
+                  </Typography>
                 </>
               )}
               {req?.event_date && (
                 <>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Date</Typography>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    Date
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.primary",
+                    }}
+                  >
                     {new Date(req.event_date).toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
@@ -868,22 +916,56 @@ function AssignmentDetailDialog({
               )}
               {req?.from_time && (
                 <>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Time</Typography>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>
-                    {formatTime(req.from_time)}{req.to_time ? ` – ${formatTime(req.to_time)}` : ""}
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    Time
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.primary",
+                    }}
+                  >
+                    {formatTime(req.from_time)}
+                    {req.to_time ? ` – ${formatTime(req.to_time)}` : ""}
                   </Typography>
                 </>
               )}
               {req?.venue && (
                 <>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Venue</Typography>
-                  <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.venue}</Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.secondary",
+                    }}
+                  >
+                    Venue
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: dm,
+                      fontSize: "0.82rem",
+                      color: "text.primary",
+                    }}
+                  >
+                    {req.venue}
+                  </Typography>
                 </>
               )}
             </Box>
           </Box>
           {/* CONTACT DETAILS */}
-          {(req?.entity?.name || req?.contact_person || req?.contact_info || assignment.assigned_by_profile?.full_name) && (
+          {(req?.entity?.name ||
+            req?.contact_person ||
+            req?.contact_info ||
+            assignment.assigned_by_profile?.full_name) && (
             <Box>
               <Typography
                 sx={{
@@ -908,26 +990,90 @@ function AssignmentDetailDialog({
               >
                 {req?.entity?.name && (
                   <>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Organization</Typography>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.entity.name}</Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Organization
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.primary",
+                      }}
+                    >
+                      {req.entity.name}
+                    </Typography>
                   </>
                 )}
                 {req?.contact_person && (
                   <>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Contact Person</Typography>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.contact_person}</Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Contact Person
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.primary",
+                      }}
+                    >
+                      {req.contact_person}
+                    </Typography>
                   </>
                 )}
                 {req?.contact_info && (
                   <>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Contact Info</Typography>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{req.contact_info}</Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Contact Info
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.primary",
+                      }}
+                    >
+                      {req.contact_info}
+                    </Typography>
                   </>
                 )}
                 {assignment.assigned_by_profile?.full_name && (
                   <>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.secondary" }}>Assigned by</Typography>
-                    <Typography sx={{ fontFamily: dm, fontSize: "0.82rem", color: "text.primary" }}>{assignment.assigned_by_profile.full_name}</Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.secondary",
+                      }}
+                    >
+                      Assigned by
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: dm,
+                        fontSize: "0.82rem",
+                        color: "text.primary",
+                      }}
+                    >
+                      {assignment.assigned_by_profile.full_name}
+                    </Typography>
                   </>
                 )}
               </Box>
@@ -951,72 +1097,83 @@ function AssignmentDetailDialog({
               </Typography>
               <Divider sx={{ mb: 1.5 }} />
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                {Object.entries(coStaffersBySection).map(([section, staffers]) => {
-                  const colors = SECTION_COLORS[section] || { bg: "#f3f4f6", color: "#6b7280" };
-                  return (
-                    <Box key={section}>
-                      <Box
-                        sx={{
-                          display: "inline-flex",
-                          px: 1,
-                          py: 0.2,
-                          borderRadius: "10px",
-                          backgroundColor: colors.bg,
-                          mb: 0.75,
-                        }}
-                      >
-                        <Typography
+                {Object.entries(coStaffersBySection).map(
+                  ([section, staffers]) => {
+                    const colors = SECTION_COLORS[section] || {
+                      bg: "#f3f4f6",
+                      color: "#6b7280",
+                    };
+                    return (
+                      <Box key={section}>
+                        <Box
                           sx={{
-                            fontFamily: dm,
-                            fontSize: "0.62rem",
-                            fontWeight: 700,
-                            color: colors.color,
-                            letterSpacing: "0.07em",
-                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            px: 1,
+                            py: 0.2,
+                            borderRadius: "10px",
+                            backgroundColor: colors.bg,
+                            mb: 0.75,
                           }}
                         >
-                          {section}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                        {staffers.map((staffer) => (
-                          <Box
-                            key={staffer.id}
+                          <Typography
                             sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                              px: 1.25,
-                              py: 0.75,
-                              borderRadius: "8px",
-                              border: `1px solid ${border}`,
-                              backgroundColor: isDark
-                                ? "rgba(255,255,255,0.02)"
-                                : "rgba(53,53,53,0.01)",
+                              fontFamily: dm,
+                              fontSize: "0.62rem",
+                              fontWeight: 700,
+                              color: colors.color,
+                              letterSpacing: "0.07em",
+                              textTransform: "uppercase",
                             }}
                           >
-                            <StaffAvatar
-                              path={staffer.avatar_url}
-                              name={staffer.full_name}
-                              size={26}
-                              fontSize="0.6rem"
-                            />
-                            <Typography
+                            {section}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.5,
+                          }}
+                        >
+                          {staffers.map((staffer) => (
+                            <Box
+                              key={staffer.id}
                               sx={{
-                                fontFamily: dm,
-                                fontSize: "0.8rem",
-                                fontWeight: 500,
-                                color: "text.primary",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                                px: 1.25,
+                                py: 0.75,
+                                borderRadius: "8px",
+                                border: `1px solid ${border}`,
+                                backgroundColor: isDark
+                                  ? "rgba(255,255,255,0.02)"
+                                  : "rgba(53,53,53,0.01)",
                               }}
                             >
-                              {staffer.full_name}
-                            </Typography>
-                          </Box>
-                        ))}
+                              <StaffAvatar
+                                path={staffer.avatar_url}
+                                name={staffer.full_name}
+                                size={26}
+                                fontSize="0.6rem"
+                              />
+                              <Typography
+                                sx={{
+                                  fontFamily: dm,
+                                  fontSize: "0.8rem",
+                                  fontWeight: 500,
+                                  color: "text.primary",
+                                }}
+                              >
+                                {staffer.full_name}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
                       </Box>
-                    </Box>
-                  );
-                })}
+                    );
+                  },
+                )}
               </Box>
             </Box>
           )}

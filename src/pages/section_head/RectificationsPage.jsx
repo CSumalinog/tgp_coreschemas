@@ -1,5 +1,11 @@
 // src/pages/section_head/RectificationsPage.jsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Box,
   Typography,
@@ -47,9 +53,24 @@ const GOLD = "#F5C52B";
 const dm = "'Inter', sans-serif";
 
 const STATUS_CONFIG = {
-  pending:  { label: "Pending",  bg: "#fefce8", color: "#854d0e", dot: "#eab308" },
-  approved: { label: "Approved", bg: "#f0fdf4", color: "#166534", dot: "#22c55e" },
-  rejected: { label: "Rejected", bg: "#fef2f2", color: "#991b1b", dot: "#ef4444" },
+  pending: {
+    label: "Pending",
+    bg: "#fefce8",
+    color: "#854d0e",
+    dot: "#eab308",
+  },
+  approved: {
+    label: "Approved",
+    bg: "#f0fdf4",
+    color: "#166534",
+    dot: "#22c55e",
+  },
+  rejected: {
+    label: "Rejected",
+    bg: "#fef2f2",
+    color: "#991b1b",
+    dot: "#ef4444",
+  },
 };
 
 // ── Rectification Review Dialog ───────────────────────────────────────────────
@@ -166,7 +187,9 @@ function ReviewDialog({
                 cursor: "zoom-in",
                 transition: "background 0.15s, box-shadow 0.15s",
                 "&:hover": {
-                  backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "#f0f0f0",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.07)"
+                    : "#f0f0f0",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                 },
               }}
@@ -179,7 +202,9 @@ function ReviewDialog({
                   borderRadius: "5px",
                   overflow: "hidden",
                   flexShrink: 0,
-                  backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#e8e8e8",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "#e8e8e8",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -195,9 +220,16 @@ function ReviewDialog({
                     objectFit: "cover",
                     objectPosition: "top",
                   }}
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
-                  onMouseEnter={() => onProofMouseEnter && onProofMouseEnter(request.proof_path, proofUrl)}
-                  onMouseLeave={() => onProofMouseLeave && onProofMouseLeave(request.proof_path)}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  onMouseEnter={() =>
+                    onProofMouseEnter &&
+                    onProofMouseEnter(request.proof_path, proofUrl)
+                  }
+                  onMouseLeave={() =>
+                    onProofMouseLeave && onProofMouseLeave(request.proof_path)
+                  }
                 />
               </Box>
               <Box>
@@ -387,10 +419,16 @@ export default function RectificationsPage() {
 
   const handleProofMouseEnter = (id, url) => {
     if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = window.setTimeout(() => setHoveredProof({ id, url }), 150);
+    hoverTimerRef.current = window.setTimeout(
+      () => setHoveredProof({ id, url }),
+      150,
+    );
   };
   const handleProofMouseLeave = (id) => {
-    if (hoverTimerRef.current) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    if (hoverTimerRef.current) {
+      window.clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
     setHoveredProof((prev) => (prev?.id === id ? null : prev));
   };
 
@@ -597,25 +635,37 @@ export default function RectificationsPage() {
 
   // ── Proof thumbnail cell ─────────────────────────────────────────────────────
   function ProofCell({ proofPath }) {
-    if (!proofPath) return (
-      <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-        <Typography sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}>—</Typography>
-      </Box>
-    );
-    const { data } = supabase.storage.from("coverage-files").getPublicUrl(proofPath);
+    if (!proofPath)
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography
+            sx={{ fontFamily: dm, fontSize: "0.8rem", color: "text.disabled" }}
+          >
+            —
+          </Typography>
+        </Box>
+      );
+    const { data } = supabase.storage
+      .from("coverage-files")
+      .getPublicUrl(proofPath);
     const url = data?.publicUrl;
     const cellId = proofPath;
     return (
       <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
         <Box
-          onClick={(e) => { e.stopPropagation(); setLightboxProof(url); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setLightboxProof(url);
+          }}
           sx={{
             width: 52,
             height: 34,
             borderRadius: "6px",
             border: `1px solid ${border}`,
             overflow: "hidden",
-            backgroundColor: isDark ? "rgba(17,17,17,0.45)" : "rgba(53,53,53,0.03)",
+            backgroundColor: isDark
+              ? "rgba(17,17,17,0.45)"
+              : "rgba(53,53,53,0.03)",
             cursor: "zoom-in",
             flexShrink: 0,
           }}
@@ -624,8 +674,16 @@ export default function RectificationsPage() {
             component="img"
             src={url}
             alt="proof"
-            sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "top",
+              display: "block",
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
             onMouseEnter={() => handleProofMouseEnter(cellId, url)}
             onMouseLeave={() => handleProofMouseLeave(cellId)}
           />
@@ -736,8 +794,24 @@ export default function RectificationsPage() {
                 backgroundColor: p.row.statusBg,
               }}
             >
-              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: p.row.statusDot, flexShrink: 0 }} />
-              <Typography sx={{ fontFamily: dm, fontSize: "0.72rem", fontWeight: 600, color: p.row.statusColor, textTransform: "capitalize" }}>
+              <Box
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  backgroundColor: p.row.statusDot,
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: dm,
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  color: p.row.statusColor,
+                  textTransform: "capitalize",
+                }}
+              >
                 {p.value}
               </Typography>
             </Box>
@@ -984,13 +1058,24 @@ export default function RectificationsPage() {
         >
           <Box
             onClick={(e) => e.stopPropagation()}
-            sx={{ position: "relative", maxWidth: "min(800px, 92vw)", maxHeight: "90vh", lineHeight: 0 }}
+            sx={{
+              position: "relative",
+              maxWidth: "min(800px, 92vw)",
+              maxHeight: "90vh",
+              lineHeight: 0,
+            }}
           >
             <Box
               component="img"
               src={lightboxProof}
               alt="Proof"
-              sx={{ display: "block", maxWidth: "100%", maxHeight: "90vh", objectFit: "contain", borderRadius: "4px" }}
+              sx={{
+                display: "block",
+                maxWidth: "100%",
+                maxHeight: "90vh",
+                objectFit: "contain",
+                borderRadius: "4px",
+              }}
             />
           </Box>
         </Box>
@@ -1026,7 +1111,13 @@ export default function RectificationsPage() {
               component="img"
               src={hoveredProof.url}
               alt="Proof preview"
-              sx={{ width: "100%", maxHeight: "78vh", objectFit: "contain", display: "block", backgroundColor: isDark ? "#0f0f0f" : "#111" }}
+              sx={{
+                width: "100%",
+                maxHeight: "78vh",
+                objectFit: "contain",
+                display: "block",
+                backgroundColor: isDark ? "#0f0f0f" : "#111",
+              }}
             />
           </Box>
         </Box>

@@ -589,64 +589,83 @@ export default function SemesterManagement() {
       renderCell: (p) => {
         const rowRule = getRuleForRow(p.row);
         return (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: 0.75,
-            height: "100%",
-            pr: 0.5,
-          }}
-        >
-          {rowRule.isCurrent ? (
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                px: 1.25,
-                py: 0.35,
-                borderRadius: "10px",
-                border: "1px solid rgba(21,128,61,0.18)",
-                backgroundColor: "rgba(34,197,94,0.08)",
-              }}
-            >
-              <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "#15803d", letterSpacing: "0.04em" }}>
-                Active
-              </Typography>
-            </Box>
-          ) : getRuleForRow(p.row).canSetActive ? (
-            <Box
-              onClick={() => openActiveConfirm(p.row)}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                px: 1.25,
-                py: 0.35,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                backgroundColor: "transparent",
-                cursor: "pointer",
-                transition: "all 0.15s",
-                "&:hover": { borderColor: "rgba(53,53,53,0.2)", backgroundColor: HOVER_BG },
-              }}
-            >
-              <Typography sx={{ fontFamily: dm, fontSize: "0.68rem", fontWeight: 600, color: "text.secondary", letterSpacing: "0.04em" }}>
-                Set Active
-              </Typography>
-            </Box>
-          ) : null}
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAnchor(e.currentTarget);
-              setMenuRow(p.row);
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 0.75,
+              height: "100%",
+              pr: 0.5,
             }}
           >
-            <MoreVertIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
+            {rowRule.isCurrent ? (
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  px: 1.25,
+                  py: 0.35,
+                  borderRadius: "10px",
+                  border: "1px solid rgba(21,128,61,0.18)",
+                  backgroundColor: "rgba(34,197,94,0.08)",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: "#15803d",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Active
+                </Typography>
+              </Box>
+            ) : getRuleForRow(p.row).canSetActive ? (
+              <Box
+                onClick={() => openActiveConfirm(p.row)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  px: 1.25,
+                  py: 0.35,
+                  borderRadius: "10px",
+                  border: `1px solid ${border}`,
+                  backgroundColor: "transparent",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  "&:hover": {
+                    borderColor: "rgba(53,53,53,0.2)",
+                    backgroundColor: HOVER_BG,
+                  },
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: dm,
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: "text.secondary",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Set Active
+                </Typography>
+              </Box>
+            ) : null}
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuAnchor(e.currentTarget);
+                setMenuRow(p.row);
+              }}
+            >
+              <MoreVertIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         );
       },
     },

@@ -479,14 +479,11 @@ export default function AdminCoverageTimeRecordPage() {
                 <Box
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(
-                      `/admin/coverage-request-details/${p.row.reqId}`,
-                      {
-                        state: {
-                          backTo: "/admin/coverage-tracker/time-record",
-                        },
+                    navigate(`/admin/coverage-request-details/${p.row.reqId}`, {
+                      state: {
+                        backTo: "/admin/coverage-tracker/time-record",
                       },
-                    );
+                    });
                   }}
                   sx={{
                     display: "inline-flex",

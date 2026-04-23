@@ -12,7 +12,6 @@ import {
   Divider,
   useTheme,
 } from "@mui/material";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
@@ -30,7 +29,7 @@ const GOLD_08 = "rgba(245,197,43,0.08)";
 const CHARCOAL = "#353535";
 const dm = "'Inter', sans-serif";
 
-const MODE = { VIEW: "view", EDIT: "edit", CREATE: "create" };
+const MODE = { EDIT: "edit", CREATE: "create" };
 
 export default function CalendarEventDialog({
   open,
@@ -51,40 +50,42 @@ export default function CalendarEventDialog({
 
   const titleRef = useRef(null);
 
-  const [mode, setMode] = useState(MODE.CREATE);
   const [eventType, setEventType] = useState("single");
   const [title, setTitle] = useState("");
   const [start, setStart] = useState(null);
   const [end, setEnd] = useState(null);
   const [error, setError] = useState("");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const mode = existingEvent ? MODE.EDIT : MODE.CREATE;
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     const base = defaultDate ? dayjs(defaultDate) : dayjs();
-    if (existingEvent) {
-      setMode(MODE.VIEW);
-      setTitle(existingEvent.title || "");
-      setEventType(existingEvent.eventType || "single");
-      setStart(dayjs(existingEvent.startDate));
-      setEnd(dayjs(existingEvent.endDate));
-    } else {
-      setMode(MODE.CREATE);
-      setTitle("");
-      setEventType(initialEventType);
-      if (initialEventType === "single") {
-        setStart(base);
-        setEnd(base.add(1, "hour"));
+    const timer = setTimeout(() => {
+      if (existingEvent) {
+        setTitle(existingEvent.title || "");
+        setEventType(existingEvent.eventType || "single");
+        setStart(dayjs(existingEvent.startDate));
+        setEnd(dayjs(existingEvent.endDate));
       } else {
-        setStart(base.startOf("day"));
-        setEnd(base.endOf("day"));
+        setTitle("");
+        setEventType(initialEventType);
+        if (initialEventType === "single") {
+          setStart(base);
+          setEnd(base.add(1, "hour"));
+        } else {
+          setStart(base.startOf("day"));
+          setEnd(base.endOf("day"));
+        }
       }
-    }
-    setError("");
+      setError("");
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [open, existingEvent, defaultDate, initialEventType]);
 
-  const isEditable = mode !== MODE.VIEW;
+  const isEditable = true;
 
   // ── Logic ─────────────────────────────────────────────────────────────────
   const hasConflict = (newStart, newEnd) =>
@@ -175,6 +176,7 @@ export default function CalendarEventDialog({
 
   const singleLineInputSx = {
     ...inputSx,
+    mt: 1,
     "& .MuiOutlinedInput-root": {
       ...inputSx["& .MuiOutlinedInput-root"],
       minHeight: MODAL_INPUT_HEIGHT,
@@ -188,13 +190,11 @@ export default function CalendarEventDialog({
       value: "single",
       label: "Single Day",
       sub: "Block specific hours",
-      Icon: AccessTimeOutlinedIcon,
     },
     {
       value: "multi",
       label: "Multi Day",
       sub: "Block full day range",
-      Icon: CalendarMonthOutlinedIcon,
     },
   ];
 
@@ -262,7 +262,6 @@ export default function CalendarEventDialog({
                   lineHeight: 1.4,
                 }}
               >
-                {mode === MODE.VIEW && "View-only — click edit to make changes"}
                 {mode === MODE.EDIT &&
                   "Editing this block — clients will see changes"}
                 {mode === MODE.CREATE &&
@@ -281,21 +280,6 @@ export default function CalendarEventDialog({
               flexShrink: 0,
             }}
           >
-            {existingEvent && mode === MODE.VIEW && (
-              <IconButton
-                size="small"
-                onClick={() => setMode(MODE.EDIT)}
-                sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "10px",
-                  color: "text.secondary",
-                  "&:hover": { backgroundColor: GOLD_08, color: CHARCOAL },
-                }}
-              >
-                <EditOutlinedIcon sx={{ fontSize: 14 }} />
-              </IconButton>
-            )}
             {existingEvent && (
               <IconButton
                 size="small"
@@ -423,8 +407,12 @@ export default function CalendarEventDialog({
               Block Type:
             </Typography>
             <Box sx={{ display: "flex", gap: 1, flex: 1, width: "100%" }}>
-              {typeOptions.map(({ value, label, sub, Icon }) => {
+              {typeOptions.map(({ value, label, sub }) => {
                 const selected = eventType === value;
+                const TypeIcon =
+                  value === "single"
+                    ? AccessTimeOutlinedIcon
+                    : CalendarMonthOutlinedIcon;
                 return (
                   <Box
                     key={value}
@@ -455,7 +443,7 @@ export default function CalendarEventDialog({
                         mb: 0.2,
                       }}
                     >
-                      <Icon
+                      <TypeIcon
                         sx={{
                           fontSize: 13,
                           color: selected ? GOLD : "text.disabled",
@@ -510,7 +498,15 @@ export default function CalendarEventDialog({
             >
               {eventType === "single" ? "Time Range:" : "Date Range:"}
             </Typography>
-            <Box sx={{ display: "flex", gap: 1.25, flex: 1, width: "100%" }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1.25,
+                flex: 1,
+                minWidth: 0,
+                overflowX: "hidden",
+              }}
+            >
               {eventType === "single" ? (
                 <>
                   <TextField

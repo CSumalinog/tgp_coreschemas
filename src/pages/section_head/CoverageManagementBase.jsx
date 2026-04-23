@@ -192,7 +192,7 @@ const getPreferredView = (allowedViews, preferredView) => {
 const VIEW_LABEL_BY_KEY = {
   all: "All",
   "for-assignment": "For Assignment",
-  "approved": "Approved",
+  approved: "Approved",
   assigned: "Assigned",
   "on-going": "On Going",
   completed: "Completed",

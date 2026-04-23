@@ -690,7 +690,9 @@ export default function SecHeadDashboard() {
                     }}
                   >
                     <OpenInNewOutlinedIcon sx={{ fontSize: 14 }} />
-                    <Typography sx={{ fontSize: "0.7rem" }}>View all</Typography>
+                    <Typography sx={{ fontSize: "0.7rem" }}>
+                      View all
+                    </Typography>
                   </Box>
                 </Tooltip>
               }

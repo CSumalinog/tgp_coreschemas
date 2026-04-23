@@ -1,40 +1,16 @@
-// src/pages/admin/CalendarManagement.jsx
+﻿// src/pages/admin/CalendarManagement.jsx
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import {
-  Box,
-  Typography,
-  IconButton,
-  Alert,
-  useTheme,
-  Tooltip,
-  Divider,
-  Dialog,
-  TextField,
-  Button,
-  Menu,
-  MenuItem,
-} from "@mui/material";
+import { Box, Typography, IconButton, Alert, useTheme, Divider, Menu, MenuItem } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNewOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIosOutlined";
-import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import AddIcon from "@mui/icons-material/AddOutlined";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeftOutlined";
-import ChevronRightIcon from "@mui/icons-material/ChevronRightOutlined";
-import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate, useLocation } from "react-router-dom";
 import CalendarEventDialog from "../../components/admin/CalendarAvailabilitySetter";
+import BlockedDatesPanel from "../../components/admin/BlockedDatesPanel";
+import RequestSlotsDialog from "../../components/admin/RequestSlotsDialog";
+import DutySettingsDialog from "../../components/admin/DutySettingsDialog";
 import { supabase } from "../../lib/supabaseClient";
 import { pushSuccessToast } from "../../components/common/SuccessToast";
 import BrandedLoader from "../../components/common/BrandedLoader";
-import BrandDatePicker from "../../components/common/BrandDatePicker";
-import { getSemesterDisplayName } from "../../utils/semesterLabel";
-import {
-  BUTTON_HEIGHT,
-  CONTROL_RADIUS,
-  MODAL_ACTION_HEIGHT,
-  MODAL_INPUT_HEIGHT,
-} from "../../utils/layoutTokens";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const GOLD = "#F5C52B";
@@ -42,32 +18,7 @@ const GOLD_08 = "rgba(245,197,43,0.08)";
 const CHARCOAL = "#353535";
 const BORDER = "rgba(53,53,53,0.08)";
 const BORDER_DARK = "rgba(255,255,255,0.08)";
-const HOVER_BG = "rgba(53,53,53,0.03)";
 const dm = "'Inter', sans-serif";
-const MODAL_FIELD_SX = {
-  "& .MuiOutlinedInput-root": {
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    borderRadius: CONTROL_RADIUS,
-    minHeight: MODAL_INPUT_HEIGHT,
-    alignItems: "center",
-  },
-  "& .MuiInputLabel-root": {
-    fontFamily: dm,
-    fontSize: "0.8rem",
-  },
-};
-const MODAL_TEXTAREA_SX = {
-  "& .MuiOutlinedInput-root": {
-    fontFamily: dm,
-    fontSize: "0.82rem",
-    borderRadius: CONTROL_RADIUS,
-  },
-  "& .MuiInputLabel-root": {
-    fontFamily: dm,
-    fontSize: "0.8rem",
-  },
-};
 
 // ── Calendar config ───────────────────────────────────────────────────────────
 const SCHEDULER_START_HOUR = 8;
@@ -93,12 +44,6 @@ const formatISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const isPastDate = (date) => startOfDay(date) < startOfDay(new Date());
 
-function getWeekOfMonth(date) {
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-  const dayOffset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-  return Math.ceil((date.getDate() + dayOffset) / 7);
-}
-
 function getDensityBg(count, isDark) {
   if (!count) return "transparent";
   if (count === 1)
@@ -118,942 +63,6 @@ function fmtDate(dateStr) {
   });
 }
 
-// ── Blocked Dates Panel ───────────────────────────────────────────────────────
-function BlockedDatesPanel({
-  events,
-  loading,
-  isDark,
-  onEdit,
-  onDelete,
-  onAdd,
-  onViewAll,
-  onOpenLogEntry,
-  defaultSlots,
-  overrideCount,
-  slotOverrides,
-  onOpenSlotSettings,
-  onOpenDutySettings,
-  collapsed,
-  onToggle,
-}) {
-  const border = isDark ? BORDER_DARK : BORDER;
-  const today = new Date();
-  const [quickAddAnchor, setQuickAddAnchor] = useState(null);
-  const [blockedDatesOpen, setBlockedDatesOpen] = useState(true);
-  const [coverageSlotsOpen, setCoverageSlotsOpen] = useState(true);
-  const quickAddOpen = Boolean(quickAddAnchor);
-
-  const openQuickAdd = (event) => setQuickAddAnchor(event.currentTarget);
-  const closeQuickAdd = () => setQuickAddAnchor(null);
-  const handleQuickAddBlockedDate = () => {
-    closeQuickAdd();
-    onAdd?.();
-  };
-  const handleQuickModifySlots = () => {
-    closeQuickAdd();
-    onOpenSlotSettings?.();
-  };
-  const handleQuickOpenDutySettings = () => {
-    closeQuickAdd();
-    onOpenDutySettings?.();
-  };
-
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.startDate) - new Date(b.startDate),
-  );
-  const upcoming = sorted.filter(
-    (ev) => new Date(ev.endDate) >= startOfDay(today),
-  );
-  const past = sorted.filter((ev) => new Date(ev.endDate) < startOfDay(today));
-
-  // ── Collapsed state — just a slim vertical strip ──────────────────────────
-  if (collapsed) {
-    return (
-      <>
-        <Box
-          sx={{
-            width: 36,
-            flexShrink: 0,
-            position: "sticky",
-            top: 0,
-            alignSelf: "flex-start",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          {/* Expand button */}
-          <Tooltip title="Show blocked dates" placement="left" arrow>
-            <Box
-              onClick={onToggle}
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                backgroundColor: "background.paper",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "all 0.15s",
-                "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
-              }}
-            >
-              <ChevronLeftIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-            </Box>
-          </Tooltip>
-
-          {/* Add button */}
-          <Tooltip title="Quick actions" placement="left" arrow>
-            <Box
-              onClick={openQuickAdd}
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: "10px",
-                backgroundColor: "#212121",
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "background-color 0.15s",
-                "&:hover": { backgroundColor: "#333" },
-              }}
-            >
-              <AddIcon sx={{ fontSize: 15 }} />
-            </Box>
-          </Tooltip>
-
-          {/* Badge — upcoming count */}
-          {upcoming.length > 0 && (
-            <Tooltip
-              title={`${upcoming.length} upcoming blocked date${upcoming.length > 1 ? "s" : ""}`}
-              placement="left"
-              arrow
-            >
-              <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: "background.paper",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.6rem",
-                    fontWeight: 700,
-                    color: "text.secondary",
-                    lineHeight: 1,
-                  }}
-                >
-                  {upcoming.length}
-                </Typography>
-              </Box>
-            </Tooltip>
-          )}
-        </Box>
-
-        <Menu
-          anchorEl={quickAddAnchor}
-          open={quickAddOpen}
-          onClose={closeQuickAdd}
-          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-          transformOrigin={{ vertical: "top", horizontal: "left" }}
-          slotProps={{
-            paper: {
-              sx: {
-                mt: 0.5,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                boxShadow: isDark
-                  ? "0 14px 28px rgba(0,0,0,0.5)"
-                  : "0 10px 22px rgba(53,53,53,0.14)",
-              },
-            },
-          }}
-        >
-          <MenuItem
-            onClick={handleQuickAddBlockedDate}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
-          >
-            Block dates
-          </MenuItem>
-          <MenuItem
-            onClick={handleQuickModifySlots}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
-          >
-            Modify slots
-          </MenuItem>
-          <MenuItem
-            onClick={handleQuickOpenDutySettings}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
-          >
-            Duty settings
-          </MenuItem>
-        </Menu>
-      </>
-    );
-  }
-
-  // ── Expanded state ────────────────────────────────────────────────────────
-  const BlockCard = ({ ev, isPast }) => {
-    const start = new Date(ev.startDate);
-    const end = new Date(ev.endDate);
-    const isMulti =
-      ev.eventType === "multi" || formatISO(start) !== formatISO(end);
-    const dateLabel = isMulti
-      ? `${fmtDate(formatISO(start))} – ${fmtDate(formatISO(end))}`
-      : fmtDate(formatISO(start));
-
-    return (
-      <Box
-        onClick={() => onOpenLogEntry?.(ev.id)}
-        sx={{
-          px: 1.5,
-          py: 1.25,
-          borderRadius: "10px",
-          border: `1px solid ${border}`,
-          backgroundColor: isPast
-            ? "transparent"
-            : isDark
-              ? "rgba(255,255,255,0.02)"
-              : "rgba(53,53,53,0.015)",
-          opacity: isPast ? 0.5 : 1,
-          transition: "opacity 0.15s",
-          cursor: "pointer",
-          "&:hover": { opacity: 1 },
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 1,
-            mb: 0.5,
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.75,
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            <Box
-              sx={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                backgroundColor: isPast
-                  ? "text.disabled"
-                  : "rgba(53,53,53,0.35)",
-                flexShrink: 0,
-              }}
-            />
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                color: isPast ? "text.disabled" : "text.primary",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {ev.title}
-            </Typography>
-          </Box>
-          {!isPast && (
-            <Box sx={{ display: "flex", gap: 0.25, flexShrink: 0 }}>
-              <Tooltip title="Edit" arrow>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(ev);
-                  }}
-                  sx={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "10px",
-                    color: "text.secondary",
-                    "&:hover": { color: CHARCOAL, backgroundColor: GOLD_08 },
-                  }}
-                >
-                  <EditOutlinedIcon sx={{ fontSize: 12 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete" arrow>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(ev.id);
-                  }}
-                  sx={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "10px",
-                    color: "text.secondary",
-                    "&:hover": {
-                      color: "#dc2626",
-                      backgroundColor: isDark
-                        ? "rgba(220,38,38,0.1)"
-                        : "#fef2f2",
-                    },
-                  }}
-                >
-                  <DeleteOutlinedIcon sx={{ fontSize: 12 }} />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          )}
-        </Box>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.25,
-            mb: ev.notes ? 0.5 : 0,
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.68rem",
-              color: "text.secondary",
-            }}
-          >
-            {dateLabel}
-          </Typography>
-        </Box>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 0.75,
-            mb: ev.notes ? 0.5 : 0,
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.66rem",
-              color: "text.disabled",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-            title={`Blocked by ${ev.blocked_by_name || "Unknown"}`}
-          >
-            Blocked by: {ev.blocked_by_name || "Unknown"}
-          </Typography>
-        </Box>
-        {ev.notes && (
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontSize: "0.67rem",
-              color: "text.disabled",
-              lineHeight: 1.4,
-              fontStyle: "italic",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {ev.notes}
-          </Typography>
-        )}
-      </Box>
-    );
-  };
-
-  return (
-    <Box
-      sx={{
-        width: 268,
-        flexShrink: 0,
-        position: "sticky",
-        top: 0,
-        alignSelf: "flex-start",
-        height: "100%",
-        minHeight: 0,
-        // Animate width when toggling (handled by parent gap + width change)
-        transition: "width 0.2s ease",
-      }}
-    >
-      <Box
-        sx={{
-          height: "100%",
-          minHeight: 0,
-          borderRadius: "10px",
-          border: `1px solid ${border}`,
-          backgroundColor: "background.paper",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "100%",
-        }}
-      >
-        {/* Panel header */}
-        <Box
-          sx={{
-            px: 2,
-            py: 1.75,
-            borderBottom: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.84rem",
-                fontWeight: 700,
-                color: "text.primary",
-                lineHeight: 1.2,
-              }}
-            >
-              Calendar Controls
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.66rem",
-                color: "text.secondary",
-              }}
-            >
-              Manage blocked dates, request slots, and duty controls
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
-            {/* Collapse button */}
-            <Tooltip title="Collapse" arrow>
-              <Box
-                onClick={onToggle}
-                sx={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08 },
-                }}
-              >
-                <ChevronRightIcon
-                  sx={{ fontSize: 15, color: "text.secondary" }}
-                />
-              </Box>
-            </Tooltip>
-
-            {/* Add button */}
-            <Tooltip title="Quick actions" arrow>
-              <Box
-                onClick={openQuickAdd}
-                sx={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: "10px",
-                  backgroundColor: "#212121",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  transition: "background-color 0.15s",
-                  "&:hover": { backgroundColor: "#333" },
-                }}
-              >
-                <AddIcon sx={{ fontSize: 15 }} />
-              </Box>
-            </Tooltip>
-          </Box>
-        </Box>
-
-        <Menu
-          anchorEl={quickAddAnchor}
-          open={quickAddOpen}
-          onClose={closeQuickAdd}
-          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-          transformOrigin={{ vertical: "top", horizontal: "left" }}
-          slotProps={{
-            paper: {
-              sx: {
-                mt: 0.5,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                boxShadow: isDark
-                  ? "0 14px 28px rgba(0,0,0,0.5)"
-                  : "0 10px 22px rgba(53,53,53,0.14)",
-              },
-            },
-          }}
-        >
-          <MenuItem
-            onClick={handleQuickAddBlockedDate}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
-          >
-            Blocking dates
-          </MenuItem>
-          <MenuItem
-            onClick={handleQuickModifySlots}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
-          >
-            Modify slots
-          </MenuItem>
-          <MenuItem
-            onClick={handleQuickOpenDutySettings}
-            sx={{ fontFamily: dm, fontSize: "0.82rem", minWidth: 170 }}
-          >
-            Duty settings
-          </MenuItem>
-        </Menu>
-
-        {/* List body */}
-        <Box
-          sx={{
-            overflowY: "auto",
-            flex: 1,
-            px: 1.5,
-            py: 1.5,
-            "&::-webkit-scrollbar": { width: 3 },
-            "&::-webkit-scrollbar-track": { background: "transparent" },
-            "&::-webkit-scrollbar-thumb": {
-              background: isDark ? "#3a3a3a" : "#e0e0e0",
-              borderRadius: "10px",
-            },
-          }}
-        >
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-                px: 0.25,
-              }}
-            >
-              <Box
-                onClick={() => setBlockedDatesOpen((v) => !v)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.35,
-                  cursor: "pointer",
-                  userSelect: "none",
-                  justifyContent: "space-between",
-                  width: "100%",
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.74rem",
-                    fontWeight: 700,
-                    color: "text.primary",
-                  }}
-                >
-                  Blocked Dates
-                </Typography>
-                <ChevronRightIcon
-                  sx={{
-                    fontSize: 14,
-                    color: "text.secondary",
-                    transform: blockedDatesOpen
-                      ? "rotate(90deg)"
-                      : "rotate(0deg)",
-                    transition: "transform 0.15s",
-                  }}
-                />
-              </Box>
-            </Box>
-
-            <Box
-              sx={{
-                px: 0.25,
-                mt: -0.25,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.66rem",
-                  color: "text.secondary",
-                }}
-              >
-                Upcoming: {upcoming.length}
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.66rem",
-                  color: "text.secondary",
-                }}
-              >
-                Past: {past.length}
-              </Typography>
-              <Typography
-                onClick={onViewAll}
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.68rem",
-                  fontWeight: 600,
-                  color: "text.secondary",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  "&:hover": {
-                    color: CHARCOAL,
-                    textDecoration: "underline",
-                    textUnderlineOffset: "2px",
-                  },
-                }}
-              >
-                See all
-              </Typography>
-            </Box>
-
-            {blockedDatesOpen &&
-              (loading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-                  <BrandedLoader size={30} inline />
-                </Box>
-              ) : events.length === 0 ? (
-                <Box sx={{ textAlign: "center", py: 2.5 }}>
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      color: "text.disabled",
-                    }}
-                  >
-                    No blocked dates yet
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.68rem",
-                      color: "text.disabled",
-                      mt: 0.25,
-                    }}
-                  >
-                    Click + to add one
-                  </Typography>
-                </Box>
-              ) : (
-                <>
-                  {upcoming.length > 0 && (
-                    <>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.6rem",
-                          fontWeight: 700,
-                          color: "text.disabled",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          px: 0.25,
-                          mb: 0.25,
-                        }}
-                      >
-                        Upcoming
-                      </Typography>
-                      {upcoming.map((ev) => (
-                        <BlockCard key={ev.id} ev={ev} isPast={false} />
-                      ))}
-                    </>
-                  )}
-                  {past.length > 0 && (
-                    <>
-                      <Divider
-                        sx={{
-                          borderColor: isDark ? BORDER_DARK : BORDER,
-                          my: 0.75,
-                        }}
-                      />
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.6rem",
-                          fontWeight: 700,
-                          color: "text.disabled",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          px: 0.25,
-                          mb: 0.25,
-                        }}
-                      >
-                        Past
-                      </Typography>
-                      {past.map((ev) => (
-                        <BlockCard key={ev.id} ev={ev} isPast={true} />
-                      ))}
-                    </>
-                  )}
-                </>
-              ))}
-
-            <Divider
-              sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }}
-            />
-
-            <Box
-              onClick={() => setCoverageSlotsOpen((v) => !v)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-                px: 0.25,
-                cursor: "pointer",
-                userSelect: "none",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.74rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                }}
-              >
-                Request Slots
-              </Typography>
-              <ChevronRightIcon
-                sx={{
-                  fontSize: 14,
-                  color: "text.secondary",
-                  transform: coverageSlotsOpen
-                    ? "rotate(90deg)"
-                    : "rotate(0deg)",
-                  transition: "transform 0.15s",
-                }}
-              />
-            </Box>
-
-            <Box
-              sx={{
-                px: 0.25,
-                mt: -0.25,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.66rem",
-                  color: "text.secondary",
-                }}
-              >
-                Default: {defaultSlots}
-              </Typography>
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.66rem",
-                  color: "text.secondary",
-                }}
-              >
-                Override: {overrideCount}
-              </Typography>
-              <Tooltip title="Add override" arrow>
-                <Box
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenSlotSettings?.();
-                  }}
-                  sx={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: "10px",
-                    border: `1px solid ${border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    color: "text.secondary",
-                    "&:hover": {
-                      borderColor: GOLD,
-                      backgroundColor: GOLD_08,
-                      color: CHARCOAL,
-                    },
-                  }}
-                >
-                  <AddIcon sx={{ fontSize: 12 }} />
-                </Box>
-              </Tooltip>
-            </Box>
-
-            {coverageSlotsOpen && (
-              <Box
-                sx={{
-                  px: 0.25,
-                  py: 0.25,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 0.45,
-                }}
-              >
-                {slotOverrides.length === 0 ? (
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.67rem",
-                      color: "text.disabled",
-                    }}
-                  >
-                    No overridden dates yet.
-                  </Typography>
-                ) : (
-                  slotOverrides.map((row) => (
-                    <Box
-                      key={row.slot_date}
-                      sx={{
-                        px: 0.6,
-                        py: 0.45,
-                        borderRadius: "8px",
-                        border: `1px solid ${border}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 1,
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.015)"
-                          : "rgba(53,53,53,0.015)",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.66rem",
-                          color: "text.secondary",
-                        }}
-                      >
-                        {new Date(
-                          `${row.slot_date}T00:00:00`,
-                        ).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontFamily: dm,
-                          fontSize: "0.66rem",
-                          color: "text.primary",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {row.slot_capacity} slots
-                      </Typography>
-                    </Box>
-                  ))
-                )}
-              </Box>
-            )}
-
-            <Divider
-              sx={{ borderColor: isDark ? BORDER_DARK : BORDER, my: 0.5 }}
-            />
-
-            <Box
-              sx={{
-                px: 0.85,
-                py: 0.75,
-                borderRadius: "10px",
-                border: `1px solid ${border}`,
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.015)"
-                  : "rgba(53,53,53,0.015)",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: dm,
-                  fontSize: "0.74rem",
-                  fontWeight: 700,
-                  color: "text.primary",
-                }}
-              >
-                Duty Schedule
-              </Typography>
-              <Typography
-                sx={{
-                  mt: 0.2,
-                  fontFamily: dm,
-                  fontSize: "0.66rem",
-                  color: "text.secondary",
-                }}
-              >
-                Manage duty blackout dates per semester.
-              </Typography>
-              <Box
-                onClick={onOpenDutySettings}
-                sx={{
-                  mt: 0.8,
-                  px: 1,
-                  py: 0.55,
-                  borderRadius: "10px",
-                  border: `1px solid ${border}`,
-                  backgroundColor: "#f7f7f8",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  fontFamily: dm,
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  color: "text.secondary",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    borderColor: "rgba(53,53,53,0.3)",
-                    color: "text.primary",
-                    backgroundColor: "#ededee",
-                  },
-                }}
-              >
-                Open Duty Settings
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Box>
-    </Box>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
 export default function CalendarManagement() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1070,7 +79,7 @@ export default function CalendarManagement() {
   const [currentMonthStart, setCurrentMonthStart] = useState(() =>
     startOfMonth(new Date()),
   );
-  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1079,147 +88,22 @@ export default function CalendarManagement() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [slotDialogOpen, setSlotDialogOpen] = useState(false);
-  const [slotLoading, setSlotLoading] = useState(false);
-  const [slotSaving, setSlotSaving] = useState(false);
-  const [slotError, setSlotError] = useState("");
-  const [defaultSlotsInput, setDefaultSlotsInput] = useState("2");
-  const [overrideDateInput, setOverrideDateInput] = useState(formatISO(today));
-  const [overrideSlotsInput, setOverrideSlotsInput] = useState("2");
-  const [slotOverrides, setSlotOverrides] = useState([]);
   const [dutySettingsOpen, setDutySettingsOpen] = useState(false);
-  const [dutySettingsLoading, setDutySettingsLoading] = useState(false);
-  const [dutySettingsSaving, setDutySettingsSaving] = useState(false);
-  const [dutySettingsError, setDutySettingsError] = useState("");
-  const [semesters, setSemesters] = useState([]);
-  const [selectedDutySemesterId, setSelectedDutySemesterId] = useState("");
+  const [defaultSlots, setDefaultSlots] = useState(2);
+  const [slotOverrides, setSlotOverrides] = useState([]);
   const [dutyBlackouts, setDutyBlackouts] = useState([]);
-  const [dutyBlackoutInput, setDutyBlackoutInput] = useState("");
-  const [dutyBlackoutReasonInput, setDutyBlackoutReasonInput] = useState("");
+  const [cellMenuAnchor, setCellMenuAnchor] = useState(null);
+  const [cellMenuDate, setCellMenuDate] = useState(null);
+  const [slotInitialDate, setSlotInitialDate] = useState(null);
+  const [dutyInitialDate, setDutyInitialDate] = useState(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user));
   }, []);
 
-  const loadSemesters = useCallback(async () => {
+  const loadSlotSummary = useCallback(async () => {
     try {
-      const { data, error: semesterErr } = await supabase
-        .from("semesters")
-        .select("id, name, is_active, start_date, end_date")
-        .order("start_date", { ascending: false });
-
-      if (semesterErr) throw semesterErr;
-
-      const rows = data || [];
-      setSemesters(rows);
-      if (!rows.length) {
-        setSelectedDutySemesterId("");
-        return;
-      }
-
-      setSelectedDutySemesterId((prev) => {
-        if (prev && rows.some((s) => s.id === prev)) return prev;
-        const active = rows.find((s) => s.is_active);
-        return active?.id || rows[0].id;
-      });
-    } catch (err) {
-      setDutySettingsError(err.message || "Failed to load semesters.");
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSemesters();
-  }, [loadSemesters]);
-
-  const loadDutyBlackouts = useCallback(async () => {
-    if (!selectedDutySemesterId) {
-      setDutyBlackouts([]);
-      return;
-    }
-
-    setDutySettingsLoading(true);
-    setDutySettingsError("");
-    try {
-      const { data, error: blackoutErr } = await supabase
-        .from("duty_schedule_blackout_dates")
-        .select("id, blackout_date, reason")
-        .eq("semester_id", selectedDutySemesterId)
-        .order("blackout_date", { ascending: true });
-
-      if (blackoutErr) throw blackoutErr;
-      setDutyBlackouts(data || []);
-    } catch (err) {
-      setDutySettingsError(
-        err.message || "Failed to load duty blackout dates.",
-      );
-    } finally {
-      setDutySettingsLoading(false);
-    }
-  }, [selectedDutySemesterId]);
-
-  useEffect(() => {
-    loadDutyBlackouts();
-  }, [loadDutyBlackouts]);
-
-  useEffect(() => {
-    if (location.state?.openDutySettings) {
-      setDutySettingsOpen(true);
-    }
-  }, [location.state?.openDutySettings]);
-
-  const addDutyBlackout = async () => {
-    if (!selectedDutySemesterId || !dutyBlackoutInput) return;
-
-    setDutySettingsSaving(true);
-    setDutySettingsError("");
-    try {
-      const { error: insertErr } = await supabase
-        .from("duty_schedule_blackout_dates")
-        .insert({
-          semester_id: selectedDutySemesterId,
-          blackout_date: dutyBlackoutInput,
-          reason: dutyBlackoutReasonInput.trim() || null,
-          created_by: currentUser?.id || null,
-        });
-      if (insertErr) throw insertErr;
-
-      setDutyBlackoutInput("");
-      setDutyBlackoutReasonInput("");
-      await loadDutyBlackouts();
-    } catch (err) {
-      setDutySettingsError(err.message || "Failed to add duty blackout date.");
-    } finally {
-      setDutySettingsSaving(false);
-    }
-  };
-
-  const removeDutyBlackout = async (id) => {
-    if (!id) return;
-    setDutySettingsSaving(true);
-    setDutySettingsError("");
-    try {
-      const { error: deleteErr } = await supabase
-        .from("duty_schedule_blackout_dates")
-        .delete()
-        .eq("id", id);
-      if (deleteErr) throw deleteErr;
-      await loadDutyBlackouts();
-    } catch (err) {
-      setDutySettingsError(
-        err.message || "Failed to remove duty blackout date.",
-      );
-    } finally {
-      setDutySettingsSaving(false);
-    }
-  };
-
-  const loadSlotSettings = useCallback(async () => {
-    setSlotLoading(true);
-    setSlotError("");
-    try {
-      const [
-        { data: settingsRow, error: settingsErr },
-        { data: overrides, error: overridesErr },
-      ] = await Promise.all([
+      const [{ data: settingsRow }, { data: overrides }] = await Promise.all([
         supabase
           .from("calendar_slot_settings")
           .select("id, default_slots")
@@ -1227,23 +111,46 @@ export default function CalendarManagement() {
           .maybeSingle(),
         supabase
           .from("calendar_slot_overrides")
-          .select("slot_date, slot_capacity, updated_at")
+          .select("slot_date, slot_capacity")
           .order("slot_date", { ascending: true }),
       ]);
-
-      if (settingsErr) throw settingsErr;
-      if (overridesErr) throw overridesErr;
-
-      const defaultSlots = settingsRow?.default_slots ?? 2;
-      setDefaultSlotsInput(String(defaultSlots));
-      setOverrideSlotsInput(String(defaultSlots));
+      setDefaultSlots(settingsRow?.default_slots ?? 2);
       setSlotOverrides(overrides || []);
-    } catch (err) {
-      setSlotError(err.message || "Failed to load slot settings.");
-    } finally {
-      setSlotLoading(false);
-    }
+    } catch { /* silently ignore */ }
   }, []);
+
+  const loadDutySummary = useCallback(async () => {
+    try {
+      const { data: activeSemester } = await supabase
+        .from("semesters")
+        .select("id")
+        .eq("is_active", true)
+        .maybeSingle();
+      if (!activeSemester) { setDutyBlackouts([]); return; }
+      const { data } = await supabase
+        .from("duty_schedule_blackout_dates")
+        .select("id, blackout_date, reason")
+        .eq("semester_id", activeSemester.id)
+        .order("blackout_date", { ascending: true });
+      setDutyBlackouts(data || []);
+    } catch { /* silently ignore */ }
+  }, []);
+
+  useEffect(() => {
+    loadSlotSummary();
+  }, [loadSlotSummary]);
+
+  useEffect(() => {
+    loadDutySummary();
+  }, [loadDutySummary]);
+
+  useEffect(() => {
+    if (location.state?.openDutySettings) {
+      setDutySettingsOpen(true);
+    }
+  }, [location.state?.openDutySettings]);
+
+
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -1309,95 +216,6 @@ export default function CalendarManagement() {
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
-
-  useEffect(() => {
-    loadSlotSettings();
-  }, [loadSlotSettings]);
-
-  const saveDefaultSlots = async () => {
-    const parsed = Number(defaultSlotsInput);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      setSlotError(
-        "Default slots must be a number greater than or equal to 0.",
-      );
-      return;
-    }
-
-    setSlotSaving(true);
-    setSlotError("");
-    try {
-      const { error: upsertErr } = await supabase
-        .from("calendar_slot_settings")
-        .upsert(
-          {
-            id: 1,
-            default_slots: parsed,
-            updated_by: currentUser?.id || null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" },
-        );
-      if (upsertErr) throw upsertErr;
-      await loadSlotSettings();
-    } catch (err) {
-      setSlotError(err.message || "Failed to save default slots.");
-    } finally {
-      setSlotSaving(false);
-    }
-  };
-
-  const saveDateOverride = async () => {
-    if (!overrideDateInput) {
-      setSlotError("Please pick a date for the override.");
-      return;
-    }
-    const parsed = Number(overrideSlotsInput);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      setSlotError(
-        "Override slots must be a number greater than or equal to 0.",
-      );
-      return;
-    }
-
-    setSlotSaving(true);
-    setSlotError("");
-    try {
-      const { error: upsertErr } = await supabase
-        .from("calendar_slot_overrides")
-        .upsert(
-          {
-            slot_date: overrideDateInput,
-            slot_capacity: parsed,
-            updated_by: currentUser?.id || null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "slot_date" },
-        );
-      if (upsertErr) throw upsertErr;
-      await loadSlotSettings();
-    } catch (err) {
-      setSlotError(err.message || "Failed to save date override.");
-    } finally {
-      setSlotSaving(false);
-    }
-  };
-
-  const removeDateOverride = async (slotDate) => {
-    setSlotSaving(true);
-    setSlotError("");
-    try {
-      const { error: delErr } = await supabase
-        .from("calendar_slot_overrides")
-        .delete()
-        .eq("slot_date", slotDate);
-      if (delErr) throw delErr;
-      await loadSlotSettings();
-    } catch (err) {
-      setSlotError(err.message || "Failed to remove date override.");
-    } finally {
-      setSlotSaving(false);
-    }
-  };
 
   const eventsMap = useMemo(() => {
     const map = {};
@@ -1551,13 +369,12 @@ export default function CalendarManagement() {
     }
   };
 
-  const handleCellClick = (date, hour) => {
+  const handleCellClick = (e, date, hour) => {
     if (isPastDate(date)) return;
-    setEditingEvent(null);
     const start = new Date(date);
     start.setHours(hour, 0, 0, 0);
-    setSelectedDate(start);
-    setOpenDialog(true);
+    setCellMenuAnchor(e.currentTarget);
+    setCellMenuDate(start);
   };
 
   const handlePanelEdit = (ev) => {
@@ -1571,13 +388,12 @@ export default function CalendarManagement() {
     setOpenDialog(true);
   };
 
-  const handleMonthCellClick = (date) => {
+  const handleMonthCellClick = (e, date) => {
     if (isPastDate(date)) return;
-    setEditingEvent(null);
     const start = new Date(date);
     start.setHours(8, 0, 0, 0);
-    setSelectedDate(start);
-    setOpenDialog(true);
+    setCellMenuAnchor(e.currentTarget);
+    setCellMenuDate(start);
   };
 
   // Single-day timed block
@@ -1596,13 +412,13 @@ export default function CalendarManagement() {
           height: Math.max(durationMins * MINUTE_RATIO, 20),
           left: 2,
           right: 2,
-          backgroundColor: isDark ? "rgba(53,53,53,0.85)" : CHARCOAL,
-          color: "#fff",
-          borderRadius: "10px",
+          backgroundColor: isDark ? "#d9d9d9" : "#212121",
+          color: isDark ? "#212121" : "#fff",
+          borderRadius: "4px",
           p: 0.5,
           overflow: "hidden",
           zIndex: 1,
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.7)"}`,
+          border: "none",
           cursor: "pointer",
         }}
         onClick={(e) => {
@@ -1644,12 +460,12 @@ export default function CalendarManagement() {
         height: (SCHEDULER_END_HOUR - SCHEDULER_START_HOUR) * SLOT_HEIGHT,
         left: 2,
         right: 2,
-        backgroundColor: isDark ? "rgba(53,53,53,0.72)" : CHARCOAL,
-        color: "#fff",
-        borderRadius: "10px",
+        backgroundColor: isDark ? "#d9d9d9" : "#212121",
+        color: isDark ? "#212121" : "#fff",
+        borderRadius: "4px",
         overflow: "hidden",
         zIndex: 1,
-        border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(53,53,53,0.7)"}`,
+        border: "none",
         cursor: "pointer",
         display: "flex",
         flexDirection: "column",
@@ -1702,23 +518,10 @@ export default function CalendarManagement() {
     </Box>
   );
 
-  const weekNumber = getWeekOfMonth(currentWeekStart);
-  const currentWeekMonthYear = currentWeekStart.toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
-  const currentMonthYear = currentMonthStart.toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
   const headerTitle =
     viewMode === "week"
-      ? `Week ${weekNumber} of ${currentWeekMonthYear}`
-      : currentMonthYear;
-  const headerSubtitle =
-    viewMode === "week"
-      ? "Click any future cell to block a date"
-      : "Select a day to create a blocked date";
+      ? currentWeekStart.toLocaleString("default", { month: "long", year: "numeric" })
+      : currentMonthStart.toLocaleString("default", { month: "long", year: "numeric" });
   const stickyBg = isDark ? "#161616" : "#ffffff";
 
   return (
@@ -1743,26 +546,32 @@ export default function CalendarManagement() {
           mb: 3,
         }}
       >
-        <IconButton
-          onClick={goPrev}
-          size="small"
-          sx={{
-            border: `1px solid ${border}`,
-            borderRadius: "10px",
-            p: 0.65,
-            color: "text.secondary",
-            "&:hover": {
-              borderColor: GOLD,
-              backgroundColor: GOLD_08,
-              color: CHARCOAL,
-            },
-            transition: "all 0.15s",
-          }}
-        >
-          <ArrowBackIosNewIcon sx={{ fontSize: 13 }} />
-        </IconButton>
+        {/* Left spacer — mirrors right controls width for centering */}
+        <Box sx={{ display: "flex", gap: 0.75, alignItems: "center", visibility: "hidden" }}>
+          <Box sx={{ display: "inline-flex", p: 0.25, borderRadius: "10px", border: `1px solid ${border}` }}>
+            <Box sx={{ px: 1.1, py: 0.45, fontFamily: dm, fontSize: "0.72rem" }}>Week</Box>
+            <Box sx={{ px: 1.1, py: 0.45, fontFamily: dm, fontSize: "0.72rem" }}>Month</Box>
+          </Box>
+          <Box sx={{ px: 1.5, py: 0.55, fontFamily: dm, fontSize: "0.76rem" }}>Today</Box>
+        </Box>
 
-        <Box sx={{ textAlign: "center" }}>
+        {/* ── Centered nav unit: < April 2026 > ── */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <IconButton
+            onClick={goPrev}
+            size="small"
+            sx={{
+              border: `1px solid ${border}`,
+              borderRadius: "10px",
+              p: 0.65,
+              color: "text.secondary",
+              "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08, color: CHARCOAL },
+              transition: "all 0.15s",
+            }}
+          >
+            <ArrowBackIosNewIcon sx={{ fontSize: 13 }} />
+          </IconButton>
+
           <Typography
             sx={{
               fontFamily: dm,
@@ -1770,23 +579,30 @@ export default function CalendarManagement() {
               fontSize: { xs: "0.88rem", sm: "1rem" },
               color: "text.primary",
               letterSpacing: "-0.02em",
+              minWidth: 140,
+              textAlign: "center",
             }}
           >
             {headerTitle}
           </Typography>
-          <Typography
+
+          <IconButton
+            onClick={goNext}
+            size="small"
             sx={{
-              fontFamily: dm,
-              fontSize: "0.7rem",
+              border: `1px solid ${border}`,
+              borderRadius: "10px",
+              p: 0.65,
               color: "text.secondary",
-              mt: 0.2,
-              display: { xs: "none", sm: "block" },
+              "&:hover": { borderColor: GOLD, backgroundColor: GOLD_08, color: CHARCOAL },
+              transition: "all 0.15s",
             }}
           >
-            {headerSubtitle}
-          </Typography>
+            <ArrowForwardIosIcon sx={{ fontSize: 13 }} />
+          </IconButton>
         </Box>
 
+        {/* ── Right controls ── */}
         <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>
           <Box
             sx={{
@@ -1796,7 +612,6 @@ export default function CalendarManagement() {
               borderRadius: "10px",
               border: `1px solid ${border}`,
               backgroundColor: "background.paper",
-              mr: 0.25,
             }}
           >
             <Box
@@ -1807,14 +622,13 @@ export default function CalendarManagement() {
                 borderRadius: "10px",
                 cursor: "pointer",
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 600,
                 color: viewMode === "week" ? CHARCOAL : "text.secondary",
                 backgroundColor: viewMode === "week" ? GOLD_08 : "transparent",
-                border:
-                  viewMode === "week"
-                    ? `1px solid ${isDark ? "rgba(245,197,43,0.35)" : "rgba(245,197,43,0.45)"}`
-                    : "1px solid transparent",
+                border: viewMode === "week"
+                  ? `1px solid ${isDark ? "rgba(245,197,43,0.35)" : "rgba(245,197,43,0.45)"}`
+                  : "1px solid transparent",
                 transition: "all 0.15s",
               }}
             >
@@ -1828,14 +642,13 @@ export default function CalendarManagement() {
                 borderRadius: "10px",
                 cursor: "pointer",
                 fontFamily: dm,
-                fontSize: "0.72rem",
+                fontSize: "0.8rem",
                 fontWeight: 600,
                 color: viewMode === "month" ? CHARCOAL : "text.secondary",
                 backgroundColor: viewMode === "month" ? GOLD_08 : "transparent",
-                border:
-                  viewMode === "month"
-                    ? `1px solid ${isDark ? "rgba(245,197,43,0.35)" : "rgba(245,197,43,0.45)"}`
-                    : "1px solid transparent",
+                border: viewMode === "month"
+                  ? `1px solid ${isDark ? "rgba(245,197,43,0.35)" : "rgba(245,197,43,0.45)"}`
+                  : "1px solid transparent",
                 transition: "all 0.15s",
               }}
             >
@@ -1852,38 +665,16 @@ export default function CalendarManagement() {
               cursor: "pointer",
               border: `1px solid ${border}`,
               fontFamily: dm,
-              fontSize: "0.76rem",
+              fontSize: "0.8rem",
               fontWeight: 500,
               color: "text.secondary",
               userSelect: "none",
               transition: "all 0.15s",
-              "&:hover": {
-                borderColor: GOLD,
-                color: CHARCOAL,
-                backgroundColor: GOLD_08,
-              },
+              "&:hover": { borderColor: GOLD, color: CHARCOAL, backgroundColor: GOLD_08 },
             }}
           >
             Today
           </Box>
-          <IconButton
-            onClick={goNext}
-            size="small"
-            sx={{
-              border: `1px solid ${border}`,
-              borderRadius: "10px",
-              p: 0.65,
-              color: "text.secondary",
-              "&:hover": {
-                borderColor: GOLD,
-                backgroundColor: GOLD_08,
-                color: CHARCOAL,
-              },
-              transition: "all 0.15s",
-            }}
-          >
-            <ArrowForwardIosIcon sx={{ fontSize: 13 }} />
-          </IconButton>
         </Box>
       </Box>
 
@@ -1998,7 +789,7 @@ export default function CalendarManagement() {
                   return (
                     <Box
                       key={iso}
-                      onClick={() => handleMonthCellClick(date)}
+                      onClick={(e) => handleMonthCellClick(e, date)}
                       sx={{
                         minHeight: 116,
                         p: 1,
@@ -2007,13 +798,17 @@ export default function CalendarManagement() {
                         backgroundColor:
                           dayEvents.length > 0
                             ? densityBg
-                            : inCurrentMonth
-                              ? "transparent"
-                              : isDark
-                                ? "rgba(255,255,255,0.015)"
-                                : "rgba(53,53,53,0.015)",
+                            : pastCell
+                              ? isDark
+                                ? "rgba(255,255,255,0.02)"
+                                : "rgba(53,53,53,0.03)"
+                              : inCurrentMonth
+                                ? "transparent"
+                                : isDark
+                                  ? "rgba(255,255,255,0.015)"
+                                  : "rgba(53,53,53,0.015)",
                         cursor: pastCell ? "not-allowed" : "pointer",
-                        opacity: inCurrentMonth ? 1 : 0.58,
+                        opacity: inCurrentMonth ? (pastCell ? 0.5 : 1) : 0.58,
                         transition: "background-color 0.15s",
                         "&:hover": !pastCell
                           ? {
@@ -2037,7 +832,11 @@ export default function CalendarManagement() {
                             fontFamily: dm,
                             fontSize: "0.78rem",
                             fontWeight: isToday ? 700 : 500,
-                            color: isToday ? CHARCOAL : "text.primary",
+                            color: isToday
+                              ? CHARCOAL
+                              : pastCell
+                                ? "text.disabled"
+                                : "text.primary",
                           }}
                         >
                           {date.getDate()}
@@ -2074,11 +873,8 @@ export default function CalendarManagement() {
                             sx={{
                               px: 0.65,
                               py: 0.35,
-                              borderRadius: "10px",
-                              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(53,53,53,0.12)"}`,
-                              backgroundColor: isDark
-                                ? "rgba(255,255,255,0.04)"
-                                : "rgba(53,53,53,0.04)",
+                              borderRadius: "4px",
+                              backgroundColor: isDark ? "#d9d9d9" : "#212121",
                             }}
                           >
                             <Typography
@@ -2086,7 +882,7 @@ export default function CalendarManagement() {
                                 fontFamily: dm,
                                 fontSize: "0.64rem",
                                 fontWeight: 600,
-                                color: "text.secondary",
+                                color: isDark ? "#212121" : "#fff",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -2186,42 +982,22 @@ export default function CalendarManagement() {
                         {date.getDate()}
                       </Typography>
                       {dayBlocks.length > 0 && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            mt: 0.4,
-                          }}
-                        >
+                        <Box sx={{ display: "flex", justifyContent: "center", mt: 0.5 }}>
                           <Box
                             sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.4,
-                              px: 0.75,
-                              py: 0.2,
-                              borderRadius: "10px",
-                              backgroundColor: isDark
-                                ? "rgba(255,255,255,0.06)"
-                                : "rgba(53,53,53,0.06)",
+                              px: 0.7,
+                              py: 0.15,
+                              borderRadius: "4px",
+                              backgroundColor: "#212121",
                             }}
                           >
-                            <Box
-                              sx={{
-                                width: 4,
-                                height: 4,
-                                borderRadius: "50%",
-                                backgroundColor: isDark
-                                  ? "rgba(255,255,255,0.35)"
-                                  : "rgba(53,53,53,0.35)",
-                              }}
-                            />
                             <Typography
                               sx={{
                                 fontFamily: dm,
                                 fontSize: "0.58rem",
-                                color: "text.secondary",
-                                fontWeight: 600,
+                                fontWeight: 700,
+                                color: "#fff",
+                                lineHeight: 1.4,
                               }}
                             >
                               {dayBlocks.length}
@@ -2305,10 +1081,6 @@ export default function CalendarManagement() {
                               p: 0.3,
                               cursor: pastCell ? "not-allowed" : "pointer",
                               opacity: pastCell ? 0.45 : 1,
-                              backgroundColor:
-                                allDayEvs.length > 0
-                                  ? "transparent"
-                                  : densityBg,
                               transition: "background-color 0.12s",
                               "&:hover": !pastCell
                                 ? {
@@ -2318,11 +1090,8 @@ export default function CalendarManagement() {
                                   }
                                 : {},
                             }}
-                            onClick={() => handleCellClick(date, hour)}
-                          >
-                            {allDayEvs.map(renderAllDayBlock)}
-                            {timedEvs.map(renderTimedBlock)}
-                          </Box>
+                            onClick={(e) => handleCellClick(e, date, hour)}
+                          />
                         );
                       })}
                     </React.Fragment>
@@ -2349,623 +1118,86 @@ export default function CalendarManagement() {
               `/admin/calendar-management/blocking-details?eventId=${eventId}`,
             )
           }
-          defaultSlots={Number(defaultSlotsInput) || 0}
+          defaultSlots={defaultSlots}
           overrideCount={slotOverrides.length}
           slotOverrides={slotOverrides}
-          onOpenSlotSettings={() => setSlotDialogOpen(true)}
-          onOpenDutySettings={() => setDutySettingsOpen(true)}
+          dutyBlackouts={dutyBlackouts}
+          onOpenSlotSettings={() => { setSlotInitialDate(null); setSlotDialogOpen(true); }}
+          onOpenDutySettings={() => { setDutyInitialDate(null); setDutySettingsOpen(true); }}
           collapsed={panelCollapsed}
           onToggle={() => setPanelCollapsed((v) => !v)}
         />
       </Box>
 
-      <Dialog
-        open={slotDialogOpen}
-        onClose={() => {
-          if (!slotSaving) {
-            setSlotDialogOpen(false);
-            setSlotError("");
-          }
-        }}
-        fullWidth
-        maxWidth="sm"
+      <Menu
+        anchorEl={cellMenuAnchor}
+        open={Boolean(cellMenuAnchor)}
+        onClose={() => setCellMenuAnchor(null)}
         slotProps={{
           paper: {
             sx: {
               borderRadius: "10px",
-              backgroundColor: "background.paper",
               border: `1px solid ${border}`,
+              boxShadow: isDark
+                ? "0 4px 24px rgba(0,0,0,0.4)"
+                : "0 4px 24px rgba(0,0,0,0.10)",
+              minWidth: 180,
             },
           },
         }}
       >
-        <Box
-          sx={{
-            px: 2.5,
-            py: 1.75,
-            borderBottom: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <Box sx={{ px: 2, pt: 1.2, pb: 0.75 }}>
           <Typography
             sx={{
               fontFamily: dm,
-              fontWeight: 700,
-              fontSize: "0.92rem",
-              color: "text.primary",
-            }}
-          >
-            Client Calendar Slots
-          </Typography>
-          <IconButton
-            size="small"
-            onClick={() => {
-              if (!slotSaving) {
-                setSlotDialogOpen(false);
-                setSlotError("");
-              }
-            }}
-            sx={{
-              borderRadius: "10px",
+              fontSize: "0.7rem",
+              fontWeight: 600,
               color: "text.secondary",
-              "&:hover": {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : HOVER_BG,
-              },
+              letterSpacing: "0.04em",
             }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </Box>
-
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 1.25,
-          }}
-        >
-          {slotError && (
-            <Alert
-              severity="error"
-              sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}
-            >
-              {slotError}
-            </Alert>
-          )}
-
-          <Box
-            sx={{
-              display: "flex",
-              gap: 1,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "text.primary",
-                minWidth: 132,
-              }}
-            >
-              Default daily slots:
-            </Typography>
-            <TextField
-              label="Default slots"
-              type="number"
-              size="small"
-              value={defaultSlotsInput}
-              onChange={(e) => setDefaultSlotsInput(e.target.value)}
-              disabled={slotSaving || slotLoading}
-              slotProps={{ htmlInput: { min: 0 } }}
-              sx={{
-                width: 180,
-                "& .MuiOutlinedInput-root": {
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  borderRadius: "10px",
-                  height: 46,
-                },
-                "& .MuiInputLabel-root": { fontFamily: dm, fontSize: "0.8rem" },
-              }}
-            />
-            <Button
-              onClick={saveDefaultSlots}
-              disabled={slotSaving || slotLoading}
-              variant="contained"
-              sx={{
-                textTransform: "none",
-                borderRadius: "10px",
-                fontFamily: dm,
-                fontWeight: 600,
-                width: 140,
-                height: BUTTON_HEIGHT,
-              }}
-            >
-              Save Default
-            </Button>
-          </Box>
-
-          <Divider sx={{ borderColor: border, my: 0.25 }} />
-
-          <Box
-            sx={{
-              display: "flex",
-              gap: 1,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "text.primary",
-                minWidth: 132,
-              }}
-            >
-              Date override:
-            </Typography>
-            <BrandDatePicker
-              label="Date"
-              value={overrideDateInput ? new Date(overrideDateInput + "T00:00:00") : null}
-              onChange={(d) => setOverrideDateInput(d ? formatISO(d) : "")}
-              disabled={slotSaving || slotLoading}
-              border={border}
-            />
-            <TextField
-              label="Slots"
-              type="number"
-              size="small"
-              value={overrideSlotsInput}
-              onChange={(e) => setOverrideSlotsInput(e.target.value)}
-              disabled={slotSaving || slotLoading}
-              slotProps={{ htmlInput: { min: 0 } }}
-              sx={{
-                width: 96,
-                "& .MuiOutlinedInput-root": {
-                  fontFamily: dm,
-                  fontSize: "0.82rem",
-                  borderRadius: "10px",
-                  height: 46,
-                },
-                "& .MuiInputLabel-root": { fontFamily: dm, fontSize: "0.8rem" },
-              }}
-            />
-            <Button
-              onClick={saveDateOverride}
-              disabled={slotSaving || slotLoading}
-              variant="contained"
-              sx={{
-                textTransform: "none",
-                borderRadius: "10px",
-                fontFamily: dm,
-                fontWeight: 600,
-                width: 140,
-                height: BUTTON_HEIGHT,
-              }}
-            >
-              Save
-            </Button>
-          </Box>
-
-          <Box
-            sx={{
-              mt: 0.5,
-              border: `1px solid ${border}`,
-              borderRadius: "10px",
-              maxHeight: 210,
-              overflowY: "auto",
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.01)"
-                : "rgba(53,53,53,0.01)",
-            }}
-          >
-            {slotLoading ? (
-              <Box sx={{ p: 1.25 }}>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.76rem",
-                    color: "text.secondary",
-                  }}
-                >
-                  Loading overrides...
-                </Typography>
-              </Box>
-            ) : slotOverrides.length === 0 ? (
-              <Box sx={{ p: 1.25 }}>
-                <Typography
-                  sx={{
-                    fontFamily: dm,
-                    fontSize: "0.76rem",
-                    color: "text.secondary",
-                  }}
-                >
-                  No date overrides yet.
-                </Typography>
-              </Box>
-            ) : (
-              slotOverrides.map((row, idx) => (
-                <Box
-                  key={row.slot_date}
-                  sx={{
-                    px: 1.25,
-                    py: 0.9,
-                    borderTop: idx === 0 ? "none" : `1px solid ${border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontFamily: dm,
-                      fontSize: "0.76rem",
-                      color: "text.primary",
-                    }}
-                  >
-                    {new Date(`${row.slot_date}T00:00:00`).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      },
-                    )}
-                  </Typography>
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.74rem",
-                        color: "text.secondary",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {row.slot_capacity} slots
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      disabled={slotSaving}
-                      onClick={() => removeDateOverride(row.slot_date)}
-                      sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: "10px",
-                        color: "text.secondary",
-                        "&:hover": {
-                          color: "#dc2626",
-                          backgroundColor: isDark
-                            ? "rgba(220,38,38,0.12)"
-                            : "#fef2f2",
-                        },
-                      }}
-                    >
-                      <DeleteOutlinedIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                  </Box>
-                </Box>
-              ))
-            )}
-          </Box>
-        </Box>
-      </Dialog>
-
-      <Dialog
-        open={dutySettingsOpen}
-        onClose={() => {
-          if (!dutySettingsSaving) {
-            setDutySettingsOpen(false);
-            setDutySettingsError("");
-          }
-        }}
-        fullWidth
-        maxWidth="sm"
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: "10px",
-              backgroundColor: "background.paper",
-              border: `1px solid ${border}`,
-            },
-          },
-        }}
-      >
-        <Box
-          sx={{
-            px: 2.5,
-            py: 1.75,
-            borderBottom: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: dm,
-              fontWeight: 700,
-              fontSize: "0.92rem",
-              color: "text.primary",
-            }}
-          >
-            Duty Settings
+            {cellMenuDate?.toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
           </Typography>
         </Box>
-
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            setCellMenuAnchor(null);
+            setEditingEvent(null);
+            setSelectedDate(cellMenuDate);
+            setOpenDialog(true);
           }}
+          sx={{ fontFamily: dm, fontSize: "0.78rem", py: 1, px: 2 }}
         >
-          {dutySettingsError && (
-            <Alert
-              severity="error"
-              sx={{ borderRadius: "10px", fontFamily: dm, fontSize: "0.78rem" }}
-            >
-              {dutySettingsError}
-            </Alert>
-          )}
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "text.primary",
-                minWidth: 132,
-              }}
-            >
-              Semester:
-            </Typography>
-            <TextField
-              select
-              value={selectedDutySemesterId}
-              onChange={(e) => setSelectedDutySemesterId(e.target.value)}
-              disabled={dutySettingsSaving}
-              sx={{
-                flex: 1,
-                ...MODAL_FIELD_SX,
-              }}
-            >
-              {semesters.map((semester) => (
-                <MenuItem
-                  key={semester.id}
-                  value={semester.id}
-                  sx={{ fontFamily: dm, fontSize: "0.82rem" }}
-                >
-                  {getSemesterDisplayName(semester)}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
-
-          <Divider sx={{ borderColor: border, my: 0.25 }} />
-
-          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-            <Typography
-              sx={{
-                fontFamily: dm,
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "text.primary",
-                minWidth: 132,
-                pt: 1.5,
-              }}
-            >
-              Duty Blackout Dates:
-            </Typography>
-
-            <Box
-              sx={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.85,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                }}
-              >
-                <BrandDatePicker
-                  label="Date"
-                  value={dutyBlackoutInput ? new Date(dutyBlackoutInput + "T00:00:00") : null}
-                  onChange={(d) => setDutyBlackoutInput(d ? formatISO(d) : "")}
-                  disabled={dutySettingsSaving || !selectedDutySemesterId}
-                  border={border}
-                  slotProps={{ textField: { sx: { maxWidth: 220 } } }}
-                />
-                <TextField
-                  label="Reason (optional)"
-                  fullWidth
-                  multiline
-                  minRows={4}
-                  value={dutyBlackoutReasonInput}
-                  onChange={(e) => setDutyBlackoutReasonInput(e.target.value)}
-                  disabled={dutySettingsSaving || !selectedDutySemesterId}
-                  sx={MODAL_TEXTAREA_SX}
-                />
-              </Box>
-
-              <Box
-                sx={{
-                  mt: 0.1,
-                  border: `1px solid ${border}`,
-                  borderRadius: "10px",
-                  maxHeight: 210,
-                  overflowY: "auto",
-                  backgroundColor: isDark
-                    ? "rgba(255,255,255,0.01)"
-                    : "rgba(53,53,53,0.01)",
-                }}
-              >
-                {dutySettingsLoading ? (
-                  <Box sx={{ p: 1.25 }}>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.76rem",
-                        color: "text.secondary",
-                      }}
-                    >
-                      Loading duty blackout dates...
-                    </Typography>
-                  </Box>
-                ) : dutyBlackouts.length === 0 ? (
-                  <Box sx={{ p: 1.25 }}>
-                    <Typography
-                      sx={{
-                        fontFamily: dm,
-                        fontSize: "0.76rem",
-                        color: "text.secondary",
-                      }}
-                    >
-                      No duty blackout dates yet.
-                    </Typography>
-                  </Box>
-                ) : (
-                  dutyBlackouts.map((row, idx) => (
-                    <Box
-                      key={row.id}
-                      sx={{
-                        px: 1.25,
-                        py: 0.9,
-                        borderTop: idx === 0 ? "none" : `1px solid ${border}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 1,
-                      }}
-                    >
-                      <Box>
-                        <Typography
-                          sx={{
-                            fontFamily: dm,
-                            fontSize: "0.76rem",
-                            color: "text.primary",
-                          }}
-                        >
-                          {new Date(
-                            `${row.blackout_date}T00:00:00`,
-                          ).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </Typography>
-                        {row.reason ? (
-                          <Typography
-                            sx={{
-                              fontFamily: dm,
-                              fontSize: "0.68rem",
-                              color: "text.secondary",
-                            }}
-                          >
-                            {row.reason}
-                          </Typography>
-                        ) : null}
-                      </Box>
-                      <IconButton
-                        size="small"
-                        disabled={dutySettingsSaving}
-                        onClick={() => removeDutyBlackout(row.id)}
-                        sx={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: "10px",
-                          color: "text.secondary",
-                          "&:hover": {
-                            color: "#dc2626",
-                            backgroundColor: isDark
-                              ? "rgba(220,38,38,0.12)"
-                              : "#fef2f2",
-                          },
-                        }}
-                      >
-                        <DeleteOutlinedIcon sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    </Box>
-                  ))
-                )}
-              </Box>
-
-              <Box
-                sx={{
-                  pt: 0.75,
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: 1,
-                }}
-              >
-                <Button
-                  onClick={() => {
-                    if (!dutySettingsSaving) {
-                      setDutySettingsOpen(false);
-                      setDutySettingsError("");
-                    }
-                  }}
-                  disabled={dutySettingsSaving}
-                  variant="outlined"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: CONTROL_RADIUS,
-                    fontFamily: dm,
-                    fontWeight: 600,
-                    minWidth: 120,
-                    color: "text.secondary",
-                    borderColor: "rgba(0,0,0,0.12)",
-                    height: MODAL_ACTION_HEIGHT,
-                    "&:hover": {
-                      borderColor: "rgba(53,53,53,0.3)",
-                      backgroundColor: "#f7f7f8",
-                    },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={addDutyBlackout}
-                  disabled={
-                    dutySettingsSaving ||
-                    !selectedDutySemesterId ||
-                    !dutyBlackoutInput
-                  }
-                  variant="contained"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: CONTROL_RADIUS,
-                    fontFamily: dm,
-                    fontWeight: 600,
-                    minWidth: 132,
-                    height: MODAL_ACTION_HEIGHT,
-                  }}
-                >
-                  Add Date
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Dialog>
+          Block this date
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setCellMenuAnchor(null);
+            setSlotInitialDate(cellMenuDate ? formatISO(cellMenuDate) : null);
+            setSlotDialogOpen(true);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.78rem", py: 1, px: 2 }}
+        >
+          Set slot override
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setCellMenuAnchor(null);
+            setDutyInitialDate(cellMenuDate ? formatISO(cellMenuDate) : null);
+            setDutySettingsOpen(true);
+          }}
+          sx={{ fontFamily: dm, fontSize: "0.78rem", py: 1, px: 2 }}
+        >
+          Add duty blackout
+        </MenuItem>
+      </Menu>
+      <RequestSlotsDialog key={slotDialogOpen ? (slotInitialDate || "request-slot-today") : "request-slot-closed"} open={slotDialogOpen} onClose={() => setSlotDialogOpen(false)} currentUser={currentUser} onDataChanged={loadSlotSummary} initialDate={slotInitialDate} />
+      <DutySettingsDialog open={dutySettingsOpen} onClose={() => setDutySettingsOpen(false)} currentUser={currentUser} onDataChanged={loadDutySummary} initialDate={dutyInitialDate} />
 
       <CalendarEventDialog
         open={openDialog}

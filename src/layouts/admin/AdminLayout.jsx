@@ -667,7 +667,9 @@ function AdminLayout() {
         .from("coverage_requests")
         .select("id", { count: "exact", head: true })
         .eq("status", "Pending")
-        .then(({ count }) => { if (!cancelled) setRequestsCount(count || 0); });
+        .then(({ count }) => {
+          if (!cancelled) setRequestsCount(count || 0);
+        });
     }
     loadUser();
     return () => {

@@ -381,8 +381,10 @@ function SidebarContent({ onClose, isMobile, rectifCount, forwardedCount }) {
                             label={child.label}
                             to={child.to}
                             trailing={
-                              (child.to === "rectifications" && rectifCount > 0) ||
-                              (child.to === "coverage-management/assignment" && forwardedCount > 0) ? (
+                              (child.to === "rectifications" &&
+                                rectifCount > 0) ||
+                              (child.to === "coverage-management/assignment" &&
+                                forwardedCount > 0) ? (
                                 <Box
                                   sx={{
                                     minWidth: 18,
@@ -398,7 +400,9 @@ function SidebarContent({ onClose, isMobile, rectifCount, forwardedCount }) {
                                     px: 0.5,
                                   }}
                                 >
-                                  {child.to === "rectifications" ? rectifCount : forwardedCount}
+                                  {child.to === "rectifications"
+                                    ? rectifCount
+                                    : forwardedCount}
                                 </Box>
                               ) : undefined
                             }
